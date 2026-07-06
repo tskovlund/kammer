@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Assignments (per-group toggle, off by default): a flat task list —
+  open, claimed, done, nothing else. "Who takes this?" is one tap,
+  several people can hold the same assignment, anyone can mark it
+  done (the record shows who), and each assignment carries a
+  discussion thread through the same comment engine as posts and
+  events. No boards, no sprints — associations run on lists.
 - Availability polls ("Date finding", per-group toggle, off by
   default): propose candidate dates, members answer yes / if needed /
   no on a shared grid, and closing the poll turns the winning date

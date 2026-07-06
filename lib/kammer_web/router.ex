@@ -78,6 +78,8 @@ defmodule KammerWeb.Router do
       live "/g/:group_slug/settings", GroupLive.Settings, :edit
       live "/g/:group_slug/files", FileLive.Index, :group
       live "/g/:group_slug/availability/new", AvailabilityLive.New, :new
+      live "/g/:group_slug/assignments", AssignmentLive.Index, :index
+      live "/g/:group_slug/assignments/:assignment_id", AssignmentLive.Show, :show
       live "/files", FileLive.Index, :community
       live "/members", CommunityLive.Members, :index
       live "/settings", CommunityLive.Settings, :edit

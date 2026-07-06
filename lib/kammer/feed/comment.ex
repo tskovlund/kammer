@@ -23,6 +23,7 @@ defmodule Kammer.Feed.Comment do
 
     belongs_to :post, Kammer.Feed.Post
     belongs_to :event, Kammer.Events.Event
+    belongs_to :assignment, Kammer.Assignments.Assignment
     belongs_to :parent_comment, Kammer.Feed.Comment
     belongs_to :author_user, Kammer.Accounts.User
     belongs_to :guest_identity, Kammer.Guests.GuestIdentity

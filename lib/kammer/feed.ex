@@ -781,9 +781,14 @@ defmodule Kammer.Feed do
     {get_group(post), post.id}
   end
 
-  defp comment_context(%Comment{event_id: event_id}) do
+  defp comment_context(%Comment{event_id: event_id}) when is_binary(event_id) do
     event = Repo.get!(Kammer.Events.Event, event_id)
     {Repo.get!(Group, event.group_id), event_id}
+  end
+
+  defp comment_context(%Comment{assignment_id: assignment_id}) do
+    assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
+    {Repo.get!(Group, assignment.group_id), assignment_id}
   end
 
   ## Reactions
