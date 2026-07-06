@@ -10,6 +10,10 @@ and this project adheres to
 
 ### Added
 
+- Home: the instance start page now merges upcoming events and recent
+  activity across all communities and groups you belong to — strictly
+  chronological, read-only, with a per-group "Show in Home" switch on
+  every group page (on by default, sealed groups included).
 - Per-group feature toggles: group admins choose which tools the group
   shows (events, files; the feed is always on). Turning a feature off
   hides it everywhere — navigation, listings, ICS feeds, guest RSVP —

@@ -56,6 +56,53 @@ defmodule KammerWeb.InstanceLive.Home do
           </.link>
         </div>
 
+        <%!-- Home (ADR 0015): one merged, chronological lens across
+             everything the user belongs to. Read-only by design. --%>
+        <section :if={@home_events != []} class="pt-8">
+          <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
+            {gettext("Coming up")}
+          </h2>
+          <div class="space-y-2" id="home-events">
+            <.link
+              :for={event <- @home_events}
+              navigate={~p"/c/#{event.group.community.slug}/events/#{event.id}"}
+              class="flex items-center gap-3 rounded-box border border-base-200 p-3 hover:bg-base-200"
+            >
+              <.icon name="hero-calendar-days" class="size-5 text-[var(--accent,#3E6B48)]" />
+              <div class="min-w-0">
+                <p class="truncate font-medium">{event.title}</p>
+                <p class="truncate text-sm text-base-content/60">
+                  {Calendar.strftime(event.starts_at, "%d %b · %H:%M")} · {event.group.community.name} / {event.group.name}
+                </p>
+              </div>
+            </.link>
+          </div>
+        </section>
+
+        <section :if={@home_posts != []} class="pt-8">
+          <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
+            {gettext("Recent activity")}
+          </h2>
+          <div class="space-y-2" id="home-activity">
+            <.link
+              :for={post <- @home_posts}
+              navigate={~p"/c/#{post.group.community.slug}/g/#{post.group.slug}"}
+              class="block rounded-box border border-base-200 p-3 hover:bg-base-200"
+            >
+              <p class="truncate text-sm text-base-content/60">
+                {post.group.community.name} / {post.group.name}
+                <span :if={post.author_user}>· {post.author_user.display_name}</span>
+              </p>
+              <p class="line-clamp-2 text-sm">{excerpt(post.body_markdown)}</p>
+            </.link>
+          </div>
+          <p class="pt-2 text-xs text-base-content/50">
+            {gettext(
+              "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
+            )}
+          </p>
+        </section>
+
         <div
           :if={@operator? and @demo_community}
           class="mt-4 flex items-center justify-between gap-3 rounded-box border border-dashed border-base-300 p-4 text-sm"
@@ -170,10 +217,20 @@ defmodule KammerWeb.InstanceLive.Home do
       end
 
     socket
+    |> assign(:home_events, if(user, do: Kammer.Home.upcoming_events(user), else: []))
+    |> assign(:home_posts, if(user, do: Kammer.Home.recent_activity(user), else: []))
     |> assign(:my_communities, my_communities)
     |> assign(:listed_communities, Communities.list_public_communities())
     |> assign(:operator?, operator?)
     |> assign(:imprint_published?, not operator? or Kammer.Legal.published?("imprint"))
     |> assign(:demo_community, demo_community)
+  end
+
+  defp excerpt(markdown) do
+    markdown
+    |> String.replace(~r/[#*_>`\[\]()!-]/, "")
+    |> String.split("\n", trim: true)
+    |> List.first()
+    |> Kernel.||("")
   end
 end

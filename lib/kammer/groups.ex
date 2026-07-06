@@ -155,6 +155,25 @@ defmodule Kammer.Groups do
   end
 
   @doc """
+  Sets whether the member's Home shows this group (ADR 0015). A purely
+  personal setting: members change only their own membership, so the
+  only requirement is that the membership exists.
+  """
+  @spec set_show_in_home(User.t(), Group.t(), boolean()) ::
+          {:ok, GroupMembership.t()} | {:error, :not_a_member}
+  def set_show_in_home(%User{} = user, %Group{} = group, show?) when is_boolean(show?) do
+    case Repo.get_by(GroupMembership, group_id: group.id, user_id: user.id) do
+      nil ->
+        {:error, :not_a_member}
+
+      %GroupMembership{} = membership ->
+        membership
+        |> Ecto.Changeset.change(show_in_home: show?)
+        |> Repo.update()
+    end
+  end
+
+  @doc """
   Updates the group's feature toggles (ADR 0016). Group admins only;
   the changeset forces the feed on. Disabling hides — it never deletes.
   """

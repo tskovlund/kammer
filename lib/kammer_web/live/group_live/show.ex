@@ -96,11 +96,25 @@ defmodule KammerWeb.GroupLive.Show do
           {gettext("Leave group")}
         </.button>
 
+        <label
+          :if={@membership}
+          class="ml-auto flex cursor-pointer items-center gap-1.5 text-sm text-base-content/60"
+          title={gettext("Show this group's activity on your Home screen")}
+        >
+          <input
+            type="checkbox"
+            id="show-in-home-toggle"
+            checked={@membership.show_in_home}
+            phx-click="toggle_show_in_home"
+            class="toggle toggle-xs"
+          />
+          {gettext("Show in Home")}
+        </label>
+
         <form
           :if={@membership}
           id="notification-level-form"
           phx-change="set_notification_level"
-          class="ml-auto"
         >
           <label class="flex items-center gap-1.5 text-sm text-base-content/60">
             <.icon name="hero-bell" class="size-4" />
@@ -505,6 +519,19 @@ defmodule KammerWeb.GroupLive.Show do
          socket
          |> put_flash(:info, gettext("Request sent — an admin will review it."))
          |> refresh(current_user)}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("toggle_show_in_home", _params, socket) do
+    membership = socket.assigns.membership
+    current_user = current_user(socket.assigns)
+
+    case Groups.set_show_in_home(current_user, socket.assigns.group, !membership.show_in_home) do
+      {:ok, updated} ->
+        {:noreply, assign(socket, :membership, updated)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
