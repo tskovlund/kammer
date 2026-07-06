@@ -9,6 +9,12 @@
 /* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
 @source "../../_build/dev/phoenix-colocated/kammer/*/";
 
+/* Typography plugin (bundled with the standalone Tailwind CLI): the
+   feed renders Markdown post/comment bodies with `prose` classes —
+   without this plugin those classes are inert and preflight strips
+   list bullets (issue #11). */
+@plugin "@tailwindcss/typography";
+
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.
    The heroicons installation itself is managed by your mix.exs */
 @plugin "../vendor/heroicons";
