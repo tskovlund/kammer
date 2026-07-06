@@ -18,5 +18,5 @@ can never exceed the owning scope's visibility preset.
 
 - The invariant lives in `Kammer.Authorization` with a dedicated
   property-based test suite; any bypass is a release blocker.
-- Overrides can only *restrict*, never widen — reasoning stays monotonic.
+- Overrides can only _restrict_, never widen — reasoning stays monotonic.
 - "Share this one file with an outsider" is deliberately unsupported in v1.

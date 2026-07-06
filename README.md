@@ -81,6 +81,10 @@ floor, Conventional Commits) are enforced by hooks and CI.
   validation, forced downloads for non-images) is always on; antivirus
   scanning is not built in.
 
+## Author
+
+Thomas Skovlund Hansen — [skovlund.dev](https://skovlund.dev) · [thomas@skovlund.dev](mailto:thomas@skovlund.dev)
+
 ## License
 
 [AGPLv3](LICENSE). If you run a modified Kammer for others, you share your

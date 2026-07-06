@@ -30,14 +30,14 @@ docker compose up db   # just the database from the compose file
 
 ## Everyday commands
 
-| Task            | Command                       |
-| --------------- | ----------------------------- |
-| Setup           | `mix setup`                   |
-| Run             | `mix phx.server`              |
-| Test            | `mix test`                    |
-| Lint            | `mix lint` (format check + Credo strict) |
-| Format          | `mix format`                  |
-| Full gate       | `mix precommit`               |
+| Task      | Command                                  |
+| --------- | ---------------------------------------- |
+| Setup     | `mix setup`                              |
+| Run       | `mix phx.server`                         |
+| Test      | `mix test`                               |
+| Lint      | `mix lint` (format check + Credo strict) |
+| Format    | `mix format`                             |
+| Full gate | `mix precommit`                          |
 
 ## Standards
 
