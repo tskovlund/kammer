@@ -21,7 +21,9 @@ for _ in $(seq 1 60); do
   grep -q "Running KammerWeb.Endpoint" "$log" && break
   sleep 1
 done
-token=$(grep -A 3 "enter this setup token" "$log" | tail -1 | tr -d ' ')
+# The token sits inside a banner with surrounding blank lines — match
+# its shape (URL-safe base64, 22 chars) rather than a line offset.
+token=$(grep -A 4 "enter this setup token" "$log" | grep -oE '[A-Za-z0-9_-]{20,}' | head -1)
 [ -n "$token" ] || { echo "no setup token in server log" >&2; exit 1; }
 
 node scripts/screenshots.mjs --token "$token" --out docs/screenshots
