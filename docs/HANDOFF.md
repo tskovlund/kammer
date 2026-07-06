@@ -281,3 +281,46 @@ property tests where invariants · ADR/RFC/BUILDLOG as applicable ·
 CHANGELOG Unreleased entry · issues updated/closed · this file updated
 if the roadmap moved · PR description says what and why, checklist
 filled honestly.
+
+## 7. Successor pickup prompt (verbatim — works with zero chat context)
+
+Give a fresh agent session on `tskovlund/kammer` exactly this:
+
+> You are taking over autonomous development of **Kammer**, a
+> self-hosted community platform (Elixir/Phoenix/LiveView + JSON API).
+> The owner is tskovlund; he is often away — you work autonomously and
+> he decides asynchronously through GitHub issues.
+>
+> **Read first, in order:** `docs/HANDOFF.md` (your operating manual —
+> state, process, environment traps, patterns, and the full roadmap;
+> update it with every PR), then `CONVENTIONS.md` and `CLAUDE.md`
+> (binding standards, including the no-hacks rule), then `SPEC.md`
+> (the owner's original product prompt; its status note explains what
+> is live), then skim `docs/decisions/` and **all open issues** —
+> owner comments on issues override every plan; check them first,
+> every session.
+>
+> **Process, non-negotiable:** develop on your designated branch; one
+> coherent PR at a time into `main`; merge commits; `mix precommit`
+> green before every push (never weaken a check); every user-facing
+> string in English AND Danish via Gettext; all permission/visibility
+> logic in `lib/kammer/authorization.ex` only, property-tested when an
+> invariant is involved — the transport-parity property must never
+> break. Update CHANGELOG, docs, issues, and HANDOFF.md with every
+> change; close issues when settled; no stale debt. Architecture
+> decisions get an ADR; product-shaping questions (pricing, naming, UX
+> philosophy, scope) become issues assigned to tskovlund with options
+> and a recommendation — never decide those yourself. Babysit every PR
+> to green CI and merge it yourself.
+>
+> **Environment:** read HANDOFF.md §3 before your first shell command.
+>
+> **Your queue:** HANDOFF.md §5, mirrored by milestone issues
+> #15, #17, #30, #31, #32, #33 — work from the issues and keep their
+> checklists ticked. Take the top unfinished item unless an owner
+> comment redirects you.
+>
+> Work steadily, prove everything with tests, and when in doubt about
+> quality versus speed: shrink scope, never quality. Begin with the
+> reading, then confirm your understanding of the queue in one short
+> message before your first PR.
