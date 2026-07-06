@@ -53,8 +53,10 @@ never surprise you.
    `lib/kammer/authorization.ex` only, with context-level tests —
    property-based (StreamData) when an invariant is involved.
 5. **Architecture-shaping decisions** get a one-page ADR in
-   [`docs/decisions/`](decisions/); scope trims and deferrals go to
-   [BUILDLOG.md](../BUILDLOG.md). Silent stubs are forbidden.
+   [`docs/decisions/`](decisions/); designs still awaiting an owner
+   decision live as RFCs in [`docs/rfcs/`](rfcs/); scope trims and
+   deferrals go to [BUILDLOG.md](../BUILDLOG.md). Silent stubs are
+   forbidden.
 6. **Docs move with the change**: if a PR alters behavior described in
    README, this directory, or `.env.example`, the same PR updates it
    (the PR template asks).

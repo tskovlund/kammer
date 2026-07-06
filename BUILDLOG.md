@@ -722,3 +722,15 @@ PRs on a public repository, so this is policy, documented in
 CONTRIBUTING.md; an auto-close Action is deliberately NOT built until
 drive-by PRs actually occur. The path to more maintainers stays open —
 that's how the model scales.
+
+## 2026-07-06 — Screenshots workflow maiden run; GITHUB_TOKEN finding
+
+The dispatchable Screenshots workflow worked first try: regenerated all
+seven shots on the PR branch and committed the diff (typography plugin
+confirmed active in CI's standalone Tailwind — real paragraphs and list
+bullets in post bodies now). One finding: pushes made with the default
+GITHUB_TOKEN trigger no workflows (GitHub's recursion guard), so the
+bot's screenshot commit gets no CI runs of its own and strict required
+checks would block the merge. Working pattern: any subsequent real push
+re-covers the head; the clean fix is a fine-grained PAT secret for the
+push step — owner's call, tracked in issues.

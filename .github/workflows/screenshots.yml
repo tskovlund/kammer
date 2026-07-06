@@ -75,6 +75,12 @@ jobs:
         env:
           CHROMIUM_BIN: /usr/bin/google-chrome
 
+      # Pushes made with the default GITHUB_TOKEN deliberately trigger
+      # no workflows (GitHub's recursion guard), so CI will NOT re-run
+      # on the commit this step creates. Follow-up: push any real commit
+      # to the branch afterwards (or re-run checks manually) so required
+      # checks cover the final head. A fine-grained PAT secret would
+      # remove this step — tracked in the repo issues.
       - name: Commit the diff back to this branch
         run: |
           if git diff --quiet -- docs/screenshots; then
