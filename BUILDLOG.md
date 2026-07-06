@@ -43,3 +43,39 @@ later, swap the URL and re-lock; nothing else changes.
 
 **Verified** (inside `nix develop`): Elixir 1.18.4 (OTP 27), Mix 1.18.4,
 Node v22.23.1, psql 16.14, vips 8.18.3, lefthook 2.1.5.
+
+**Note — devbox path not runtime-verified in this container**: devbox is not
+installable here (its installer fetches from GitHub, blocked by the egress
+proxy). `devbox.json` mirrors the flake package set and uses standard devbox
+schema; a contributor with devbox should run `devbox shell` + `mix setup` to
+confirm. Risk is low (same nixpkgs underneath). To complete: run
+`devbox shell` on an unrestricted machine and fix any package-name drift.
+
+## 2026-07-06 — §17 toolchain wired (SPEC §16.1, §17)
+
+- mix format, **Credo 1.7 strict** (+ `Readability.Specs` for @spec-on-every-
+  public-function, `Readability.ModuleDoc`, and a custom check
+  `Kammer.CredoChecks.NoSingleLetterVariables` in `tooling/credo_checks/` —
+  Credo has no built-in single-letter ban), **Dialyzer** (dialyxir, PLT in
+  `priv/plts/`), **Sobelow** (`.sobelow-conf`; `Config.HTTPS` ignored because
+  TLS terminates at the reverse proxy per the deployment model), **ExCoveralls**
+  with an 80% floor (`coveralls.json`; scaffold's vendored
+  `core_components.ex` excluded from coverage as vendored library code),
+  **mix_audit/hex.audit**, **warnings-as-errors** project-wide, **lefthook**
+  hooks (commit-msg: commitlint; pre-commit: format+credo+compile; pre-push:
+  tests) auto-installed via `mix hooks.install` in `mix setup`, **commitlint**
+  (config + npm tooling under `tooling/commitlint/`), **GitHub Actions CI**
+  running every check inside `nix develop --command`.
+- Added `@spec`/`@moduledoc` to all scaffold modules to satisfy strict Credo.
+- Removed the scaffold's unused `:api` router pipeline (JSON API is v2).
+- Dialyzer: clean. Tests: 9 passing, coverage 97.1%.
+
+**Dependency verification (Hex, 2026-07-06)** — all §22 picks current:
+credo 1.7.19, dialyxir 1.4.7, sobelow 0.14.1, excoveralls 0.18.5,
+mix_audit 2.1.5, oban 2.23.0, swoosh 1.26.3 (scaffolded), wax_ 0.7.0
+(Phase 2), vix 0.40.0, hammer 7.4.0, icalendar 1.1.3, stream_data 1.3.0.
+**Markdown: chose MDEx 0.13.3 over Earmark** — Earmark's latest is a 1.5
+pre-release and it has no built-in sanitization; MDEx is actively maintained
+(2026-07 release) with sanitized output. **Web push: web_push_ex 0.2.0** is
+the only maintained option (web_push_encryption abandoned 2021); final call
+recorded at step 7 when wired.

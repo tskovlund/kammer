@@ -35,6 +35,7 @@ defmodule Kammer.DataCase do
   @doc """
   Sets up the sandbox based on the test tags.
   """
+  @spec setup_sandbox(map()) :: :ok
   def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Kammer.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
@@ -48,6 +49,7 @@ defmodule Kammer.DataCase do
       assert %{password: ["password is too short"]} = errors_on(changeset)
 
   """
+  @spec errors_on(Ecto.Changeset.t()) :: %{atom() => [String.t()]}
   def errors_on(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
       Regex.replace(~r"%{(\w+)}", message, fn _, key ->

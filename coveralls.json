@@ -1,0 +1,13 @@
+{
+  "coverage_options": {
+    "minimum_coverage": 80,
+    "treat_no_relevant_lines_as_covered": true
+  },
+  "skip_files": [
+    "test/support",
+    "lib/kammer_web/telemetry.ex",
+    "lib/kammer_web/components/core_components.ex",
+    "lib/kammer/release.ex",
+    "lib/mix/tasks"
+  ]
+}

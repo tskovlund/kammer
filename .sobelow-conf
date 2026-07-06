@@ -1,0 +1,10 @@
+[
+  verbose: false,
+  private: false,
+  skip: true,
+  router: "lib/kammer_web/router.ex",
+  exit: "low",
+  format: "txt",
+  ignore: ["Config.HTTPS"],
+  ignore_files: []
+]

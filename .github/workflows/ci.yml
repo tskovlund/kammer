@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint:
+    name: Conventional Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install commitlint
+        run: npm install --no-audit --no-fund
+        working-directory: tooling/commitlint
+      - name: Lint commit messages
+        run: >
+          npx --prefix tooling/commitlint commitlint
+          --config tooling/commitlint/commitlint.config.mjs
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+          --verbose
+
+  checks:
+    name: Format, Credo, Sobelow, audit, Dialyzer, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The flake is the single source of truth for the toolchain: CI runs
+      # every command inside the same dev shell contributors use locally.
+      - uses: DeterminateSystems/nix-installer-action@v16
+
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Cache Mix dependencies and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            .nix-mix
+            .nix-hex
+          key: mix-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-
+
+      - name: Cache Dialyzer PLTs
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: plt-${{ runner.os }}-${{ hashFiles('mix.lock', 'flake.lock') }}
+          restore-keys: plt-${{ runner.os }}-
+
+      - name: Install Hex and rebar
+        run: nix develop --command bash -c "mix local.hex --force && mix local.rebar --force"
+
+      - name: Fetch dependencies
+        run: nix develop --command mix deps.get
+
+      - name: Compile (warnings as errors)
+        run: nix develop --command mix compile --warnings-as-errors
+        env:
+          MIX_ENV: test
+
+      - name: Check formatting
+        run: nix develop --command mix format --check-formatted
+
+      - name: Credo (strict)
+        run: nix develop --command mix credo --strict
+
+      - name: Sobelow security scan
+        run: nix develop --command mix sobelow --config
+
+      - name: Audit dependencies
+        run: nix develop --command bash -c "mix hex.audit && mix deps.audit"
+
+      - name: Dialyzer
+        run: nix develop --command mix dialyzer --format github
+
+      - name: Tests with coverage floor
+        run: nix develop --command mix coveralls
+        env:
+          MIX_ENV: test
