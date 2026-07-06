@@ -33,7 +33,7 @@ kammer-*.tar
 
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
-/assets/node_modules/
+/assets/node_modules
 
 
 # Project-local Mix/Hex state (created by the Nix/devbox shells)
@@ -45,8 +45,8 @@ npm-debug.log
 /.devbox/
 
 # Root and tooling node_modules
-/node_modules/
-/tooling/commitlint/node_modules/
+/node_modules
+/tooling/commitlint/node_modules
 
 # Uploaded files in local dev (Storage local adapter)
 /priv/uploads/

@@ -14,3 +14,5 @@
 - [ ] User-facing strings via Gettext, EN + DA complete
 - [ ] Permission/visibility decisions go through `Kammer.Authorization` only
 - [ ] BUILDLOG.md / ADR updated if scope or architecture decisions changed
+- [ ] Docs still true (README, docs/, `.env.example`) — updated here if not
+- [ ] UI changed visibly? Regenerate `docs/screenshots/` (`scripts/screenshots.sh`)
