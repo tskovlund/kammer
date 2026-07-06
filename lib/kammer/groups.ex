@@ -26,12 +26,14 @@ defmodule Kammer.Groups do
   """
   @spec get_group_by_slug!(Community.t(), String.t()) :: Group.t()
   def get_group_by_slug!(%Community{} = community, slug) do
-    Repo.one!(
-      from(group in Group,
-        where: group.community_id == ^community.id and group.slug == ^slug,
-        preload: [community: ^community]
+    group =
+      Repo.one!(
+        from(group in Group,
+          where: group.community_id == ^community.id and group.slug == ^slug
+        )
       )
-    )
+
+    %Group{group | community: community}
   end
 
   @doc """
@@ -42,8 +44,7 @@ defmodule Kammer.Groups do
   def fetch_viewable_group(actor, %Community{} = community, slug) do
     case Repo.one(
            from(group in Group,
-             where: group.community_id == ^community.id and group.slug == ^slug,
-             preload: [community: ^community]
+             where: group.community_id == ^community.id and group.slug == ^slug
            )
          ) do
       nil ->
@@ -51,7 +52,7 @@ defmodule Kammer.Groups do
 
       %Group{} = group ->
         with :ok <- Authorization.authorize(actor, :view_group, group) do
-          {:ok, group}
+          {:ok, %Group{group | community: community}}
         end
     end
   end
@@ -320,6 +321,22 @@ defmodule Kammer.Groups do
       |> GroupJoinRequest.changeset(%{group_id: group.id, user_id: user.id, message: message})
       |> Repo.insert()
     end
+  end
+
+  @doc """
+  Whether the user has a pending join request for the group.
+  """
+  @spec pending_join_request?(User.t() | nil, Group.t()) :: boolean()
+  def pending_join_request?(nil, %Group{}), do: false
+
+  def pending_join_request?(%User{} = user, %Group{} = group) do
+    Repo.exists?(
+      from(join_request in GroupJoinRequest,
+        where:
+          join_request.group_id == ^group.id and join_request.user_id == ^user.id and
+            join_request.status == :pending
+      )
+    )
   end
 
   @doc """

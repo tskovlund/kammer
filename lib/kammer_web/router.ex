@@ -16,7 +16,56 @@ defmodule KammerWeb.Router do
   scope "/", KammerWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live_session :instance,
+      on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
+      live "/", InstanceLive.Home, :index
+      live "/invite/:token", InviteLive.Show, :show
+    end
+
+    get "/invite/:token/accept", InviteController, :accept
+  end
+
+  ## Community-scoped routes
+
+  scope "/c/:community_slug", KammerWeb do
+    pipe_through :browser
+
+    # Public-capable pages: the pages themselves authorize via
+    # Kammer.Authorization (public groups and community public pages are
+    # readable without an account).
+    live_session :community_public,
+      on_mount: [
+        {KammerWeb.UserAuth, :mount_current_scope},
+        {KammerWeb.CommunityScope, :assign_community}
+      ] do
+      live "/", CommunityLive.Home, :show
+      live "/g/:group_slug", GroupLive.Show, :show
+    end
+
+    # Member-only pages.
+    live_session :community_member,
+      on_mount: [
+        {KammerWeb.UserAuth, :require_authenticated},
+        {KammerWeb.CommunityScope, :require_member}
+      ] do
+      live "/groups", GroupLive.Index, :index
+      live "/groups/new", GroupLive.New, :new
+      live "/g/:group_slug/settings", GroupLive.Settings, :edit
+      live "/members", CommunityLive.Members, :index
+      live "/settings", CommunityLive.Settings, :edit
+      live "/events", EventLive.Index, :index
+      live "/notifications", NotificationLive.Index, :index
+    end
+  end
+
+  scope "/", KammerWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :authenticated_instance,
+      on_mount: [{KammerWeb.UserAuth, :require_authenticated}] do
+      live "/communities/new", CommunityLive.New, :new
+      live "/users/settings/servers", UserLive.Bookmarks, :index
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

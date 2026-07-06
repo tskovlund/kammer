@@ -72,9 +72,12 @@ defmodule KammerWeb.UserLive.Settings do
 
       <div class="divider" />
 
-      <div class="text-center">
+      <div class="flex flex-col items-center gap-2 text-center">
         <.link navigate={~p"/users/settings/devices"} class="link">
           {gettext("Manage devices and sessions")}
+        </.link>
+        <.link navigate={~p"/users/settings/servers"} class="link">
+          {gettext("My other servers")}
         </.link>
       </div>
     </Layouts.app>

@@ -118,3 +118,55 @@ battle-tested — then stripped to passwordless-only per SPEC §2:
 - *Session IP recording*: user_agent is stored per session; adding the
   client IP column is trivial if wanted, but was left out deliberately
   (privacy-first: don't store more than needed).
+
+## 2026-07-06 — Step 3: communities, groups, authorization (SPEC §3, §16.3, §17)
+
+**Authorization module** (`Kammer.Authorization`) — the product core:
+pure decision function `can?/4` taking the actor's relationship
+(instance-operator flag, community role, group role) explicitly; the
+Repo-backed `can?/3` and `listable_groups_query/2` are the only DB-aware
+surfaces. Property suites (StreamData) cover: anonymous actors, archived
+read-only, operator-flag inertness, role monotonicity, and a dedicated
+sealed-group suite. The property tests sharpened ADR 0005's wording:
+sealing reduces community admins to plain-member rights (a sealed
+`community`-visibility group is still visible to them *as members*), plus
+whole-group deletion.
+
+**Domain**: communities (slug-namespaced, accent color, per-community
+default locale, real-names statement toggle, instance-listing opt-in),
+memberships with Owner/Admin/Member, groups with the four visibility
+presets + join/posting/comment policies + approval-queue toggle +
+irreversible sealed flag (never cast on update) + archive state, join
+requests, invites (community or group; expiry, max-use with row-locked
+atomic redemption, revocation, email-bound with delivery), instance
+settings singleton, cross-instance bookmarks.
+
+**Web**: §21 shell — mobile bottom tab bar (Home·Events·Groups·
+Notifications·You), desktop sidebar with avatar-stack switcher, top-bar
+switcher dropdown on mobile; paper/ink daisyUI themes (light+dark twins);
+runtime accent re-tinting via CSS custom properties fed by
+`Kammer.Design.AccentColor` (`.community-accent` maps them onto daisyUI
+primary slots; dark mode swaps the dark-surface variants). Pages:
+instance landing, community home (member + public variants), groups
+directory with archived section, group create/show/settings (join
+requests, invites, archive, delete), member directory with role
+management, community settings (branding retints live, invite links,
+email invites), invite landing + accept endpoint (signed-out flow rides
+the existing return-to mechanism through magic-link sign-in), events and
+notifications tabs with designed empty states (filled by their build
+steps), "My other servers" bookmarks page.
+
+**Decisions where SPEC is silent** (boring defaults):
+- Any community member may create a group (becomes Owner). Rationale:
+  communities are invite-gated trusted spaces; sealed groups exist for
+  private circles. Revisit if pilot feedback demands an admin gate.
+- Community slugs are immutable in settings UI (stable public URLs §3).
+- No open "join community" flow: communities are entered by invitation
+  only (public page says so). SPEC describes invite links + guest flows;
+  nothing describes open community joining.
+- Group members are always community members (invariant enforced in
+  `Groups.add_member/3`; group invites also join the community).
+- Owner-role transitions require the actor to hold Owner (community) or
+  owner-equivalent powers (group).
+
+**Coverage note**: suite at 89.1% with 205 tests / 10 properties.
