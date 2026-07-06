@@ -1,6 +1,6 @@
 # RFC 0002: Cross-community home (single instance)
 
-**Status:** Proposed · **Decides:** what a user's merged view across their
+**Status:** Accepted (ADR 0015) — option 1: sealed groups shown, prominent per-group toggle defaulting ON (#21) · **Decides:** what a user's merged view across their
 communities means, and how sealed groups behave in it.
 
 ## Context

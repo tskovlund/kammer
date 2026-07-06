@@ -734,3 +734,16 @@ bot's screenshot commit gets no CI runs of its own and strict required
 checks would block the merge. Working pattern: any subsequent real push
 re-covers the head; the clean fix is a fine-grained PAT secret for the
 push step — owner's call, tracked in issues.
+
+## 2026-07-06 — Owner decisions land: API now, Home option 1, toggles accepted
+
+Issue #20: "go now" — the JSON API v1 starts immediately; the RFC 0001
+season gate is overridden by owner decision (ADR 0014), version-bump
+churn accepted knowingly. Issue #21: feature toggles accepted as
+designed (ADR 0016); cross-community Home ships option 1 — sealed
+groups visible in the member's own Home with a prominent per-group
+toggle defaulting ON (ADR 0015). Issue #23: SCREENSHOTS_PUSH_TOKEN
+secret added by the owner; the Screenshots workflow now pushes with it,
+so regenerated-screenshot commits trigger CI like any other push.
+Build order from here: feature toggles → Home → API v1 → remaining
+Phase 2 queue (search, digests, backups, …).
