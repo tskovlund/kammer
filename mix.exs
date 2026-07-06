@@ -82,6 +82,11 @@ defmodule Kammer.MixProject do
       {:vix, "~> 0.40"},
       {:web_push_ex, "~> 0.2.0"},
       {:req, "~> 0.5"},
+      # OpenAPI contract for the JSON API (ADR 0014): the spec is
+      # generated from the same modules that serve requests, so the
+      # Svelte/Swift/Kotlin clients generate from a contract that
+      # cannot drift.
+      {:open_api_spex, "~> 3.21"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
