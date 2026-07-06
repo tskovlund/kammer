@@ -22,8 +22,10 @@ const OUT = arg("out", "docs/screenshots");
 if (!TOKEN) throw new Error("--token <setup token> is required");
 mkdirSync(OUT, { recursive: true });
 
+// Operator name is a nod to Else Marie Pade, the Danish pioneer of
+// electronic music (and wartime resistance member).
 const COMMUNITY = { name: "Kammerkoret", slug: "kammerkoret" };
-const OPERATOR = { email: "marie@example.org", name: "Marie Holm" };
+const OPERATOR = { email: "else@example.org", name: "Else Marie Pade" };
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_BIN || undefined,
@@ -117,8 +119,8 @@ await post(
 );
 await post(
   "Rehearsal notes — Thursday\n\n" +
-    "- Warm-up: *Sicut cervus*\n" +
-    "- New piece: *Un soir de neige*, bars 1–24\n" +
+    "- Warm-up, then a full run of the summer set\n" +
+    "- New one: the ABBA medley — verses first, harmonies next week\n" +
     "- Bring the blue folder\n\n" +
     "Coffee duty: Jonas ☕",
 );

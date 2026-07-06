@@ -33,8 +33,8 @@ screen.
   limits: we tell you exactly what the server operator can and cannot see.
 - **A joy to self-host.** One `docker compose up`, a first-run wizard, and a
   reproducible Nix-defined dev environment for contributors. Built-in backups
-  and guest interactions (RSVP and comments without an account) are on the
-  roadmap (SPEC.md §16, Phase 2).
+  and guest interactions (RSVP and comments without an account) are next on
+  the roadmap.
 - **Institutional memory is the product.** Groups archive instead of
   vanishing; files stay browsable; seasonal bands and committees keep their
   history.
@@ -77,14 +77,12 @@ live at `/healthz`; put a TLS proxy in front (see
 
 ## Documentation
 
-| Document                                             | What it covers                                             |
-| ---------------------------------------------------- | ---------------------------------------------------------- |
-| [Development](docs/development.md)                   | Workflow, everyday commands, what the automation does      |
-| [Releasing](docs/release.md)                         | Tag-driven releases, versioning, immutability              |
-| [Deployment](docs/deploy/)                           | Reverse-proxy example; `.env.example` documents all config |
-| [Architecture decisions](docs/decisions/)            | Twelve ADRs — the "why" behind the shape of the system     |
-| [GitHub configuration](docs/github/repo-settings.md) | Repo automation and the one-time admin settings            |
-| [SPEC.md](SPEC.md) / [BUILDLOG.md](BUILDLOG.md)      | The product spec and the build journal                     |
+| Document                                  | What it covers                                             |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| [Development](docs/development.md)        | Workflow, everyday commands, what the automation does      |
+| [Releasing](docs/release.md)              | Tag-driven releases, versioning, immutability              |
+| [Deployment](docs/deploy/)                | Reverse-proxy example; `.env.example` documents all config |
+| [Architecture decisions](docs/decisions/) | Twelve ADRs — the "why" behind the shape of the system     |
 
 ## Contributing
 
@@ -104,8 +102,8 @@ floor, Conventional Commits) are enforced by hooks and CI.
 - **The server operator can technically read the database.** "Sealed" groups
   hide content from community admins — not from whoever runs the server.
   There is no end-to-end encryption.
-- No chat/DMs, no video upload, no document editing in v1 — see SPEC.md §16
-  for the roadmap and deliberate non-goals.
+- No chat/DMs, no video upload, no document editing in v1 — deliberate scope
+  choices, not oversights.
 - Upload hardening (image re-encoding, metadata stripping, content-type
   validation, forced downloads for non-images) is always on; antivirus
   scanning is not built in.

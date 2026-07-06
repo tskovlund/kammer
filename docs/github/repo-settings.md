@@ -1,17 +1,17 @@
 # GitHub repository configuration
 
-Everything that _can_ live in the repository does (workflows,
-`renovate.json`, `CODEOWNERS`, the ruleset JSON below). A few switches
-only exist in the GitHub UI and must be flipped once by an admin — they
-are listed here so nothing is forgotten. All of them work from a mobile
-browser (request the desktop site if a page looks cramped).
+A record of how this repository is configured and why — for disaster
+recovery and future maintainers, not a to-do list (the initial setup is
+complete). Everything that _can_ live in the repository does (workflows,
+`renovate.json`, `CODEOWNERS`, the ruleset JSON below); the settings
+below only exist in the GitHub UI, so they are documented here.
 
-## 1. Branch protection (import, don't click)
+## 1. Branch protection
 
-Settings → Rules → Rulesets → **New ruleset → Import a ruleset** →
-upload [`rulesets/main-protection.json`](rulesets/main-protection.json).
-
-What it enforces on the default branch:
+The active ruleset is kept as importable JSON:
+[`rulesets/main-protection.json`](rulesets/main-protection.json)
+(Settings → Rules → Rulesets → Import a ruleset, should it ever need
+recreating). It enforces on the default branch:
 
 - **Pull requests only** — no direct pushes; review threads must be
   resolved; **merge commits by default, squash allowed** (owner
@@ -28,11 +28,8 @@ What it enforces on the default branch:
 
 ## 2. Renovate (dependency updates)
 
-Install the Mend-hosted Renovate GitHub App — no PAT, no secrets:
-
-1. Open <https://github.com/apps/renovate> and tap **Install**.
-2. Choose "Only select repositories" → `tskovlund/kammer`.
-
+The Mend-hosted [Renovate GitHub App](https://github.com/apps/renovate)
+is installed on this repository — no PAT, no secrets.
 `renovate.json` in the repo root does the rest: weekly Monday-morning
 runs, grouped GitHub Actions and commitlint updates, Conventional-Commit
 messages, auto-merge for non-major updates once required checks pass
@@ -45,7 +42,7 @@ workflows: read/write on this repo), store it as the `RENOVATE_TOKEN`
 secret, and add a scheduled workflow running `renovatebot/github-action`
 — but the hosted app is less to maintain.
 
-## 3. One-time settings (Settings → General)
+## 3. General settings (Settings → General)
 
 - Merge buttons: allow **merge commits and squash**, disable rebase
   (matches the ruleset; merge commits are the default habit, squash is
@@ -55,10 +52,9 @@ secret, and add a scheduled workflow running `renovatebot/github-action`
 
 ## 4. Code security (Settings → Advanced Security)
 
-Enable everything that is free for the repository's visibility:
+Everything free for the repository's visibility is enabled:
 
-- **Dependency graph** — required by the dependency-review check (it
-  currently fails on PRs precisely because this is off).
+- **Dependency graph**: on — required by the dependency-review check.
 - **Dependabot alerts**: on — Renovate reads them for security updates.
   Leave **Dependabot security updates** (the auto-PR half) off to avoid
   duplicate PRs next to Renovate; version updates come from Renovate
