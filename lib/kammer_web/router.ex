@@ -83,6 +83,7 @@ defmodule KammerWeb.Router do
       live "/g/:group_slug/decisions", DecisionLive.Index, :index
       live "/files", FileLive.Index, :community
       live "/members", CommunityLive.Members, :index
+      live "/moderation", ModerationLive.Index, :index
       live "/settings", CommunityLive.Settings, :edit
       live "/events", EventLive.Index, :index
       live "/events/new", EventLive.New, :new

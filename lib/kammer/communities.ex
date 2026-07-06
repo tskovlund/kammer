@@ -152,11 +152,19 @@ defmodule Kammer.Communities do
   entered by invitation, SPEC §3).
   """
   @spec add_member(Community.t(), User.t(), CommunityMembership.role()) ::
-          {:ok, CommunityMembership.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, CommunityMembership.t()} | {:error, Ecto.Changeset.t() | :banned}
   def add_member(%Community{} = community, %User{} = user, role \\ :member) do
-    case get_membership(community, user) do
-      nil -> insert_membership(community, user, role)
-      %CommunityMembership{} = existing_membership -> {:ok, existing_membership}
+    cond do
+      # The single choke-point for community bans (SPEC §11): banned
+      # emails cannot rejoin through any invite.
+      Kammer.Moderation.banned?(community, user.email) ->
+        {:error, :banned}
+
+      membership = get_membership(community, user) ->
+        {:ok, membership}
+
+      true ->
+        insert_membership(community, user, role)
     end
   end
 

@@ -70,6 +70,20 @@ defmodule KammerWeb.CommunityLive.Members do
             >
               {gettext("Remove")}
             </.button>
+            <.button
+              :if={membership.role == :member}
+              id={"ban-#{membership.id}"}
+              phx-click="ban"
+              phx-value-id={membership.id}
+              data-confirm={
+                gettext(
+                  "Ban this member? They are removed everywhere and their email cannot rejoin until the ban is lifted (Moderation page)."
+                )
+              }
+              class="btn btn-ghost btn-xs text-error"
+            >
+              {gettext("Ban")}
+            </.button>
           </div>
         </li>
       </ul>
@@ -106,6 +120,24 @@ defmodule KammerWeb.CommunityLive.Members do
       {:noreply,
        socket
        |> put_flash(:info, gettext("Member removed."))
+       |> load_members(current_user)}
+    else
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("ban", %{"id" => membership_id}, socket) do
+    current_user = socket.assigns.current_scope.user
+    community = socket.assigns.active_community
+    membership = find_membership(socket, membership_id)
+
+    with %{} <- membership,
+         {:ok, _ban} <-
+           Kammer.Moderation.ban_member(current_user, community, membership.user, nil) do
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("Member banned — manage bans on the Moderation page."))
        |> load_members(current_user)}
     else
       _error ->

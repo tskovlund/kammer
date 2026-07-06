@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Moderation: a Report action on every post and comment (one open
+  report per person per subject — signal, not spam), a queue for
+  community admins and group moderators with dismiss /
+  remove-content actions, and community bans — banning removes the
+  member everywhere and blocks their email from rejoining through
+  any invite until the ban is lifted.
 - Email digests, strictly opt-in: choose daily or weekly (Mondays)
   under Account settings and get one calm summary — new posts across
   your groups and the coming week's events, in your language and

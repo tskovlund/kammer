@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **412 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **420 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -290,8 +290,15 @@ atom. Danish register: a slot is "en tjans".
   uploads tar, optional age encryption, per-kind pruning),
   `mix kammer.backup`, `Kammer.Release.backup/1`, nightly Oban cron
   no-op unless `BACKUP_DIR` set, restore guide in docs/backups.md.
-- **Moderation**: report button → queue for moderators; bans
-  (community + instance level); full rate-limit coverage.
+- 🟡 **Moderation** — reports + community bans SHIPPED:
+  `Kammer.Moderation` (report_post/comment on `view_group`, queue for
+  community admins + group moderators, dismiss / resolve-removes-
+  content, `ban_member` keyed on email with the single choke-point in
+  `Communities.add_member/3` — `{:error, :banned}`). Report UI on the
+  group feed (modal); queue at `/c/:slug/moderation`; ban/unban via
+  members page + queue. Remaining: instance-level bans, report
+  surfaces beyond the group feed (event/assignment pages), full
+  rate-limit coverage of posting/commenting/uploads.
 - **GDPR export/erasure**: per-user JSON+files zip export (Oban job,
   download link) + account erasure (soft-delete content per SPEC §12).
 - **Audit log**: append-only `audit_events` for admin/operator actions,
