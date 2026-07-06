@@ -35,14 +35,13 @@ screen.
 - **Privacy-first.** No tracking, no analytics, no phone-home. Honest about
   limits: we tell you exactly what the server operator can and cannot see.
 - **A joy to self-host.** One `docker compose up`, a first-run wizard, and a
-  reproducible Nix-defined dev environment for contributors. Built-in backups
-  and guest interactions (RSVP and comments without an account) are next on
-  the roadmap.
+  reproducible Nix-defined dev environment for contributors. Built-in
+  backups and guest comments are next on the roadmap.
 - **Institutional memory is the product.** Groups archive instead of
   vanishing; files stay browsable; seasonal bands and committees keep their
   history.
 
-## Features (Phase 1)
+## Features
 
 - **Passwordless sign-in** — magic links; passkeys on the roadmap.
 - **Communities and groups** — one instance hosts many communities; four
@@ -54,12 +53,22 @@ screen.
   comment threads, mentions, pinned + scheduled + acknowledgment-required
   posts, live updates.
 - **Events** — timezone-aware, all-day/multi-day, RSVP, comments, email
-  reminders, ICS calendar feeds.
+  reminders, ICS calendar feeds — and **guest RSVP** on public events:
+  name + email, no account, with a signed link to change or erase
+  everything later.
 - **Files** — community and group spaces, shallow folders, preset-based
   permissions with a centrally enforced visibility invariant, quotas if you
   want them.
 - **Notifications** — in-app center, email, and Web Push with sane
   "highlights" defaults.
+- **Home** — one merged, strictly chronological view of everything you
+  belong to, across communities; every group has a "Show in Home"
+  switch.
+- **Feature toggles per group** — groups show only the tools they use;
+  turning one off hides it without deleting anything.
+- **JSON API** (`/api/v1`) — passwordless device tokens, the same
+  authorization as the UI (property-tested), the foundation for the
+  coming clients.
 - **English + Danish** throughout, including emails.
 
 ## Quickstart (self-hosting)
@@ -85,7 +94,7 @@ live at `/healthz`; put a TLS proxy in front (see
 | [Development](docs/development.md)        | Workflow, everyday commands, what the automation does      |
 | [Releasing](docs/release.md)              | Tag-driven releases, versioning, immutability              |
 | [Deployment](docs/deploy/)                | Reverse-proxy example; `.env.example` documents all config |
-| [Architecture decisions](docs/decisions/) | Twelve ADRs — the "why" behind the shape of the system     |
+| [Architecture decisions](docs/decisions/) | The ADRs — the "why" behind the shape of the system        |
 
 ## Contributing
 

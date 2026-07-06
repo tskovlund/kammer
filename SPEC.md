@@ -1,5 +1,13 @@
 # Build Prompt: Self-Hosted Community Platform (v1, spec revision 2)
 
+> **Status note (2026-07-06):** this document is the owner's original
+> build prompt and remains the product's source of truth for intent.
+> It is deliberately not rewritten as work completes — live state is
+> CHANGELOG.md, the roadmap is docs/HANDOFF.md, decisions are
+> docs/decisions/. Phase 1 is fully shipped; Phase 2 is in progress
+> (guest RSVP done; the JSON API arrived ahead of the original v2
+> staging by owner decision, ADR 0014).
+
 You are building a production-quality, self-hostable, open-source community platform — a replacement for Facebook Groups/Pages/Events, group email threads, and the file-sharing half of Google Drive, for real-world communities (associations, bands, clubs). Founding use case: TÅGEKAMMERET, a Danish student association, and its 70-year anniversary revy band.
 
 Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless participation for non-members, honest about limitations, a joy to self-host. This is also a portfolio-grade codebase: engineering standards (§17) and documentation (§18) are deliverables, not afterthoughts.

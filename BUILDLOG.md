@@ -747,3 +747,18 @@ secret added by the owner; the Screenshots workflow now pushes with it,
 so regenerated-screenshot commits trigger CI like any other push.
 Build order from here: feature toggles → Home → API v1 → remaining
 Phase 2 queue (search, digests, backups, …).
+
+## 2026-07-06 — Night run closes: handoff to a successor agent
+
+The complexity-first night run (owner directive) shipped guest RSVP
+(ADR 0013), per-group feature toggles (ADR 0016), cross-community
+Home (ADR 0015), and the JSON API v1 core with the transport-parity
+property (ADR 0014) — six merged PRs, suite at 340 tests + 17
+properties. The run ends with docs/HANDOFF.md: the executable
+roadmap, process contract, environment traps, and reusable patterns
+for the (Sonnet-class) successor. Roadmap-audit fixes in the same PR:
+admin update notice restored to the Phase 2 list, CSP nonce hardening
+and API completions made explicit, naming and business-model
+implications recorded as owner-court, README refreshed to claim
+exactly what ships. SPEC.md stays verbatim as the owner's original
+prompt, now with a one-paragraph status pointer.
