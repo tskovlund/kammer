@@ -614,3 +614,21 @@ Repo management performed (owner asked me to manage dependency PRs):
      violates commitlint subject-case. Moot after the Renovate switch
      (Renovate writes lowercase conventional subjects).
   Both PRs merged with merge commits after that analysis.
+
+## 2026-07-06 — Post-merge operations notes
+
+- **main is live**: PR #4 merged (merge commit); ruleset imported;
+  the standalone-tailwind × vendored-daisyUI question is SETTLED — the
+  Docker image job builds green on GitHub runners after the
+  compile-before-assets fix. Nothing further owed there.
+- **Squash allowed alongside merge commits** (owner: "can be okay
+  sometimes"); ruleset JSON updated — tick "squash" in the imported
+  ruleset's allowed merge methods to match.
+- **Hex dependency submission**: GitHub's graph has no mix support, so
+  a workflow now submits mix.lock via the dependency submission API
+  (erlef actions). The "Automatic dependency submission" repo setting
+  stays off (Maven-only). First run needs validating — if the erlef
+  action name/inputs drift, fix or drop the workflow.
+- The new-in-CI mint advisory (CVE-2026-56810, HIGH) was caught by
+  mix deps.audit on PR #4 within hours of publication and patched to
+  1.9.1 — the audit gate is earning its keep.
