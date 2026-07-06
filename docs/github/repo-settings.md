@@ -1,6 +1,6 @@
 # GitHub repository configuration
 
-Everything that *can* live in the repository does (workflows,
+Everything that _can_ live in the repository does (workflows,
 `renovate.json`, `CODEOWNERS`, the ruleset JSON below). A few switches
 only exist in the GitHub UI and must be flipped once by an admin — they
 are listed here so nothing is forgotten. All of them work from a mobile
@@ -85,8 +85,8 @@ Enable everything that is free for the repository's visibility:
 - **Auto-merge only for non-major updates**, and only after all
   required checks pass. Majors wait for a human.
 - **CodeQL scans JavaScript and the workflows themselves** — CodeQL has
-  no Elixir support; Elixir-side scanning is Sobelow + `mix deps.audit`
-  + `mix hex.audit` in CI on every PR.
+  no Elixir support; Elixir-side scanning is Sobelow plus
+  `mix deps.audit` and `mix hex.audit` in CI on every PR.
 - **Gitleaks workflow in addition to GitHub secret scanning** so secret
   detection also runs on private forks/mirrors and full history.
 - **OpenSSF Scorecard not added**: it hard-fails on private

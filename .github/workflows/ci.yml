@@ -13,10 +13,21 @@ permissions:
   contents: read
 
 jobs:
+  # Markdown/JSON/YAML formatting (account-wide convention); Elixir and
+  # HEEx formatting is checked by mix format in the checks job.
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: npx prettier@3 --check .
+
   commitlint:
     name: Conventional Commits
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:

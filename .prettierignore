@@ -1,0 +1,17 @@
+# Prettier covers Markdown/JSON/YAML; Elixir/HEEx is mix format's job.
+SPEC.md
+BUILDLOG.md
+CHANGELOG.md
+LICENSE
+_build/
+deps/
+node_modules/
+assets/vendor/
+assets/js/
+assets/css/
+priv/static/
+priv/gettext/
+priv/plts/
+docs/deploy/
+tooling/commitlint/package-lock.json
+uploads/

@@ -34,7 +34,7 @@ Include, where possible:
 
 - The server operator can always technically read the database — this is
   documented product behavior (see SPEC.md §3), not a vulnerability. "Sealed"
-  groups protect against *community admins*, not against the instance operator.
+  groups protect against _community admins_, not against the instance operator.
 - Reports about missing rate limits, guest-link token weaknesses, upload
   hardening bypasses (content-type spoofing, SVG payloads, EXIF leakage), and
   authorization/visibility violations are all firmly in scope and especially

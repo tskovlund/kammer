@@ -16,8 +16,8 @@ community admins. The server operator can still technically access all data."
 ## Consequences
 
 - Sealing is a creation-time contract, so members can trust it never flips.
-- Precisely: sealing reduces a community admin to *ordinary community
-  member* rights on that group (a sealed community-visible group is still
+- Precisely: sealing reduces a community admin to _ordinary community
+  member_ rights on that group (a sealed community-visible group is still
   visible to them as members), plus whole-group deletion. The property
   suite encodes exactly this.
 - Deletion-without-inspection remains, so a community can still expel a

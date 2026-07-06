@@ -1,7 +1,8 @@
-# CodeQL static analysis. Elixir is not a CodeQL language, so coverage
-# here is the JavaScript (assets, service worker, vendored plugins) and
-# the GitHub Actions workflows themselves. Elixir security scanning is
-# Sobelow + mix deps.audit in ci.yml.
+# CodeQL via the shared reusable workflow (tskovlund/.github) — one
+# SHA-pinned maintenance point for all repos. Elixir is not a CodeQL
+# language, so coverage is the JavaScript (assets, service worker,
+# vendored plugins) and the GitHub Actions workflows themselves; Elixir
+# security scanning is Sobelow + mix deps.audit in ci.yml.
 #
 # Note: code-scanning upload requires a public repository or GitHub
 # Advanced Security on private ones.
@@ -21,20 +22,14 @@ permissions:
 jobs:
   analyze:
     name: CodeQL (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     strategy:
       fail-fast: false
       matrix:
         language: [javascript-typescript, actions]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
-      - uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:${{ matrix.language }}"
+    uses: tskovlund/.github/.github/workflows/codeql.yml@main
+    with:
+      language: ${{ matrix.language }}
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
