@@ -14,6 +14,7 @@ defmodule Kammer.Files do
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Files.FileEntry
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
@@ -102,23 +103,112 @@ defmodule Kammer.Files do
           %Community{} = community -> {community.id, nil}
         end
 
+      sanitized_filename = sanitize_filename(Map.fetch!(file_info, :filename))
+
       base_attrs = %{
-        "filename" => sanitize_filename(Map.fetch!(file_info, :filename)),
+        "filename" => sanitized_filename,
         "community_id" => community_id,
         "group_id" => group_id,
         "folder_id" => folder && folder.id,
         "uploader_user_id" => uploader.id
       }
 
-      if Media.image_content_type?(declared_content_type) do
-        store_image(source_path, base_attrs)
-      else
-        store_plain_file(source_path, declared_content_type, base_attrs)
-      end
+      # Issue #15: uploading the same name into the same place is a new
+      # VERSION of the existing entry, not a duplicate — the Drive-like
+      # semantics users already expect. New names create new entries.
+      Repo.transact(fn ->
+        entry = get_or_create_entry(scope, folder, sanitized_filename)
+        base_attrs = Map.put(base_attrs, "file_entry_id", entry.id)
+
+        store_result =
+          if Media.image_content_type?(declared_content_type) do
+            store_image(source_path, base_attrs)
+          else
+            store_plain_file(source_path, declared_content_type, base_attrs)
+          end
+
+        with {:ok, stored_file} <- store_result do
+          entry =
+            entry
+            |> Ecto.Changeset.change(current_version_id: stored_file.id)
+            |> Repo.update!()
+
+          prune_versions(scope, entry)
+          {:ok, %StoredFile{stored_file | file_entry: entry}}
+        end
+      end)
     else
       :unauthorized -> {:error, :unauthorized}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp get_or_create_entry(scope, folder, name) do
+    {community_id, group_id} =
+      case scope do
+        %Group{} = group -> {group.community_id, group.id}
+        %Community{} = community -> {community.id, nil}
+      end
+
+    folder_id = folder && folder.id
+
+    existing =
+      Repo.one(
+        from(entry in FileEntry,
+          where: entry.community_id == ^community_id,
+          where: ^scope_group_condition(group_id),
+          where: ^entry_folder_condition(folder_id),
+          where: entry.name == ^name
+        )
+      )
+
+    existing ||
+      Repo.insert!(
+        FileEntry.create_changeset(%FileEntry{}, %{
+          name: name,
+          community_id: community_id,
+          group_id: group_id,
+          folder_id: folder_id
+        })
+      )
+  end
+
+  defp scope_group_condition(nil), do: dynamic([entry], is_nil(entry.group_id))
+  defp scope_group_condition(group_id), do: dynamic([entry], entry.group_id == ^group_id)
+
+  defp entry_folder_condition(nil), do: dynamic([entry], is_nil(entry.folder_id))
+  defp entry_folder_condition(folder_id), do: dynamic([entry], entry.folder_id == ^folder_id)
+
+  # Issue #15: NULL retention = unlimited. Otherwise keep the newest N
+  # versions; pruned blobs leave storage and the quota alike.
+  defp prune_versions(scope, %FileEntry{} = entry) do
+    case scope_retention(scope) do
+      nil ->
+        :ok
+
+      keep when is_integer(keep) and keep > 0 ->
+        entry
+        |> versions_query()
+        |> offset(^keep)
+        |> Repo.all()
+        |> Enum.each(&delete_version_record/1)
+    end
+  end
+
+  defp scope_retention(%Group{version_retention: retention}), do: retention
+  defp scope_retention(%Community{version_retention: retention}), do: retention
+
+  defp versions_query(%FileEntry{id: entry_id}) do
+    from(stored_file in StoredFile,
+      where: stored_file.file_entry_id == ^entry_id,
+      order_by: [desc: stored_file.version_seq]
+    )
+  end
+
+  defp delete_version_record(%StoredFile{} = version) do
+    Storage.delete(version.storage_key)
+    if version.thumbnail_key, do: Storage.delete(version.thumbnail_key)
+    Repo.delete!(version)
   end
 
   defp store_image(source_path, base_attrs) do
@@ -300,6 +390,7 @@ defmodule Kammer.Files do
       where: ^file_folder_condition(folder),
       order_by: stored_file.filename
     )
+    |> current_versions_only()
   end
 
   defp files_in_scope_query(%Community{} = community, folder) do
@@ -308,6 +399,17 @@ defmodule Kammer.Files do
       where: is_nil(stored_file.transient_expires_at),
       where: ^file_folder_condition(folder),
       order_by: stored_file.filename
+    )
+    |> current_versions_only()
+  end
+
+  # Old versions never appear in listings — only an entry's current
+  # version (entry-less rows, e.g. feed uploads, list as before).
+  defp current_versions_only(query) do
+    from(stored_file in query,
+      left_join: entry in FileEntry,
+      on: entry.id == stored_file.file_entry_id,
+      where: is_nil(stored_file.file_entry_id) or entry.current_version_id == stored_file.id
     )
   end
 
@@ -399,11 +501,82 @@ defmodule Kammer.Files do
 
     if stored_file.uploader_user_id == actor.id or
          Authorization.can_manage_files?(actor, scope, relationship) do
-      Storage.delete(stored_file.storage_key)
-      if stored_file.thumbnail_key, do: Storage.delete(stored_file.thumbnail_key)
-      Repo.delete(stored_file)
+      case stored_file.file_entry_id do
+        nil ->
+          delete_version_record(stored_file)
+          {:ok, stored_file}
+
+        entry_id ->
+          # Deleting the file deletes the entry and all its versions
+          # (issue #15) — blobs first, then the entry cascades the rows.
+          entry = Repo.get!(FileEntry, entry_id)
+          entry |> versions_query() |> Repo.all() |> Enum.each(&delete_version_record/1)
+          Repo.delete!(entry)
+          {:ok, stored_file}
+      end
     else
       {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  The version history of a file (issue #15): newest first, visible to
+  everyone who can read the file itself. Entry-less files have none.
+  """
+  @spec list_versions(User.t() | nil, StoredFile.t()) ::
+          {:ok, [StoredFile.t()]} | {:error, :unauthorized}
+  def list_versions(_actor, %StoredFile{file_entry_id: nil}), do: {:ok, []}
+
+  def list_versions(actor, %StoredFile{} = stored_file) do
+    scope = scope_of(stored_file)
+    relationship = Authorization.relationship(actor, scope)
+    folder = stored_file.folder_id && Repo.get(Folder, stored_file.folder_id)
+    chain = folder_chain(folder)
+
+    if Authorization.can_read_folder?(actor, scope, chain, relationship) do
+      entry = Repo.get!(FileEntry, stored_file.file_entry_id)
+      {:ok, entry |> versions_query() |> preload(:uploader_user) |> Repo.all()}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Deletes a single version (issue #15): its own uploader or file
+  managers; never the last remaining version — that is `delete_file`.
+  Deleting the current version repoints the entry to the newest
+  remaining one.
+  """
+  @spec delete_version(User.t(), StoredFile.t()) ::
+          {:ok, StoredFile.t()} | {:error, :unauthorized | :last_version}
+  def delete_version(%User{} = actor, %StoredFile{file_entry_id: entry_id} = version)
+      when not is_nil(entry_id) do
+    scope = scope_of(version)
+    relationship = Authorization.relationship(actor, scope)
+
+    cond do
+      version.uploader_user_id != actor.id and
+          not Authorization.can_manage_files?(actor, scope, relationship) ->
+        {:error, :unauthorized}
+
+      Repo.aggregate(from(sf in StoredFile, where: sf.file_entry_id == ^entry_id), :count) <= 1 ->
+        {:error, :last_version}
+
+      true ->
+        Repo.transact(fn ->
+          entry = Repo.get!(FileEntry, entry_id)
+          delete_version_record(version)
+
+          if entry.current_version_id == version.id do
+            newest = entry |> versions_query() |> limit(1) |> Repo.one!()
+
+            entry
+            |> Ecto.Changeset.change(current_version_id: newest.id)
+            |> Repo.update!()
+          end
+
+          {:ok, version}
+        end)
     end
   end
 

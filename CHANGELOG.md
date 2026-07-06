@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Versioned files: uploading a file with the same name into the same
+  folder now creates a new version instead of a duplicate. Every file
+  has a browsable version history (uploader, time, size, download);
+  single versions can be deleted (never the last); deleting the file
+  removes all versions. Admins can cap history per space ("versions to
+  keep"); default is unlimited.
 - JSON API v1 (`/api/v1`): passwordless device-token auth (request
   link → exchange → revoke, tokens hashed at rest and revocable from
   the devices page), instance capability discovery, communities and

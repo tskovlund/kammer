@@ -48,6 +48,7 @@ defmodule Kammer.Groups.Group do
     field :archived_at, :utc_datetime
     field :ics_token, :string, redact: true
     field :storage_quota_bytes, :integer
+    field :version_retention, :integer
 
     belongs_to :community, Kammer.Communities.Community
     has_many :memberships, Kammer.Groups.GroupMembership
@@ -93,8 +94,10 @@ defmodule Kammer.Groups.Group do
       :join_policy,
       :posting_policy,
       :comment_policy,
-      :approval_queue
+      :approval_queue,
+      :version_retention
     ])
+    |> validate_number(:version_retention, greater_than: 0)
     |> validate_required([:name, :slug])
     |> shared_validations()
   end
