@@ -68,6 +68,7 @@ defmodule KammerWeb.Api.Serializer do
       author: comment_author(comment),
       body_markdown: unless(deleted?, do: comment.body_markdown),
       deleted: deleted?,
+      pending_approval: comment.pending_approval,
       inserted_at: comment.inserted_at
     }
   end
@@ -100,6 +101,9 @@ defmodule KammerWeb.Api.Serializer do
 
   defp comment_author(%Comment{author_user: %{id: id, display_name: name}}),
     do: %{type: "user", id: id, display_name: name}
+
+  defp comment_author(%Comment{guest_identity: %Kammer.Guests.GuestIdentity{} = guest}),
+    do: %{type: "guest", id: guest.id, display_name: guest.display_name}
 
   defp comment_author(_comment), do: nil
 

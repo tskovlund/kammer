@@ -10,6 +10,14 @@ and this project adheres to
 
 ### Added
 
+- Guest comments on posts in public groups that opt in
+  (`members_and_guests` comment policy): name + email + comment, a
+  signed confirm link (nothing stored until followed — the comment
+  travels inside the link), then a moderator approval queue inline in
+  the feed. Pending comments are invisible to everyone but moderators.
+  The guest management page now lists everything a guest created —
+  RSVPs (changeable) and comments — with one-click full erasure, and
+  signing in with the guest's email claims comments too.
 - OpenAPI document at `GET /api/v1/openapi.json` — the machine-readable
   API contract clients generate from, drift-guarded against the router
   by a test.

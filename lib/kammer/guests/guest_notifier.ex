@@ -12,6 +12,7 @@ defmodule Kammer.Guests.GuestNotifier do
   alias Kammer.Calendar.ICS
   alias Kammer.Communities
   alias Kammer.Events.Event
+  alias Kammer.Groups.Group
   alias Kammer.Guests.GuestIdentity
   alias Kammer.Mailer
 
@@ -70,6 +71,62 @@ defmodule Kammer.Guests.GuestNotifier do
       with {:ok, _metadata} <- Mailer.deliver(email) do
         {:ok, email}
       end
+    end)
+  end
+
+  @doc """
+  Asks the guest to confirm their comment by following a signed link
+  (SPEC §3 `members_and_guests`). The comment travels inside the link —
+  nothing is stored until it's followed.
+  """
+  @spec deliver_comment_confirmation_request(String.t(), String.t(), Group.t(), String.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_comment_confirmation_request(
+        email_address,
+        display_name,
+        %Group{} = group,
+        confirm_url
+      ) do
+    with_instance_locale(fn ->
+      deliver(
+        email_address,
+        gettext("Confirm your comment in %{group}", group: group.name),
+        """
+        #{gettext("Hi %{name},", name: display_name)}
+
+        #{gettext("Follow this link to submit your comment in %{group}:", group: group.name)}
+
+        #{confirm_url}
+
+        #{gettext("A moderator reviews guest comments before they appear.")}
+
+        #{gettext("If you didn't request this, you can ignore this email — nothing is recorded until you confirm.")}
+        """
+      )
+    end)
+  end
+
+  @doc """
+  Confirms the guest's comment is in: awaiting moderation, with the
+  management link for listing or erasing everything they created.
+  """
+  @spec deliver_comment_confirmed(GuestIdentity.t(), Group.t(), String.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_comment_confirmed(%GuestIdentity{} = identity, %Group{} = group, manage_url) do
+    with_instance_locale(fn ->
+      deliver(
+        identity.email,
+        gettext("Your comment in %{group}", group: group.name),
+        """
+        #{gettext("Hi %{name},", name: identity.display_name)}
+
+        #{gettext("Your comment in %{group} is submitted and will appear once a moderator approves it.", group: group.name)}
+
+        #{gettext("See your comments and RSVPs, or erase everything we store about you, anytime:")}
+
+        #{manage_url}
+        """
+      )
     end)
   end
 

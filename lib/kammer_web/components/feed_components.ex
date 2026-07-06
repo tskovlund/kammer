@@ -29,6 +29,7 @@ defmodule KammerWeb.FeedComponents do
   attr :permissions, :map, required: true
   attr :group_name, :string, default: nil
   attr :new_since_last_visit, :boolean, default: false
+  attr :guest_comment_allowed, :boolean, default: false
 
   @spec post_card(map()) :: Phoenix.LiveView.Rendered.t()
   def post_card(assigns) do
@@ -190,6 +191,7 @@ defmodule KammerWeb.FeedComponents do
         can_comment={@permissions.comment and not Post.comments_locked?(@post)}
         can_react={@permissions.react}
         can_moderate={@permissions.hard_delete}
+        guest_comment_allowed={@guest_comment_allowed and not Post.comments_locked?(@post)}
       />
     </article>
     """
@@ -396,6 +398,7 @@ defmodule KammerWeb.FeedComponents do
   attr :can_comment, :boolean, default: false
   attr :can_react, :boolean, default: false
   attr :can_moderate, :boolean, default: false
+  attr :guest_comment_allowed, :boolean, default: false
 
   defp comment_thread(assigns) do
     top_level =
@@ -406,7 +409,10 @@ defmodule KammerWeb.FeedComponents do
     assigns = assign(assigns, :top_level, top_level)
 
     ~H"""
-    <div :if={@top_level != [] or @can_comment} class="border-t border-base-200 px-4 py-3">
+    <div
+      :if={@top_level != [] or @can_comment or @guest_comment_allowed}
+      class="border-t border-base-200 px-4 py-3"
+    >
       <div :if={Post.comments_locked?(@post)} class="pb-2 text-xs text-base-content/50">
         <.icon name="hero-lock-closed" class="size-3.5" /> {gettext("Comments are locked.")}
       </div>
@@ -438,6 +444,46 @@ defmodule KammerWeb.FeedComponents do
           class="textarea textarea-sm min-h-9 flex-1"
         ></textarea>
         <button type="submit" class="btn btn-primary btn-sm">{gettext("Reply")}</button>
+      </form>
+
+      <form
+        :if={@guest_comment_allowed and is_nil(@current_user)}
+        id={"guest-comment-form-#{@post.id}"}
+        phx-submit="guest_comment"
+        class="space-y-2 pt-1"
+      >
+        <input type="hidden" name="post_id" value={@post.id} />
+        <p class="text-xs font-medium text-base-content/60">{gettext("Comment as a guest")}</p>
+        <div class="flex flex-wrap gap-2">
+          <input
+            type="text"
+            name="guest[display_name]"
+            required
+            placeholder={gettext("Your name")}
+            class="input input-sm flex-1"
+          />
+          <input
+            type="email"
+            name="guest[email]"
+            required
+            placeholder={gettext("Email")}
+            class="input input-sm flex-1"
+          />
+        </div>
+        <div class="flex items-start gap-2">
+          <textarea
+            name="guest[body_markdown]"
+            rows="1"
+            required
+            maxlength="2000"
+            placeholder={gettext("Write a comment…")}
+            class="textarea textarea-sm min-h-9 flex-1"
+          ></textarea>
+          <button type="submit" class="btn btn-primary btn-sm">{gettext("Send")}</button>
+        </div>
+        <p class="text-xs text-base-content/50">
+          {gettext("We'll email you a confirmation link. A moderator approves guest comments.")}
+        </p>
       </form>
     </div>
     """
@@ -514,11 +560,15 @@ defmodule KammerWeb.FeedComponents do
       />
       <div class="min-w-0 flex-1">
         <p class="text-xs text-base-content/60">
-          <span class="font-medium text-base-content">
-            {(@comment.author_user && @comment.author_user.display_name) || gettext("Deleted user")}
+          <span class="font-medium text-base-content">{comment_author_name(@comment)}</span>
+          <span :if={@comment.guest_identity_id} class="badge badge-ghost badge-xs align-middle">
+            {gettext("Guest")}
           </span>
           {relative_time(@comment.inserted_at)}
           <span :if={@comment.edited_at}>({gettext("edited")})</span>
+          <span :if={@comment.pending_approval} class="badge badge-warning badge-xs align-middle">
+            {gettext("Awaiting approval")}
+          </span>
         </p>
         <%= if Comment.deleted?(@comment) do %>
           <p class="text-sm italic text-base-content/50">{gettext("This comment was removed.")}</p>
@@ -533,6 +583,25 @@ defmodule KammerWeb.FeedComponents do
             current_user={@current_user}
             can_react={@can_react}
           />
+          <div :if={@comment.pending_approval and @can_moderate} class="flex gap-2 pt-1">
+            <button
+              phx-click="approve_guest_comment"
+              phx-value-id={@comment.id}
+              class="btn btn-primary btn-xs"
+              id={"approve-comment-#{@comment.id}"}
+            >
+              {gettext("Approve")}
+            </button>
+            <button
+              phx-click="reject_guest_comment"
+              phx-value-id={@comment.id}
+              data-confirm={gettext("Reject and delete this comment?")}
+              class="btn btn-ghost btn-xs text-error"
+              id={"reject-comment-#{@comment.id}"}
+            >
+              {gettext("Reject")}
+            </button>
+          </div>
         <% end %>
       </div>
       <button
@@ -551,6 +620,17 @@ defmodule KammerWeb.FeedComponents do
       </button>
     </div>
     """
+  end
+
+  defp comment_author_name(%Comment{author_user: %{display_name: name}}) when is_binary(name),
+    do: name
+
+  defp comment_author_name(%Comment{} = comment) do
+    if Ecto.assoc_loaded?(comment.guest_identity) and comment.guest_identity do
+      comment.guest_identity.display_name
+    else
+      gettext("Deleted user")
+    end
   end
 
   defp post_menu?(permissions) do

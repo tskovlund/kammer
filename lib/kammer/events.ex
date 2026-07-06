@@ -294,7 +294,7 @@ defmodule Kammer.Events do
          true <- Authorization.can_guest_rsvp?(group),
          {:ok, identity} <- Guests.verify_identity(email, display_name),
          {:ok, _rsvp} <- upsert_guest_rsvp(event, identity, status) do
-      manage_token = GuestToken.sign_manage(%{identity_id: identity.id, event_id: event.id})
+      manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
       GuestNotifier.deliver_confirmed(identity, event, manage_url_fun.(manage_token))
       {:ok, event, identity}
     else
@@ -303,46 +303,22 @@ defmodule Kammer.Events do
   end
 
   @doc """
-  Loads the state behind a management link: the event, the guest, and
-  their current RSVP.
+  Changes a guest's answer through their management link. Only answers
+  the guest already gave can change — the management page lists exactly
+  those; new RSVPs go through the confirm flow.
   """
-  @spec fetch_guest_rsvp(String.t()) ::
-          {:ok, %{event: Event.t(), identity: GuestIdentity.t(), rsvp: EventRsvp.t() | nil}}
-          | {:error, :invalid}
-  def fetch_guest_rsvp(manage_token) do
-    with {:ok, %{identity_id: identity_id, event_id: event_id}} <-
-           GuestToken.verify_manage(manage_token),
+  @spec update_guest_rsvp(String.t(), Ecto.UUID.t(), EventRsvp.status()) ::
+          {:ok, EventRsvp.t()} | {:error, :invalid}
+  def update_guest_rsvp(manage_token, event_id, status) when status in [:yes, :no, :maybe] do
+    with {:ok, %{identity_id: identity_id}} <- GuestToken.verify_manage(manage_token),
          %GuestIdentity{} = identity <- Guests.get_identity(identity_id),
-         %Event{} = event <- Repo.get(Event, event_id) do
-      rsvp = Repo.get_by(EventRsvp, event_id: event.id, guest_identity_id: identity.id)
-      {:ok, %{event: event, identity: identity, rsvp: rsvp}}
+         %EventRsvp{} = rsvp <-
+           Repo.get_by(EventRsvp, event_id: event_id, guest_identity_id: identity.id) do
+      rsvp
+      |> Ecto.Changeset.change(status: status)
+      |> Repo.update()
     else
       _invalid_or_gone -> {:error, :invalid}
-    end
-  end
-
-  @doc """
-  Changes a guest's answer through their management link.
-  """
-  @spec update_guest_rsvp(String.t(), EventRsvp.status()) ::
-          {:ok, EventRsvp.t()} | {:error, :invalid}
-  def update_guest_rsvp(manage_token, status) when status in [:yes, :no, :maybe] do
-    with {:ok, %{event: event, identity: identity}} <- fetch_guest_rsvp(manage_token),
-         {:ok, rsvp} <- upsert_guest_rsvp(event, identity, status) do
-      {:ok, rsvp}
-    else
-      _invalid -> {:error, :invalid}
-    end
-  end
-
-  @doc """
-  Erases a guest and everything they created, through their management
-  link (SPEC §12).
-  """
-  @spec erase_guest(String.t()) :: :ok | {:error, :invalid}
-  def erase_guest(manage_token) do
-    with {:ok, %{identity: identity}} <- fetch_guest_rsvp(manage_token) do
-      Guests.erase(identity)
     end
   end
 

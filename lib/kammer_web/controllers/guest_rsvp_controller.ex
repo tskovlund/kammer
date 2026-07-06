@@ -12,7 +12,7 @@ defmodule KammerWeb.GuestRsvpController do
   @spec confirm(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def confirm(conn, %{"token" => token}) do
     case Events.confirm_guest_rsvp(token, fn manage_token ->
-           url(~p"/guest/rsvp/#{manage_token}")
+           url(~p"/guest/manage/#{manage_token}")
          end) do
       {:ok, event, identity} ->
         conn
