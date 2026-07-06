@@ -1,0 +1,13 @@
+# Minimal Caddy reverse proxy with automatic TLS for Kammer.
+# Replace kammer.example.org with your PHX_HOST.
+
+kammer.example.org {
+	encode zstd gzip
+	reverse_proxy localhost:4000
+
+	# WebSockets (LiveView) are proxied automatically by Caddy.
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

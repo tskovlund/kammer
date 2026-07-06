@@ -100,21 +100,44 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # ## Configuring the mailer
+  # ## Mailer (SPEC §1: Swoosh, configurable SMTP/provider adapters).
   #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
-  #
-  #     config :kammer, Kammer.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://swoosh.hexdocs.pm/Swoosh.html#module-installation for details.
+  # SMTP is the universal default for self-hosters. Provider API adapters
+  # can be added by setting MAILER_ADAPTER (currently: "smtp" | "local").
+  mailer_adapter = System.get_env("MAILER_ADAPTER", "smtp")
+
+  case mailer_adapter do
+    "smtp" ->
+      smtp_relay =
+        System.get_env("SMTP_HOST") ||
+          raise """
+          environment variable SMTP_HOST is missing (or set MAILER_ADAPTER=local
+          for a no-op mailbox during evaluation).
+
+          Kammer signs users in with magic links, so working outbound email
+          is required. See .env.example for the SMTP_* variables.
+          """
+
+      config :kammer, Kammer.Mailer,
+        adapter: Swoosh.Adapters.SMTP,
+        relay: smtp_relay,
+        port: String.to_integer(System.get_env("SMTP_PORT", "587")),
+        username: System.get_env("SMTP_USERNAME"),
+        password: System.get_env("SMTP_PASSWORD"),
+        ssl: System.get_env("SMTP_SSL") in ~w(true 1),
+        tls: :if_available,
+        auth: :if_available,
+        retries: 1
+
+    "local" ->
+      # Dev-style in-memory mailbox; useful for evaluating without SMTP.
+      config :kammer, Kammer.Mailer, adapter: Swoosh.Adapters.Local
+
+    other ->
+      raise "unsupported MAILER_ADAPTER #{inspect(other)} (expected \"smtp\" or \"local\")"
+  end
+
+  config :kammer, :mail_from,
+    address: System.get_env("MAIL_FROM_ADDRESS", "kammer@#{host}"),
+    name: System.get_env("MAIL_FROM_NAME", "Kammer")
 end

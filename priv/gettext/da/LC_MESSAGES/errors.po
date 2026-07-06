@@ -1,0 +1,102 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: da\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "can't be blank"
+msgstr "må ikke være tom"
+
+msgid "has already been taken"
+msgstr "er allerede taget"
+
+msgid "is invalid"
+msgstr "er ugyldig"
+
+msgid "must be accepted"
+msgstr "skal accepteres"
+
+msgid "has invalid format"
+msgstr "har ugyldigt format"
+
+msgid "has an invalid entry"
+msgstr "har en ugyldig værdi"
+
+msgid "is reserved"
+msgstr "er reserveret"
+
+msgid "does not match confirmation"
+msgstr "matcher ikke bekræftelsen"
+
+msgid "is still associated with this entry"
+msgstr "er stadig knyttet til denne post"
+
+msgid "are still associated with this entry"
+msgstr "er stadig knyttet til denne post"
+
+msgid "should have %{count} item(s)"
+msgid_plural "should have %{count} item(s)"
+msgstr[0] "skal have %{count} element"
+msgstr[1] "skal have %{count} elementer"
+
+msgid "should be %{count} character(s)"
+msgid_plural "should be %{count} character(s)"
+msgstr[0] "skal være på %{count} tegn"
+msgstr[1] "skal være på %{count} tegn"
+
+msgid "should be %{count} byte(s)"
+msgid_plural "should be %{count} byte(s)"
+msgstr[0] "skal være på %{count} byte"
+msgstr[1] "skal være på %{count} bytes"
+
+msgid "should have at least %{count} item(s)"
+msgid_plural "should have at least %{count} item(s)"
+msgstr[0] "skal have mindst %{count} element"
+msgstr[1] "skal have mindst %{count} elementer"
+
+msgid "should be at least %{count} character(s)"
+msgid_plural "should be at least %{count} character(s)"
+msgstr[0] "skal være på mindst %{count} tegn"
+msgstr[1] "skal være på mindst %{count} tegn"
+
+msgid "should be at least %{count} byte(s)"
+msgid_plural "should be at least %{count} byte(s)"
+msgstr[0] "skal være på mindst %{count} byte"
+msgstr[1] "skal være på mindst %{count} bytes"
+
+msgid "should have at most %{count} item(s)"
+msgid_plural "should have at most %{count} item(s)"
+msgstr[0] "må højst have %{count} element"
+msgstr[1] "må højst have %{count} elementer"
+
+msgid "should be at most %{count} character(s)"
+msgid_plural "should be at most %{count} character(s)"
+msgstr[0] "må højst være på %{count} tegn"
+msgstr[1] "må højst være på %{count} tegn"
+
+msgid "should be at most %{count} byte(s)"
+msgid_plural "should be at most %{count} byte(s)"
+msgstr[0] "må højst være på %{count} byte"
+msgstr[1] "må højst være på %{count} bytes"
+
+msgid "must be less than %{number}"
+msgstr "skal være mindre end %{number}"
+
+msgid "must be greater than %{number}"
+msgstr "skal være større end %{number}"
+
+msgid "must be less than or equal to %{number}"
+msgstr "skal være mindre end eller lig med %{number}"
+
+msgid "must be greater than or equal to %{number}"
+msgstr "skal være større end eller lig med %{number}"
+
+msgid "must be equal to %{number}"
+msgstr "skal være lig med %{number}"

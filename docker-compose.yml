@@ -1,0 +1,58 @@
+# Kammer — self-hosted deployment (SPEC §14).
+#
+#   cp .env.example .env   # edit at least PHX_HOST, SECRET_KEY_BASE, SMTP_*
+#   docker compose up -d
+#
+# Optional services are behind profiles:
+#   docker compose --profile minio up -d    # S3-compatible object storage
+
+services:
+  app:
+    build: .
+    image: kammer:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ecto://${POSTGRES_USER:-kammer}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db/${POSTGRES_DB:-kammer}
+      PHX_SERVER: "true"
+    ports:
+      - "${KAMMER_HTTP_PORT:-4000}:4000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kammer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-kammer}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kammer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    profiles: [minio]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-kammer}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme-minio}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  uploads:
+  minio_data:

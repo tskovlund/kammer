@@ -22,12 +22,15 @@
           # Project-specific naming rule (SPEC §17).
           {Kammer.CredoChecks.NoSingleLetterVariables, []},
 
-          # Doc requirements: every module documented.
-          {Credo.Check.Readability.ModuleDoc, []},
+          # Doc requirements: every module documented. Migrations are DDL
+          # scripts, not API surface.
+          {Credo.Check.Readability.ModuleDoc, files: %{excluded: ["priv/repo/migrations/"]}},
 
           # @spec on every public function (SPEC §17). Structs/behaviour
-          # callbacks are covered by their own typespecs.
-          {Credo.Check.Readability.Specs, include_defp: false}
+          # callbacks are covered by their own typespecs; migration up/down
+          # are framework entry points.
+          {Credo.Check.Readability.Specs,
+           include_defp: false, files: %{excluded: ["priv/repo/migrations/"]}}
         ],
         disabled: [
           # Deferred work is tracked in BUILDLOG.md (SPEC §16 one-shot build

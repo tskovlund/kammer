@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+cd -P -- "$(dirname -- "$0")"
+
+# SPEC §13: migrations run on boot.
+./kammer eval "Kammer.Release.migrate()"
+
+PHX_SERVER=true exec ./kammer start

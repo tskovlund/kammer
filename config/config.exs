@@ -11,6 +11,23 @@ config :kammer,
   ecto_repos: [Kammer.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
+# Display name is a single constant so renaming is one commit (SPEC §15).
+config :kammer, :product_name, "Kammer"
+
+# i18n: English and Danish complete for everything shipped (SPEC §1).
+config :kammer, KammerWeb.Gettext, allowed_locales: ["en", "da"], default_locale: "en"
+
+# Background jobs (SPEC §1: digests, reminders, backups, transient expiry,
+# media processing, scheduled publishing).
+config :kammer, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Kammer.Repo,
+  queues: [default: 10, media: 5, mailers: 10, scheduled: 5],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
+  ]
+
 # Configure the endpoint
 config :kammer, KammerWeb.Endpoint,
   url: [host: "localhost"],

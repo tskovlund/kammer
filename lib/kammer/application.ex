@@ -1,19 +1,19 @@
 defmodule Kammer.Application do
-  # See https://elixir.hexdocs.pm/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
+  @moduledoc """
+  OTP application entry point: supervises the repo, PubSub, Oban, and the
+  web endpoint.
+  """
 
   use Application
 
-  @impl true
+  @impl Application
   def start(_type, _args) do
     children = [
       KammerWeb.Telemetry,
       Kammer.Repo,
       {DNSCluster, query: Application.get_env(:kammer, :dns_cluster_query) || :ignore},
+      {Oban, Application.fetch_env!(:kammer, Oban)},
       {Phoenix.PubSub, name: Kammer.PubSub},
-      # Start a worker by calling: Kammer.Worker.start_link(arg)
-      # {Kammer.Worker, arg},
       # Start to serve requests, typically the last entry
       KammerWeb.Endpoint
     ]
@@ -26,7 +26,7 @@ defmodule Kammer.Application do
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
-  @impl true
+  @impl Application
   def config_change(changed, _new, removed) do
     KammerWeb.Endpoint.config_change(changed, removed)
     :ok
