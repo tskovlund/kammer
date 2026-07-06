@@ -169,6 +169,13 @@ defmodule KammerWeb.Layouts do
                 {gettext("Home")}
               </.sidebar_link>
               <.sidebar_link
+                navigate={~p"/c/#{@active_community.slug}/search"}
+                icon="hero-magnifying-glass"
+                active={@current_tab == :search}
+              >
+                {gettext("Search")}
+              </.sidebar_link>
+              <.sidebar_link
                 navigate={~p"/c/#{@active_community.slug}/events"}
                 icon="hero-calendar-days"
                 active={@current_tab == :events}

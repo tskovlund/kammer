@@ -98,6 +98,7 @@ defmodule KammerWeb.Router do
         {KammerWeb.CommunityScope, :assign_community}
       ] do
       live "/", CommunityLive.Home, :show
+      live "/search", SearchLive.Index, :index
       live "/g/:group_slug", GroupLive.Show, :show
       # Event pages gate through the authorization module like group
       # feeds do: anonymous viewers see events of public groups only —

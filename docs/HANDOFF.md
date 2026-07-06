@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **399 tests + 17 properties, zero failures**, ~83%
+Suite at handoff: **404 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -271,10 +271,14 @@ atom. Danish register: a slot is "en tjans".
 
 ### 5.6 Remaining Phase 2 (SPEC §16 list, descending priority)
 
-- **Global search**: Postgres FTS; `tsvector` columns + GIN on posts,
-  comments, events, file entries (+ file text extraction deferred);
-  searcher must filter through `listable_groups_query` — add a
-  property test (search never returns invisible content).
+- ✅ **Global search** — SHIPPED: `Kammer.Search` (posts, comments,
+  events; 'simple' FTS config for mixed da/en; GIN expression
+  indexes; `listable_groups_query` filter — surfacing follows listing
+  visibility, so `public_link` content never leaks), invisibility
+  property test in `test/kammer/search_test.exs`, page at
+  `/c/:slug/search` (anonymous searches the public face). Remaining:
+  **file search** (must ride the folder-permission invariant) + file
+  text extraction.
 - **Email digests + newsletter subscriptions**: Oban cron; per-user
   digest frequency; newsletter = guest_identities subscribing to
   public groups (ADR 0013 again); content-minimized email mode.
