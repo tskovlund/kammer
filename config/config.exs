@@ -44,7 +44,9 @@ config :kammer, Oban,
     {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)},
     {Oban.Plugins.Cron,
      crontab: [
-       {"30 3 * * *", Kammer.Workers.PurgeDeletedContentWorker}
+       {"30 3 * * *", Kammer.Workers.PurgeDeletedContentWorker},
+       # No-op unless BACKUP_DIR is configured (SPEC §14).
+       {"15 4 * * *", Kammer.Workers.BackupWorker}
      ]}
   ]
 

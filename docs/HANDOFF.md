@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **404 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **407 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -282,8 +282,10 @@ atom. Danish register: a slot is "en tjans".
 - **Email digests + newsletter subscriptions**: Oban cron; per-user
   digest frequency; newsletter = guest_identities subscribing to
   public groups (ADR 0013 again); content-minimized email mode.
-- **Backups**: `mix kammer.backup` (pg_dump + uploads tar, optional
-  age encryption) + restore doc + Oban schedule; SPEC §14.
+- ✅ **Backups** — SHIPPED: `Kammer.Backups` (pg_dump custom format +
+  uploads tar, optional age encryption, per-kind pruning),
+  `mix kammer.backup`, `Kammer.Release.backup/1`, nightly Oban cron
+  no-op unless `BACKUP_DIR` set, restore guide in docs/backups.md.
 - **Moderation**: report button → queue for moderators; bans
   (community + instance level); full rate-limit coverage.
 - **GDPR export/erasure**: per-user JSON+files zip export (Oban job,
