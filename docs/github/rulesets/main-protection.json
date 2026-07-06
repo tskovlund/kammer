@@ -40,6 +40,9 @@
           },
           {
             "context": "Docker image"
+          },
+          {
+            "context": "Smoke test"
           }
         ]
       }

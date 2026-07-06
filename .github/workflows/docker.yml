@@ -52,7 +52,35 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Boot the exact image that was just built: migrations run on start
+      # (bin/server calls Kammer.Release.migrate), so a 200 from /healthz
+      # proves the shipped artifact boots, connects, and migrates.
+      - name: Boot check (/healthz)
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          docker network create kammer-smoke
+          docker run -d --name db --network kammer-smoke \
+            -e POSTGRES_USER=kammer -e POSTGRES_PASSWORD=kammer -e POSTGRES_DB=kammer \
+            --health-cmd "pg_isready -U kammer" --health-interval 2s --health-retries 15 \
+            postgres:16
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' db)" = healthy ]; do sleep 2; done
+          docker run -d --name app --network kammer-smoke -p 4000:4000 \
+            -e DATABASE_URL=ecto://kammer:kammer@db/kammer \
+            -e SECRET_KEY_BASE=$(openssl rand -base64 48) \
+            -e PHX_HOST=localhost -e MAILER_ADAPTER=local \
+            "$IMAGE"
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4000/healthz >/dev/null 2>&1; then
+              echo "healthz OK" && exit 0
+            fi
+            sleep 2
+          done
+          echo "app never became healthy" >&2
+          docker logs app >&2
+          exit 1
