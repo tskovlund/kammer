@@ -73,7 +73,7 @@ defmodule KammerWeb.FeedComponents do
           </p>
         </div>
 
-        <div :if={@current_user && post_menu?(@permissions)} class="dropdown dropdown-end">
+        <div :if={@current_user} class="dropdown dropdown-end">
           <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square">
             <.icon name="hero-ellipsis-horizontal" class="size-4" />
           </button>
@@ -118,6 +118,16 @@ defmodule KammerWeb.FeedComponents do
                 class="text-error"
               >
                 {gettext("Delete permanently")}
+              </button>
+            </li>
+            <li>
+              <button
+                id={"report-post-#{@post.id}"}
+                phx-click="start_report"
+                phx-value-type="post"
+                phx-value-id={@post.id}
+              >
+                {gettext("Report")}
               </button>
             </li>
           </ul>
@@ -605,6 +615,17 @@ defmodule KammerWeb.FeedComponents do
         <% end %>
       </div>
       <button
+        :if={@current_user && !Comment.deleted?(@comment)}
+        id={"report-comment-#{@comment.id}"}
+        phx-click="start_report"
+        phx-value-type="comment"
+        phx-value-id={@comment.id}
+        class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100"
+        title={gettext("Report")}
+      >
+        <.icon name="hero-flag" class="size-3.5" />
+      </button>
+      <button
         :if={
           @current_user &&
             (@can_moderate or
@@ -631,11 +652,6 @@ defmodule KammerWeb.FeedComponents do
     else
       gettext("Deleted user")
     end
-  end
-
-  defp post_menu?(permissions) do
-    permissions.pin or permissions.edit or permissions.soft_delete or permissions.hard_delete or
-      permissions.lock_comments or permissions.approve
   end
 
   defp author_name(%Post{author_type: :group} = post) do

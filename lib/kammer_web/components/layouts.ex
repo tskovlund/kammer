@@ -205,6 +205,14 @@ defmodule KammerWeb.Layouts do
               </.sidebar_link>
               <.sidebar_link
                 :if={admin?(@community_relationship)}
+                navigate={~p"/c/#{@active_community.slug}/moderation"}
+                icon="hero-shield-exclamation"
+                active={@current_tab == :moderation}
+              >
+                {gettext("Moderation")}
+              </.sidebar_link>
+              <.sidebar_link
+                :if={admin?(@community_relationship)}
                 navigate={~p"/c/#{@active_community.slug}/settings"}
                 icon="hero-cog-6-tooth"
                 active={@current_tab == :settings}
