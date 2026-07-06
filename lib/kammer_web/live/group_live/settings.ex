@@ -80,6 +80,13 @@ defmodule KammerWeb.GroupLive.Settings do
           ]}
         />
         <.input
+          field={@form[:version_retention]}
+          type="number"
+          min="1"
+          label={gettext("File versions to keep (empty = unlimited)")}
+        />
+
+        <.input
           field={@form[:approval_queue]}
           type="checkbox"
           label={gettext("Posts require admin approval")}

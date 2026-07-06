@@ -2,7 +2,7 @@
 
 Written 2026-07-06 at the end of the Fable-5 build run, for the agent
 (and humans) picking the work up. Everything here is current as of
-PR #28. **Keep this document true**: every PR that changes the state
+the versioned-files PR (ADR 0017). **Keep this document true**: every PR that changes the state
 of the roadmap updates it — a stale handoff is worse than none.
 
 ## 1. Where the product stands
@@ -101,7 +101,15 @@ explains). All CI required checks green on `main`.
 
 ## 5. The roadmap, in order, with executable detail
 
-### 5.1 Versioned files (issue #15 — all decisions made)
+### 5.1 Versioned files — ✅ SHIPPED (ADR 0017; #15 closed)
+
+Same-name-same-place uploads append versions; listings show current
+versions only; history UI in FileLive; retention on groups+
+communities; `version_seq` for deterministic order. Remaining
+follow-up lives in #30 (API file endpoints). Original spec kept below
+for reference.
+
+### 5.1 (original spec) Versioned files (issue #15 — all decisions made)
 
 The schema-surgery item. Owner decisions: history visible to everyone
 who can see the file; unlimited versions default with admin-configurable

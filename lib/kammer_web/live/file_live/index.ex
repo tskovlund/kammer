@@ -175,50 +175,102 @@ defmodule KammerWeb.FileLive.Index do
       <div :if={@files != []} class="space-y-1">
         <div
           :for={stored_file <- @files}
-          class="flex items-center gap-3 rounded-field border border-base-200 px-3 py-2"
+          class="rounded-field border border-base-200"
         >
-          <img
-            :if={stored_file.kind == :image}
-            src={~p"/files/#{stored_file.id}/thumbnail"}
-            alt=""
-            loading="lazy"
-            class="size-10 rounded object-cover"
-          />
-          <.icon
-            :if={stored_file.kind != :image}
-            name="hero-document"
-            class="size-6 shrink-0 text-base-content/40"
-          />
-          <div class="min-w-0 flex-1">
-            <a
-              href={file_href(stored_file)}
-              target="_blank"
-              rel="noopener"
-              class="block truncate text-sm font-medium hover:underline"
+          <div class="flex items-center gap-3 px-3 py-2">
+            <img
+              :if={stored_file.kind == :image}
+              src={~p"/files/#{stored_file.id}/thumbnail"}
+              alt=""
+              loading="lazy"
+              class="size-10 rounded object-cover"
+            />
+            <.icon
+              :if={stored_file.kind != :image}
+              name="hero-document"
+              class="size-6 shrink-0 text-base-content/40"
+            />
+            <div class="min-w-0 flex-1">
+              <a
+                href={file_href(stored_file)}
+                target="_blank"
+                rel="noopener"
+                class="block truncate text-sm font-medium hover:underline"
+              >
+                {stored_file.filename}
+              </a>
+              <p class="text-xs text-base-content/50">
+                {format_bytes(stored_file.byte_size)}
+              </p>
+            </div>
+            <button
+              :if={stored_file.file_entry_id}
+              phx-click="toggle_versions"
+              phx-value-id={stored_file.id}
+              class="btn btn-ghost btn-xs btn-square"
+              title={gettext("Version history")}
             >
-              {stored_file.filename}
+              <.icon name="hero-clock" class="size-4" />
+            </button>
+            <a
+              href={~p"/files/#{stored_file.id}/download"}
+              class="btn btn-ghost btn-xs btn-square"
+              title={gettext("Download")}
+            >
+              <.icon name="hero-arrow-down-tray" class="size-4" />
             </a>
-            <p class="text-xs text-base-content/50">
-              {format_bytes(stored_file.byte_size)}
-            </p>
+            <button
+              :if={@can_manage? or stored_file.uploader_user_id == @current_scope.user.id}
+              phx-click="delete_file"
+              phx-value-id={stored_file.id}
+              data-confirm={gettext("Delete this file permanently?")}
+              class="btn btn-ghost btn-xs btn-square text-error"
+              title={gettext("Delete")}
+            >
+              <.icon name="hero-trash" class="size-4" />
+            </button>
           </div>
-          <a
-            href={~p"/files/#{stored_file.id}/download"}
-            class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Download")}
+          <div
+            :if={@versions_for == stored_file.id and @versions != []}
+            class="border-t border-base-200 px-3 py-2"
           >
-            <.icon name="hero-arrow-down-tray" class="size-4" />
-          </a>
-          <button
-            :if={@can_manage? or stored_file.uploader_user_id == @current_scope.user.id}
-            phx-click="delete_file"
-            phx-value-id={stored_file.id}
-            data-confirm={gettext("Delete this file permanently?")}
-            class="btn btn-ghost btn-xs btn-square text-error"
-            title={gettext("Delete")}
-          >
-            <.icon name="hero-trash" class="size-4" />
-          </button>
+            <p class="pb-1 text-xs font-medium uppercase tracking-wide text-base-content/50">
+              {gettext("Version history")}
+            </p>
+            <div
+              :for={version <- @versions}
+              class="flex items-center gap-2 py-1 text-xs text-base-content/70"
+            >
+              <span class="truncate">
+                {version.filename} · {format_bytes(version.byte_size)}
+                <span :if={version.uploader_user}>· {version.uploader_user.display_name}</span>
+                · {Calendar.strftime(version.inserted_at, "%Y-%m-%d %H:%M")}
+                <span :if={version.id == stored_file.id} class="badge badge-ghost badge-xs">
+                  {gettext("current")}
+                </span>
+              </span>
+              <a
+                href={~p"/files/#{version.id}/download"}
+                class="btn btn-ghost btn-xs btn-square ml-auto"
+                title={gettext("Download")}
+              >
+                <.icon name="hero-arrow-down-tray" class="size-3.5" />
+              </a>
+              <button
+                :if={
+                  length(@versions) > 1 and
+                    (@can_manage? or version.uploader_user_id == @current_scope.user.id)
+                }
+                phx-click="delete_version"
+                phx-value-id={version.id}
+                data-confirm={gettext("Delete this version permanently?")}
+                class="btn btn-ghost btn-xs btn-square text-error"
+                title={gettext("Delete version")}
+              >
+                <.icon name="hero-trash" class="size-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -274,6 +326,8 @@ defmodule KammerWeb.FileLive.Index do
          |> assign(:space_name, space_name)
          |> assign(:scope_tab, scope_tab)
          |> assign(:collection, "browse")
+         |> assign(:versions_for, nil)
+         |> assign(:versions, [])
          |> assign(:current_folder, nil)
          |> allow_upload(:files,
            accept: :any,
@@ -337,6 +391,47 @@ defmodule KammerWeb.FileLive.Index do
          {:ok, _deleted} <- Files.delete_folder(current_user, socket.assigns.scope, folder) do
       {:noreply, reload(socket)}
     else
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("toggle_versions", %{"id" => file_id}, socket) do
+    if socket.assigns.versions_for == file_id do
+      {:noreply, socket |> assign(:versions_for, nil) |> assign(:versions, [])}
+    else
+      stored_file = Enum.find(socket.assigns.files, &(&1.id == file_id))
+
+      case stored_file && Files.list_versions(socket.assigns.current_scope.user, stored_file) do
+        {:ok, versions} ->
+          {:noreply, socket |> assign(:versions_for, file_id) |> assign(:versions, versions)}
+
+        _not_visible ->
+          {:noreply, socket}
+      end
+    end
+  end
+
+  def handle_event("delete_version", %{"id" => version_id}, socket) do
+    version = Enum.find(socket.assigns.versions, &(&1.id == version_id))
+
+    case version && Files.delete_version(socket.assigns.current_scope.user, version) do
+      {:ok, _deleted} ->
+        {:noreply,
+         socket
+         |> assign(:versions_for, nil)
+         |> assign(:versions, [])
+         |> put_flash(:info, gettext("Version deleted."))
+         |> reload()}
+
+      {:error, :last_version} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("The only version cannot be deleted — delete the file instead.")
+         )}
+
       _error ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
     end
