@@ -335,6 +335,19 @@ defmodule Kammer.Authorization do
   end
 
   @doc """
+  Whether account-less guests may comment on posts in this group
+  (SPEC §3 comment policy `members_and_guests`): only where the feed is
+  publicly readable, only while the group is live, and only when the
+  group opted in. As with guest RSVPs, the web layer adds email
+  verification, rate limits, and moderator approval — not permissions.
+  """
+  @spec can_guest_comment?(Group.t()) :: boolean()
+  def can_guest_comment?(%Group{} = group) do
+    group.visibility in [:public_link, :public_listed] and not Group.archived?(group) and
+      group.comment_policy == :members_and_guests
+  end
+
+  @doc """
   The feature gate (ADR 0016): a disabled feature is indistinguishable
   from one the actor may not see — the same `:not_found` surface, so
   toggling leaks nothing. Contexts call this beside `authorize/3` for

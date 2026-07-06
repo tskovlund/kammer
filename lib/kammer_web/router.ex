@@ -158,15 +158,17 @@ defmodule KammerWeb.Router do
 
   # Guest links (SPEC §6/§11): signed, expiring tokens are the whole
   # credential — no account, no session requirements beyond the browser
-  # pipeline. Confirm records the RSVP; manage changes or erases it.
+  # pipeline. Confirm records the RSVP or comment; manage lists, changes,
+  # and erases everything the guest created.
   scope "/", KammerWeb do
     pipe_through [:browser]
 
     get "/guest/rsvp/confirm/:token", GuestRsvpController, :confirm
+    get "/guest/comment/confirm/:token", GuestCommentController, :confirm
 
     live_session :guest_links,
       on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
-      live "/guest/rsvp/:token", GuestRsvpLive.Manage, :manage
+      live "/guest/manage/:token", GuestLive.Manage, :manage
     end
   end
 

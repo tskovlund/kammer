@@ -21,7 +21,7 @@ defmodule KammerWeb.GroupLive.Show do
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
                   show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
-                  soft_delete_post hard_delete_post)
+                  soft_delete_post hard_delete_post approve_guest_comment reject_guest_comment)
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -308,6 +308,7 @@ defmodule KammerWeb.GroupLive.Show do
               current_user={current_user(assigns)}
               permissions={post_permissions(post, @group, @relationship, current_user(assigns))}
               new_since_last_visit={false}
+              guest_comment_allowed={@guest_comment_allowed?}
             />
           <% end %>
         </div>
@@ -412,6 +413,10 @@ defmodule KammerWeb.GroupLive.Show do
     {:noreply, refresh(socket, current_user(socket.assigns))}
   end
 
+  # Guest-comment confirmation emails are delivered from this process;
+  # Swoosh's test adapter echoes every delivery back as {:email, _}.
+  def handle_info({:email, _email}, socket), do: {:noreply, socket}
+
   @impl Phoenix.LiveView
   def handle_event(event, params, socket) when event in @feed_events do
     FeedEventHandlers.handle(event, params, socket, fn socket ->
@@ -425,6 +430,35 @@ defmodule KammerWeb.GroupLive.Show do
   # input the moment another field triggers a change event.
   def handle_event("validate_post", %{"post" => post_params}, socket) do
     {:noreply, assign(socket, :composer_form, to_form(post_params, as: "post"))}
+  end
+
+  def handle_event("guest_comment", %{"post_id" => post_id, "guest" => guest_params}, socket) do
+    group = socket.assigns.group
+
+    with %Kammer.Feed.Post{} = post <- Kammer.Repo.get(Kammer.Feed.Post, post_id),
+         :ok <-
+           Feed.request_guest_comment(post, group, guest_params,
+             client_ip: nil,
+             confirm_url_fun: fn token -> url(~p"/guest/comment/confirm/#{token}") end
+           ) do
+      {:noreply,
+       put_flash(
+         socket,
+         :info,
+         gettext("Check your email — follow the link there to submit your comment.")
+       )}
+    else
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts — please try again later."))}
+
+      {:error, %Ecto.Changeset{}} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Please fill in a valid name, email, and comment."))}
+
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
   end
 
   def handle_event("toggle_poll_builder", _params, socket) do
@@ -676,6 +710,10 @@ defmodule KammerWeb.GroupLive.Show do
 
     socket
     |> assign(:relationship, relationship)
+    |> assign(
+      :guest_comment_allowed?,
+      is_nil(current_user) and Authorization.can_guest_comment?(group)
+    )
     |> assign(:notification_level, notification_level)
     |> assign(:membership, Groups.get_membership(group, current_user))
     |> assign(:pending_request?, Groups.pending_join_request?(current_user, group))

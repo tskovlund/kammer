@@ -11,6 +11,7 @@ defmodule Kammer.Guests do
 
   alias Kammer.Accounts.User
   alias Kammer.Events.EventRsvp
+  alias Kammer.Feed.Comment
   alias Kammer.Guests.GuestIdentity
   alias Kammer.Repo
 
@@ -46,7 +47,8 @@ defmodule Kammer.Guests do
   Claims a guest's history for a freshly authenticated account with the
   same email (SPEC §2: automatic upgrade). RSVPs move to the user —
   except where the user already RSVPed themselves, in which case the
-  member RSVP wins — and the guest identity disappears.
+  member RSVP wins — comments move to the user (keeping their approval
+  state), and the guest identity disappears.
   """
   @spec claim_history(User.t()) :: :ok
   def claim_history(%User{} = user) do
@@ -69,6 +71,9 @@ defmodule Kammer.Guests do
             )
             |> Repo.update_all(set: [user_id: user.id, guest_identity_id: nil])
 
+            from(comment in Comment, where: comment.guest_identity_id == ^identity.id)
+            |> Repo.update_all(set: [author_user_id: user.id, guest_identity_id: nil])
+
             # Remaining guest RSVPs are duplicates of member ones; the
             # identity delete cascades them away.
             Repo.delete!(identity)
@@ -80,6 +85,42 @@ defmodule Kammer.Guests do
   end
 
   @doc """
+  Everything behind a guest's management link (SPEC §12): the identity,
+  their RSVPs (events preloaded), and their comments (posts and groups
+  preloaded) — the full inventory the manage page lists and the erasure
+  removes.
+  """
+  @spec fetch_manage_state(String.t()) ::
+          {:ok, %{identity: GuestIdentity.t(), rsvps: [EventRsvp.t()], comments: [Comment.t()]}}
+          | {:error, :invalid}
+  def fetch_manage_state(manage_token) do
+    with {:ok, %{identity_id: identity_id}} <- Kammer.Guests.Token.verify_manage(manage_token),
+         %GuestIdentity{} = identity <- get_identity(identity_id) do
+      rsvps =
+        Repo.all(
+          from(rsvp in EventRsvp,
+            where: rsvp.guest_identity_id == ^identity.id,
+            preload: :event,
+            order_by: [asc: rsvp.inserted_at]
+          )
+        )
+
+      comments =
+        Repo.all(
+          from(comment in Comment,
+            where: comment.guest_identity_id == ^identity.id,
+            preload: [post: :group],
+            order_by: [desc: comment.inserted_at]
+          )
+        )
+
+      {:ok, %{identity: identity, rsvps: rsvps, comments: comments}}
+    else
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  @doc """
   Erases a guest entirely (SPEC §12): the identity row and, by cascade,
   every record it authored.
   """
@@ -87,5 +128,15 @@ defmodule Kammer.Guests do
   def erase(%GuestIdentity{} = identity) do
     Repo.delete!(identity)
     :ok
+  end
+
+  @doc """
+  Erases a guest through their signed management link.
+  """
+  @spec erase_by_token(String.t()) :: :ok | {:error, :invalid}
+  def erase_by_token(manage_token) do
+    with {:ok, %{identity: identity}} <- fetch_manage_state(manage_token) do
+      erase(identity)
+    end
   end
 end

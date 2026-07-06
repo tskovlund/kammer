@@ -2,7 +2,7 @@
 
 Written 2026-07-06 at the end of the Fable-5 build run, for the agent
 (and humans) picking the work up. Everything here is current as of
-the versioned-files PR (ADR 0017). **Keep this document true**: every PR that changes the state
+the guest-comments PR. **Keep this document true**: every PR that changes the state
 of the roadmap updates it — a stale handoff is worse than none.
 
 ## 1. Where the product stands
@@ -13,6 +13,12 @@ merged, plus, from Phase 2 and the decided roadmap:
 - **Guest RSVP on public events** (ADR 0013) — email-only guest
   identities, signed confirm/management links, ICS attachment, full
   guest erasure, automatic history claim on sign-in.
+- **Guest comments with approval queue** (§5.3) — the
+  `members_and_guests` comment policy is now real: confirm-by-email,
+  pending-until-approved, inline moderation, general guest manage
+  page at `/guest/manage/:token`.
+- **Versioned files** (ADR 0017) and the **OpenAPI document** with
+  its router drift guard (§5.1, §5.2).
 - **Per-group feature toggles** (ADR 0016) — `features` on groups;
   one gate (`Authorization.feature_gate/2`); disabled == not-found.
 - **Cross-community Home** (ADR 0015) — merged chronological lens on
@@ -24,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **340 tests + 17 properties, zero failures**, ~83%
+Suite at handoff: **363 tests + 17 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -179,25 +185,23 @@ endpoints (list/mark-read); file endpoints (entries + versions, after
 5.1); push-subscription registration for native clients. Guest RSVP
 stays web-only by design (guests hold no device tokens).
 
-### 5.3 Guest comments + approval queue (SPEC §3 comment policy)
+### 5.3 Guest comments + approval queue — ✅ SHIPPED
 
-Rides ADR 0013. Groups with `comment_policy: :members_and_guests`:
-
-1. Migration: `comments.guest_identity_id` (nullable FK, delete_all) +
-   `comments.pending_approval` boolean default false + exactly-one
-   author check (`num_nonnulls(author_user_id, guest_identity_id) = 1`).
-2. Flow mirrors guest RSVP: public post page shows guest comment form
-   (name+email+body) → signed confirm link → comment created with
-   `pending_approval: true`, guest verified → moderators see an
-   approval queue (group settings or inline) → approve/reject.
-   Rendering: pending comments visible only to moderators (badge) —
-   rejected = hard delete. Guest management link lists + erases their
-   comments (extend the RSVP manage page → a general guest page).
-3. Feed/API queries must exclude pending comments for non-moderators
-   (update `@preloads` filters and the API serializer count).
-4. Rate limits: reuse `RateLimit.hit_guest_email/ip`.
-5. Tests incl. property: pending comments invisible to non-moderators
-   across visibilities; guest erasure removes comments.
+Groups with `comment_policy: :members_and_guests` (public presets
+only, `Authorization.can_guest_comment?/1`): guest form on the public
+feed → signed confirm link (the comment travels inside the token,
+gzip-compressed, capped at 2000 chars — nothing stored until the link
+is followed) → pending comment → inline approve/reject for moderators
+(approve fires the deferred notification fan-out; reject
+hard-deletes). Pending comments are filtered out at the database for
+non-moderators (`Kammer.Feed.preloads/1`). The guest manage page is
+now general (`/guest/manage/:token`, `GuestLive.Manage`): all RSVPs
+(changeable) + all comments + full erasure; manage tokens carry
+`%{identity_id}` only. `Guests.claim_history/1` moves comments too.
+Note: the author check constraint is `num_nonnulls(...) <= 1`, not
+`= 1` — user deletion nilifies `author_user_id`, and that must stay
+legal. Tests: `test/kammer/guest_comments_test.exs`,
+`test/kammer_web/live/guest_comment_flows_test.exs`.
 
 ### 5.4 Svelte PWA (ADR 0001; owner has signed off — #20 "go now")
 

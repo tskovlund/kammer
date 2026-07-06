@@ -111,8 +111,8 @@ defmodule KammerWeb.GuestRsvpFlowsTest do
       identity = Repo.get_by!(GuestIdentity, email: "gaest@example.org")
       assert Repo.get_by!(EventRsvp, event_id: event.id, guest_identity_id: identity.id)
 
-      manage_token = email_link(~r{/guest/rsvp/([^/\s]+)$}m)
-      {:ok, manage_lv, manage_html} = live(build_conn(), ~p"/guest/rsvp/#{manage_token}")
+      manage_token = email_link(~r{/guest/manage/([^/\s]+)$}m)
+      {:ok, manage_lv, manage_html} = live(build_conn(), ~p"/guest/manage/#{manage_token}")
       assert manage_html =~ "Sommerkoncert"
 
       manage_lv |> element("button", "Maybe") |> render_click()

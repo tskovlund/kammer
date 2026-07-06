@@ -19,11 +19,13 @@ defmodule Kammer.Feed.Comment do
     field :edited_at, :utc_datetime
     field :deleted_at, :utc_datetime
     field :purged_at, :utc_datetime
+    field :pending_approval, :boolean, default: false
 
     belongs_to :post, Kammer.Feed.Post
     belongs_to :event, Kammer.Events.Event
     belongs_to :parent_comment, Kammer.Feed.Comment
     belongs_to :author_user, Kammer.Accounts.User
+    belongs_to :guest_identity, Kammer.Guests.GuestIdentity
 
     has_many :replies, Kammer.Feed.Comment, foreign_key: :parent_comment_id
     has_many :reactions, Kammer.Feed.Reaction
@@ -40,6 +42,19 @@ defmodule Kammer.Feed.Comment do
     |> cast(attrs, [:body_markdown, :post_id, :parent_comment_id, :author_user_id])
     |> validate_required([:body_markdown, :author_user_id])
     |> validate_length(:body_markdown, min: 1, max: 10_000)
+  end
+
+  @doc """
+  Changeset for a guest's comment (SPEC §3 `members_and_guests`): always
+  top-level, always awaiting moderator approval. `guest_identity_id` and
+  `post_id` are set programmatically by the context, never cast.
+  """
+  @spec guest_create_changeset(t(), map()) :: Ecto.Changeset.t()
+  def guest_create_changeset(comment, attrs) do
+    comment
+    |> cast(attrs, [:body_markdown])
+    |> validate_required([:body_markdown])
+    |> validate_length(:body_markdown, min: 1, max: 2_000)
   end
 
   @doc "Whether the comment is soft-deleted (renders as a stub)."

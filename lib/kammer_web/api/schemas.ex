@@ -81,7 +81,7 @@ defmodule KammerWeb.Api.Schemas do
       type: :object,
       nullable: true,
       properties: %{
-        type: %Schema{type: :string, enum: ["user", "group"]},
+        type: %Schema{type: :string, enum: ["user", "group", "guest"]},
         id: %Schema{type: :string, format: :uuid},
         display_name: %Schema{type: :string}
       },
@@ -102,9 +102,13 @@ defmodule KammerWeb.Api.Schemas do
         author: Author,
         body_markdown: %Schema{type: :string, nullable: true},
         deleted: %Schema{type: :boolean},
+        pending_approval: %Schema{
+          type: :boolean,
+          description: "Guest comments awaiting moderation — visible to moderators only"
+        },
         inserted_at: %Schema{type: :string, format: :"date-time"}
       },
-      required: [:id, :deleted, :inserted_at]
+      required: [:id, :deleted, :pending_approval, :inserted_at]
     })
   end
 

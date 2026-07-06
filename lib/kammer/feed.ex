@@ -26,18 +26,38 @@ defmodule Kammer.Feed do
   alias Kammer.Feed.Reaction
   alias Kammer.Groups
   alias Kammer.Groups.Group
+  alias Kammer.Guests
+  alias Kammer.Guests.GuestNotifier
+  alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.RateLimit
   alias Kammer.Repo
 
-  @preloads [
-    :author_user,
-    :attachments,
-    poll: [options: :votes],
-    attachments: :stored_file,
-    reactions: [],
-    acknowledgments: [],
-    comments: [:author_user, reactions: [], replies: [:author_user, reactions: []]]
-  ]
+  # Pending guest comments (SPEC §3 `members_and_guests`) exist only for
+  # moderators until approved, so the comment preload is viewer-dependent:
+  # everyone else gets a query that filters them out at the database.
+  defp preloads(include_pending_comments?) do
+    comments_query =
+      from(comment in Comment,
+        where: ^include_pending_comments? or comment.pending_approval == false
+      )
+
+    [
+      :author_user,
+      :attachments,
+      poll: [options: :votes],
+      attachments: :stored_file,
+      reactions: [],
+      acknowledgments: [],
+      comments:
+        {comments_query,
+         [
+           :author_user,
+           :guest_identity,
+           reactions: [],
+           replies: [:author_user, :guest_identity, reactions: []]
+         ]}
+    ]
+  end
 
   ## PubSub
 
@@ -73,7 +93,7 @@ defmodule Kammer.Feed do
     from(post in Post,
       where: post.group_id == ^group.id,
       order_by: [desc_nulls_last: post.pinned_at, desc: post.published_at, desc: post.id],
-      preload: ^@preloads
+      preload: ^preloads(moderator?)
     )
     |> visible_posts(actor_id, moderator?, now)
     |> Repo.all()
@@ -103,7 +123,7 @@ defmodule Kammer.Feed do
         where: post.group_id == ^group.id,
         order_by: [desc: post.published_at, desc: post.id],
         limit: ^(limit + 1),
-        preload: ^@preloads
+        preload: ^preloads(moderator?)
       )
 
     query =
@@ -143,7 +163,7 @@ defmodule Kammer.Feed do
         where: post.pending_approval == false,
         order_by: [desc: post.published_at, desc: post.id],
         limit: 50,
-        preload: ^[:group | @preloads]
+        preload: ^[:group | preloads(false)]
       )
     )
   end
@@ -171,14 +191,16 @@ defmodule Kammer.Feed do
   end
 
   @doc """
-  Fetches a post in a group with details preloaded.
+  Fetches a post in a group with details preloaded. Pending guest
+  comments are excluded unless `include_pending_comments: true` (the
+  caller has verified the viewer moderates the group).
   """
-  @spec get_post!(Group.t(), Ecto.UUID.t()) :: Post.t()
-  def get_post!(%Group{} = group, post_id) do
+  @spec get_post!(Group.t(), Ecto.UUID.t(), keyword()) :: Post.t()
+  def get_post!(%Group{} = group, post_id, opts \\ []) do
     Repo.one!(
       from(post in Post,
         where: post.id == ^post_id and post.group_id == ^group.id,
-        preload: ^@preloads
+        preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
       )
     )
   end
@@ -561,6 +583,152 @@ defmodule Kammer.Feed do
   end
 
   defp tap_fanout_comment(other_result), do: other_result
+
+  ## Guest comments (SPEC §3 `members_and_guests`, rides ADR 0013)
+  ##
+  ## Same two-link shape as guest RSVPs: a signed confirm link proves
+  ## control of the email (nothing is stored before it's followed — the
+  ## comment body travels inside the token, compressed), and confirming
+  ## creates the comment awaiting moderator approval. The confirmation
+  ## email carries the guest's management link.
+
+  @doc """
+  First step: validates the guest's comment request, rate-limits it,
+  and emails a signed confirm link carrying the comment itself.
+  Records nothing yet.
+  """
+  @spec request_guest_comment(Post.t(), Group.t(), map(), keyword()) ::
+          :ok | {:error, :unauthorized | :rate_limited | Ecto.Changeset.t()}
+  def request_guest_comment(%Post{} = post, %Group{} = group, attrs, opts) do
+    with true <- guest_comment_open?(post, group) or {:error, :unauthorized},
+         {:ok, request} <-
+           Ecto.Changeset.apply_action(guest_comment_request_changeset(attrs), :insert),
+         {:allow, _count} <- RateLimit.hit_guest_email(request.email),
+         {:allow, _count} <- RateLimit.hit_guest_ip(opts[:client_ip]) do
+      token =
+        GuestToken.sign_confirm(%{
+          post_id: post.id,
+          email: request.email,
+          display_name: request.display_name,
+          compressed_body: :zlib.gzip(request.body_markdown)
+        })
+
+      confirm_url = opts |> Keyword.fetch!(:confirm_url_fun) |> then(& &1.(token))
+
+      GuestNotifier.deliver_comment_confirmation_request(
+        request.email,
+        request.display_name,
+        group,
+        confirm_url
+      )
+
+      :ok
+    else
+      {:deny, _retry_after} -> {:error, :rate_limited}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Second step, from the emailed confirm link: records the verified
+  identity and the comment — top-level, `pending_approval: true` until a
+  moderator acts — and sends the confirmation email with the guest's
+  management link (built by `manage_url_fun`).
+
+  No notification fan-out here: subscribers hear about the comment when
+  it's approved, never before.
+  """
+  @spec confirm_guest_comment(String.t(), (String.t() -> String.t())) ::
+          {:ok, Post.t(), Guests.GuestIdentity.t()} | {:error, :invalid}
+  def confirm_guest_comment(token, manage_url_fun) do
+    with {:ok,
+          %{
+            post_id: post_id,
+            email: email,
+            display_name: display_name,
+            compressed_body: compressed_body
+          }} <- GuestToken.verify_confirm(token),
+         %Post{} = post <- Repo.get(Post, post_id),
+         %Group{} = group <- Repo.get(Group, post.group_id),
+         true <- guest_comment_open?(post, group),
+         {:ok, identity} <- Guests.verify_identity(email, display_name),
+         {:ok, _comment} <-
+           %Comment{post_id: post.id, guest_identity_id: identity.id, pending_approval: true}
+           |> Comment.guest_create_changeset(%{body_markdown: :zlib.gunzip(compressed_body)})
+           |> Repo.insert()
+           |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end) do
+      manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
+      GuestNotifier.deliver_comment_confirmed(identity, group, manage_url_fun.(manage_token))
+      {:ok, post, identity}
+    else
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  @doc """
+  Approves a pending guest comment (moderators): it becomes visible to
+  everyone and subscribers are notified — the fan-out deferred from
+  creation.
+  """
+  @spec approve_guest_comment(User.t(), Comment.t()) ::
+          {:ok, Comment.t()} | {:error, :unauthorized}
+  def approve_guest_comment(%User{} = actor, %Comment{pending_approval: true} = comment) do
+    {group, broadcast_post_id} = comment_context(comment)
+
+    if Authorization.can?(actor, :moderate_group, group) do
+      comment
+      |> Ecto.Changeset.change(pending_approval: false)
+      |> Repo.update()
+      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+      |> tap_fanout_comment()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def approve_guest_comment(%User{}, %Comment{}), do: {:error, :unauthorized}
+
+  @doc """
+  Rejects a pending guest comment (moderators): hard delete — a comment
+  that never became visible leaves no stub behind.
+  """
+  @spec reject_guest_comment(User.t(), Comment.t()) ::
+          {:ok, Comment.t()} | {:error, :unauthorized}
+  def reject_guest_comment(%User{} = actor, %Comment{pending_approval: true} = comment) do
+    {group, broadcast_post_id} = comment_context(comment)
+
+    if Authorization.can?(actor, :moderate_group, group) do
+      comment
+      |> Repo.delete()
+      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def reject_guest_comment(%User{}, %Comment{}), do: {:error, :unauthorized}
+
+  # Open for guest comments: the group allows it, the post is live,
+  # publicly visible, and not locked.
+  defp guest_comment_open?(%Post{} = post, %Group{} = group) do
+    Authorization.can_guest_comment?(group) and post.group_id == group.id and
+      not Post.comments_locked?(post) and not Post.deleted?(post) and
+      post.pending_approval == false and
+      DateTime.compare(post.published_at, DateTime.utc_now(:second)) != :gt
+  end
+
+  defp guest_comment_request_changeset(attrs) do
+    types = %{email: :string, display_name: :string, body_markdown: :string}
+
+    {%{}, types}
+    |> Ecto.Changeset.cast(attrs, Map.keys(types))
+    |> Ecto.Changeset.validate_required([:email, :display_name, :body_markdown])
+    |> Ecto.Changeset.update_change(:email, &String.downcase/1)
+    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
+    |> Ecto.Changeset.validate_length(:email, max: 160)
+    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
+    |> Ecto.Changeset.validate_length(:body_markdown, min: 1, max: 2_000)
+  end
 
   defp enqueue_fanout(type, id) do
     %{"type" => type, "id" => id}

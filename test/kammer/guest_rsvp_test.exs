@@ -188,20 +188,27 @@ defmodule Kammer.GuestRsvpTest do
     end
 
     test "load, change, and erase", %{event: event, identity: identity, manage_token: token} do
-      assert {:ok, %{event: loaded, identity: loaded_identity, rsvp: rsvp}} =
-               Events.fetch_guest_rsvp(token)
+      assert {:ok, %{identity: loaded_identity, rsvps: [rsvp], comments: []}} =
+               Guests.fetch_manage_state(token)
 
-      assert loaded.id == event.id
       assert loaded_identity.id == identity.id
+      assert rsvp.event.id == event.id
       assert rsvp.status == :yes
 
-      assert {:ok, changed} = Events.update_guest_rsvp(token, :no)
+      assert {:ok, changed} = Events.update_guest_rsvp(token, event.id, :no)
       assert changed.status == :no
 
-      assert :ok = Events.erase_guest(token)
+      assert :ok = Guests.erase_by_token(token)
       assert Repo.aggregate(GuestIdentity, :count) == 0
       assert Repo.aggregate(EventRsvp, :count) == 0
-      assert {:error, :invalid} = Events.fetch_guest_rsvp(token)
+      assert {:error, :invalid} = Guests.fetch_manage_state(token)
+    end
+
+    test "cannot RSVP to a different event through the manage link", %{manage_token: token} do
+      other_context = public_event_context()
+
+      assert {:error, :invalid} =
+               Events.update_guest_rsvp(token, other_context.event.id, :yes)
     end
   end
 

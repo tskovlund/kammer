@@ -66,6 +66,24 @@ defmodule KammerWeb.FeedEventHandlers do
     end
   end
 
+  def handle("approve_guest_comment", %{"id" => comment_id}, socket, reload) do
+    with %Comment{} = comment <- Repo.get(Comment, comment_id),
+         {:ok, _comment} <- Feed.approve_guest_comment(current_user(socket), comment) do
+      {:noreply, reload.(socket)}
+    else
+      _error -> {:noreply, refuse(socket)}
+    end
+  end
+
+  def handle("reject_guest_comment", %{"id" => comment_id}, socket, reload) do
+    with %Comment{} = comment <- Repo.get(Comment, comment_id),
+         {:ok, _comment} <- Feed.reject_guest_comment(current_user(socket), comment) do
+      {:noreply, reload.(socket)}
+    else
+      _error -> {:noreply, refuse(socket)}
+    end
+  end
+
   def handle("delete_comment", %{"id" => comment_id}, socket, reload) do
     with %Comment{} = comment <- Repo.get(Comment, comment_id),
          {:ok, _deleted} <- Feed.delete_comment(current_user(socket), comment) do
