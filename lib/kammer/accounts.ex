@@ -220,6 +220,50 @@ defmodule Kammer.Accounts do
     end
   end
 
+  @doc """
+  Exchanges a single-use magic-link token for a long-lived API device
+  token (ADR 0014): the API sibling of browser sign-in — same email
+  proof, same revocability from the devices page. Consumes the magic
+  link and confirms the account exactly like a web sign-in (including
+  claiming any guest history).
+  """
+  @spec exchange_magic_link_for_device_token(String.t(), String.t() | nil) ::
+          {:ok, String.t(), User.t()} | {:error, :not_found}
+  def exchange_magic_link_for_device_token(magic_token, device_name) do
+    with {:ok, {user, _expired_tokens}} <- login_user_by_magic_link(magic_token) do
+      {encoded_token, user_token} = UserToken.build_device_token(user, device_name)
+      Repo.insert!(user_token)
+      {:ok, encoded_token, user}
+    end
+  end
+
+  @doc """
+  The user behind a valid API device token, or `nil`.
+  """
+  @spec get_user_by_device_token(String.t()) :: User.t() | nil
+  def get_user_by_device_token(token) do
+    with {:ok, query} <- UserToken.verify_device_token_query(token),
+         {user, _token} <- Repo.one(query) do
+      user
+    else
+      _invalid -> nil
+    end
+  end
+
+  @doc """
+  Revokes the device token making the current request (API sign-out).
+  """
+  @spec revoke_device_token(String.t()) :: :ok
+  def revoke_device_token(token) do
+    with {:ok, query} <- UserToken.verify_device_token_query(token),
+         {_user, user_token} <- Repo.one(query) do
+      Repo.delete!(user_token)
+      :ok
+    else
+      _invalid -> :ok
+    end
+  end
+
   @doc ~S"""
   Delivers the update email instructions to the given user.
 

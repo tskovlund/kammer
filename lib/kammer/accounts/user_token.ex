@@ -21,6 +21,9 @@ defmodule Kammer.Accounts.UserToken do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
+  # API device tokens (ADR 0014) live long — they are the API sibling
+  # of browser sessions, revocable any time from the devices page.
+  @device_validity_in_days 365
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -107,6 +110,43 @@ defmodule Kammer.Accounts.UserToken do
   @spec build_email_token(Kammer.Accounts.User.t(), String.t()) :: {String.t(), t()}
   def build_email_token(user, context) do
     build_hashed_token(user, context, user.email)
+  end
+
+  @doc """
+  Builds a long-lived API device token (ADR 0014): hashed at rest like
+  email tokens — the cleartext travels with the API client, so a
+  database leak must not mint credentials. `device_name` shows on the
+  devices page beside browser sessions.
+  """
+  @spec build_device_token(Kammer.Accounts.User.t(), String.t() | nil) :: {String.t(), t()}
+  def build_device_token(user, device_name) do
+    {encoded_token, user_token} = build_hashed_token(user, "api-device", user.email)
+    {encoded_token, %UserToken{user_token | user_agent: truncate_user_agent(device_name)}}
+  end
+
+  @doc """
+  Verification query for an API device token: valid if the hash matches,
+  the context is right, it is younger than #{@device_validity_in_days}
+  days, and the account email hasn't changed since issuance.
+  """
+  @spec verify_device_token_query(String.t()) :: {:ok, Ecto.Query.t()} | :error
+  def verify_device_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "api-device"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(@device_validity_in_days, "day"),
+            where: token.sent_to == user.email,
+            select: {user, token}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
   end
 
   defp build_hashed_token(user, context, sent_to) do
