@@ -17,6 +17,7 @@ defmodule Kammer.Groups.GroupMembership do
   @foreign_key_type :binary_id
   schema "group_memberships" do
     field :role, Ecto.Enum, values: @roles, default: :member
+    field :show_in_home, :boolean, default: true
 
     belongs_to :group, Kammer.Groups.Group
     belongs_to :user, Kammer.Accounts.User

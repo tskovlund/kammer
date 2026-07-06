@@ -98,7 +98,7 @@ msgstr "Bekræft din nye e-mailadresse"
 msgid "Confirming..."
 msgstr "Bekræfter..."
 
-#: lib/kammer_web/live/instance_live/home.ex:107
+#: lib/kammer_web/live/instance_live/home.ex:155
 #: lib/kammer_web/live/user_live/login.ex:68
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
@@ -269,7 +269,7 @@ msgstr "Sessioner logget ind på din konto. Log dem ud, du ikke genkender."
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:255
 #: lib/kammer_web/live/community_live/home.ex:108
-#: lib/kammer_web/live/instance_live/home.ex:104
+#: lib/kammer_web/live/instance_live/home.ex:152
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
 #: lib/kammer_web/live/user_live/registration.ex:23
@@ -403,7 +403,7 @@ msgid_plural "%{count} members"
 msgstr[0] "%{count} medlem"
 msgstr[1] "%{count} medlemmer"
 
-#: lib/kammer_web/live/group_live/settings.ex:417
+#: lib/kammer_web/live/group_live/settings.ex:421
 #, elixir-autogen, elixir-format
 msgid "%{count} used"
 msgstr "%{count} brugt"
@@ -423,7 +423,7 @@ msgstr "%{inviter} har inviteret dig til %{target}"
 msgid "A band, a committee, a project — a room of its own."
 msgstr "Et band, et udvalg, et projekt — et rum for sig selv."
 
-#: lib/kammer_web/live/instance_live/home.ex:98
+#: lib/kammer_web/live/instance_live/home.ex:146
 #, elixir-autogen, elixir-format
 msgid "A calm, self-hosted home for real-world communities. No ads, no algorithm — just your people."
 msgstr "Et roligt, selvhostet hjem for virkelige fællesskaber. Ingen reklamer, ingen algoritme — kun jeres folk."
@@ -461,7 +461,7 @@ msgid "Address"
 msgstr "Adresse"
 
 #: lib/kammer_web/live/community_live/members.ex:146
-#: lib/kammer_web/live/group_live/show.ex:722
+#: lib/kammer_web/live/group_live/show.ex:749
 #, elixir-autogen, elixir-format
 msgid "Admin"
 msgstr "Administrator"
@@ -547,12 +547,12 @@ msgstr "Kommentarer"
 msgid "Communities"
 msgstr "Fællesskaber"
 
-#: lib/kammer_web/live/instance_live/home.ex:81
+#: lib/kammer_web/live/instance_live/home.ex:129
 #, elixir-autogen, elixir-format
 msgid "Communities are joined by invitation. Ask an organizer for an invite link — or create your own community."
 msgstr "Man bliver medlem af et fællesskab via invitation. Bed en arrangør om et invitationslink — eller opret dit eget fællesskab."
 
-#: lib/kammer_web/live/instance_live/home.ex:114
+#: lib/kammer_web/live/instance_live/home.ex:162
 #, elixir-autogen, elixir-format
 msgid "Communities on this instance"
 msgstr "Fællesskaber på denne server"
@@ -584,7 +584,7 @@ msgstr "Fællesskabsindstillinger"
 msgid "Could not send that invitation."
 msgstr "Invitationen kunne ikke sendes."
 
-#: lib/kammer_web/live/instance_live/home.ex:88
+#: lib/kammer_web/live/instance_live/home.ex:136
 #, elixir-autogen, elixir-format
 msgid "Create a community"
 msgstr "Opret et fællesskab"
@@ -656,7 +656,7 @@ msgstr "Beskrivelse"
 #: lib/kammer_web/components/layouts.ex:176
 #: lib/kammer_web/components/layouts.ex:284
 #: lib/kammer_web/live/event_live/index.ex:28
-#: lib/kammer_web/live/group_live/settings.ex:431
+#: lib/kammer_web/live/group_live/settings.ex:435
 #, elixir-autogen, elixir-format
 msgid "Events"
 msgstr "Begivenheder"
@@ -666,7 +666,7 @@ msgstr "Begivenheder"
 msgid "Go home"
 msgstr "Til forsiden"
 
-#: lib/kammer_web/live/group_live/settings.ex:338
+#: lib/kammer_web/live/group_live/settings.ex:342
 #, elixir-autogen, elixir-format
 msgid "Group archived."
 msgstr "Gruppe arkiveret."
@@ -676,12 +676,12 @@ msgstr "Gruppe arkiveret."
 msgid "Group created."
 msgstr "Gruppe oprettet."
 
-#: lib/kammer_web/live/group_live/settings.ex:369
+#: lib/kammer_web/live/group_live/settings.ex:373
 #, elixir-autogen, elixir-format
 msgid "Group deleted."
 msgstr "Gruppe slettet."
 
-#: lib/kammer_web/live/group_live/show.ex:391
+#: lib/kammer_web/live/group_live/show.ex:405
 #, elixir-autogen, elixir-format
 msgid "Group not found."
 msgstr "Gruppen blev ikke fundet."
@@ -691,7 +691,7 @@ msgstr "Gruppen blev ikke fundet."
 msgid "Group settings"
 msgstr "Gruppeindstillinger"
 
-#: lib/kammer_web/live/group_live/settings.ex:353
+#: lib/kammer_web/live/group_live/settings.ex:357
 #, elixir-autogen, elixir-format
 msgid "Group unarchived."
 msgstr "Gruppe genåbnet fra arkivet."
@@ -740,7 +740,7 @@ msgid "Invite by email"
 msgstr "Invitér via e-mail"
 
 #: lib/kammer_web/live/community_live/settings.ex:167
-#: lib/kammer_web/live/group_live/settings.ex:302
+#: lib/kammer_web/live/group_live/settings.ex:306
 #, elixir-autogen, elixir-format
 msgid "Invite link created."
 msgstr "Invitationslink oprettet."
@@ -757,7 +757,7 @@ msgid "Invite only"
 msgstr "Kun invitation"
 
 #: lib/kammer_web/live/community_live/settings.ex:203
-#: lib/kammer_web/live/group_live/settings.ex:320
+#: lib/kammer_web/live/group_live/settings.ex:324
 #, elixir-autogen, elixir-format
 msgid "Invite revoked."
 msgstr "Invitation tilbagekaldt."
@@ -808,7 +808,7 @@ msgid "Make admin"
 msgstr "Gør til administrator"
 
 #: lib/kammer_web/live/community_live/members.ex:147
-#: lib/kammer_web/live/group_live/show.ex:723
+#: lib/kammer_web/live/group_live/show.ex:750
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Medlem"
@@ -822,7 +822,7 @@ msgstr "Medlem fjernet."
 #: lib/kammer_web/live/community_live/members.ex:29
 #: lib/kammer_web/live/group_live/new.ex:74
 #: lib/kammer_web/live/group_live/settings.ex:77
-#: lib/kammer_web/live/group_live/show.ex:346
+#: lib/kammer_web/live/group_live/show.ex:360
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr "Medlemmer"
@@ -888,7 +888,7 @@ msgstr "Ingen grupper endnu"
 msgid "No other servers yet"
 msgstr "Ingen andre servere endnu"
 
-#: lib/kammer_web/live/group_live/show.ex:304
+#: lib/kammer_web/live/group_live/show.ex:318
 #, elixir-autogen, elixir-format
 msgid "No posts yet"
 msgstr "Ingen opslag endnu"
@@ -916,12 +916,12 @@ msgid "Only instance operators may create communities on this instance."
 msgstr "Kun serveroperatører kan oprette fællesskaber på denne server."
 
 #: lib/kammer_web/live/community_live/members.ex:145
-#: lib/kammer_web/live/group_live/show.ex:721
+#: lib/kammer_web/live/group_live/show.ex:748
 #, elixir-autogen, elixir-format
 msgid "Owner"
 msgstr "Ejer"
 
-#: lib/kammer_web/live/group_live/show.ex:540
+#: lib/kammer_web/live/group_live/show.ex:567
 #, elixir-autogen, elixir-format
 msgid "Owners must transfer ownership before leaving."
 msgstr "Ejere skal overdrage ejerskabet, før de kan forlade gruppen."
@@ -985,7 +985,7 @@ msgstr "Fjern dette bogmærke?"
 msgid "Remove this member from the community and all its groups?"
 msgstr "Fjern dette medlem fra fællesskabet og alle dets grupper?"
 
-#: lib/kammer_web/live/group_live/show.ex:506
+#: lib/kammer_web/live/group_live/show.ex:520
 #, elixir-autogen, elixir-format
 msgid "Request sent — an admin will review it."
 msgstr "Anmodning sendt — en administrator gennemgår den."
@@ -1060,7 +1060,7 @@ msgstr "Politikken om rigtige navne vises ved tilmelding; den er en erklæring, 
 msgid "This community asks members to use their full, real name."
 msgstr "Dette fællesskab beder medlemmer om at bruge deres fulde, rigtige navn."
 
-#: lib/kammer_web/live/group_live/show.ex:307
+#: lib/kammer_web/live/group_live/show.ex:321
 #, elixir-autogen, elixir-format
 msgid "This group is archived and read-only."
 msgstr "Denne gruppe er arkiveret og skrivebeskyttet."
@@ -1111,7 +1111,7 @@ msgstr "Webadresse"
 msgid "Welcome to %{name}!"
 msgstr "Velkommen til %{name}!"
 
-#: lib/kammer_web/live/group_live/show.ex:492
+#: lib/kammer_web/live/group_live/show.ex:506
 #, elixir-autogen, elixir-format
 msgid "Welcome to the group!"
 msgstr "Velkommen i gruppen!"
@@ -1155,18 +1155,19 @@ msgstr "Dig"
 #: lib/kammer_web/live/group_live/new.ex:135
 #: lib/kammer_web/live/group_live/settings.ex:234
 #: lib/kammer_web/live/group_live/settings.ex:264
-#: lib/kammer_web/live/group_live/settings.ex:279
-#: lib/kammer_web/live/group_live/settings.ex:306
-#: lib/kammer_web/live/group_live/settings.ex:324
-#: lib/kammer_web/live/group_live/settings.ex:342
-#: lib/kammer_web/live/group_live/settings.ex:357
-#: lib/kammer_web/live/group_live/settings.ex:373
-#: lib/kammer_web/live/group_live/settings.ex:389
-#: lib/kammer_web/live/group_live/show.ex:458
-#: lib/kammer_web/live/group_live/show.ex:478
-#: lib/kammer_web/live/group_live/show.ex:495
-#: lib/kammer_web/live/group_live/show.ex:510
-#: lib/kammer_web/live/group_live/show.ex:543
+#: lib/kammer_web/live/group_live/settings.ex:283
+#: lib/kammer_web/live/group_live/settings.ex:310
+#: lib/kammer_web/live/group_live/settings.ex:328
+#: lib/kammer_web/live/group_live/settings.ex:346
+#: lib/kammer_web/live/group_live/settings.ex:361
+#: lib/kammer_web/live/group_live/settings.ex:377
+#: lib/kammer_web/live/group_live/settings.ex:393
+#: lib/kammer_web/live/group_live/show.ex:472
+#: lib/kammer_web/live/group_live/show.ex:492
+#: lib/kammer_web/live/group_live/show.ex:509
+#: lib/kammer_web/live/group_live/show.ex:524
+#: lib/kammer_web/live/group_live/show.ex:537
+#: lib/kammer_web/live/group_live/show.ex:570
 #, elixir-autogen, elixir-format
 msgid "You are not allowed to do that."
 msgstr "Det har du ikke tilladelse til."
@@ -1176,7 +1177,7 @@ msgstr "Det har du ikke tilladelse til."
 msgid "You haven't joined any groups yet"
 msgstr "Du er ikke med i nogen grupper endnu"
 
-#: lib/kammer_web/live/group_live/show.ex:535
+#: lib/kammer_web/live/group_live/show.ex:562
 #, elixir-autogen, elixir-format
 msgid "You left the group."
 msgstr "Du har forladt gruppen."
@@ -1191,7 +1192,7 @@ msgstr "Du er helt opdateret"
 msgid "You're invited to %{name}"
 msgstr "Du er inviteret til %{name}"
 
-#: lib/kammer_web/live/instance_live/home.ex:79
+#: lib/kammer_web/live/instance_live/home.ex:127
 #, elixir-autogen, elixir-format
 msgid "You're not in any community yet"
 msgstr "Du er ikke med i noget fællesskab endnu"
@@ -1240,7 +1241,7 @@ msgstr "%{count}t siden"
 msgid "%{count}m ago"
 msgstr "%{count}m siden"
 
-#: lib/kammer_web/live/group_live/show.ex:451
+#: lib/kammer_web/live/group_live/show.ex:465
 #, elixir-autogen, elixir-format
 msgid "@everyone was used too recently in this group."
 msgstr "@everyone er brugt for nylig i denne gruppe."
@@ -1251,7 +1252,7 @@ msgid "Acknowledge"
 msgstr "Bekræft læst"
 
 #: lib/kammer_web/components/feed_components.ex:287
-#: lib/kammer_web/live/group_live/show.ex:324
+#: lib/kammer_web/live/group_live/show.ex:338
 #, elixir-autogen, elixir-format
 msgid "Acknowledged"
 msgstr "Bekræftet læst"
@@ -1261,12 +1262,12 @@ msgstr "Bekræftet læst"
 msgid "Acknowledgment required"
 msgstr "Kræver bekræftelse"
 
-#: lib/kammer_web/live/group_live/show.ex:321
+#: lib/kammer_web/live/group_live/show.ex:335
 #, elixir-autogen, elixir-format
 msgid "Acknowledgments"
 msgstr "Bekræftelser"
 
-#: lib/kammer_web/live/group_live/show.ex:195
+#: lib/kammer_web/live/group_live/show.ex:209
 #, elixir-autogen, elixir-format
 msgid "Add option"
 msgstr "Tilføj svarmulighed"
@@ -1276,7 +1277,7 @@ msgstr "Tilføj svarmulighed"
 msgid "Add reaction"
 msgstr "Tilføj reaktion"
 
-#: lib/kammer_web/live/group_live/show.ex:215
+#: lib/kammer_web/live/group_live/show.ex:229
 #, elixir-autogen, elixir-format
 msgid "Anonymous votes"
 msgstr "Anonyme stemmer"
@@ -1286,7 +1287,7 @@ msgstr "Anonyme stemmer"
 msgid "Approve post"
 msgstr "Godkend opslag"
 
-#: lib/kammer_web/live/group_live/show.ex:175
+#: lib/kammer_web/live/group_live/show.ex:189
 #, elixir-autogen, elixir-format
 msgid "Attach"
 msgstr "Vedhæft"
@@ -1296,23 +1297,23 @@ msgstr "Vedhæft"
 msgid "Awaiting approval"
 msgstr "Afventer godkendelse"
 
-#: lib/kammer_web/live/group_live/show.ex:308
+#: lib/kammer_web/live/group_live/show.ex:322
 #, elixir-autogen, elixir-format
 msgid "Be the first to write something."
 msgstr "Vær den første til at skrive noget."
 
-#: lib/kammer_web/live/group_live/show.ex:287
+#: lib/kammer_web/live/group_live/show.ex:301
 #: lib/kammer_web/live/legal_live/edit.ex:31
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Annullér"
 
-#: lib/kammer_web/live/group_live/show.ex:338
+#: lib/kammer_web/live/group_live/show.ex:352
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr "Luk"
 
-#: lib/kammer_web/live/group_live/show.ex:218
+#: lib/kammer_web/live/group_live/show.ex:232
 #, elixir-autogen, elixir-format
 msgid "Closes"
 msgstr "Lukker"
@@ -1327,7 +1328,7 @@ msgstr "Kommentarer er låst på dette opslag."
 msgid "Comments are locked."
 msgstr "Kommentarer er låst."
 
-#: lib/kammer_web/live/group_live/show.ex:701
+#: lib/kammer_web/live/group_live/show.ex:728
 #, elixir-autogen, elixir-format
 msgid "Could not create the post."
 msgstr "Opslaget kunne ikke oprettes."
@@ -1351,7 +1352,7 @@ msgstr "Slettet bruger"
 msgid "Edit"
 msgstr "Redigér"
 
-#: lib/kammer_web/live/group_live/show.ex:692
+#: lib/kammer_web/live/group_live/show.ex:719
 #, elixir-autogen, elixir-format
 msgid "File is too large."
 msgstr "Filen er for stor."
@@ -1361,17 +1362,17 @@ msgstr "Filen er for stor."
 msgid "Lock comments"
 msgstr "Lås kommentarer"
 
-#: lib/kammer_web/live/group_live/show.ex:205
+#: lib/kammer_web/live/group_live/show.ex:219
 #, elixir-autogen, elixir-format
 msgid "Multiple choice"
 msgstr "Flere valg"
 
-#: lib/kammer_web/live/group_live/show.ex:277
+#: lib/kammer_web/live/group_live/show.ex:291
 #, elixir-autogen, elixir-format
 msgid "New since your last visit"
 msgstr "Nyt siden dit sidste besøg"
 
-#: lib/kammer_web/live/group_live/show.ex:330
+#: lib/kammer_web/live/group_live/show.ex:344
 #, elixir-autogen, elixir-format
 msgid "Not yet"
 msgstr "Ikke endnu"
@@ -1381,7 +1382,7 @@ msgstr "Ikke endnu"
 msgid "Nothing in your feed yet"
 msgstr "Intet i dit feed endnu"
 
-#: lib/kammer_web/live/group_live/show.ex:190
+#: lib/kammer_web/live/group_live/show.ex:204
 #, elixir-autogen, elixir-format
 msgid "Option %{number}"
 msgstr "Svarmulighed %{number}"
@@ -1401,23 +1402,23 @@ msgstr "Fastgør"
 msgid "Pinned"
 msgstr "Fastgjort"
 
-#: lib/kammer_web/live/group_live/show.ex:172
-#: lib/kammer_web/live/group_live/show.ex:184
+#: lib/kammer_web/live/group_live/show.ex:186
+#: lib/kammer_web/live/group_live/show.ex:198
 #, elixir-autogen, elixir-format
 msgid "Poll"
 msgstr "Afstemning"
 
-#: lib/kammer_web/live/group_live/show.ex:263
+#: lib/kammer_web/live/group_live/show.ex:277
 #, elixir-autogen, elixir-format
 msgid "Post"
 msgstr "Slå op"
 
-#: lib/kammer_web/live/group_live/show.ex:156
+#: lib/kammer_web/live/group_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "Post as %{group}"
 msgstr "Slå op som %{group}"
 
-#: lib/kammer_web/live/group_live/show.ex:262
+#: lib/kammer_web/live/group_live/show.ex:276
 #, elixir-autogen, elixir-format
 msgid "Posting..."
 msgstr "Slår op..."
@@ -1452,17 +1453,17 @@ msgstr "Svar"
 msgid "Reply…"
 msgstr "Svar…"
 
-#: lib/kammer_web/live/group_live/show.ex:146
+#: lib/kammer_web/live/group_live/show.ex:160
 #, elixir-autogen, elixir-format
 msgid "Requires acknowledgment"
 msgstr "Kræver bekræftelse"
 
-#: lib/kammer_web/live/group_live/show.ex:285
+#: lib/kammer_web/live/group_live/show.ex:299
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Gem"
 
-#: lib/kammer_web/live/group_live/show.ex:159
+#: lib/kammer_web/live/group_live/show.ex:173
 #, elixir-autogen, elixir-format
 msgid "Schedule"
 msgstr "Planlæg"
@@ -1500,12 +1501,12 @@ msgstr "Denne afstemning er lukket."
 msgid "This post was removed."
 msgstr "Dette opslag blev fjernet."
 
-#: lib/kammer_web/live/group_live/show.ex:693
+#: lib/kammer_web/live/group_live/show.ex:720
 #, elixir-autogen, elixir-format
 msgid "Too many files."
 msgstr "For mange filer."
 
-#: lib/kammer_web/live/group_live/show.ex:257
+#: lib/kammer_web/live/group_live/show.ex:271
 #, elixir-autogen, elixir-format
 msgid "Transient attachments (no file-space home, auto-delete after 30 days)"
 msgstr "Midlertidige vedhæftninger (intet hjem i filområdet, slettes automatisk efter 30 dage)"
@@ -1520,7 +1521,7 @@ msgstr "Lås kommentarer op"
 msgid "Unpin"
 msgstr "Frigør"
 
-#: lib/kammer_web/live/group_live/show.ex:694
+#: lib/kammer_web/live/group_live/show.ex:721
 #, elixir-autogen, elixir-format
 msgid "Upload failed."
 msgstr "Upload mislykkedes."
@@ -1536,7 +1537,7 @@ msgstr "Hvem mangler?"
 msgid "Write a comment…"
 msgstr "Skriv en kommentar…"
 
-#: lib/kammer_web/live/group_live/show.ex:133
+#: lib/kammer_web/live/group_live/show.ex:147
 #, elixir-autogen, elixir-format
 msgid "Write something… Markdown works."
 msgstr "Skriv noget… Markdown virker."
@@ -1777,7 +1778,7 @@ msgid "Download"
 msgstr "Download"
 
 #: lib/kammer_web/live/file_live/index.ex:34
-#: lib/kammer_web/live/group_live/settings.ex:432
+#: lib/kammer_web/live/group_live/settings.ex:436
 #: lib/kammer_web/live/group_live/show.ex:62
 #, elixir-autogen, elixir-format
 msgid "Files"
@@ -1909,7 +1910,7 @@ msgstr "Aktivér"
 msgid "Event reminder"
 msgstr "Påmindelse om begivenhed"
 
-#: lib/kammer_web/live/group_live/show.ex:714
+#: lib/kammer_web/live/group_live/show.ex:741
 #, elixir-autogen, elixir-format
 msgid "Everything"
 msgstr "Alt"
@@ -1919,7 +1920,7 @@ msgstr "Alt"
 msgid "Get push notifications on this device for mentions and replies."
 msgstr "Få push-notifikationer på denne enhed ved omtaler og svar."
 
-#: lib/kammer_web/live/group_live/show.ex:715
+#: lib/kammer_web/live/group_live/show.ex:742
 #, elixir-autogen, elixir-format
 msgid "Highlights"
 msgstr "Højdepunkter"
@@ -1929,12 +1930,12 @@ msgstr "Højdepunkter"
 msgid "Mark all read"
 msgstr "Markér alle som læst"
 
-#: lib/kammer_web/live/group_live/show.ex:716
+#: lib/kammer_web/live/group_live/show.ex:743
 #, elixir-autogen, elixir-format
 msgid "Mentions only"
 msgstr "Kun omtaler"
 
-#: lib/kammer_web/live/group_live/show.ex:717
+#: lib/kammer_web/live/group_live/show.ex:744
 #, elixir-autogen, elixir-format
 msgid "Muted"
 msgstr "Lydløs"
@@ -2032,7 +2033,7 @@ msgstr "Indhold"
 msgid "Continue"
 msgstr "Fortsæt"
 
-#: lib/kammer_web/live/instance_live/home.ex:150
+#: lib/kammer_web/live/instance_live/home.ex:198
 #, elixir-autogen, elixir-format
 msgid "Could not remove the demo community."
 msgstr "Demofællesskabet kunne ikke fjernes."
@@ -2047,7 +2048,7 @@ msgstr "Opret et demofællesskab"
 msgid "Create your first community and group."
 msgstr "Opret dit første fællesskab og din første gruppe."
 
-#: lib/kammer_web/live/instance_live/home.ex:69
+#: lib/kammer_web/live/instance_live/home.ex:117
 #, elixir-autogen, elixir-format
 msgid "Delete the demo community and everything in it?"
 msgstr "Slet demofællesskabet og alt i det?"
@@ -2057,7 +2058,7 @@ msgstr "Slet demofællesskabet og alt i det?"
 msgid "Demo community"
 msgstr "Demofællesskab"
 
-#: lib/kammer_web/live/instance_live/home.ex:146
+#: lib/kammer_web/live/instance_live/home.ex:194
 #, elixir-autogen, elixir-format
 msgid "Demo community removed."
 msgstr "Demofællesskabet er fjernet."
@@ -2197,7 +2198,7 @@ msgstr "Udgives på /legal/%{key} — Markdown understøttes."
 msgid "Published."
 msgstr "Udgivet."
 
-#: lib/kammer_web/live/instance_live/home.ex:72
+#: lib/kammer_web/live/instance_live/home.ex:120
 #, elixir-autogen, elixir-format
 msgid "Remove demo"
 msgstr "Fjern demo"
@@ -2247,7 +2248,7 @@ msgstr "Nøglen passer ikke. Find den aktuelle i serverens log."
 msgid "The common room"
 msgstr "Fællesrummet"
 
-#: lib/kammer_web/live/instance_live/home.ex:64
+#: lib/kammer_web/live/instance_live/home.ex:112
 #, elixir-autogen, elixir-format
 msgid "The demo community “%{name}” is still around."
 msgstr "Demofællesskabet “%{name}” findes stadig."
@@ -2489,7 +2490,7 @@ msgstr "Vælg hvilke værktøjer denne gruppe viser. Slås en funktion fra, skju
 msgid "Features"
 msgstr "Funktioner"
 
-#: lib/kammer_web/live/group_live/settings.ex:276
+#: lib/kammer_web/live/group_live/settings.ex:280
 #, elixir-autogen, elixir-format
 msgid "Features updated."
 msgstr "Funktioner opdateret."
@@ -2503,3 +2504,28 @@ msgstr "Feed"
 #, elixir-autogen, elixir-format
 msgid "always on"
 msgstr "altid til"
+
+#: lib/kammer_web/live/instance_live/home.ex:63
+#, elixir-autogen, elixir-format
+msgid "Coming up"
+msgstr "Kommende"
+
+#: lib/kammer_web/live/instance_live/home.ex:101
+#, elixir-autogen, elixir-format
+msgid "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
+msgstr "Hjem viser de grupper, du er med i, nyeste først. Hver gruppeside har en \"Vis på Hjem\"-knap, hvis du vil have en ud herfra."
+
+#: lib/kammer_web/live/instance_live/home.ex:85
+#, elixir-autogen, elixir-format
+msgid "Recent activity"
+msgstr "Seneste aktivitet"
+
+#: lib/kammer_web/live/group_live/show.ex:111
+#, elixir-autogen, elixir-format
+msgid "Show in Home"
+msgstr "Vis på Hjem"
+
+#: lib/kammer_web/live/group_live/show.ex:102
+#, elixir-autogen, elixir-format
+msgid "Show this group's activity on your Home screen"
+msgstr "Vis denne gruppes aktivitet på din Hjem-skærm"
