@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Decisions register (per-group toggle, off by default): raise a
+  motion — it lands in the feed as a post with a For / Against /
+  Abstain vote — then record the outcome (adopted, rejected, noted,
+  with a note for the record). The register lists every motion and
+  outcome chronologically: minutes-grade institutional memory, built
+  for board groups.
 - Assignments (per-group toggle, off by default): a flat task list —
   open, claimed, done, nothing else. "Who takes this?" is one tap,
   several people can hold the same assignment, anyone can mark it

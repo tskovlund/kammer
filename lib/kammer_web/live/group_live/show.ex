@@ -79,6 +79,16 @@ defmodule KammerWeb.GroupLive.Show do
             <.icon name="hero-clipboard-document-check" class="size-4" /> {gettext("Assignments")}
           </.link>
           <.link
+            :if={
+              (@membership || @permissions.manage) &&
+                Kammer.Groups.Group.feature_enabled?(@group, :decisions)
+            }
+            navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/decisions"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-scale" class="size-4" /> {gettext("Decisions")}
+          </.link>
+          <.link
             :if={@permissions.manage}
             navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/settings"}
             class="btn btn-ghost btn-sm"

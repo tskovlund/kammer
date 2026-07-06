@@ -27,8 +27,8 @@ defmodule Kammer.Groups.Group do
   # a group without a wall is a different product concept. New features
   # join @features and @toggleable_features but NOT @default_features:
   # they ship OFF by default, for new and existing groups alike.
-  @features [:feed, :events, :files, :availability, :assignments]
-  @toggleable_features [:events, :files, :availability, :assignments]
+  @features [:feed, :events, :files, :availability, :assignments, :decisions]
+  @toggleable_features [:events, :files, :availability, :assignments, :decisions]
   @default_features [:feed, :events, :files]
 
   @slug_format ~r/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
