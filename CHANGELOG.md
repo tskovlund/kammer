@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Global search within a community: one box over posts, comments, and
+  events (Postgres full-text, mixed-language friendly), filtered by
+  the same listing visibility as everything else — property-tested so
+  search can never surface content from a group you couldn't see
+  listed. Anonymous visitors search exactly the public face. File
+  search follows once it can ride the folder-permission invariant.
 - Decisions register (per-group toggle, off by default): raise a
   motion — it lands in the feed as a post with a For / Against /
   Abstain vote — then record the outcome (adopted, rejected, noted,

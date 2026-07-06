@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:423
-#: lib/kammer_web/components/layouts.ex:438
+#: lib/kammer_web/components/layouts.ex:430
+#: lib/kammer_web/components/layouts.ex:445
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:430
+#: lib/kammer_web/components/layouts.ex:437
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:415
+#: lib/kammer_web/components/layouts.ex:422
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -273,7 +273,7 @@ msgid "Sessions signed in to your account. Revoke any you don't recognize."
 msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:104
-#: lib/kammer_web/components/layouts.ex:255
+#: lib/kammer_web/components/layouts.ex:262
 #: lib/kammer_web/live/community_live/home.ex:108
 #: lib/kammer_web/live/instance_live/home.ex:151
 #: lib/kammer_web/live/user_live/confirmation.ex:59
@@ -545,6 +545,7 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:277
 #: lib/kammer_web/live/group_live/new.ex:72
 #: lib/kammer_web/live/group_live/settings.ex:75
+#: lib/kammer_web/live/search_live/index.ex:62
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr ""
@@ -580,7 +581,7 @@ msgstr ""
 msgid "Community invite links"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:205
+#: lib/kammer_web/components/layouts.ex:212
 #: lib/kammer_web/live/community_live/settings.ex:28
 #, elixir-autogen, elixir-format
 msgid "Community settings"
@@ -661,10 +662,11 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:176
-#: lib/kammer_web/components/layouts.ex:284
+#: lib/kammer_web/components/layouts.ex:183
+#: lib/kammer_web/components/layouts.ex:291
 #: lib/kammer_web/live/event_live/index.ex:28
 #: lib/kammer_web/live/group_live/settings.ex:442
+#: lib/kammer_web/live/search_live/index.ex:79
 #, elixir-autogen, elixir-format
 msgid "Events"
 msgstr ""
@@ -704,8 +706,8 @@ msgstr ""
 msgid "Group unarchived."
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:183
-#: lib/kammer_web/components/layouts.ex:290
+#: lib/kammer_web/components/layouts.ex:190
+#: lib/kammer_web/components/layouts.ex:297
 #: lib/kammer_web/live/group_live/index.ex:28
 #, elixir-autogen, elixir-format
 msgid "Groups"
@@ -722,7 +724,7 @@ msgid "Hi,"
 msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:169
-#: lib/kammer_web/components/layouts.ex:278
+#: lib/kammer_web/components/layouts.ex:285
 #, elixir-autogen, elixir-format
 msgid "Home"
 msgstr ""
@@ -826,7 +828,7 @@ msgstr ""
 msgid "Member removed."
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:190
+#: lib/kammer_web/components/layouts.ex:197
 #: lib/kammer_web/live/community_live/members.ex:29
 #: lib/kammer_web/live/group_live/new.ex:74
 #: lib/kammer_web/live/group_live/settings.ex:77
@@ -868,7 +870,7 @@ msgid "Name"
 msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:153
-#: lib/kammer_web/components/layouts.ex:384
+#: lib/kammer_web/components/layouts.ex:391
 #: lib/kammer_web/live/community_live/new.ex:18
 #, elixir-autogen, elixir-format
 msgid "New community"
@@ -906,7 +908,7 @@ msgstr ""
 msgid "No upcoming events"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:296
+#: lib/kammer_web/components/layouts.ex:303
 #: lib/kammer_web/live/notification_live/index.ex:30
 #, elixir-autogen, elixir-format
 msgid "Notifications"
@@ -945,7 +947,7 @@ msgstr ""
 msgid "Posts require admin approval"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:272
+#: lib/kammer_web/components/layouts.ex:279
 #, elixir-autogen, elixir-format
 msgid "Primary"
 msgstr ""
@@ -1053,7 +1055,7 @@ msgid "Sign in to accept"
 msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:98
-#: lib/kammer_web/components/layouts.ex:251
+#: lib/kammer_web/components/layouts.ex:258
 #, elixir-autogen, elixir-format
 msgid "Sign out"
 msgstr ""
@@ -1136,7 +1138,7 @@ msgstr ""
 msgid "Who can post"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:303
+#: lib/kammer_web/components/layouts.ex:310
 #, elixir-autogen, elixir-format
 msgid "You"
 msgstr ""
@@ -1229,7 +1231,7 @@ msgstr ""
 msgid "Your communities"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:212
+#: lib/kammer_web/components/layouts.ex:219
 #, elixir-autogen, elixir-format
 msgid "Your groups"
 msgstr ""
@@ -1375,6 +1377,8 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:345
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
+#: lib/kammer_web/live/search_live/index.ex:54
+#: lib/kammer_web/live/search_live/index.ex:71
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
 msgstr ""
@@ -1789,7 +1793,7 @@ msgstr ""
 msgid "Browse"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:197
+#: lib/kammer_web/components/layouts.ex:204
 #, elixir-autogen, elixir-format
 msgid "Community files"
 msgstr ""
@@ -2000,7 +2004,7 @@ msgstr ""
 msgid "Unread"
 msgstr ""
 
-#: lib/kammer_web/components/layouts.ex:344
+#: lib/kammer_web/components/layouts.ex:351
 #, elixir-autogen, elixir-format
 msgid "Unread notifications"
 msgstr ""
@@ -3137,4 +3141,30 @@ msgstr ""
 #: lib/kammer_web/live/decision_live/index.ex:91
 #, elixir-autogen, elixir-format
 msgid "recorded by %{name}"
+msgstr ""
+
+#: lib/kammer_web/live/search_live/index.ex:96
+#, elixir-autogen, elixir-format
+msgid "Nothing found"
+msgstr ""
+
+#: lib/kammer_web/live/search_live/index.ex:45
+#, elixir-autogen, elixir-format
+msgid "Posts"
+msgstr ""
+
+#: lib/kammer_web/components/layouts.ex:176
+#: lib/kammer_web/live/search_live/index.ex:29
+#, elixir-autogen, elixir-format
+msgid "Search"
+msgstr ""
+
+#: lib/kammer_web/live/search_live/index.ex:36
+#, elixir-autogen, elixir-format
+msgid "Search posts, comments, and events…"
+msgstr ""
+
+#: lib/kammer_web/live/search_live/index.ex:97
+#, elixir-autogen, elixir-format
+msgid "Try different words — search looks at posts, comments, and events."
 msgstr ""
