@@ -53,6 +53,7 @@ defmodule Kammer.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.8.8"},
+      {:hammer, "~> 7.0"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
@@ -72,6 +73,7 @@ defmodule Kammer.MixProject do
        depth: 1},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.3"},
+      {:tz, "~> 0.28"},
       {:oban, "~> 2.23"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},

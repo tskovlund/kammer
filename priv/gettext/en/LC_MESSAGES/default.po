@@ -36,3 +36,341 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:138
+#, elixir-autogen, elixir-format
+msgid "A link to confirm your email change has been sent to the new address."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:20
+#, elixir-autogen, elixir-format
+msgid "Account settings"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/registration.ex:21
+#, elixir-autogen, elixir-format
+msgid "Already registered?"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/registration.ex:90
+#, elixir-autogen, elixir-format
+msgid "An email was sent to %{email}, please access it to confirm your account."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:104
+#, elixir-autogen, elixir-format
+msgid "Browser"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:69
+#, elixir-autogen, elixir-format
+msgid "Change email"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:68
+#, elixir-autogen, elixir-format
+msgid "Changing..."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:43
+#, elixir-autogen, elixir-format
+msgid "Confirm and sign in only this time"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:37
+#, elixir-autogen, elixir-format
+msgid "Confirm and stay signed in"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:88
+#, elixir-autogen, elixir-format
+msgid "Confirm your account"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:45
+#, elixir-autogen, elixir-format
+msgid "Confirm your new email address"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:34
+#: lib/kammer_web/live/user_live/confirmation.ex:40
+#, elixir-autogen, elixir-format
+msgid "Confirming..."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:68
+#: lib/kammer_web/live/user_live/registration.ex:19
+#: lib/kammer_web/live/user_live/registration.ex:49
+#, elixir-autogen, elixir-format
+msgid "Create an account"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/registration.ex:48
+#, elixir-autogen, elixir-format
+msgid "Creating account..."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:44
+#, elixir-autogen, elixir-format
+msgid "Danish"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:73
+#, elixir-autogen, elixir-format
+msgid "Device signed out."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:19
+#, elixir-autogen, elixir-format
+msgid "Devices"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/registration.ex:33
+#: lib/kammer_web/live/user_live/settings.ex:36
+#, elixir-autogen, elixir-format
+msgid "Display name"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:54
+#: lib/kammer_web/live/user_live/registration.ex:42
+#: lib/kammer_web/live/user_live/settings.ex:63
+#, elixir-autogen, elixir-format
+msgid "Email"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:92
+#, elixir-autogen, elixir-format
+msgid "Email change link is invalid or it has expired."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:89
+#, elixir-autogen, elixir-format
+msgid "Email changed successfully."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:61
+#, elixir-autogen, elixir-format
+msgid "Email me a sign-in link"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:44
+#, elixir-autogen, elixir-format
+msgid "English"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:46
+#: lib/kammer/accounts/user_notifier.ex:73
+#: lib/kammer/accounts/user_notifier.ex:89
+#, elixir-autogen, elixir-format
+msgid "Hi %{name},"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:95
+#, elixir-autogen, elixir-format
+msgid "If you didn't create an account with us, please ignore this email."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:52
+#, elixir-autogen, elixir-format
+msgid "If you didn't request this change, please ignore this email."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:81
+#, elixir-autogen, elixir-format
+msgid "If you didn't request this email, please ignore it."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:104
+#, elixir-autogen, elixir-format
+msgid "If your email is in our system, you will receive instructions for logging in shortly."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:68
+#, elixir-autogen, elixir-format
+msgid "Keep me signed in on this device"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:43
+#, elixir-autogen, elixir-format
+msgid "Language"
+msgstr ""
+
+#: lib/kammer_web/controllers/user_session_controller.ex:47
+#, elixir-autogen, elixir-format
+msgid "Logged out successfully."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:94
+#, elixir-autogen, elixir-format
+msgid "Magic link is invalid or it has expired."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:77
+#, elixir-autogen, elixir-format
+msgid "Manage devices and sessions"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:22
+#, elixir-autogen, elixir-format
+msgid "Manage your profile, email address, language, and devices"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:66
+#, elixir-autogen, elixir-format
+msgid "New here?"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:26
+#, elixir-autogen, elixir-format
+msgid "No password needed — we email you a sign-in link."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:166
+#, elixir-autogen, elixir-format
+msgid "Profile updated."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:48
+#, elixir-autogen, elixir-format
+msgid "Revoke"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:53
+#, elixir-autogen, elixir-format
+msgid "Save profile"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:52
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:21
+#, elixir-autogen, elixir-format
+msgid "Sessions signed in to your account. Revoke any you don't recognize."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:59
+#: lib/kammer_web/live/user_live/login.ex:21
+#: lib/kammer_web/live/user_live/registration.ex:23
+#, elixir-autogen, elixir-format
+msgid "Sign in"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:74
+#, elixir-autogen, elixir-format
+msgid "Sign me in only this time"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:45
+#, elixir-autogen, elixir-format
+msgid "Sign this device out?"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:38
+#, elixir-autogen, elixir-format
+msgid "Signed in %{timestamp}"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:58
+#: lib/kammer_web/live/user_live/confirmation.ex:65
+#: lib/kammer_web/live/user_live/confirmation.ex:71
+#, elixir-autogen, elixir-format
+msgid "Signing in..."
+msgstr ""
+
+#: lib/kammer_web/controllers/user_session_controller.ex:36
+#, elixir-autogen, elixir-format
+msgid "The link is invalid or it has expired."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:79
+#, elixir-autogen, elixir-format
+msgid "The link is valid for 15 minutes and can be used once."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:34
+#, elixir-autogen, elixir-format
+msgid "This device"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:49
+#, elixir-autogen, elixir-format
+msgid "Timezone"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:37
+#, elixir-autogen, elixir-format
+msgid "To see sent emails, visit"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:54
+#, elixir-autogen, elixir-format
+msgid "To sign out this device, use the sign-out button in the menu."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:95
+#, elixir-autogen, elixir-format
+msgid "Unknown device"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/confirmation.ex:18
+#, elixir-autogen, elixir-format
+msgid "Welcome %{email}"
+msgstr ""
+
+#: lib/kammer_web/controllers/user_session_controller.ex:22
+#, elixir-autogen, elixir-format
+msgid "Welcome back!"
+msgstr ""
+
+#: lib/kammer_web/controllers/user_session_controller.ex:18
+#, elixir-autogen, elixir-format
+msgid "Welcome! Your account is confirmed."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:35
+#, elixir-autogen, elixir-format
+msgid "You are running the local mail adapter."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:48
+#, elixir-autogen, elixir-format
+msgid "You can change your email by visiting the link below:"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:91
+#, elixir-autogen, elixir-format
+msgid "You can confirm your account and sign in by visiting the link below:"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:75
+#, elixir-autogen, elixir-format
+msgid "You can sign in to your account by visiting the link below:"
+msgstr ""
+
+#: lib/kammer_web/user_auth.ex:240
+#: lib/kammer_web/user_auth.ex:294
+#, elixir-autogen, elixir-format
+msgid "You must log in to access this page."
+msgstr ""
+
+#: lib/kammer_web/user_auth.ex:257
+#, elixir-autogen, elixir-format
+msgid "You must re-authenticate to access this page."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:24
+#, elixir-autogen, elixir-format
+msgid "You need to reauthenticate to perform sensitive actions on your account."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:72
+#, elixir-autogen, elixir-format
+msgid "Your sign-in link"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/login.ex:38
+#, elixir-autogen, elixir-format
+msgid "the mailbox page"
+msgstr ""

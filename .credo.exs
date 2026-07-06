@@ -30,7 +30,7 @@
           # callbacks are covered by their own typespecs; migration up/down
           # are framework entry points.
           {Credo.Check.Readability.Specs,
-           include_defp: false, files: %{excluded: ["priv/repo/migrations/"]}}
+           include_defp: false, files: %{excluded: ["priv/repo/migrations/", "test/"]}}
         ],
         disabled: [
           # Deferred work is tracked in BUILDLOG.md (SPEC §16 one-shot build

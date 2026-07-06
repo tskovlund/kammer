@@ -79,3 +79,42 @@ pre-release and it has no built-in sanitization; MDEx is actively maintained
 (2026-07 release) with sanitized output. **Web push: web_push_ex 0.2.0** is
 the only maintained option (web_push_encryption abandoned 2021); final call
 recorded at step 7 when wired.
+
+## 2026-07-06 — Step 2: magic-link auth, sessions, devices (SPEC §2, §16.2)
+
+Base: `mix phx.gen.auth` (Phoenix 1.8.8, magic-link-first) — boring and
+battle-tested — then stripped to passwordless-only per SPEC §2:
+
+- Removed all password paths (bcrypt dep, hashed_password column, password
+  forms/flows/tests). Magic links are single-use, 15-minute, confirmed by an
+  explicit button (prevents email-scanner bots consuming links).
+- `users`: added `display_name` (the only required base field, SPEC §4),
+  `locale` (en/da), `timezone` (validated against the tz database).
+- **Rate limiting** (SPEC §11): `Kammer.RateLimit` (Hammer 7, ETS backend) —
+  magic-link issuance capped 3/15min per email, 10/15min per IP, enforced in
+  the Accounts context so any future caller (API v2) inherits it. Context
+  tests cover both limits.
+- **Devices page** (`/users/settings/devices`): sessions listed with parsed
+  user agent + sign-in time, current-session marker, individual revocation
+  (scoped so users can't revoke others' sessions — tested).
+- Settings: display name, language, timezone; email change via confirmed
+  link (unchanged from generator); sudo-mode gating kept.
+- Localized auth emails per user locale; all auth surfaces gettext'ed, DA
+  complete (69 strings).
+- **tz 0.28 instead of tzdata**: tzdata's hackney dependency conflicts with
+  gen_smtp's idna 7; `tz` is maintained, pure-Elixir, embeds IANA data.
+
+**Deferred (how to complete)**:
+- *Passkeys/WebAuthn*: Phase 2 per SPEC §16.2. Add `wax_ 0.7`, a
+  `user_credentials` table, registration in settings (behind sudo mode), and
+  a discoverable-credential login button on the sign-in page.
+- *Guest identity upgrade* (claiming RSVP/subscriber history on first login,
+  SPEC §2): implemented when guest artifacts exist (events step): on magic-
+  link confirmation, look up guest records by email and re-own them.
+- *Locale/timezone auto-detection* (SPEC §4): currently defaults en/UTC,
+  editable in settings. Complete by reading Accept-Language in a plug and a
+  JS hook posting `Intl.DateTimeFormat().resolvedOptions().timeZone` once
+  after login.
+- *Session IP recording*: user_agent is stored per session; adding the
+  client IP column is trivial if wanted, but was left out deliberately
+  (privacy-first: don't store more than needed).

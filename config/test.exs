@@ -1,5 +1,7 @@
 import Config
 
+# Only in tests, remove the complexity from the password hashing algorithm
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

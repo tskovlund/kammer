@@ -13,6 +13,7 @@ defmodule Kammer.Application do
       Kammer.Repo,
       {DNSCluster, query: Application.get_env(:kammer, :dns_cluster_query) || :ignore},
       {Oban, Application.fetch_env!(:kammer, Oban)},
+      Kammer.RateLimit,
       {Phoenix.PubSub, name: Kammer.PubSub},
       # Start to serve requests, typically the last entry
       KammerWeb.Endpoint

@@ -7,9 +7,25 @@
 # General application configuration
 import Config
 
+config :kammer, :scopes,
+  user: [
+    default: true,
+    module: Kammer.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :binary_id,
+    schema_table: :users,
+    test_data_fixture: Kammer.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :kammer,
   ecto_repos: [Kammer.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
+
+# Timezone-aware rendering (SPEC §1: stored UTC, rendered per user).
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
 # Display name is a single constant so renaming is one commit (SPEC §15).
 config :kammer, :product_name, "Kammer"

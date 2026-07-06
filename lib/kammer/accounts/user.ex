@@ -1,0 +1,139 @@
+defmodule Kammer.Accounts.User do
+  @moduledoc """
+  A user account.
+
+  Kammer is passwordless (SPEC §2): users sign in with magic links sent to
+  their email, optionally adding passkeys later. Email is the universal
+  identity primitive; `display_name` is the only required base profile field
+  (SPEC §4).
+  """
+
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  alias Kammer.Accounts.User
+
+  @type t() :: %__MODULE__{}
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+  schema "users" do
+    field :email, :string
+    field :display_name, :string
+    field :locale, :string, default: "en"
+    field :timezone, :string, default: "Etc/UTC"
+    field :confirmed_at, :utc_datetime
+    field :authenticated_at, :utc_datetime, virtual: true
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @doc """
+  A changeset for registration: email plus display name — the only required
+  base profile field.
+
+  ## Options
+
+    * `:validate_unique` - Set to false if you don't want to validate the
+      uniqueness of the email, useful when displaying live validations.
+      Defaults to `true`.
+  """
+  @spec registration_changeset(t(), map(), keyword()) :: Ecto.Changeset.t()
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email, :display_name])
+    |> validate_email(opts)
+    |> validate_display_name()
+  end
+
+  @doc """
+  A user changeset for changing the email.
+
+  It requires the email to change otherwise an error is added.
+
+  ## Options
+
+    * `:validate_unique` - Set to false if you don't want to validate the
+      uniqueness of the email, useful when displaying live validations.
+      Defaults to `true`.
+  """
+  @spec email_changeset(t(), map(), keyword()) :: Ecto.Changeset.t()
+  def email_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email])
+    |> validate_email(opts)
+  end
+
+  @doc """
+  A changeset for profile settings: display name, interface language, and
+  timezone (SPEC §4 — language/timezone editable in settings, never demanded
+  at onboarding).
+  """
+  @spec settings_changeset(t(), map()) :: Ecto.Changeset.t()
+  def settings_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:display_name, :locale, :timezone])
+    |> validate_display_name()
+    |> validate_inclusion(:locale, allowed_locales())
+    |> validate_timezone()
+  end
+
+  defp validate_email(changeset, opts) do
+    changeset =
+      changeset
+      |> validate_required([:email])
+      |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
+        message: "must have the @ sign and no spaces"
+      )
+      |> validate_length(:email, max: 160)
+
+    if Keyword.get(opts, :validate_unique, true) do
+      changeset
+      |> unsafe_validate_unique(:email, Kammer.Repo)
+      |> unique_constraint(:email)
+      |> validate_email_changed()
+    else
+      changeset
+    end
+  end
+
+  defp validate_email_changed(changeset) do
+    if get_field(changeset, :email) && get_change(changeset, :email) == nil do
+      add_error(changeset, :email, "did not change")
+    else
+      changeset
+    end
+  end
+
+  defp validate_display_name(changeset) do
+    changeset
+    |> validate_required([:display_name])
+    |> update_change(:display_name, &String.trim/1)
+    |> validate_length(:display_name, min: 1, max: 100)
+  end
+
+  defp validate_timezone(changeset) do
+    validate_change(changeset, :timezone, fn :timezone, timezone ->
+      # Time zone validity is checked against the database the runtime knows.
+      case DateTime.now(timezone) do
+        {:ok, _now} -> []
+        {:error, _reason} -> [timezone: "is not a known time zone"]
+      end
+    end)
+  end
+
+  defp allowed_locales do
+    Application.get_env(:kammer, KammerWeb.Gettext, [])
+    |> Keyword.get(:allowed_locales, ["en"])
+  end
+
+  @doc """
+  Confirms the account by setting `confirmed_at`.
+  """
+  @spec confirm_changeset(t()) :: Ecto.Changeset.t()
+  def confirm_changeset(%User{} = user) do
+    now = DateTime.utc_now(:second)
+    change(user, confirmed_at: now)
+  end
+end
