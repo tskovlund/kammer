@@ -155,6 +155,15 @@ schema split (no `supersedes_id` chain hack).
 3. Document in `docs/development.md`: clients generate from this
    (TypeScript now; Swift/Kotlin when native starts).
 
+### 5.2b API completions (as clients need them — additive only)
+
+Deferred deliberately from the core: **Phoenix Channels realtime** for
+API clients (same PubSub topics LiveView uses); **API registration**
+(v1 is web-only — decide with the owner before enabling); notification
+endpoints (list/mark-read); file endpoints (entries + versions, after
+5.1); push-subscription registration for native clients. Guest RSVP
+stays web-only by design (guests hold no device tokens).
+
 ### 5.3 Guest comments + approval queue (SPEC §3 comment policy)
 
 Rides ADR 0013. Groups with `comment_policy: :members_and_guests`:
@@ -225,10 +234,22 @@ guest_identity_id) — guests claim via the ADR 0013 flow.
   magic-link login; device page lists them.
 - **Recurrence + attendance matrix**: RRULE-lite (weekly/biweekly/
   monthly), materialized occurrences, per-occurrence RSVP grid.
+- **Admin update notice** (SPEC Phase 2): the instance surfaces
+  "a newer Kammer exists" to operators — version check against GitHub
+  releases, privacy-respecting (opt-out env flag, no phone-home
+  payload beyond the version fetch).
 - Then: RSS/Atom for public groups, content-minimized email mode,
   custom profile fields + roster, activity-sort view (opt-in,
   chronological stays default — values!), branding UI, Prometheus
   (PromEx), ClamAV option, NixOS module.
+- **Security hardening, pre-1.0**: replace the CSP's
+  `'unsafe-inline'` script allowance with LiveView nonce-based CSP
+  (documented posture in the router; real work, tracked here so it
+  cannot be forgotten).
+- **Far-future path already decided** (SPEC v1 non-goals): group type
+  templates ("Announcement channel", "Discussion forum", …) are the
+  sanctioned route to configurable comment mechanics — never raw
+  per-group threading switches.
 
 ### 5.7 Native apps (after the PWA settles — not before)
 
@@ -246,6 +267,12 @@ Svelte parity, retired later (ADR 0001) — plan, don't rush it.
   (business model — act on answers when they arrive).
 - Release: owner cuts v0.1.0 after #7 via docs/release.md. Fix
   forward, never re-tag.
+- **Naming** (SPEC §15): "Kammer" is a working title; the display name
+  is one config constant. Final-name verification is owner-court —
+  raise it before any public marketing, never decide it.
+- **Business model implications** (issue #22, when the owner answers):
+  per-community active-member stats, billing integration, DPA
+  template, instance-admin tooling for shared-instance hosting.
 
 ## 6. Definition of done, every PR
 
