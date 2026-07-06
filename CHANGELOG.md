@@ -10,6 +10,9 @@ and this project adheres to
 
 ### Added
 
+- OpenAPI document at `GET /api/v1/openapi.json` — the machine-readable
+  API contract clients generate from, drift-guarded against the router
+  by a test.
 - Versioned files: uploading a file with the same name into the same
   folder now creates a new version instead of a duplicate. Every file
   has a browsable version history (uploader, time, size, download);

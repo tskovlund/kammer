@@ -73,6 +73,14 @@ never surprise you.
 | Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                            |
 | Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                 |
 
+## The API contract
+
+`GET /api/v1/openapi.json` serves the OpenAPI 3 document, generated
+from the same modules that shape responses. Clients generate from it
+(TypeScript now; Swift/Kotlin when native starts) — never hand-write
+an API client. A drift test pins the document to the router: adding an
+API route without describing it fails CI.
+
 ## Smoke test & screenshots
 
 `scripts/screenshots.sh` resets the dev database, boots the server,
