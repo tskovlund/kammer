@@ -93,7 +93,10 @@ defmodule KammerWeb.EventLive.New do
     postable_groups =
       current_user
       |> Groups.list_active_groups(community)
-      |> Enum.filter(fn group -> Authorization.can?(current_user, :post_in_group, group) end)
+      |> Enum.filter(fn group ->
+        Kammer.Groups.Group.feature_enabled?(group, :events) and
+          Authorization.can?(current_user, :post_in_group, group)
+      end)
 
     if postable_groups == [] do
       {:ok,

@@ -38,6 +38,7 @@ defmodule Kammer.Events do
   def fetch_viewable_event(actor, %Community{} = community, event_id) do
     with %Event{} = event <- get_event(community, event_id) || {:error, :not_found},
          group = Repo.get!(Group, event.group_id),
+         :ok <- Authorization.feature_gate(group, :events),
          :ok <- Authorization.authorize(actor, :view_group, group) do
       {:ok, %Event{event | group: group}}
     else
@@ -86,6 +87,7 @@ defmodule Kammer.Events do
     visible_group_ids =
       actor
       |> Authorization.listable_groups_query(community)
+      |> where([group], fragment("'events' = ANY(?)", group.features))
       |> select([group], group.id)
       |> Repo.all()
 
@@ -123,7 +125,8 @@ defmodule Kammer.Events do
   @spec create_event(User.t(), Group.t(), map()) ::
           {:ok, Event.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def create_event(%User{} = creator, %Group{} = group, attrs) do
-    with :ok <- Authorization.authorize(creator, :post_in_group, group) do
+    with :ok <- Authorization.feature_gate(group, :events),
+         :ok <- Authorization.authorize(creator, :post_in_group, group) do
       attrs =
         attrs
         |> Map.put("community_id", group.community_id)
@@ -449,10 +452,16 @@ defmodule Kammer.Events do
         nil
 
       %Group{} = group ->
-        {group,
-         Repo.all(
-           from(event in Event, where: event.group_id == ^group.id, order_by: event.starts_at)
-         )}
+        if Group.feature_enabled?(group, :events) do
+          {group,
+           Repo.all(
+             from(event in Event, where: event.group_id == ^group.id, order_by: event.starts_at)
+           )}
+        else
+          # Feature off ⇒ the feed reads as unknown (ADR 0016: same
+          # not-found surface as unauthorized).
+          nil
+        end
     end
   end
 
@@ -472,7 +481,10 @@ defmodule Kammer.Events do
            from(event in Event,
              join: membership in Kammer.Groups.GroupMembership,
              on: membership.group_id == event.group_id,
+             join: group in Group,
+             on: group.id == event.group_id,
              where: membership.user_id == ^user.id,
+             where: fragment("'events' = ANY(?)", group.features),
              order_by: event.starts_at
            )
          )}

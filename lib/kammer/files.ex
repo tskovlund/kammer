@@ -89,7 +89,8 @@ defmodule Kammer.Files do
     relationship = Authorization.relationship(uploader, scope)
     folder_chain = folder_chain(folder)
 
-    with true <-
+    with :ok <- files_feature_gate(scope),
+         true <-
            Authorization.can_write_folder?(uploader, scope, folder_chain, relationship) ||
              :unauthorized,
          :ok <- check_quota(scope, source_path) do
@@ -326,6 +327,9 @@ defmodule Kammer.Files do
     parent_chain = folder_chain(parent_folder)
 
     cond do
+      files_feature_gate(scope) != :ok ->
+        {:error, :not_found}
+
       not Authorization.can_write_folder?(actor, scope, parent_chain, relationship) ->
         {:error, :unauthorized}
 
@@ -572,6 +576,12 @@ defmodule Kammer.Files do
       scope.storage_quota_bytes
     end
   end
+
+  # ADR 0016: the files toggle hides the GROUP file space. Community
+  # spaces have no toggle, and feed attachments (auto-collections) keep
+  # working — the feed is not toggleable.
+  defp files_feature_gate(%Group{} = group), do: Authorization.feature_gate(group, :files)
+  defp files_feature_gate(%Community{}), do: :ok
 
   defp check_quota(scope, source_path) do
     case effective_quota_bytes(scope) do

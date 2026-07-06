@@ -97,6 +97,38 @@ defmodule KammerWeb.GroupLive.Settings do
         </.button>
       </.form>
 
+      <section class="pt-6">
+        <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Features")}
+        </h2>
+        <p class="pb-3 text-sm text-base-content/70">
+          {gettext(
+            "Choose which tools this group shows. Turning a feature off hides it — nothing is deleted, and turning it back on restores everything."
+          )}
+        </p>
+        <form id="group-features-form" phx-change="save_features" class="space-y-2">
+          <label class="flex items-center gap-2 text-sm text-base-content/50">
+            <input type="checkbox" checked disabled class="checkbox checkbox-sm" />
+            {gettext("Feed")}
+            <span class="text-xs">({gettext("always on")})</span>
+          </label>
+          <label
+            :for={feature <- Kammer.Groups.Group.toggleable_features()}
+            class="flex cursor-pointer items-center gap-2 text-sm"
+          >
+            <input
+              type="checkbox"
+              name="features[]"
+              value={feature}
+              checked={Kammer.Groups.Group.feature_enabled?(@group, feature)}
+              class="checkbox checkbox-sm"
+            />
+            {feature_label(feature)}
+          </label>
+          <input type="hidden" name="features[]" value="feed" />
+        </form>
+      </section>
+
       <section :if={@join_requests != []} class="pt-6">
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
           {gettext("Join requests")}
@@ -229,6 +261,25 @@ defmodule KammerWeb.GroupLive.Settings do
         {:noreply, assign(socket, :form, to_form(changeset, action: :insert))}
 
       {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("save_features", params, socket) do
+    features = Map.get(params, "features", [])
+
+    case Groups.update_group_features(
+           socket.assigns.current_scope.user,
+           socket.assigns.group,
+           features
+         ) do
+      {:ok, group} ->
+        {:noreply,
+         socket
+         |> assign(:group, group)
+         |> put_flash(:info, gettext("Features updated."))}
+
+      {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
     end
   end
@@ -380,4 +431,8 @@ defmodule KammerWeb.GroupLive.Settings do
       {visibility_label(visibility), Atom.to_string(visibility)}
     end)
   end
+
+  defp feature_label(:events), do: gettext("Events")
+  defp feature_label(:files), do: gettext("Files")
+  defp feature_label(feature), do: feature |> Atom.to_string() |> String.capitalize()
 end

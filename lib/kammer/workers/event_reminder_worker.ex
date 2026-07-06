@@ -21,10 +21,19 @@ defmodule Kammer.Workers.EventReminderWorker do
         :ok
 
       %Event{} = event ->
-        if DateTime.to_iso8601(event.starts_at) == scheduled_starts_at do
-          send_reminders(event)
-        else
-          reschedule(event)
+        group = Repo.get!(Kammer.Groups.Group, event.group_id)
+
+        cond do
+          not Kammer.Groups.Group.feature_enabled?(group, :events) ->
+            # Feature toggled off since scheduling (ADR 0016): a hidden
+            # feature must not keep emailing people.
+            :ok
+
+          DateTime.to_iso8601(event.starts_at) == scheduled_starts_at ->
+            send_reminders(event)
+
+          true ->
+            reschedule(event)
         end
     end
   end

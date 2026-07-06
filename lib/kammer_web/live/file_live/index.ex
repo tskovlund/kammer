@@ -257,9 +257,9 @@ defmodule KammerWeb.FileLive.Index do
     scope_result =
       case params do
         %{"group_slug" => group_slug} ->
-          case Groups.fetch_viewable_group(current_user, community, group_slug) do
-            {:ok, group} -> {:ok, group, group.name, :groups}
-            {:error, reason} -> {:error, reason}
+          with {:ok, group} <- Groups.fetch_viewable_group(current_user, community, group_slug),
+               :ok <- Kammer.Authorization.feature_gate(group, :files) do
+            {:ok, group, group.name, :groups}
           end
 
         _community_scope ->

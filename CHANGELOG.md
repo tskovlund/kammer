@@ -10,6 +10,10 @@ and this project adheres to
 
 ### Added
 
+- Per-group feature toggles: group admins choose which tools the group
+  shows (events, files; the feed is always on). Turning a feature off
+  hides it everywhere — navigation, listings, ICS feeds, guest RSVP —
+  without deleting anything; turning it back on restores everything.
 - Guest RSVP on public events (no account needed): name + email, a signed
   confirm link that records nothing until followed, a confirmation email
   with calendar file, and a management link to change the answer or erase
