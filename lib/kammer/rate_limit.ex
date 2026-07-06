@@ -37,6 +37,27 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
+  Rate limit for guest interaction requests (RSVP confirmations and the
+  like), keyed by email. Same budget as magic links — both send email.
+  """
+  @spec hit_guest_email(String.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_guest_email(email) when is_binary(email) do
+    hit("guest:email:#{String.downcase(email)}", @fifteen_minutes_in_milliseconds, 3)
+  end
+
+  @doc """
+  Rate limit for guest interaction requests, keyed by client IP — looser,
+  like the magic-link IP limit, for shared venue networks.
+  """
+  @spec hit_guest_ip(:inet.ip_address() | String.t() | nil) ::
+          {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_guest_ip(nil), do: {:allow, 0}
+
+  def hit_guest_ip(ip_address) do
+    hit("guest:ip:#{format_ip(ip_address)}", @fifteen_minutes_in_milliseconds, 10)
+  end
+
+  @doc """
   Rate limit for `@everyone` broadcast mentions, keyed by group: at most
   2 per group per hour (SPEC §5: gated and rate-limited).
   """

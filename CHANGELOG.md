@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Guest RSVP on public events (no account needed): name + email, a signed
+  confirm link that records nothing until followed, a confirmation email
+  with calendar file, and a management link to change the answer or erase
+  all guest data. Signing in with the same email claims guest history
+  automatically. Event pages in public groups are now viewable without an
+  account.
 - Passwordless authentication: magic-link sign-in, revocable sessions with
   device overview, rate limiting on link requests.
 - Communities and groups: multi-tenant instance, community switcher, four

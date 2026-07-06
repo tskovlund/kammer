@@ -200,12 +200,19 @@ defmodule Kammer.Accounts do
 
     case Repo.one(query) do
       {%User{confirmed_at: nil} = user, _token} ->
-        user
-        |> User.confirm_changeset()
-        |> update_user_and_delete_all_tokens()
+        with {:ok, {confirmed_user, _tokens}} = success <-
+               user
+               |> User.confirm_changeset()
+               |> update_user_and_delete_all_tokens() do
+          # SPEC §2: signing in upgrades any guest history on this email
+          # into the account, automatically.
+          Kammer.Guests.claim_history(confirmed_user)
+          success
+        end
 
       {user, token} ->
         Repo.delete!(token)
+        Kammer.Guests.claim_history(user)
         {:ok, {user, []}}
 
       nil ->

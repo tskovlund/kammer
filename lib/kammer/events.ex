@@ -20,6 +20,11 @@ defmodule Kammer.Events do
   alias Kammer.Events.EventRsvp
   alias Kammer.Feed.Comment
   alias Kammer.Groups.Group
+  alias Kammer.Guests
+  alias Kammer.Guests.GuestIdentity
+  alias Kammer.Guests.GuestNotifier
+  alias Kammer.Guests.Token, as: GuestToken
+  alias Kammer.RateLimit
   alias Kammer.Repo
 
   ## Reading
@@ -47,7 +52,7 @@ defmodule Kammer.Events do
           from(event in Event,
             where: event.id == ^event_id and event.community_id == ^community.id,
             preload: [
-              rsvps: [:user],
+              rsvps: [:user, :guest_identity],
               comments: [:author_user, replies: [:author_user]]
             ]
           )
@@ -223,6 +228,150 @@ defmodule Kammer.Events do
 
   def get_rsvp(%Event{} = event, %User{} = user) do
     Repo.get_by(EventRsvp, event_id: event.id, user_id: user.id)
+  end
+
+  ## Guest RSVPs (SPEC §6): name + email on public events, no account.
+  ## The flow is two signed links: a confirm link proves control of the
+  ## email (nothing is recorded before it's followed), and the
+  ## confirmation email then carries an ICS file plus a management link
+  ## for changing the answer or erasing the guest entirely (SPEC §12).
+
+  @doc """
+  First step: validates the request, rate-limits it (per email and IP),
+  and emails a signed confirm link. Records nothing yet.
+
+  `confirm_url_fun` receives the signed token and returns the absolute
+  URL for the email (the web layer owns URL building).
+  """
+  @spec request_guest_rsvp(Event.t(), Group.t(), map(), keyword()) ::
+          :ok | {:error, :unauthorized | :rate_limited | Ecto.Changeset.t()}
+  def request_guest_rsvp(%Event{} = event, %Group{} = group, attrs, opts) do
+    changeset = guest_request_changeset(attrs)
+
+    with true <- Authorization.can_guest_rsvp?(group) or {:error, :unauthorized},
+         {:ok, request} <- Ecto.Changeset.apply_action(changeset, :insert),
+         {:allow, _count} <- RateLimit.hit_guest_email(request.email),
+         {:allow, _count} <- RateLimit.hit_guest_ip(opts[:client_ip]) do
+      token =
+        GuestToken.sign_confirm(%{
+          event_id: event.id,
+          email: request.email,
+          display_name: request.display_name,
+          status: request.status
+        })
+
+      confirm_url = opts |> Keyword.fetch!(:confirm_url_fun) |> then(& &1.(token))
+
+      GuestNotifier.deliver_confirmation_request(
+        request.email,
+        request.display_name,
+        event,
+        confirm_url
+      )
+
+      :ok
+    else
+      {:deny, _retry_after} -> {:error, :rate_limited}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Second step, from the emailed confirm link: records the verified
+  identity and the RSVP, and sends the confirmation email (ICS +
+  management link built by `manage_url_fun`).
+  """
+  @spec confirm_guest_rsvp(String.t(), (String.t() -> String.t())) ::
+          {:ok, Event.t(), GuestIdentity.t()} | {:error, :invalid}
+  def confirm_guest_rsvp(token, manage_url_fun) do
+    with {:ok, %{event_id: event_id, email: email, display_name: display_name, status: status}} <-
+           GuestToken.verify_confirm(token),
+         %Event{} = event <- Repo.get(Event, event_id),
+         %Group{} = group <- Repo.get(Group, event.group_id),
+         true <- Authorization.can_guest_rsvp?(group),
+         {:ok, identity} <- Guests.verify_identity(email, display_name),
+         {:ok, _rsvp} <- upsert_guest_rsvp(event, identity, status) do
+      manage_token = GuestToken.sign_manage(%{identity_id: identity.id, event_id: event.id})
+      GuestNotifier.deliver_confirmed(identity, event, manage_url_fun.(manage_token))
+      {:ok, event, identity}
+    else
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  @doc """
+  Loads the state behind a management link: the event, the guest, and
+  their current RSVP.
+  """
+  @spec fetch_guest_rsvp(String.t()) ::
+          {:ok, %{event: Event.t(), identity: GuestIdentity.t(), rsvp: EventRsvp.t() | nil}}
+          | {:error, :invalid}
+  def fetch_guest_rsvp(manage_token) do
+    with {:ok, %{identity_id: identity_id, event_id: event_id}} <-
+           GuestToken.verify_manage(manage_token),
+         %GuestIdentity{} = identity <- Guests.get_identity(identity_id),
+         %Event{} = event <- Repo.get(Event, event_id) do
+      rsvp = Repo.get_by(EventRsvp, event_id: event.id, guest_identity_id: identity.id)
+      {:ok, %{event: event, identity: identity, rsvp: rsvp}}
+    else
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  @doc """
+  Changes a guest's answer through their management link.
+  """
+  @spec update_guest_rsvp(String.t(), EventRsvp.status()) ::
+          {:ok, EventRsvp.t()} | {:error, :invalid}
+  def update_guest_rsvp(manage_token, status) when status in [:yes, :no, :maybe] do
+    with {:ok, %{event: event, identity: identity}} <- fetch_guest_rsvp(manage_token),
+         {:ok, rsvp} <- upsert_guest_rsvp(event, identity, status) do
+      {:ok, rsvp}
+    else
+      _invalid -> {:error, :invalid}
+    end
+  end
+
+  @doc """
+  Erases a guest and everything they created, through their management
+  link (SPEC §12).
+  """
+  @spec erase_guest(String.t()) :: :ok | {:error, :invalid}
+  def erase_guest(manage_token) do
+    with {:ok, %{identity: identity}} <- fetch_guest_rsvp(manage_token) do
+      Guests.erase(identity)
+    end
+  end
+
+  defp upsert_guest_rsvp(%Event{} = event, %GuestIdentity{} = identity, status) do
+    %EventRsvp{}
+    |> EventRsvp.guest_changeset(%{
+      status: status,
+      event_id: event.id,
+      guest_identity_id: identity.id
+    })
+    |> Repo.insert(
+      on_conflict: [set: [status: status, updated_at: DateTime.utc_now(:second)]],
+      conflict_target:
+        {:unsafe_fragment, "(event_id, guest_identity_id) WHERE guest_identity_id IS NOT NULL"},
+      returning: true
+    )
+  end
+
+  defp guest_request_changeset(attrs) do
+    types = %{
+      email: :string,
+      display_name: :string,
+      status: Ecto.ParameterizedType.init(Ecto.Enum, values: EventRsvp.statuses())
+    }
+
+    {%{}, types}
+    |> Ecto.Changeset.cast(attrs, Map.keys(types))
+    |> Ecto.Changeset.validate_required([:email, :display_name, :status])
+    |> Ecto.Changeset.update_change(:email, &String.downcase/1)
+    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
+    |> Ecto.Changeset.validate_length(:email, max: 160)
+    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
   end
 
   ## Comments — the same engine as posts (ADR 0007)
