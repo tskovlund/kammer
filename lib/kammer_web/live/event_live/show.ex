@@ -64,7 +64,7 @@ defmodule KammerWeb.EventLive.Show do
       <div class="rounded-box border border-base-200 p-4">
         <p class="flex items-center gap-2 font-medium">
           <.icon name="hero-calendar-days" class="size-5 text-[var(--accent,#3E6B48)]" />
-          {format_when(@event, @current_scope.user.timezone)}
+          {format_when(@event, viewer_timezone(@current_scope, @event))}
         </p>
       </div>
 
@@ -115,6 +115,37 @@ defmodule KammerWeb.EventLive.Show do
             size_class="size-7"
             text_class="text-xs"
           />
+          <span :if={guest_count(@event, :yes) > 0} class="badge badge-ghost badge-sm">
+            {ngettext("+%{count} guest", "+%{count} guests", guest_count(@event, :yes))}
+          </span>
+        </div>
+
+        <%!-- Guest RSVP (SPEC §6): public events, name + email, no account. --%>
+        <div :if={@guest_rsvp_allowed?} class="border-t border-base-200 mt-4 pt-4">
+          <p class="pb-2 text-sm font-medium">{gettext("RSVP as a guest")}</p>
+          <p class="pb-3 text-sm text-base-content/70">
+            {gettext("No account needed — we'll email you a confirmation link.")}
+          </p>
+          <.form for={@guest_form} id="guest-rsvp-form" phx-submit="guest_rsvp">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <.input
+                field={@guest_form[:display_name]}
+                type="text"
+                label={gettext("Name")}
+                required
+              />
+              <.input field={@guest_form[:email]} type="email" label={gettext("Email")} required />
+              <.input
+                field={@guest_form[:status]}
+                type="select"
+                label={gettext("Answer")}
+                options={rsvp_options() |> Enum.map(fn {status, label} -> {label, status} end)}
+              />
+              <.button variant="primary" class="btn-sm" phx-disable-with={gettext("Sending...")}>
+                {gettext("RSVP")}
+              </.button>
+            </div>
+          </.form>
         </div>
       </section>
 
@@ -219,8 +250,16 @@ defmodule KammerWeb.EventLive.Show do
 
   @impl Phoenix.LiveView
   def mount(%{"event_id" => event_id}, _session, socket) do
-    current_user = socket.assigns.current_scope.user
+    current_user = current_user(socket.assigns)
     community = socket.assigns.active_community
+
+    client_ip =
+      case get_connect_info(socket, :peer_data) do
+        %{address: address} -> address
+        _no_peer_data -> nil
+      end
+
+    socket = assign(socket, :client_ip, client_ip)
 
     case Events.fetch_viewable_event(current_user, community, event_id) do
       {:ok, event} ->
@@ -230,7 +269,7 @@ defmodule KammerWeb.EventLive.Show do
         {:ok,
          socket
          |> put_flash(:error, gettext("Event not found."))
-         |> push_navigate(to: ~p"/c/#{community.slug}/events")}
+         |> push_navigate(to: not_found_path(current_user, community))}
     end
   end
 
@@ -272,6 +311,40 @@ defmodule KammerWeb.EventLive.Show do
     end
   end
 
+  def handle_event("guest_rsvp", %{"guest" => guest_params}, socket) do
+    event = socket.assigns.event
+
+    result =
+      Events.request_guest_rsvp(event, event.group, guest_params,
+        client_ip: socket.assigns.client_ip,
+        confirm_url_fun: fn token -> url(~p"/guest/rsvp/confirm/#{token}") end
+      )
+
+    case result do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(:guest_form, to_form(%{}, as: "guest"))
+         |> put_flash(
+           :info,
+           gettext("Almost there — follow the link we just emailed you to confirm your RSVP.")
+         )}
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts. Please try again later."))}
+
+      {:error, %Ecto.Changeset{} = _changeset} ->
+        {:noreply,
+         socket
+         |> assign(:guest_form, to_form(guest_params, as: "guest"))
+         |> put_flash(:error, gettext("Please check your name and email address."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
   def handle_event("delete_event", _params, socket) do
     current_user = socket.assigns.current_scope.user
     community = socket.assigns.active_community
@@ -289,7 +362,7 @@ defmodule KammerWeb.EventLive.Show do
   end
 
   defp reload(socket) do
-    current_user = socket.assigns.current_scope.user
+    current_user = current_user(socket.assigns)
     community = socket.assigns.active_community
 
     case Events.fetch_viewable_event(current_user, community, socket.assigns.event_id) do
@@ -299,7 +372,7 @@ defmodule KammerWeb.EventLive.Show do
   end
 
   defp load_event(socket, event) do
-    current_user = socket.assigns.current_scope.user
+    current_user = current_user(socket.assigns)
     group = event.group
     relationship = Kammer.Authorization.relationship(current_user, group)
 
@@ -308,11 +381,29 @@ defmodule KammerWeb.EventLive.Show do
     |> assign(:my_rsvp, Events.get_rsvp(event, current_user))
     |> assign(:can_rsvp?, Kammer.Authorization.can_react?(current_user, group, relationship))
     |> assign(
+      :guest_rsvp_allowed?,
+      is_nil(current_user) and Kammer.Authorization.can_guest_rsvp?(group)
+    )
+    |> assign(:guest_form, to_form(%{}, as: "guest"))
+    |> assign(
       :can_comment?,
       Kammer.Authorization.can?(current_user, :comment_in_group, group, relationship) and
         is_nil(event.comment_locked_at)
     )
     |> assign(:can_manage?, Events.can_manage_event?(current_user, event, group))
+  end
+
+  defp current_user(%{current_scope: %{user: user}}), do: user
+  defp current_user(_assigns), do: nil
+
+  defp not_found_path(nil, community), do: ~p"/c/#{community.slug}"
+  defp not_found_path(_user, community), do: ~p"/c/#{community.slug}/events"
+
+  defp viewer_timezone(%{user: %{timezone: timezone}}, _event), do: timezone
+  defp viewer_timezone(_scope, event), do: event.timezone
+
+  defp guest_count(event, status) do
+    Enum.count(event.rsvps, fn rsvp -> rsvp.status == status and rsvp.guest_identity_id end)
   end
 
   defp rsvp_options do

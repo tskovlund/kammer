@@ -321,6 +321,17 @@ defmodule Kammer.Authorization do
       (relationship.group_role != nil or group_admin_powers?(group, relationship))
   end
 
+  @doc """
+  Whether account-less guests may RSVP to events in this group
+  (SPEC §6): only on the public presets, never once archived. This is
+  the whole guest-RSVP policy — the web layer adds email verification
+  and rate limits, not permissions.
+  """
+  @spec can_guest_rsvp?(Group.t()) :: boolean()
+  def can_guest_rsvp?(%Group{} = group) do
+    group.visibility in [:public_link, :public_listed] and not Group.archived?(group)
+  end
+
   defp author?(actor, %{author_user_id: author_user_id}) do
     case unwrap_user(actor) do
       %User{id: user_id} -> user_id == author_user_id

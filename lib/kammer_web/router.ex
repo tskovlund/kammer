@@ -51,19 +51,9 @@ defmodule KammerWeb.Router do
 
     get "/events/:event_id/ics", CalendarController, :event
 
-    # Public-capable pages: the pages themselves authorize via
-    # Kammer.Authorization (public groups and community public pages are
-    # readable without an account).
-    live_session :community_public,
-      on_mount: [
-        {KammerWeb.UserAuth, :mount_current_scope},
-        {KammerWeb.CommunityScope, :assign_community}
-      ] do
-      live "/", CommunityLive.Home, :show
-      live "/g/:group_slug", GroupLive.Show, :show
-    end
-
-    # Member-only pages.
+    # Member-only pages. Defined BEFORE the public session so literal
+    # segments win over the public wildcard (/events/new must not be
+    # captured by /events/:event_id).
     live_session :community_member,
       on_mount: [
         {KammerWeb.UserAuth, :require_authenticated},
@@ -78,8 +68,23 @@ defmodule KammerWeb.Router do
       live "/settings", CommunityLive.Settings, :edit
       live "/events", EventLive.Index, :index
       live "/events/new", EventLive.New, :new
-      live "/events/:event_id", EventLive.Show, :show
       live "/notifications", NotificationLive.Index, :index
+    end
+
+    # Public-capable pages: the pages themselves authorize via
+    # Kammer.Authorization (public groups and community public pages are
+    # readable without an account).
+    live_session :community_public,
+      on_mount: [
+        {KammerWeb.UserAuth, :mount_current_scope},
+        {KammerWeb.CommunityScope, :assign_community}
+      ] do
+      live "/", CommunityLive.Home, :show
+      live "/g/:group_slug", GroupLive.Show, :show
+      # Event pages gate through the authorization module like group
+      # feeds do: anonymous viewers see events of public groups only —
+      # which is what guest RSVP (SPEC §6) requires.
+      live "/events/:event_id", EventLive.Show, :show
     end
   end
 
@@ -97,6 +102,20 @@ defmodule KammerWeb.Router do
   # Liveness probe for container orchestration — no session, no gating.
   scope "/", KammerWeb do
     get "/healthz", HealthController, :index
+  end
+
+  # Guest links (SPEC §6/§11): signed, expiring tokens are the whole
+  # credential — no account, no session requirements beyond the browser
+  # pipeline. Confirm records the RSVP; manage changes or erases it.
+  scope "/", KammerWeb do
+    pipe_through [:browser]
+
+    get "/guest/rsvp/confirm/:token", GuestRsvpController, :confirm
+
+    live_session :guest_links,
+      on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
+      live "/guest/rsvp/:token", GuestRsvpLive.Manage, :manage
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
