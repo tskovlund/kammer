@@ -1,6 +1,7 @@
 defmodule KammerWeb.Router do
   use KammerWeb, :router
 
+  import KammerWeb.ApiAuth, only: [fetch_api_scope: 2, require_api_user: 2]
   import KammerWeb.UserAuth
 
   pipeline :browser do
@@ -21,6 +22,18 @@ defmodule KammerWeb.Router do
 
     plug :fetch_current_scope_for_user
     plug KammerWeb.Plugs.RequireSetup
+  end
+
+  # JSON API (ADR 0014): stateless Bearer auth, no sessions, no CSRF
+  # surface. The same authorization module answers every question the
+  # browser stack asks — the API adds transport, never policy.
+  pipeline :api do
+    plug :accepts, ["json"]
+    plug :fetch_api_scope
+  end
+
+  pipeline :api_authenticated do
+    plug :require_api_user
   end
 
   scope "/", KammerWeb do
@@ -102,6 +115,36 @@ defmodule KammerWeb.Router do
   # Liveness probe for container orchestration — no session, no gating.
   scope "/", KammerWeb do
     get "/healthz", HealthController, :index
+  end
+
+  ## JSON API v1 (ADR 0014 + RFC 0001)
+
+  scope "/api/v1", KammerWeb.Api do
+    pipe_through :api
+
+    get "/instance", InstanceController, :show
+    post "/auth/request-link", AuthController, :request_link
+    post "/auth/exchange", AuthController, :exchange
+  end
+
+  scope "/api/v1", KammerWeb.Api do
+    pipe_through [:api, :api_authenticated]
+
+    delete "/auth/device-token", AuthController, :revoke
+
+    get "/home", HomeController, :show
+    get "/communities", CommunityController, :index
+    get "/communities/:community_slug/groups", CommunityController, :groups
+    get "/communities/:community_slug/groups/:group_slug/posts", PostController, :index
+    post "/communities/:community_slug/groups/:group_slug/posts", PostController, :create
+
+    post "/communities/:community_slug/groups/:group_slug/posts/:post_id/comments",
+         PostController,
+         :create_comment
+
+    get "/communities/:community_slug/events", EventController, :index
+    get "/communities/:community_slug/events/:event_id", EventController, :show
+    put "/communities/:community_slug/events/:event_id/rsvp", EventController, :rsvp
   end
 
   # Guest links (SPEC §6/§11): signed, expiring tokens are the whole

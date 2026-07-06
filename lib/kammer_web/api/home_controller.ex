@@ -1,0 +1,35 @@
+defmodule KammerWeb.Api.HomeController do
+  @moduledoc """
+  The merged Home over the API (ADR 0015): the same read-only lens the
+  start page shows — upcoming events and recent activity across all the
+  device owner's communities, labeled for client-side display. This is
+  the endpoint the multi-instance client's landing screen is built on.
+  """
+
+  use KammerWeb, :controller
+
+  alias Kammer.Home
+  alias KammerWeb.Api.Serializer
+
+  @spec show(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def show(conn, _params) do
+    user = conn.assigns.current_scope.user
+
+    json(conn, %{
+      upcoming_events:
+        Enum.map(Home.upcoming_events(user), fn event ->
+          event
+          |> Serializer.event()
+          |> Map.put(:community, Serializer.community(event.group.community))
+          |> Map.put(:group, %{id: event.group.id, name: event.group.name, slug: event.group.slug})
+        end),
+      recent_activity:
+        Enum.map(Home.recent_activity(user), fn post ->
+          post
+          |> Serializer.post()
+          |> Map.put(:community, Serializer.community(post.group.community))
+          |> Map.put(:group, %{id: post.group.id, name: post.group.name, slug: post.group.slug})
+        end)
+    })
+  end
+end

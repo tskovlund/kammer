@@ -1,0 +1,61 @@
+defmodule KammerWeb.ApiError do
+  @moduledoc """
+  The one error envelope (RFC 0001): every API error is
+  `{"error": {"code": "...", "message": "..."}}` with a stable,
+  machine-readable code; the HTTP status carries the class. Clients
+  switch on `code`, humans read `message` — nothing else to parse.
+  """
+
+  import Plug.Conn
+
+  @codes %{
+    bad_request: {400, "bad_request"},
+    unauthorized: {401, "unauthorized"},
+    forbidden: {403, "forbidden"},
+    not_found: {404, "not_found"},
+    unprocessable: {422, "invalid_params"},
+    rate_limited: {429, "rate_limited"}
+  }
+
+  @doc "Sends the standard envelope for a known error kind."
+  @spec send(Plug.Conn.t(), atom(), String.t()) :: Plug.Conn.t()
+  def send(conn, kind, message) do
+    {status, code} = Map.fetch!(@codes, kind)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(status, Jason.encode!(%{error: %{code: code, message: message}}))
+  end
+
+  @doc "Maps common context error tuples onto the envelope."
+  @spec from_result(Plug.Conn.t(), term()) :: Plug.Conn.t()
+  def from_result(conn, {:error, :not_found}),
+    do: send(conn, :not_found, "Not found.")
+
+  def from_result(conn, {:error, :unauthorized}),
+    do: send(conn, :forbidden, "You are not allowed to do that.")
+
+  def from_result(conn, {:error, :rate_limited}),
+    do: send(conn, :rate_limited, "Too many attempts. Try again later.")
+
+  def from_result(conn, {:error, %Ecto.Changeset{} = changeset}) do
+    details =
+      Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+        Regex.replace(~r"%{(\w+)}", message, fn _match, key ->
+          opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+        end)
+      end)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(
+      422,
+      Jason.encode!(%{
+        error: %{code: "invalid_params", message: "Validation failed.", details: details}
+      })
+    )
+  end
+
+  def from_result(conn, {:error, _other}),
+    do: send(conn, :bad_request, "The request could not be processed.")
+end
