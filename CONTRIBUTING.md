@@ -2,6 +2,26 @@
 
 Thanks for wanting to help build a calmer home for real-world communities.
 
+## How contributions work: prompt requests
+
+Kammer takes contributions as **prompt requests**: open an issue that
+describes what you want — a bug report, a feature idea, a design
+sketch, even a fully specified implementation plan — and a maintainer
+implements it. Anyone can open issues; pull requests are reserved for
+maintainers.
+
+Why this model: Kammer is maintained by a very small team with a high
+bar for the codebase (see [CONVENTIONS.md](CONVENTIONS.md) — lean, no
+hacks, exemplary). Reviewing external code to that bar costs more than
+writing it, while describing a change well costs you far less than
+implementing it. The better the prompt request — context, the _why_,
+edge cases, proposed behavior — the faster it ships.
+
+Unsolicited pull requests are closed with a friendly pointer to this
+section; it's the model, not a judgment of your code. If you'd like to
+join the implementing-and-reviewing side, say so in an issue — growing
+the maintainer team is how this scales.
+
 ## Dev environment — three entry paths, one toolset
 
 The toolchain (Elixir/OTP, Node for tooling, Postgres client, libvips,
@@ -46,7 +66,7 @@ Conventional Commits (commitlint), lefthook hooks (installed by `mix setup`),
 Credo strict, Dialyzer, warnings-as-errors, Sobelow, and a test-coverage
 floor. CI must be green; hooks keep you honest before you push.
 
-## Pull requests
+## Pull requests (maintainers)
 
 - One coherent change per PR; Conventional Commit messages.
 - Add tests for behavior you add or change — permission/visibility logic

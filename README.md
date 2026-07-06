@@ -96,9 +96,12 @@ direnv allow    # or: devbox shell    # or: nix develop
 mix setup && mix phx.server
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONVENTIONS.md](CONVENTIONS.md).
-Engineering standards (Credo strict, Dialyzer, warnings-as-errors, coverage
-floor, Conventional Commits) are enforced by hooks and CI.
+Contributions work as **prompt requests**: open a well-described issue
+(bug, feature, design sketch) and a maintainer implements it — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the why, and
+[CONVENTIONS.md](CONVENTIONS.md) for the bar. Engineering standards
+(Credo strict, Dialyzer, warnings-as-errors, coverage floor,
+Conventional Commits) are enforced by hooks and CI.
 
 ## Honest limitations
 
