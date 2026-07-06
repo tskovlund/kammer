@@ -2,7 +2,8 @@ defmodule Kammer.Feed.Comment do
   @moduledoc """
   A comment (SPEC §5, ADR 0007): exactly one reply level — a comment
   either has no parent or its parent is a top-level comment. Enforced in
-  the context, one threading model everywhere.
+  the context, one threading model everywhere. The same engine serves
+  posts and events (exactly one subject, DB-constrained).
   """
 
   use Ecto.Schema
@@ -20,6 +21,7 @@ defmodule Kammer.Feed.Comment do
     field :purged_at, :utc_datetime
 
     belongs_to :post, Kammer.Feed.Post
+    belongs_to :event, Kammer.Events.Event
     belongs_to :parent_comment, Kammer.Feed.Comment
     belongs_to :author_user, Kammer.Accounts.User
 
@@ -36,7 +38,7 @@ defmodule Kammer.Feed.Comment do
   def create_changeset(comment, attrs) do
     comment
     |> cast(attrs, [:body_markdown, :post_id, :parent_comment_id, :author_user_id])
-    |> validate_required([:body_markdown, :post_id, :author_user_id])
+    |> validate_required([:body_markdown, :author_user_id])
     |> validate_length(:body_markdown, min: 1, max: 10_000)
   end
 

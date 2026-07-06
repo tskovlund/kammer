@@ -36,12 +36,17 @@ defmodule KammerWeb.Router do
     get "/files/:id", FileController, :show
     get "/files/:id/thumbnail", FileController, :thumbnail
     get "/files/:id/download", FileController, :download
+
+    get "/calendar/group/:token", CalendarController, :group_feed
+    get "/calendar/user/:token", CalendarController, :user_feed
   end
 
   ## Community-scoped routes
 
   scope "/c/:community_slug", KammerWeb do
     pipe_through :browser
+
+    get "/events/:event_id/ics", CalendarController, :event
 
     # Public-capable pages: the pages themselves authorize via
     # Kammer.Authorization (public groups and community public pages are
@@ -67,6 +72,8 @@ defmodule KammerWeb.Router do
       live "/members", CommunityLive.Members, :index
       live "/settings", CommunityLive.Settings, :edit
       live "/events", EventLive.Index, :index
+      live "/events/new", EventLive.New, :new
+      live "/events/:event_id", EventLive.Show, :show
       live "/notifications", NotificationLive.Index, :index
     end
   end

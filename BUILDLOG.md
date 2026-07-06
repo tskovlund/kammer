@@ -233,3 +233,34 @@ ack modal; CSP added (Sobelow caught the §11 requirement).
 - *Oban in tests*: `testing: :manual` — the scheduled-post worker is unit-
   invisible; its behavior (hidden until published_at) is tested via the
   feed query.
+
+## 2026-07-06 — Step 5: events (SPEC §6, §16.5)
+
+**Domain** (`Kammer.Events`): timezone-aware events (stored UTC, event
+carries its wall-clock timezone; all-day and multi-day supported),
+member RSVPs yes/no/maybe (changeable, upserted), the shared comment
+engine (comments table now has exactly-one-of post_id/event_id,
+DB-constrained — one threading model, ADR 0007), 24-hour email reminders
+(Oban job that reschedules itself if the event moved; ICS attached),
+`Kammer.Calendar.ICS` — direct RFC 5545 generation (UTC datetimes,
+VALUE=DATE for all-day, escaping + 75-octet folding) with tests. Feeds:
+per-group and per-user (merged across member groups) behind lazily
+generated secret tokens; single-event ICS download authorized like the
+event page. Event visibility strictly follows the host group through
+Kammer.Authorization; creating events follows the posting policy.
+
+**Decisions / trims (with completion paths)**:
+- *ICS generated directly instead of the `icalendar` hex package*: the
+  lib is maintained (2026-02) but our VEVENT needs are ~150 lines with
+  full control of TZ semantics; SPEC §22 explicitly sanctions direct
+  generation. No dependency risk.
+- *Reminder timing fixed at 24h before start* for RSVP'd yes/maybe.
+  Per-user configurability lands with notification preferences (step 7):
+  add a `reminder_offset` preference consulted by EventReminderWorker.
+- *Cover image* (SPEC §6): deferred — wire-up is trivial once the files
+  step's picker exists (add `cover_stored_file_id` to events, upload in
+  the event form via the existing upload pipeline, render in header).
+- *Guest RSVP, recurrence, attendance matrix*: Phase 2 per SPEC §16.
+- *Event editing UI*: context supports update_event (tested); the UI
+  exposes delete only — add an edit form mirroring EventLive.New bound
+  to change_event. Recorded as a small gap to close in polish.

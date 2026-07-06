@@ -166,6 +166,7 @@ msgstr ""
 #: lib/kammer/accounts/user_notifier.ex:46
 #: lib/kammer/accounts/user_notifier.ex:73
 #: lib/kammer/accounts/user_notifier.ex:89
+#: lib/kammer/events/event_notifier.ex:34
 #, elixir-autogen, elixir-format
 msgid "Hi %{name},"
 msgstr ""
@@ -527,6 +528,7 @@ msgstr ""
 msgid "Browse groups"
 msgstr ""
 
+#: lib/kammer_web/live/event_live/show.ex:123
 #: lib/kammer_web/live/group_live/new.ex:71
 #: lib/kammer_web/live/group_live/settings.ex:74
 #, elixir-autogen, elixir-format
@@ -601,6 +603,7 @@ msgid "Create the first group — a band, a committee, a project."
 msgstr ""
 
 #: lib/kammer_web/live/community_live/new.ex:42
+#: lib/kammer_web/live/event_live/new.ex:79
 #: lib/kammer_web/live/group_live/new.ex:93
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Creating..."
@@ -634,6 +637,7 @@ msgstr ""
 
 #: lib/kammer_web/live/community_live/new.ex:33
 #: lib/kammer_web/live/community_live/settings.ex:33
+#: lib/kammer_web/live/event_live/new.ex:42
 #: lib/kammer_web/live/group_live/new.ex:41
 #: lib/kammer_web/live/group_live/settings.ex:45
 #, elixir-autogen, elixir-format
@@ -642,7 +646,7 @@ msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:173
 #: lib/kammer_web/components/layouts.ex:274
-#: lib/kammer_web/live/event_live/index.ex:24
+#: lib/kammer_web/live/event_live/index.ex:27
 #, elixir-autogen, elixir-format
 msgid "Events"
 msgstr ""
@@ -878,7 +882,7 @@ msgstr ""
 msgid "No posts yet"
 msgstr ""
 
-#: lib/kammer_web/live/event_live/index.ex:28
+#: lib/kammer_web/live/event_live/index.ex:51
 #, elixir-autogen, elixir-format
 msgid "No upcoming events"
 msgstr ""
@@ -942,7 +946,7 @@ msgstr ""
 msgid "Public groups"
 msgstr ""
 
-#: lib/kammer_web/live/event_live/index.ex:29
+#: lib/kammer_web/live/event_live/index.ex:52
 #, elixir-autogen, elixir-format
 msgid "Rehearsals, meetings, parties — they'll show up here."
 msgstr ""
@@ -1125,6 +1129,11 @@ msgstr ""
 #: lib/kammer_web/live/community_live/settings.ex:155
 #: lib/kammer_web/live/community_live/settings.ex:170
 #: lib/kammer_web/live/community_live/settings.ex:206
+#: lib/kammer_web/live/event_live/new.ex:137
+#: lib/kammer_web/live/event_live/show.ex:246
+#: lib/kammer_web/live/event_live/show.ex:258
+#: lib/kammer_web/live/event_live/show.ex:270
+#: lib/kammer_web/live/event_live/show.ex:286
 #: lib/kammer_web/live/feed_event_handlers.ex:196
 #: lib/kammer_web/live/group_live/new.ex:134
 #: lib/kammer_web/live/group_live/settings.ex:201
@@ -1311,6 +1320,7 @@ msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:518
 #: lib/kammer_web/components/feed_components.ex:569
+#: lib/kammer_web/live/event_live/show.ex:191
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
 msgstr ""
@@ -1397,6 +1407,7 @@ msgid "Posts from your groups appear here, newest first."
 msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:546
+#: lib/kammer_web/live/event_live/show.ex:210
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Remove this comment?"
 msgstr ""
@@ -1408,11 +1419,14 @@ msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:440
 #: lib/kammer_web/components/feed_components.ex:495
+#: lib/kammer_web/live/event_live/show.ex:148
+#: lib/kammer_web/live/event_live/show.ex:161
 #, elixir-autogen, elixir-format
 msgid "Reply"
 msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:492
+#: lib/kammer_web/live/event_live/show.ex:145
 #, elixir-autogen, elixir-format
 msgid "Reply…"
 msgstr ""
@@ -1450,6 +1464,7 @@ msgid "The group"
 msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:524
+#: lib/kammer_web/live/event_live/show.ex:196
 #, elixir-autogen, elixir-format
 msgid "This comment was removed."
 msgstr ""
@@ -1495,6 +1510,7 @@ msgid "Who's missing?"
 msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:437
+#: lib/kammer_web/live/event_live/show.ex:158
 #, elixir-autogen, elixir-format
 msgid "Write a comment…"
 msgstr ""
@@ -1533,4 +1549,169 @@ msgstr ""
 #: lib/kammer_web/components/feed_components.ex:255
 #, elixir-autogen, elixir-format
 msgid "multiple choice"
+msgstr ""
+
+#: lib/kammer/events/event_notifier.ex:36
+#, elixir-autogen, elixir-format
+msgid "%{title} starts %{time}."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:50
+#, elixir-autogen, elixir-format
+msgid "Add to calendar"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:113
+#: lib/kammer_web/live/event_live/show.ex:349
+#, elixir-autogen, elixir-format
+msgid "All day"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:66
+#, elixir-autogen, elixir-format
+msgid "All-day event"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:321
+#, elixir-autogen, elixir-format
+msgid "Can't make it"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:80
+#, elixir-autogen, elixir-format
+msgid "Create event"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:58
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Delete"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:55
+#, elixir-autogen, elixir-format
+msgid "Delete this event?"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:57
+#, elixir-autogen, elixir-format
+msgid "Ends (optional)"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:127
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Event created."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:282
+#, elixir-autogen, elixir-format
+msgid "Event deleted."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:231
+#, elixir-autogen, elixir-format
+msgid "Event not found."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:33
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Host group"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:319
+#, elixir-autogen, elixir-format
+msgid "I'm going"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:100
+#, elixir-autogen, elixir-format
+msgid "Join a group before creating events."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:70
+#, elixir-autogen, elixir-format
+msgid "Location"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:71
+#, elixir-autogen, elixir-format
+msgid "Location link (optional)"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:320
+#, elixir-autogen, elixir-format
+msgid "Maybe"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:34
+#: lib/kammer_web/live/event_live/index.ex:56
+#: lib/kammer_web/live/event_live/new.ex:27
+#, elixir-autogen, elixir-format
+msgid "New event"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:168
+#, elixir-autogen, elixir-format, fuzzy
+msgid "No comments."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:63
+#, elixir-autogen, elixir-format
+msgid "Past events"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:131
+#, elixir-autogen, elixir-format
+msgid "Pick a host group."
+msgstr ""
+
+#: lib/kammer/events/event_notifier.ex:32
+#, elixir-autogen, elixir-format
+msgid "Reminder: %{title}"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:48
+#, elixir-autogen, elixir-format
+msgid "Starts"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:78
+#, elixir-autogen, elixir-format
+msgid "Subscribe from your calendar app:"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:53
+#: lib/kammer_web/live/event_live/new.ex:61
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Time"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:74
+#, elixir-autogen, elixir-format
+msgid "Times are in your timezone (%{timezone})."
+msgstr ""
+
+#: lib/kammer_web/live/event_live/new.ex:38
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:105
+#, elixir-autogen, elixir-format
+msgid "can't make it"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:122
+#: lib/kammer_web/live/event_live/show.ex:95
+#, elixir-autogen, elixir-format
+msgid "going"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/show.ex:100
+#, elixir-autogen, elixir-format
+msgid "maybe"
+msgstr ""
+
+#: lib/kammer_web/live/event_live/index.ex:80
+#, elixir-autogen, elixir-format
+msgid "show my calendar link"
 msgstr ""

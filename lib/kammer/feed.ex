@@ -510,30 +510,41 @@ defmodule Kammer.Feed do
   end
 
   @doc """
-  Soft-deletes a comment (author) or hard-deletes (moderators).
+  Soft-deletes a comment (author) or hard-deletes (moderators). Handles
+  both post and event comments — one engine (ADR 0007).
   """
   @spec delete_comment(User.t(), Comment.t()) ::
           {:ok, Comment.t()} | {:error, :unauthorized}
   def delete_comment(%User{} = actor, %Comment{} = comment) do
-    post = Repo.get!(Post, comment.post_id)
-    group = get_group(post)
+    {group, broadcast_post_id} = comment_context(comment)
     relationship = Authorization.relationship(actor, group)
 
     cond do
       Authorization.can?(actor, :moderate_group, group, relationship) and
           comment.author_user_id != actor.id ->
-        Repo.delete(comment)
-        |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+        comment
+        |> Repo.delete()
+        |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
 
       comment.author_user_id == actor.id and is_nil(comment.deleted_at) ->
         comment
         |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
         |> Repo.update()
-        |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+        |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
 
       true ->
         {:error, :unauthorized}
     end
+  end
+
+  defp comment_context(%Comment{post_id: post_id}) when is_binary(post_id) do
+    post = Repo.get!(Post, post_id)
+    {get_group(post), post.id}
+  end
+
+  defp comment_context(%Comment{event_id: event_id}) do
+    event = Repo.get!(Kammer.Events.Event, event_id)
+    {Repo.get!(Group, event.group_id), event_id}
   end
 
   ## Reactions
