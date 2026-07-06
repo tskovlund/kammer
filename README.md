@@ -11,14 +11,12 @@ screen.
 
 - **No ads. No algorithm. Ever.** Feeds are strictly chronological plus
   pinned posts. What your community posts is what your community sees.
-- **Privacy-first.** No tracking, no analytics, no phone-home (the optional
-  release check is admin-only and toggleable). Honest about limits: we tell
-  you exactly what the server operator can and cannot see.
-- **Frictionless for non-members.** Guests RSVP to events, subscribe to
-  public feeds by email, and comment (approval-queued) with nothing but an
-  email address — no account, no app install.
-- **A joy to self-host.** One `docker-compose up`, a first-run wizard, built-in
-  backups, and a reproducible Nix-defined dev environment for contributors.
+- **Privacy-first.** No tracking, no analytics, no phone-home. Honest about
+  limits: we tell you exactly what the server operator can and cannot see.
+- **A joy to self-host.** One `docker compose up`, a first-run wizard, and a
+  reproducible Nix-defined dev environment for contributors. Built-in backups
+  and guest interactions (RSVP and comments without an account) are on the
+  roadmap (SPEC.md §16, Phase 2).
 - **Institutional memory is the product.** Groups archive instead of
   vanishing; files stay browsable; seasonal bands and committees keep their
   history.
@@ -30,7 +28,7 @@ screen.
   visibility presets (`private`, `community`, `public_link`, `public_listed`),
   join/posting/comment policies, invite links, roles, and **sealed groups**
   that even community admins cannot open.
-- **Feed** — Markdown posts, images (EXIF-stripped, HEIC-converted,
+- **Feed** — Markdown posts, images (re-encoded with metadata stripped,
   thumbnailed), polls, file attachments, emoji reactions, single-level
   comment threads, mentions, pinned + scheduled + acknowledgment-required
   posts, live updates.
@@ -48,13 +46,16 @@ screen.
 ```sh
 git clone https://github.com/tskovlund/kammer.git
 cd kammer
-cp .env.example .env      # edit: domain, SMTP
+cp .env.example .env      # edit: PHX_HOST, SECRET_KEY_BASE, POSTGRES_PASSWORD, SMTP_*
 docker compose up -d
 ```
 
-Then open your instance URL and follow the first-run wizard (the setup token
-is printed in the server logs). Ten minutes from zero to an invited,
-posting community — see `docs/` for the full tutorial.
+Then open your instance URL and follow the first-run wizard — the setup
+token is printed in the server logs (`docker compose logs app`). The wizard
+creates your operator account, instance settings, first community and group,
+an invite link, and (optionally) a removable demo community. Health checks
+live at `/healthz`; put a TLS proxy in front (see
+`docs/deploy/Caddyfile.example`).
 
 ## Contributing
 
@@ -76,9 +77,9 @@ floor, Conventional Commits) are enforced by hooks and CI.
   There is no end-to-end encryption.
 - No chat/DMs, no video upload, no document editing in v1 — see SPEC.md §16
   for the roadmap and deliberate non-goals.
-- Antivirus scanning of uploads (optional ClamAV) is signature-based and
-  imperfect; upload hardening (re-encoding, content-type validation) is
-  always on.
+- Upload hardening (image re-encoding, metadata stripping, content-type
+  validation, forced downloads for non-images) is always on; antivirus
+  scanning is not built in.
 
 ## License
 

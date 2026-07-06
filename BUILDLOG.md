@@ -509,3 +509,74 @@ uncommitted local unwrap shim was used for the smoke build only). The
 docker.yml CI job exercises the real standalone path on GitHub runners
 — if it fails there, either pin tailwind lower or refresh the vendored
 daisyui.js. Nothing committed depends on the shim.
+
+## 2026-07-06 — Phase 1 wrap-up
+
+### State
+
+All eight §16 Phase-1 steps are implemented, tested, and pushed:
+environment + toolchain, magic-link auth, communities/groups +
+authorization, feed, events, files, notifications, and first-run setup
+with demo data and legal pages. 314 tests + 15 properties, 0 failures;
+coverage 82.6% (floor 80); mix format, Credo strict, Dialyzer, Sobelow,
+hex.audit, and deps.audit all clean. EN + DA translations complete
+(0 empty, 0 fuzzy). Repo meta: README, CONTRIBUTING (three env entry
+paths), CONVENTIONS, Code of Conduct, SECURITY, AGPLv3 LICENSE,
+CHANGELOG, issue/PR templates, .editorconfig, 12 ADRs, and the GitHub
+automation set (CI, Docker image CI, Dependabot + auto-merge, CodeQL,
+dependency review, Gitleaks, importable branch-protection ruleset).
+
+### Running it
+
+Local development (any of the three entry paths):
+
+    direnv allow          # or: devbox shell, or: nix develop
+    mix setup             # deps, DB create+migrate, assets
+    mix phx.server        # http://localhost:4000 → /setup wizard
+                          # setup token appears in the server log
+
+Deployment:
+
+    cp .env.example .env  # set PHX_HOST, SECRET_KEY_BASE,
+                          # POSTGRES_PASSWORD, SMTP_* (or MAILER_ADAPTER=local
+                          # for a throwaway evaluation)
+    docker compose up -d
+    docker compose logs app   # copy the setup token, open /setup
+
+`--profile minio` adds S3-compatible storage; /healthz is the liveness
+probe; put TLS in front (docs/deploy/Caddyfile.example).
+
+### Priorities for human review
+
+1. **lib/kammer/authorization.ex** — every permission decision flows
+   through it. Read it against SPEC §3/§7/§11; the property suites
+   (test/kammer/authorization*_test.exs) encode the intended semantics,
+   so review those assumptions too, especially sealed-group reduction
+   and the file-visibility invariant.
+2. **priv/repo/migrations/** — schema/index/on_delete choices are load-
+   bearing and expensive to change after real data exists. Pre-release,
+   several early migrations were edited in place (documented per-step);
+   fine before v0.1, never after.
+3. **First-run + operator path** — lib/kammer/setup.ex (token handling,
+   env-wins, transactional completion) and the RequireSetup gate: this
+   is the front door of every fresh install.
+4. **Upload/media hardening** — lib/kammer/media.ex, file_controller.ex,
+   storage/local.ex traversal guard, CSP in router.ex; .sobelow-conf
+   documents three accepted findings — confirm you accept them too.
+5. **runtime.exs / compose / Dockerfile** — deployment surface. Note the
+   IPv4-default listener decision and the swoosh-local re-enable.
+6. **Rate limits and token lifetimes** — RateLimit budgets and magic-
+   link/session lifetimes are spec defaults; sanity-check for your
+   threat model.
+7. **Danish translations** — machine-authored by a non-native writer;
+   a native pass over priv/gettext/da would polish register and idiom
+   (especially the legal-page templates, which are scaffolds, not law).
+
+### Open items / trims carried out of Phase 1
+
+Every trim is recorded in its step entry above with a completion path.
+The headline ones: digests and guest interactions are Phase 2 per spec;
+push notifications need VAPID keys and a real browser to verify
+end-to-end; the standalone-tailwind × vendored-daisyUI question rides on
+the Docker CI job (see the smoke-test entry); backups/restore tooling is
+Phase 2 (do not launch real data without your own pg_dump cron).
