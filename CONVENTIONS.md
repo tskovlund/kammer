@@ -3,6 +3,21 @@
 Engineering standards for Kammer (SPEC.md §17). These are enforced by
 tooling wherever possible; the rest is enforced in review.
 
+## No hacks
+
+- **Proper fixes over workarounds — always.** A hack is a symptom of a
+  problem understood poorly or fixed in the wrong place. Solve at the
+  root cause, even when it costs more now.
+- If a workaround is genuinely unavoidable (an upstream bug, a platform
+  limitation outside our control), it must be **(1) justified in a
+  comment stating the external cause, (2) tracked** (issue or BUILDLOG
+  entry with a completion path), and **(3) removed** when the external
+  cause goes away. Untracked workarounds are treated as bugs.
+- The bar for the whole codebase: lean, documented where a constraint
+  can't be expressed in code (never narrating the obvious),
+  industry-standard, portfolio-worthy. When a shortcut is tempting,
+  the answer is to shrink the scope, not the quality.
+
 ## Language & naming
 
 - **Full, descriptive, unabbreviated identifiers** everywhere: schemas,
