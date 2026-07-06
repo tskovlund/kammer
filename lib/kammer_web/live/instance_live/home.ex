@@ -15,6 +15,22 @@ defmodule KammerWeb.InstanceLive.Home do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <div
+        :if={@operator? and not @imprint_published?}
+        class="alert alert-warning mb-4 text-sm"
+        role="status"
+      >
+        <.icon name="hero-exclamation-triangle" class="size-5" />
+        <span>
+          {gettext(
+            "Your imprint still shows the built-in template. Publish your own before inviting members."
+          )}
+        </span>
+        <.link navigate={~p"/legal/imprint/edit"} class="btn btn-sm">
+          {gettext("Edit imprint")}
+        </.link>
+      </div>
+
       <%= if @current_scope && @current_scope.user do %>
         <.header>
           {gettext("Your communities")}
@@ -38,6 +54,23 @@ defmodule KammerWeb.InstanceLive.Home do
             </div>
             <.icon name="hero-chevron-right" class="ml-auto size-5 text-base-content/40" />
           </.link>
+        </div>
+
+        <div
+          :if={@operator? and @demo_community}
+          class="mt-4 flex items-center justify-between gap-3 rounded-box border border-dashed border-base-300 p-4 text-sm"
+        >
+          <span class="text-base-content/70">
+            {gettext("The demo community “%{name}” is still around.", name: @demo_community.name)}
+          </span>
+          <button
+            type="button"
+            phx-click="purge_demo"
+            data-confirm={gettext("Delete the demo community and everything in it?")}
+            class="btn btn-outline btn-error btn-sm"
+          >
+            {gettext("Remove demo")}
+          </button>
         </div>
 
         <.empty_state
@@ -101,15 +134,46 @@ defmodule KammerWeb.InstanceLive.Home do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    my_communities =
+    {:ok, refresh(socket)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("purge_demo", _params, socket) do
+    case Kammer.Setup.DemoData.purge(socket.assigns.current_scope.user) do
+      {:ok, _community} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Demo community removed."))
+         |> refresh()}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not remove the demo community."))}
+    end
+  end
+
+  defp refresh(socket) do
+    user =
       case socket.assigns.current_scope do
-        %{user: user} when not is_nil(user) -> Communities.list_user_communities(user)
-        _anonymous -> []
+        %{user: %Kammer.Accounts.User{} = current_user} -> current_user
+        _anonymous -> nil
       end
 
-    {:ok,
-     socket
-     |> assign(:my_communities, my_communities)
-     |> assign(:listed_communities, Communities.list_public_communities())}
+    my_communities = if user, do: Communities.list_user_communities(user), else: []
+    operator? = user != nil and user.instance_operator
+
+    demo_community =
+      if operator? do
+        case Communities.get_instance_settings().demo_community_id do
+          nil -> nil
+          community_id -> Kammer.Repo.get(Kammer.Communities.Community, community_id)
+        end
+      end
+
+    socket
+    |> assign(:my_communities, my_communities)
+    |> assign(:listed_communities, Communities.list_public_communities())
+    |> assign(:operator?, operator?)
+    |> assign(:imprint_published?, not operator? or Kammer.Legal.published?("imprint"))
+    |> assign(:demo_community, demo_community)
   end
 end

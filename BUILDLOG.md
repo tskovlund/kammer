@@ -346,3 +346,69 @@ LiveView hook.
   post a mention from another account.
 - *iOS PWA icon*: manifest uses the scaffold SVG logo; real raster icons
   (192/512 PNG) should replace it before launch (cosmetic).
+
+## 2026-07-06 — Step 8: first-run setup, demo data, legal pages (SPEC §13, §16.8)
+
+**Hybrid setup (`Kammer.Setup`, ADR 0010)**: env always wins — at boot a
+temporary supervised Task applies INSTANCE_NAME / DEFAULT_LOCALE /
+COMMUNITY_CREATION_POLICY / STORAGE_POLICY and promotes OPERATOR_EMAIL,
+every start (declarative deploys stay declarative). While setup is
+pending, a random token goes to :persistent_term and the server logs;
+`KammerWeb.Plugs.RequireSetup` in the browser pipeline redirects
+everything (except /setup, /legal, /healthz, /dev) to the wizard.
+Wizard (/setup, LiveView): token → operator + instance settings → first
+community + first group + optional demo → done screen with the invite
+link. Completion is one transaction (operator, settings, community,
+group, community invite, demo, lock); the operator's first magic link is
+delivered after commit — it doubles as the live SMTP test (§13). The
+token is erased and `complete/2` refuses re-runs: the wizard locks
+permanently.
+
+**Demo data** (`Kammer.Setup.DemoData`): demo community ("demo" slug,
+distinct accent) + Welcome group + markdown-tour post + multiple-choice
+poll + example event one week out — all created through the ordinary
+contexts (same code paths as real usage), in the instance default
+locale. Tracked via instance_settings.demo_community_id; one-click
+"Remove demo" for operators on the instance home (FK nilify cleans the
+reference).
+
+**Legal pages** (`Kammer.Legal`): privacy + imprint, public at
+/legal/:key (reachable even pre-setup — they may be legally required),
+operator-editable at /legal/:key/edit. Until published, built-in
+fill-in templates render (deliberately scaffold-toned so no instance
+ships someone else's legal text) and operators see a nag banner on the
+instance home. /healthz answers "ok" after a live DB round-trip (no
+session, no gating) for compose healthchecks.
+
+**Tests**: setup context (env-wins, token, transactional completion +
+rollback, lock), demo create/idempotency/purge/authz, legal
+context+LiveViews+nag, and the ground-rule-8 E2E in
+`setup_wizard_test.exs`: gate redirect → wrong token refused → wizard →
+done screen → invite link parsed from the page → an invited member
+accepts, joins the group, posts. ConnCase now marks setup completed per
+test (`@tag :setup_pending` opts out). 314 tests + 15 properties, 0
+failures; coverage 82.7%.
+
+**Decisions / trims (with completion paths)**:
+- *Gate queries instance_settings per request* (single-row indexed
+  lookup) instead of caching completion in :persistent_term — caching
+  would leak across async tests and self-hosted scale doesn't need it.
+- *Wizard validates per-step only lightly* (email presence); everything
+  else surfaces as changeset errors on the final submit via flash.
+  Complete: per-field inline errors by threading changesets per step.
+- *Setup boot task is fire-and-forget* (restart: :temporary): on an
+  unmigrated database it logs a crash and the app still boots; the first
+  request fails visibly anyway. Releases run migrations before boot
+  (rel/overlays/bin/server).
+- *Legal templates are content, not law*: EN+DA fill-in scaffolds with
+  explicit "[Operator: …]" placeholders.
+- *Danish PO hygiene*: this merge surfaced 39 stale fuzzy entries from
+  earlier merges (wrong auto-guesses like "Remove"→"Log ud") — all
+  reviewed and fixed; 0 fuzzy, 0 empty remain.
+
+## 2026-07-06 — Founding-use-case wording removed (user request)
+
+All TÅGEKAMMERET references removed from README, UI placeholders, and
+tests ("Built with TÅGEKAMMERET…" claim deleted — the association is
+not involved at this point and nothing should be claimed). SPEC.md left
+verbatim: it is the owner's own input document, not a public claim.

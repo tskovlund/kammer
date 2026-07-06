@@ -27,6 +27,8 @@ defmodule Kammer.Communities.InstanceSettings do
     field :storage_policy, Ecto.Enum, values: [:unmetered, :quota], default: :unmetered
     field :setup_completed_at, :utc_datetime
 
+    belongs_to :demo_community, Kammer.Communities.Community
+
     timestamps(type: :utc_datetime)
   end
 

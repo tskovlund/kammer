@@ -44,3 +44,7 @@ config :phoenix,
 
 # Oban: run jobs inline/manually in tests.
 config :kammer, Oban, testing: :manual
+
+# The SQL sandbox owns all connections in test — first-run setup is
+# exercised explicitly by the setup tests instead of at boot.
+config :kammer, setup_on_boot: false

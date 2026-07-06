@@ -33,7 +33,24 @@ defmodule KammerWeb.ConnCase do
 
   setup tags do
     Kammer.DataCase.setup_sandbox(tags)
+
+    # First-run setup gates every browser route (SPEC §13); mark it done
+    # so routing tests exercise the normal, post-setup instance. Wizard
+    # tests opt out with `@tag :setup_pending`.
+    unless tags[:setup_pending] do
+      mark_setup_completed()
+    end
+
     {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  @doc """
+  Marks first-run setup as completed, bypassing the wizard gate.
+  """
+  def mark_setup_completed do
+    Kammer.Communities.get_instance_settings()
+    |> Ecto.Changeset.change(setup_completed_at: DateTime.utc_now(:second))
+    |> Kammer.Repo.update!()
   end
 
   @doc """

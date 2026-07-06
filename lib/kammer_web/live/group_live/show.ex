@@ -93,7 +93,12 @@ defmodule KammerWeb.GroupLive.Show do
           {gettext("Leave group")}
         </.button>
 
-        <form :if={@membership} phx-change="set_notification_level" class="ml-auto">
+        <form
+          :if={@membership}
+          id="notification-level-form"
+          phx-change="set_notification_level"
+          class="ml-auto"
+        >
           <label class="flex items-center gap-1.5 text-sm text-base-content/60">
             <.icon name="hero-bell" class="size-4" />
             <select name="level" class="select select-xs">

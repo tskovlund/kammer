@@ -1,0 +1,53 @@
+defmodule KammerWeb.LegalLive.Show do
+  @moduledoc """
+  Public legal page (SPEC §13): privacy policy or imprint. Shows the
+  operator's text, or the built-in template until one is published.
+  Instance operators get an edit link.
+  """
+
+  use KammerWeb, :live_view
+
+  alias Kammer.Legal
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <.header>
+        {Legal.title(@page.key)}
+        <:actions :if={@operator?}>
+          <.link navigate={~p"/legal/#{@page.key}/edit"} class="btn btn-ghost btn-sm">
+            <.icon name="hero-pencil-square" class="size-4" /> {gettext("Edit")}
+          </.link>
+        </:actions>
+      </.header>
+
+      <article class="prose prose-sm max-w-none dark:prose-invert">
+        {Phoenix.HTML.raw(Kammer.Markdown.to_html(@page.content_markdown))}
+      </article>
+    </Layouts.app>
+    """
+  end
+
+  @impl Phoenix.LiveView
+  def mount(%{"key" => key}, _session, socket) do
+    if Legal.valid_key?(key) do
+      operator? =
+        case socket.assigns.current_scope do
+          %{user: %{instance_operator: true}} -> true
+          _other -> false
+        end
+
+      {:ok,
+       socket
+       |> assign(:page, Legal.get_page(key))
+       |> assign(:page_title, Legal.title(key))
+       |> assign(:operator?, operator?)}
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, gettext("Page not found"))
+       |> push_navigate(to: ~p"/")}
+    end
+  end
+end

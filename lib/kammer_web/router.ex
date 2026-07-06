@@ -20,6 +20,7 @@ defmodule KammerWeb.Router do
     }
 
     plug :fetch_current_scope_for_user
+    plug KammerWeb.Plugs.RequireSetup
   end
 
   scope "/", KammerWeb do
@@ -29,6 +30,8 @@ defmodule KammerWeb.Router do
       on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
       live "/", InstanceLive.Home, :index
       live "/invite/:token", InviteLive.Show, :show
+      live "/setup", SetupLive.Wizard, :index
+      live "/legal/:key", LegalLive.Show, :show
     end
 
     get "/invite/:token/accept", InviteController, :accept
@@ -87,7 +90,13 @@ defmodule KammerWeb.Router do
       on_mount: [{KammerWeb.UserAuth, :require_authenticated}] do
       live "/communities/new", CommunityLive.New, :new
       live "/users/settings/servers", UserLive.Bookmarks, :index
+      live "/legal/:key/edit", LegalLive.Edit, :edit
     end
+  end
+
+  # Liveness probe for container orchestration — no session, no gating.
+  scope "/", KammerWeb do
+    get "/healthz", HealthController, :index
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
