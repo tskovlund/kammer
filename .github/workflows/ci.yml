@@ -125,3 +125,72 @@ jobs:
         run: nix develop --command mix coveralls
         env:
           MIX_ENV: test
+
+  # End-to-end smoke test: boots a real instance and drives the actual
+  # product flows (wizard, invite signups, posts, poll, event, files) in
+  # a headless browser — the same script that generates the README
+  # screenshots. The captured screenshots are uploaded as workflow
+  # artifacts so reviewers can eyeball the UI on any PR; committing them
+  # stays a deliberate, human-reviewed act (see docs/development.md).
+  smoke:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Cache Mix dependencies and build
+        uses: actions/cache@v6
+        with:
+          path: |
+            deps
+            _build
+            .nix-mix
+            .nix-hex
+          key: mix-dev-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-dev-${{ runner.os }}-
+
+      - name: Install Hex and rebar
+        run: nix develop --command bash -c "mix local.hex --force && mix local.rebar --force"
+
+      - name: Fetch dependencies
+        run: nix develop --command mix deps.get
+
+      - name: Compile and build assets
+        run: nix develop --command bash -c "mix compile && mix assets.setup && mix assets.build"
+
+      - name: Drive the real flows and capture screenshots
+        run: nix develop --command bash scripts/screenshots.sh
+        env:
+          # The runner's preinstalled Chrome; Playwright only drives it.
+          CHROMIUM_BIN: /usr/bin/google-chrome
+
+      - name: Upload screenshots as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots/
+          if-no-files-found: error

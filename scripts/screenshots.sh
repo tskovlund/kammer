@@ -6,6 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+[ -d scripts/node_modules ] || npm ci --prefix scripts --no-audit --no-fund
+
 echo "Resetting dev database (kammer_dev)…"
 mix ecto.drop --quiet 2>/dev/null || true
 mix ecto.create --quiet

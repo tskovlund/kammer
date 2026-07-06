@@ -61,18 +61,31 @@ never surprise you.
 
 ## What runs automatically
 
-| When            | What                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------- |
-| Every PR        | Quality gate, Prettier, commitlint, Docker build, CodeQL, dependency review, Gitleaks |
-| Merge to `main` | Docker image → `ghcr.io/tskovlund/kammer:main`; mix.lock → dependency graph           |
-| Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                           |
-| Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                |
+| When            | What                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Every PR        | Quality gate, smoke test (below), Prettier, commitlint, Docker build + boot check, CodeQL, dependency review, Gitleaks |
+| Merge to `main` | Docker image → `ghcr.io/tskovlund/kammer:main`; mix.lock → dependency graph                                            |
+| Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                            |
+| Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                 |
 
-## Screenshots
+## Smoke test & screenshots
 
-`docs/screenshots/` is generated, not hand-made: `scripts/screenshots.sh`
-resets the dev database, boots the server, drives the real first-run
-wizard and demo content in headless Chromium, and captures the shots
-the README embeds. Regenerate whenever a PR changes the UI visibly and
-commit the diff — reviewers then see visual changes in the PR like any
-other change.
+`scripts/screenshots.sh` resets the dev database, boots the server,
+and drives the real product flows in headless Chromium — first-run
+wizard, invite-link signups for a four-member community, posts,
+reactions, a poll, an acknowledgment post, an event with RSVPs, file
+uploads, a sealed group — then captures the shots the README embeds.
+Nothing is seeded behind the scenes.
+
+The same script runs in CI as the **Smoke test** check on every PR: if
+a flow breaks end to end, the PR goes red, and the captured screenshots
+are attached to the run as artifacts so reviewers can eyeball the UI
+without checking out the branch. The Docker workflow additionally boots
+the freshly built image against Postgres and requires `/healthz` to
+answer — proof the shipped artifact starts and migrates.
+
+Committed screenshots in `docs/screenshots/` are deliberately **not**
+auto-updated by CI: pixels are nondeterministic run to run, and binary
+churn on every merge would bloat history for nothing. Regenerate
+locally whenever a PR changes the UI visibly and commit the diff —
+reviewers then see visual changes in the PR like any other change.

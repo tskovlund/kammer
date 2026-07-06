@@ -11,15 +11,18 @@ below only exist in the GitHub UI, so they are documented here.
 The active ruleset is kept as importable JSON:
 [`rulesets/main-protection.json`](rulesets/main-protection.json)
 (Settings → Rules → Rulesets → Import a ruleset, should it ever need
-recreating). It enforces on the default branch:
+recreating — also the procedure when the JSON changes, e.g. a new
+required check: delete the old ruleset and re-import). It enforces on
+the default branch:
 
 - **Pull requests only** — no direct pushes; review threads must be
   resolved; **merge commits by default, squash allowed** (owner
   decision: honest history first, squash "can be okay sometimes";
   rebase stays off).
 - **Required checks before merge**: `Conventional Commits`,
-  `Format, Credo, Sobelow, audit, Dialyzer, tests`, and `Docker image`,
-  each up to date with the base branch (strict mode).
+  `Format, Credo, Sobelow, audit, Dialyzer, tests`, `Docker image`, and
+  `Smoke test` (the end-to-end driven flow), each up to date with the
+  base branch (strict mode).
 - **No force pushes, no deletion.**
 - Required approvals is set to **0** deliberately: this is currently a
   single-maintainer project and requiring 1 approval would deadlock
