@@ -155,6 +155,31 @@ defmodule Kammer.Groups do
   end
 
   @doc """
+  Updates the group's feature toggles (ADR 0016). Group admins only;
+  the changeset forces the feed on. Disabling hides — it never deletes.
+  """
+  @spec update_group_features(User.t(), Group.t(), [atom() | String.t()]) ::
+          {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def update_group_features(%User{} = actor, %Group{} = group, features) when is_list(features) do
+    with :ok <- Authorization.authorize(actor, :manage_group, group) do
+      features =
+        Enum.map(features, fn
+          feature when is_atom(feature) -> feature
+          feature when is_binary(feature) -> safe_feature_atom(feature)
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      group
+      |> Group.features_changeset(%{features: features})
+      |> Repo.update()
+    end
+  end
+
+  defp safe_feature_atom(feature) do
+    Enum.find(Group.features(), fn known -> Atom.to_string(known) == feature end)
+  end
+
+  @doc """
   Archives a group (read-only, hidden from active lists — SPEC §3).
   """
   @spec archive_group(User.t(), Group.t()) ::

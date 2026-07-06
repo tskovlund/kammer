@@ -23,6 +23,13 @@ defmodule Kammer.Groups.Group do
   @posting_policies [:all_members, :admins_only]
   @comment_policies [:members, :members_and_guests, :off]
 
+  # Per-group feature toggles (ADR 0016). The feed is not toggleable —
+  # a group without a wall is a different product concept. New features
+  # join this list shipping OFF by default (the migration default only
+  # covers the launch set).
+  @features [:feed, :events, :files]
+  @toggleable_features [:events, :files]
+
   @slug_format ~r/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -37,6 +44,7 @@ defmodule Kammer.Groups.Group do
     field :comment_policy, Ecto.Enum, values: @comment_policies, default: :members
     field :approval_queue, :boolean, default: false
     field :sealed, :boolean, default: false
+    field :features, {:array, Ecto.Enum}, values: @features, default: @features
     field :archived_at, :utc_datetime
     field :ics_token, :string, redact: true
     field :storage_quota_bytes, :integer
@@ -90,6 +98,36 @@ defmodule Kammer.Groups.Group do
     |> validate_required([:name, :slug])
     |> shared_validations()
   end
+
+  @doc """
+  Changeset for the feature toggles (ADR 0016). The feed is forced on;
+  order is normalized so the column is canonical.
+  """
+  @spec features_changeset(t(), map()) :: Ecto.Changeset.t()
+  def features_changeset(group, attrs) do
+    group
+    |> cast(attrs, [:features])
+    |> update_change(:features, fn features ->
+      Enum.filter(@features, fn feature ->
+        feature == :feed or feature in features
+      end)
+    end)
+  end
+
+  @doc "All known features, in canonical order."
+  @spec features() :: [atom()]
+  def features, do: @features
+
+  @doc "Features a group admin may turn on and off."
+  @spec toggleable_features() :: [atom()]
+  def toggleable_features, do: @toggleable_features
+
+  @doc """
+  Whether a feature is enabled for the group. Permission questions
+  belong to `Kammer.Authorization` — this is the raw fact it consults.
+  """
+  @spec feature_enabled?(t(), atom()) :: boolean()
+  def feature_enabled?(%__MODULE__{features: features}, feature), do: feature in features
 
   @doc """
   Changeset for archiving or unarchiving (SPEC §3: read-only, hidden from

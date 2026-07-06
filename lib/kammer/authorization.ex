@@ -323,13 +323,27 @@ defmodule Kammer.Authorization do
 
   @doc """
   Whether account-less guests may RSVP to events in this group
-  (SPEC §6): only on the public presets, never once archived. This is
-  the whole guest-RSVP policy — the web layer adds email verification
-  and rate limits, not permissions.
+  (SPEC §6): only on the public presets, never once archived, and only
+  while the events feature is enabled. This is the whole guest-RSVP
+  policy — the web layer adds email verification and rate limits, not
+  permissions.
   """
   @spec can_guest_rsvp?(Group.t()) :: boolean()
   def can_guest_rsvp?(%Group{} = group) do
-    group.visibility in [:public_link, :public_listed] and not Group.archived?(group)
+    group.visibility in [:public_link, :public_listed] and not Group.archived?(group) and
+      Group.feature_enabled?(group, :events)
+  end
+
+  @doc """
+  The feature gate (ADR 0016): a disabled feature is indistinguishable
+  from one the actor may not see — the same `:not_found` surface, so
+  toggling leaks nothing. Contexts call this beside `authorize/3` for
+  feature-scoped resources (events, group file spaces); the feed is not
+  toggleable.
+  """
+  @spec feature_gate(Group.t(), atom()) :: :ok | {:error, :not_found}
+  def feature_gate(%Group{} = group, feature) do
+    if Group.feature_enabled?(group, feature), do: :ok, else: {:error, :not_found}
   end
 
   defp author?(actor, %{author_user_id: author_user_id}) do

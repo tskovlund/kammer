@@ -52,7 +52,10 @@ defmodule KammerWeb.GroupLive.Show do
         </:subtitle>
         <:actions>
           <.link
-            :if={@membership || @permissions.manage}
+            :if={
+              (@membership || @permissions.manage) &&
+                Kammer.Groups.Group.feature_enabled?(@group, :files)
+            }
             navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/files"}
             class="btn btn-ghost btn-sm"
           >
