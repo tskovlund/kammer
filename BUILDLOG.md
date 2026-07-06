@@ -412,3 +412,100 @@ All TÅGEKAMMERET references removed from README, UI placeholders, and
 tests ("Built with TÅGEKAMMERET…" claim deleted — the association is
 not involved at this point and nothing should be claimed). SPEC.md left
 verbatim: it is the owner's own input document, not a public claim.
+
+## 2026-07-06 — Repository automation (user request)
+
+Everything configurable from inside the repo is now committed;
+everything that needs an admin click is documented in
+docs/github/repo-settings.md with an importable ruleset.
+
+- **Branch protection as code**: docs/github/rulesets/main-protection.json
+  (import under Settings → Rules): PRs only, no force push/deletion,
+  linear history, required checks = commitlint + the full quality gate +
+  the Docker image build, strict (up-to-date with main). Required
+  approvals deliberately 0 — single-maintainer repos deadlock at 1
+  (you can't approve your own PR); raise when a second maintainer joins.
+- **Dependabot over Renovate** (.github/dependabot.yml): mix,
+  github-actions, docker, and tooling/commitlint npm — weekly, grouped
+  minor+patch. Renovate rejected for now: it needs an app install or a
+  PAT secret, neither of which can be granted from a code contribution;
+  Dependabot activates from the committed file alone.
+- **Auto-merge for Dependabot** (dependabot-automerge.yml): non-major
+  updates get `gh pr merge --auto` and merge only after required checks
+  pass; majors wait for a human. Needs "Allow auto-merge" on (documented).
+- **CodeQL** (codeql.yml): javascript-typescript + actions languages —
+  CodeQL has no Elixir support; Elixir scanning remains Sobelow +
+  hex.audit + deps.audit in ci.yml on every PR.
+- **Dependency review** (dependency-review.yml): blocks PRs introducing
+  known-vulnerable deps (fail on high+).
+- **Secret scanning** (secret-scan.yml): Gitleaks over full history on
+  push/PR/weekly, complementing GitHub's native secret scanning + push
+  protection (UI toggles documented). Gitleaks is free for personal
+  accounts; orgs need a license (noted in the workflow).
+- **Docker image CI** (docker.yml): builds the release image on every
+  PR — the sandbox building this repo cannot run the full docker build
+  (github.com egress is blocked, which is where tailwind/esbuild/MDEx
+  precompiled artifacts live), so CI is where the Dockerfile is
+  continuously verified; pushes to ghcr.io/<repo> on main and v* tags
+  with GHA layer caching.
+- **CODEOWNERS**: @tskovlund owns everything → automatic review routing.
+- **Least privilege**: top-level `permissions: contents: read` on all
+  workflows; jobs that need more (GHCR push, code-scanning upload,
+  auto-merge) declare it per-job.
+- **Not added**: OpenSSF Scorecard (hard-fails on private repos — add
+  when public); stale-bot (hostile to community contributors).
+
+## 2026-07-06 — Release smoke test (ground rule 8) and what it caught
+
+A full `docker build` cannot run inside this sandbox (github.com egress
+is blocked, and the tailwind/esbuild standalone binaries plus MDEx
+precompiled NIF download from GitHub releases) — the new docker.yml CI
+job builds the image on GitHub's unrestricted runners instead. The
+honest in-sandbox equivalent was executed end to end:
+
+1. `MIX_ENV=prod mix release` with real bundled assets (tailwind CLI
+   obtained via npm — registry.npmjs.org is reachable — through an
+   uncommitted local shim; esbuild binary comes from npm normally).
+2. Booted `bin/server` against a fresh Postgres database: migrations
+   ran on boot, env-provided INSTANCE_NAME/OPERATOR_EMAIL were applied,
+   the setup token was printed to the log.
+3. Drove the wizard in a real Chromium (Playwright): gate redirect from
+   `/` → wrong token refused → token accepted → env-prefilled operator
+   email + instance name → first community/group + demo data → done
+   screen with invite link → /setup locked (bounces home) → landing
+   renders. Demo community, 2 posts, poll, and event verified in the
+   database; magic-link email delivered without error.
+4. /healthz 200 with DB round-trip; /legal/* reachable pre-setup;
+   `docker compose config` (with and without --profile minio) validates.
+
+Real defects found and fixed by this exercise:
+- **Prod release could not boot without IPv6**: the generated
+  runtime.exs bound `::` and died with :eafnosupport on IPv6-less
+  hosts/containers. Now binds IPv4-any by default; PHX_LISTEN_IPV6=true
+  restores the dual-stack listener.
+- **MAILER_ADAPTER=local crashed in releases**: prod.exs sets
+  `config :swoosh, local: false`, so Swoosh's in-memory mailbox process
+  was never started and the first delivery crashed the wizard *after*
+  the setup transaction had committed. runtime.exs now re-enables
+  swoosh-local for that adapter.
+- **A failing mailer took the wizard down post-commit**: magic-link
+  delivery is now rescued; the done screen shows a warning ("setup
+  itself succeeded, request a new link on the sign-in page") instead of
+  crashing — the SMTP test reports rather than destroys.
+- **Scaffold leftovers in root layout**: the phx.gen.auth email/menu
+  header rendered above every §21 shell, and the tab title carried a
+  " · Phoenix Framework" suffix. Both removed (three tests asserted on
+  the scaffold header and were updated to assert on the real shell).
+- **Stale flash carried across wizard steps** — cleared on each step
+  transition.
+- **Dialyzer spec drift** on Setup.complete/2 (exact-map spec missing
+  group_slug/magic_link_sent narrowed the ok-tuple to nothing).
+
+Known open question (recorded, not resolvable in-sandbox): whether the
+standalone tailwind 4.3.0 binary loads the vendored daisyUI bundles the
+way the npm CLI 4.1/4.3 does not (the npm loader rejects their CJS
+`{default:}` export with "plugin does not accept options"; an
+uncommitted local unwrap shim was used for the smoke build only). The
+docker.yml CI job exercises the real standalone path on GitHub runners
+— if it fails there, either pin tailwind lower or refresh the vendored
+daisyui.js. Nothing committed depends on the shim.

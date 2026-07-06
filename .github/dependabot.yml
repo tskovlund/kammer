@@ -1,0 +1,62 @@
+# Automated dependency updates (see docs/github/repo-settings.md for the
+# reasoning and the settings that must be enabled in the GitHub UI).
+#
+# Dependabot over Renovate: it needs no app installation and no token
+# secret, so it works the moment this file lands. Renovate would offer
+# richer grouping; revisit if update volume ever becomes noisy.
+version: 2
+
+updates:
+  - package-ecosystem: mix
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Copenhagen
+    groups:
+      elixir-minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 10
+    labels: [dependencies]
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Copenhagen
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: [dependencies]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Copenhagen
+    labels: [dependencies]
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: npm
+    directory: /tooling/commitlint
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Copenhagen
+    groups:
+      commitlint:
+        patterns: ["*"]
+    labels: [dependencies]
+    commit-message:
+      prefix: ci
