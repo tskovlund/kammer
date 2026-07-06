@@ -57,15 +57,17 @@ if config_env() == :prod do
 
   config :kammer, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # Bind IPv4-any by default: hosts and containers with IPv6 disabled
+  # fail to boot on the dual-stack `::` bind (:eafnosupport). Set
+  # PHX_LISTEN_IPV6=true for a dual-stack listener.
+  listen_ip =
+    if System.get_env("PHX_LISTEN_IPV6") in ~w(true 1),
+      do: {0, 0, 0, 0, 0, 0, 0, 0},
+      else: {0, 0, 0, 0}
+
   config :kammer, KammerWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
-    http: [
-      # Enable IPv6 and bind on all interfaces.
-      # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
-      # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
-    ],
+    http: [ip: listen_ip],
     secret_key_base: secret_key_base
 
   # ## SSL Support
@@ -131,7 +133,10 @@ if config_env() == :prod do
 
     "local" ->
       # Dev-style in-memory mailbox; useful for evaluating without SMTP.
+      # Swoosh only starts the mailbox process when :local is true (prod.exs
+      # disables it for real adapters), so re-enable it here.
       config :kammer, Kammer.Mailer, adapter: Swoosh.Adapters.Local
+      config :swoosh, local: true
 
     other ->
       raise "unsupported MAILER_ADAPTER #{inspect(other)} (expected \"smtp\" or \"local\")"

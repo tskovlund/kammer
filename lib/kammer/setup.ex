@@ -90,7 +90,14 @@ defmodule Kammer.Setup do
   Returns the created invite token and the operator user.
   """
   @spec complete(map(), (String.t() -> String.t())) ::
-          {:ok, %{operator: User.t(), invite_token: String.t(), community_slug: String.t()}}
+          {:ok,
+           %{
+             operator: User.t(),
+             invite_token: String.t(),
+             community_slug: String.t(),
+             group_slug: String.t(),
+             magic_link_sent: boolean()
+           }}
           | {:error, term()}
   def complete(attrs, magic_link_url_fun) do
     if completed?() do
@@ -122,14 +129,29 @@ defmodule Kammer.Setup do
     |> case do
       {:ok, result} ->
         # Outside the transaction: deliver the operator's first magic link —
-        # the live SMTP test (SPEC §13).
-        Accounts.deliver_login_instructions(result.operator, magic_link_url_fun)
+        # the live SMTP test (SPEC §13). Setup is already committed, so a
+        # broken mailer must not crash the wizard: surface it instead.
         :persistent_term.erase(@setup_token_key)
-        {:ok, result}
+        {:ok, Map.put(result, :magic_link_sent, deliver_magic_link(result, magic_link_url_fun))}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp deliver_magic_link(result, magic_link_url_fun) do
+    case Accounts.deliver_login_instructions(result.operator, magic_link_url_fun) do
+      {:ok, _email} -> true
+      {:error, _reason} -> false
+    end
+  rescue
+    error ->
+      Logger.error("setup: magic-link delivery failed: #{Exception.message(error)}")
+      false
+  catch
+    :exit, reason ->
+      Logger.error("setup: magic-link delivery failed: #{inspect(reason)}")
+      false
   end
 
   defp ensure_operator(%{"email" => email} = operator_attrs) when is_binary(email) do

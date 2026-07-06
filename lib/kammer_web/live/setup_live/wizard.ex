@@ -167,9 +167,14 @@ defmodule KammerWeb.SetupLive.Wizard do
           <div class="rounded-box border border-base-200 p-6 text-center">
             <.icon name="hero-check-circle" class="mx-auto size-10 text-success" />
             <h2 class="mt-2 text-lg font-semibold">{gettext("Your instance is ready")}</h2>
-            <p class="mt-1 text-sm text-base-content/70">
+            <p :if={@magic_link_sent} class="mt-1 text-sm text-base-content/70">
               {gettext(
                 "We emailed you a sign-in link — receiving it confirms your email delivery works."
+              )}
+            </p>
+            <p :if={!@magic_link_sent} class="mt-2 rounded-field bg-warning/15 p-3 text-sm">
+              {gettext(
+                "Your sign-in email could not be sent — check the SMTP settings and request a new link on the sign-in page. Setup itself succeeded."
               )}
             </p>
           </div>
@@ -224,14 +229,15 @@ defmodule KammerWeb.SetupLive.Wizard do
        |> assign(:operator_display_name, "")
        |> assign(:instance_params, %{})
        |> assign(:invite_url, nil)
-       |> assign(:community_slug, nil)}
+       |> assign(:community_slug, nil)
+       |> assign(:magic_link_sent, true)}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_event("verify_token", %{"token" => token}, socket) do
     if Setup.valid_token?(String.trim(token)) do
-      {:noreply, assign(socket, :step, :instance)}
+      {:noreply, socket |> clear_flash() |> assign(:step, :instance)}
     else
       {:noreply,
        put_flash(
@@ -250,6 +256,7 @@ defmodule KammerWeb.SetupLive.Wizard do
     else
       {:noreply,
        socket
+       |> clear_flash()
        |> assign(:operator_email, operator_email)
        |> assign(:operator_display_name, String.trim(params["operator_display_name"] || ""))
        |> assign(
@@ -284,9 +291,11 @@ defmodule KammerWeb.SetupLive.Wizard do
       {:ok, result} ->
         {:noreply,
          socket
+         |> clear_flash()
          |> assign(:step, :done)
          |> assign(:invite_url, url(~p"/invite/#{result.invite_token}"))
-         |> assign(:community_slug, result.community_slug)}
+         |> assign(:community_slug, result.community_slug)
+         |> assign(:magic_link_sent, result.magic_link_sent)}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, completion_error(reason))}
