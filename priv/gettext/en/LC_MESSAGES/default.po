@@ -37,7 +37,7 @@ msgstr ""
 msgid "close"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:141
+#: lib/kammer_web/live/user_live/settings.ex:151
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr ""
@@ -62,12 +62,12 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:69
+#: lib/kammer_web/live/user_live/settings.ex:79
 #, elixir-autogen, elixir-format
 msgid "Change email"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:68
+#: lib/kammer_web/live/user_live/settings.ex:78
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr ""
@@ -140,17 +140,17 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:231
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
-#: lib/kammer_web/live/user_live/settings.ex:63
+#: lib/kammer_web/live/user_live/settings.ex:73
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:95
+#: lib/kammer_web/live/user_live/settings.ex:105
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:92
+#: lib/kammer_web/live/user_live/settings.ex:102
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr ""
@@ -171,6 +171,7 @@ msgstr ""
 #: lib/kammer/accounts/user_notifier.ex:46
 #: lib/kammer/accounts/user_notifier.ex:73
 #: lib/kammer/accounts/user_notifier.ex:89
+#: lib/kammer/digests.ex:153
 #: lib/kammer/events/event_notifier.ex:34
 #: lib/kammer/guests/guest_notifier.ex:31
 #: lib/kammer/guests/guest_notifier.ex:56
@@ -223,7 +224,7 @@ msgstr ""
 msgid "Magic link is invalid or it has expired."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:77
+#: lib/kammer_web/live/user_live/settings.ex:87
 #, elixir-autogen, elixir-format
 msgid "Manage devices and sessions"
 msgstr ""
@@ -243,7 +244,7 @@ msgstr ""
 msgid "No password needed — we email you a sign-in link."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:169
+#: lib/kammer_web/live/user_live/settings.ex:179
 #, elixir-autogen, elixir-format
 msgid "Profile updated."
 msgstr ""
@@ -255,14 +256,14 @@ msgstr ""
 msgid "Revoke"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:53
+#: lib/kammer_web/live/user_live/settings.ex:63
 #, elixir-autogen, elixir-format
 msgid "Save profile"
 msgstr ""
 
 #: lib/kammer_web/live/community_live/settings.ex:58
 #: lib/kammer_web/live/group_live/settings.ex:102
-#: lib/kammer_web/live/user_live/settings.ex:52
+#: lib/kammer_web/live/user_live/settings.ex:62
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr ""
@@ -545,7 +546,7 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:277
 #: lib/kammer_web/live/group_live/new.ex:72
 #: lib/kammer_web/live/group_live/settings.ex:75
-#: lib/kammer_web/live/search_live/index.ex:62
+#: lib/kammer_web/live/search_live/index.ex:63
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr ""
@@ -666,7 +667,7 @@ msgstr ""
 #: lib/kammer_web/components/layouts.ex:291
 #: lib/kammer_web/live/event_live/index.ex:28
 #: lib/kammer_web/live/group_live/settings.ex:442
-#: lib/kammer_web/live/search_live/index.ex:79
+#: lib/kammer_web/live/search_live/index.ex:81
 #, elixir-autogen, elixir-format
 msgid "Events"
 msgstr ""
@@ -854,7 +855,7 @@ msgid "Mentions, replies, and event reminders will land here."
 msgstr ""
 
 #: lib/kammer_web/live/user_live/bookmarks.ex:20
-#: lib/kammer_web/live/user_live/settings.ex:80
+#: lib/kammer_web/live/user_live/settings.ex:90
 #, elixir-autogen, elixir-format
 msgid "My other servers"
 msgstr ""
@@ -916,6 +917,7 @@ msgstr ""
 
 #: lib/kammer_web/live/group_live/new.ex:76
 #: lib/kammer_web/live/group_live/settings.ex:79
+#: lib/kammer_web/live/user_live/settings.ex:57
 #, elixir-autogen, elixir-format
 msgid "Off"
 msgstr ""
@@ -1370,6 +1372,7 @@ msgstr ""
 msgid "Delete permanently"
 msgstr ""
 
+#: lib/kammer/digests.ex:205
 #: lib/kammer_web/components/feed_components.ex:632
 #: lib/kammer_web/components/feed_components.ex:649
 #: lib/kammer_web/live/assignment_live/show.ex:197
@@ -1378,7 +1381,7 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
 #: lib/kammer_web/live/search_live/index.ex:54
-#: lib/kammer_web/live/search_live/index.ex:71
+#: lib/kammer_web/live/search_live/index.ex:72
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
 msgstr ""
@@ -3143,7 +3146,7 @@ msgstr ""
 msgid "recorded by %{name}"
 msgstr ""
 
-#: lib/kammer_web/live/search_live/index.ex:96
+#: lib/kammer_web/live/search_live/index.ex:98
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Nothing found"
 msgstr ""
@@ -3164,7 +3167,44 @@ msgstr ""
 msgid "Search posts, comments, and events…"
 msgstr ""
 
-#: lib/kammer_web/live/search_live/index.ex:97
+#: lib/kammer_web/live/search_live/index.ex:99
 #, elixir-autogen, elixir-format
 msgid "Try different words — search looks at posts, comments, and events."
+msgstr ""
+
+#: lib/kammer/digests.ex:178
+#, elixir-autogen, elixir-format, fuzzy
+msgid "%{count} new post"
+msgid_plural "%{count} new posts"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/kammer/digests.ex:141
+#, elixir-autogen, elixir-format
+msgid "%{product} digest: what you missed"
+msgstr ""
+
+#: lib/kammer/digests.ex:196
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Coming up this week"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:58
+#, elixir-autogen, elixir-format
+msgid "Daily"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:55
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Email digest"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:59
+#, elixir-autogen, elixir-format
+msgid "Weekly (Mondays)"
+msgstr ""
+
+#: lib/kammer/digests.ex:157
+#, elixir-autogen, elixir-format
+msgid "You get this because your digest setting is on — change it under Account settings."
 msgstr ""

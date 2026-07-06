@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Added
 
+- Email digests, strictly opt-in: choose daily or weekly (Mondays)
+  under Account settings and get one calm summary — new posts across
+  your groups and the coming week's events, in your language and
+  timezone. Quiet periods send nothing: no email is better than a
+  hollow one.
 - Backups (SPEC §14): `mix kammer.backup` /
   `Kammer.Release.backup/1` write a restorable snapshot — pg_dump
   custom-format database dump plus an uploads tarball — with optional

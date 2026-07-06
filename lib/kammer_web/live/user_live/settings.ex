@@ -49,6 +49,16 @@ defmodule KammerWeb.UserLive.Settings do
           label={gettext("Timezone")}
           placeholder="Europe/Copenhagen"
         />
+        <.input
+          field={@settings_form[:digest_frequency]}
+          type="select"
+          label={gettext("Email digest")}
+          options={[
+            {gettext("Off"), "off"},
+            {gettext("Daily"), "daily"},
+            {gettext("Weekly (Mondays)"), "weekly"}
+          ]}
+        />
         <.button variant="primary" phx-disable-with={gettext("Saving...")}>
           {gettext("Save profile")}
         </.button>

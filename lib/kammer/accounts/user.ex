@@ -23,6 +23,8 @@ defmodule Kammer.Accounts.User do
     field :display_name, :string
     field :locale, :string, default: "en"
     field :timezone, :string, default: "Etc/UTC"
+    field :digest_frequency, Ecto.Enum, values: [:off, :daily, :weekly], default: :off
+    field :last_digest_at, :utc_datetime
     field :instance_operator, :boolean, default: false
     field :ics_token, :string, redact: true
     field :confirmed_at, :utc_datetime
@@ -75,7 +77,7 @@ defmodule Kammer.Accounts.User do
   @spec settings_changeset(t(), map()) :: Ecto.Changeset.t()
   def settings_changeset(user, attrs) do
     user
-    |> cast(attrs, [:display_name, :locale, :timezone])
+    |> cast(attrs, [:display_name, :locale, :timezone, :digest_frequency])
     |> validate_display_name()
     |> validate_inclusion(:locale, allowed_locales())
     |> validate_timezone()

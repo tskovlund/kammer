@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **407 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **412 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -279,9 +279,13 @@ atom. Danish register: a slot is "en tjans".
   `/c/:slug/search` (anonymous searches the public face). Remaining:
   **file search** (must ride the folder-permission invariant) + file
   text extraction.
-- **Email digests + newsletter subscriptions**: Oban cron; per-user
-  digest frequency; newsletter = guest_identities subscribing to
-  public groups (ADR 0013 again); content-minimized email mode.
+- 🟡 **Email digests + newsletter subscriptions** — digests SHIPPED:
+  `Kammer.Digests` + `DigestWorker` (06:00 UTC cron; daily every day,
+  weekly on Mondays; `last_digest_at` double-send guard; empty period
+  sends nothing; own posts excluded), `digest_frequency` on users
+  (opt-in, `:off` default), setting under Account settings. Remaining:
+  **newsletter subscriptions** (guest_identities subscribing to public
+  groups, ADR 0013 again) and the content-minimized email mode.
 - ✅ **Backups** — SHIPPED: `Kammer.Backups` (pg_dump custom format +
   uploads tar, optional age encryption, per-kind pruning),
   `mix kammer.backup`, `Kammer.Release.backup/1`, nightly Oban cron
