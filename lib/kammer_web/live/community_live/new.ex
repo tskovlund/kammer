@@ -27,7 +27,7 @@ defmodule KammerWeb.CommunityLive.New do
           field={@form[:slug]}
           type="text"
           label={gettext("Web address")}
-          placeholder="taagekammeret"
+          placeholder="our-club"
           required
         />
         <.input field={@form[:description]} type="textarea" label={gettext("Description")} />

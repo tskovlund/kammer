@@ -45,12 +45,12 @@ defmodule KammerWeb.CommunityFlowsTest do
       {:ok, _lv, html} =
         lv
         |> form("#community_form", %{
-          "community" => %{"name" => "TÅGEKAMMERET", "slug" => "taagekammeret"}
+          "community" => %{"name" => "Sample Club", "slug" => "sample-club"}
         })
         |> render_submit()
         |> follow_redirect(conn)
 
-      assert html =~ "TÅGEKAMMERET"
+      assert html =~ "Sample Club"
     end
 
     test "plain users are redirected under operators_only policy", %{conn: conn} do
