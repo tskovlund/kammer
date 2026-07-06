@@ -1,0 +1,189 @@
+defmodule Kammer.CommunitiesTest do
+  use Kammer.DataCase, async: true
+
+  import Kammer.AccountsFixtures
+  import Kammer.CommunitiesFixtures
+
+  alias Kammer.Communities
+
+  describe "instance settings" do
+    test "get_instance_settings/0 creates the singleton on first access" do
+      settings = Communities.get_instance_settings()
+      assert settings.community_creation_policy == :operators_only
+      assert settings.id == Communities.get_instance_settings().id
+    end
+
+    test "update_instance_settings/2 requires an instance operator" do
+      operator = instance_operator_fixture()
+      plain_user = user_fixture()
+
+      assert {:error, :unauthorized} =
+               Communities.update_instance_settings(plain_user, %{instance_name: "Nope"})
+
+      assert {:ok, settings} =
+               Communities.update_instance_settings(operator, %{instance_name: "Kammer Test"})
+
+      assert settings.instance_name == "Kammer Test"
+    end
+  end
+
+  describe "create_community/2" do
+    test "operators can always create; creator becomes owner" do
+      operator = instance_operator_fixture()
+
+      assert {:ok, community} =
+               Communities.create_community(operator, %{name: "TK", slug: unique_slug("tk")})
+
+      membership = Communities.get_membership(community, operator)
+      assert membership.role == :owner
+    end
+
+    test "plain users are refused under operators_only policy" do
+      plain_user = user_fixture()
+
+      assert {:error, :unauthorized} =
+               Communities.create_community(plain_user, %{name: "TK", slug: unique_slug("tk")})
+    end
+
+    test "plain users can create under any_user policy" do
+      allow_any_user_community_creation()
+      plain_user = user_fixture()
+
+      assert {:ok, _community} =
+               Communities.create_community(plain_user, %{name: "TK", slug: unique_slug("tk")})
+    end
+
+    test "rejects reserved and malformed slugs" do
+      operator = instance_operator_fixture()
+
+      assert {:error, changeset} =
+               Communities.create_community(operator, %{name: "X", slug: "admin"})
+
+      assert "is reserved" in errors_on(changeset).slug
+
+      assert {:error, changeset} =
+               Communities.create_community(operator, %{name: "X", slug: "Bad Slug!"})
+
+      assert changeset.errors[:slug]
+    end
+  end
+
+  describe "update_community/3" do
+    test "admins may update, members may not" do
+      {community, owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+
+      assert {:error, :unauthorized} =
+               Communities.update_community(member, community, %{name: "Renamed"})
+
+      assert {:ok, updated} = Communities.update_community(owner, community, %{name: "Renamed"})
+      assert updated.name == "Renamed"
+    end
+  end
+
+  describe "membership management" do
+    test "list_members/2 is restricted to community members" do
+      {community, owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+      outsider = user_fixture()
+
+      assert {:error, :unauthorized} = Communities.list_members(outsider, community)
+      assert {:ok, members} = Communities.list_members(member, community)
+      assert length(members) == 2
+      assert {:ok, _members} = Communities.list_members(owner, community)
+    end
+
+    test "update_member_role/4: admins manage roles, owner transitions need owner" do
+      {community, owner} = community_with_owner_fixture()
+      admin = member_fixture(community, :admin)
+      member = member_fixture(community)
+      member_membership = Communities.get_membership(community, member)
+
+      assert {:ok, promoted} =
+               Communities.update_member_role(admin, community, member_membership, :admin)
+
+      assert promoted.role == :admin
+
+      # An admin cannot grant Owner...
+      assert {:error, :unauthorized} =
+               Communities.update_member_role(admin, community, promoted, :owner)
+
+      # ...but the owner can.
+      assert {:ok, %{role: :owner}} =
+               Communities.update_member_role(owner, community, promoted, :owner)
+    end
+
+    test "remove_member/3: self-leave and admin removal; owners cannot be removed" do
+      {community, owner} = community_with_owner_fixture()
+      admin = member_fixture(community, :admin)
+      member = member_fixture(community)
+      other_member = member_fixture(community)
+
+      # Members can leave.
+      membership = Communities.get_membership(community, member)
+      assert {:ok, _deleted} = Communities.remove_member(member, community, membership)
+      assert Communities.get_membership(community, member) == nil
+
+      # A plain member cannot remove someone else.
+      other_membership = Communities.get_membership(community, other_member)
+      third_member = member_fixture(community)
+
+      assert {:error, :unauthorized} =
+               Communities.remove_member(third_member, community, other_membership)
+
+      # Admins can remove members.
+      assert {:ok, _deleted} = Communities.remove_member(admin, community, other_membership)
+
+      # Owners cannot be removed, even by themselves.
+      owner_membership = Communities.get_membership(community, owner)
+
+      assert {:error, :owner_cannot_leave} =
+               Communities.remove_member(owner, community, owner_membership)
+    end
+
+    test "removing a community member also removes their group memberships" do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community)
+      member = group_member_fixture(group)
+
+      membership = Communities.get_membership(community, member)
+      assert {:ok, _deleted} = Communities.remove_member(member, community, membership)
+      assert Kammer.Groups.get_membership(group, member) == nil
+    end
+  end
+
+  describe "cross-instance bookmarks" do
+    test "full lifecycle, scoped to the owner" do
+      user = user_fixture()
+      other_user = user_fixture()
+
+      assert {:ok, bookmark} =
+               Communities.create_instance_bookmark(user, %{
+                 name: "Band server",
+                 url: "https://kammer.example.org"
+               })
+
+      assert [%{name: "Band server"}] = Communities.list_instance_bookmarks(user)
+      assert [] = Communities.list_instance_bookmarks(other_user)
+
+      # Deleting someone else's bookmark is a silent no-op.
+      assert :ok = Communities.delete_instance_bookmark(other_user, bookmark.id)
+      assert [_bookmark] = Communities.list_instance_bookmarks(user)
+
+      assert :ok = Communities.delete_instance_bookmark(user, bookmark.id)
+      assert [] = Communities.list_instance_bookmarks(user)
+    end
+
+    test "rejects non-http URLs" do
+      user = user_fixture()
+
+      assert {:error, changeset} =
+               Communities.create_instance_bookmark(user, %{
+                 name: "Bad",
+                 url: "javascript:alert(1)"
+               })
+
+      assert changeset.errors[:url]
+    end
+  end
+end

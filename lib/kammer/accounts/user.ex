@@ -23,6 +23,7 @@ defmodule Kammer.Accounts.User do
     field :display_name, :string
     field :locale, :string, default: "en"
     field :timezone, :string, default: "Etc/UTC"
+    field :instance_operator, :boolean, default: false
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
