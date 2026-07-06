@@ -9,6 +9,6 @@ institutional memory too.
 
 | RFC                                                               | Status   | Question it answers                               |
 | ----------------------------------------------------------------- | -------- | ------------------------------------------------- |
-| [0001 — JSON API shape](0001-json-api-shape.md)                   | Proposed | What contract the v2 API freezes, and when        |
-| [0002 — Cross-community home](0002-cross-community-home.md)       | Proposed | What "one merged view" means on a single instance |
-| [0003 — Per-group feature toggles](0003-group-feature-toggles.md) | Proposed | How groups show only the tools they use           |
+| [0001 — JSON API shape](0001-json-api-shape.md)                   | Accepted | What contract the v2 API freezes, and when        |
+| [0002 — Cross-community home](0002-cross-community-home.md)       | Accepted | What "one merged view" means on a single instance |
+| [0003 — Per-group feature toggles](0003-group-feature-toggles.md) | Accepted | How groups show only the tools they use           |

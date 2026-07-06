@@ -41,7 +41,12 @@ jobs:
           --health-retries 10
 
     steps:
+      # The push token (fine-grained PAT, contents-only) instead of the
+      # default GITHUB_TOKEN so the screenshot commit triggers CI like
+      # any other push — GITHUB_TOKEN pushes deliberately trigger none.
       - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
 
       - uses: DeterminateSystems/nix-installer-action@v22
 
@@ -75,12 +80,6 @@ jobs:
         env:
           CHROMIUM_BIN: /usr/bin/google-chrome
 
-      # Pushes made with the default GITHUB_TOKEN deliberately trigger
-      # no workflows (GitHub's recursion guard), so CI will NOT re-run
-      # on the commit this step creates. Follow-up: push any real commit
-      # to the branch afterwards (or re-run checks manually) so required
-      # checks cover the final head. A fine-grained PAT secret would
-      # remove this step — tracked in the repo issues.
       - name: Commit the diff back to this branch
         run: |
           if git diff --quiet -- docs/screenshots; then

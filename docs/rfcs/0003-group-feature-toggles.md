@@ -1,6 +1,6 @@
 # RFC 0003: Per-group feature toggles
 
-**Status:** Proposed · **Decides:** how groups show only the tools they
+**Status:** Accepted (ADR 0016) as designed (#21) · **Decides:** how groups show only the tools they
 actually use, ahead of the collaborative track (issue #17).
 
 ## Context

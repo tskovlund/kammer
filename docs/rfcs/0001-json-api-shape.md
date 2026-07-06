@@ -1,6 +1,6 @@
 # RFC 0001: JSON API shape (v2)
 
-**Status:** Proposed · **Decides:** the contract the v2 API freezes, and the
+**Status:** Accepted (ADR 0014) — owner overrode the season gate: “implement v1 now”, churn accepted (#20) · **Decides:** the contract the v2 API freezes, and the
 gate that must open before freezing it.
 
 ## Context
