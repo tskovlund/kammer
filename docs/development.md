@@ -87,5 +87,9 @@ answer — proof the shipped artifact starts and migrates.
 Committed screenshots in `docs/screenshots/` are deliberately **not**
 auto-updated by CI: pixels are nondeterministic run to run, and binary
 churn on every merge would bloat history for nothing. Regenerate
-locally whenever a PR changes the UI visibly and commit the diff —
-reviewers then see visual changes in the PR like any other change.
+whenever a PR changes the UI visibly and commit the diff — reviewers
+then see visual changes in the PR like any other change. Two ways to
+regenerate: run `scripts/screenshots.sh` locally, or dispatch the
+**Screenshots** workflow on the PR branch (Actions → Screenshots →
+Run workflow) — it runs the same script and commits the diff back to
+the branch. Same deliberate act, works from a phone.

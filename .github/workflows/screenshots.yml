@@ -1,0 +1,88 @@
+# Regenerates docs/screenshots/ on demand and commits the diff back to
+# the branch it was dispatched on. Deliberately manual (workflow_dispatch
+# only): committed screenshots are a reviewed, human-triggered act — CI
+# never auto-updates them (see docs/development.md) — but the
+# regeneration itself can run here, where a full toolchain exists, so it
+# also works away from a laptop. Never dispatched on main: main only
+# moves through pull requests.
+name: Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    name: Regenerate screenshots
+    if: github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Cache Mix dependencies and build
+        uses: actions/cache@v6
+        with:
+          path: |
+            deps
+            _build
+            .nix-mix
+            .nix-hex
+          key: mix-dev-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-dev-${{ runner.os }}-
+
+      - name: Install Hex and rebar
+        run: nix develop --command bash -c "mix local.hex --force && mix local.rebar --force"
+
+      - name: Fetch dependencies
+        run: nix develop --command mix deps.get
+
+      - name: Compile and build assets
+        run: nix develop --command bash -c "mix compile && mix assets.setup && mix assets.build"
+
+      - name: Regenerate screenshots
+        run: nix develop --command bash scripts/screenshots.sh
+        env:
+          CHROMIUM_BIN: /usr/bin/google-chrome
+
+      - name: Commit the diff back to this branch
+        run: |
+          if git diff --quiet -- docs/screenshots; then
+            echo "screenshots unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git commit -m "docs(screenshots): regenerate via screenshots workflow"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
