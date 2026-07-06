@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **363 tests + 17 properties, zero failures**, ~83%
+Suite at handoff: **371 tests + 17 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -224,13 +224,20 @@ PRs, one issue tracker; separate repo only if CI time hurts). Then:
 
 ### 5.5 Collaborative track (issue #17 — accepted; sub-issue each)
 
-Order: **signup slots → availability polls → assignments → decisions
-log → rotations.** Design bullets live in #17; each feature: file a
-sub-issue, RFC only if the design deviates from #17's bullets, feature
-atom in the group toggles (OFF by default), EN+DA, property tests on
-any visibility rule. Slots specifically: `event_slots` (event_id,
-title, capacity) + `slot_claims` (slot_id, user_id XOR
-guest_identity_id) — guests claim via the ADR 0013 flow.
+Order: **signup slots ✅ (#37) → availability polls → assignments →
+decisions log → rotations.** Design bullets live in #17; each
+feature: file a sub-issue, RFC only if the design deviates from #17's
+bullets, feature atom in the group toggles (OFF by default), EN+DA,
+property tests on any visibility rule.
+
+Slots SHIPPED (#37): `event_slots` + `slot_claims` (user XOR guest,
+exactly-one — claims die with their person, delete_all both ways),
+capacity under a `FOR UPDATE` row lock (race-tested), guest claims
+via the ADR 0013 two-link flow on the `can_guest_rsvp?` policy,
+manage page + claim-on-sign-in + erasure extended, slots in the API
+event serializer. No new feature atom — slots live inside `events`
+(an event without slots shows nothing); assignments WILL get its own
+atom. Danish register: a slot is "en tjans".
 
 ### 5.6 Remaining Phase 2 (SPEC §16 list, descending priority)
 

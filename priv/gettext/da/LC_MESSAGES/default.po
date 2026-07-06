@@ -137,6 +137,7 @@ msgstr "Visningsnavn"
 
 #: lib/kammer_web/components/feed_components.ex:469
 #: lib/kammer_web/live/event_live/show.ex:137
+#: lib/kammer_web/live/event_live/show.ex:229
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
 #: lib/kammer_web/live/user_live/settings.ex:63
@@ -171,10 +172,12 @@ msgstr "Engelsk"
 #: lib/kammer/accounts/user_notifier.ex:73
 #: lib/kammer/accounts/user_notifier.ex:89
 #: lib/kammer/events/event_notifier.ex:34
-#: lib/kammer/guests/guest_notifier.ex:30
-#: lib/kammer/guests/guest_notifier.ex:55
-#: lib/kammer/guests/guest_notifier.ex:95
-#: lib/kammer/guests/guest_notifier.ex:121
+#: lib/kammer/guests/guest_notifier.ex:31
+#: lib/kammer/guests/guest_notifier.ex:56
+#: lib/kammer/guests/guest_notifier.ex:101
+#: lib/kammer/guests/guest_notifier.ex:129
+#: lib/kammer/guests/guest_notifier.ex:159
+#: lib/kammer/guests/guest_notifier.ex:185
 #: lib/kammer/notifications/notification_email.ex:31
 #, elixir-autogen, elixir-format
 msgid "Hi %{name},"
@@ -539,7 +542,7 @@ msgstr "Bogmærker til andre Kammer-servere, du er med på."
 msgid "Browse groups"
 msgstr "Gennemse grupper"
 
-#: lib/kammer_web/live/event_live/show.ex:155
+#: lib/kammer_web/live/event_live/show.ex:275
 #: lib/kammer_web/live/group_live/new.ex:72
 #: lib/kammer_web/live/group_live/settings.ex:75
 #, elixir-autogen, elixir-format
@@ -1145,11 +1148,16 @@ msgstr "Dig"
 #: lib/kammer_web/live/community_live/settings.ex:171
 #: lib/kammer_web/live/community_live/settings.ex:207
 #: lib/kammer_web/live/event_live/new.ex:141
-#: lib/kammer_web/live/event_live/show.ex:286
-#: lib/kammer_web/live/event_live/show.ex:298
-#: lib/kammer_web/live/event_live/show.ex:310
-#: lib/kammer_web/live/event_live/show.ex:344
-#: lib/kammer_web/live/event_live/show.ex:360
+#: lib/kammer_web/live/event_live/show.ex:406
+#: lib/kammer_web/live/event_live/show.ex:418
+#: lib/kammer_web/live/event_live/show.ex:430
+#: lib/kammer_web/live/event_live/show.ex:464
+#: lib/kammer_web/live/event_live/show.ex:479
+#: lib/kammer_web/live/event_live/show.ex:490
+#: lib/kammer_web/live/event_live/show.ex:506
+#: lib/kammer_web/live/event_live/show.ex:520
+#: lib/kammer_web/live/event_live/show.ex:552
+#: lib/kammer_web/live/event_live/show.ex:568
 #: lib/kammer_web/live/feed_event_handlers.ex:214
 #: lib/kammer_web/live/file_live/index.ex:342
 #: lib/kammer_web/live/file_live/index.ex:374
@@ -1300,7 +1308,7 @@ msgstr "Vedhæft"
 
 #: lib/kammer_web/components/feed_components.ex:68
 #: lib/kammer_web/components/feed_components.ex:570
-#: lib/kammer_web/live/guest_live/manage.ex:62
+#: lib/kammer_web/live/guest_live/manage.ex:86
 #, elixir-autogen, elixir-format
 msgid "Awaiting approval"
 msgstr "Afventer godkendelse"
@@ -1348,7 +1356,8 @@ msgstr "Slet permanent"
 
 #: lib/kammer_web/components/feed_components.ex:632
 #: lib/kammer_web/components/feed_components.ex:649
-#: lib/kammer_web/live/event_live/show.ex:223
+#: lib/kammer_web/live/event_live/show.ex:343
+#: lib/kammer_web/live/event_live/show.ex:637
 #: lib/kammer_web/live/file_live/index.ex:295
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
@@ -1437,7 +1446,7 @@ msgid "Posts from your groups appear here, newest first."
 msgstr "Opslag fra dine grupper vises her, nyeste først."
 
 #: lib/kammer_web/components/feed_components.ex:615
-#: lib/kammer_web/live/event_live/show.ex:242
+#: lib/kammer_web/live/event_live/show.ex:362
 #, elixir-autogen, elixir-format
 msgid "Remove this comment?"
 msgstr "Fjern denne kommentar?"
@@ -1449,14 +1458,14 @@ msgstr "Fjern dette opslag? En markering bliver stående i tråden."
 
 #: lib/kammer_web/components/feed_components.ex:446
 #: lib/kammer_web/components/feed_components.ex:541
-#: lib/kammer_web/live/event_live/show.ex:180
-#: lib/kammer_web/live/event_live/show.ex:193
+#: lib/kammer_web/live/event_live/show.ex:300
+#: lib/kammer_web/live/event_live/show.ex:313
 #, elixir-autogen, elixir-format
 msgid "Reply"
 msgstr "Svar"
 
 #: lib/kammer_web/components/feed_components.ex:538
-#: lib/kammer_web/live/event_live/show.ex:177
+#: lib/kammer_web/live/event_live/show.ex:297
 #, elixir-autogen, elixir-format
 msgid "Reply…"
 msgstr "Svar…"
@@ -1494,7 +1503,7 @@ msgid "The group"
 msgstr "Gruppen"
 
 #: lib/kammer_web/components/feed_components.ex:574
-#: lib/kammer_web/live/event_live/show.ex:228
+#: lib/kammer_web/live/event_live/show.ex:348
 #, elixir-autogen, elixir-format
 msgid "This comment was removed."
 msgstr "Denne kommentar blev fjernet."
@@ -1541,7 +1550,7 @@ msgstr "Hvem mangler?"
 
 #: lib/kammer_web/components/feed_components.ex:443
 #: lib/kammer_web/components/feed_components.ex:479
-#: lib/kammer_web/live/event_live/show.ex:190
+#: lib/kammer_web/live/event_live/show.ex:310
 #, elixir-autogen, elixir-format
 msgid "Write a comment…"
 msgstr "Skriv en kommentar…"
@@ -1593,7 +1602,7 @@ msgid "Add to calendar"
 msgstr "Føj til kalender"
 
 #: lib/kammer_web/live/event_live/index.ex:114
-#: lib/kammer_web/live/event_live/show.ex:441
+#: lib/kammer_web/live/event_live/show.ex:661
 #, elixir-autogen, elixir-format
 msgid "All day"
 msgstr "Hele dagen"
@@ -1603,8 +1612,8 @@ msgstr "Hele dagen"
 msgid "All-day event"
 msgstr "Heldagsbegivenhed"
 
-#: lib/kammer_web/live/event_live/show.ex:413
-#: lib/kammer_web/live/guest_live/manage.ex:156
+#: lib/kammer_web/live/event_live/show.ex:621
+#: lib/kammer_web/live/guest_live/manage.ex:195
 #, elixir-autogen, elixir-format
 msgid "Can't make it"
 msgstr "Kan ikke komme"
@@ -1635,12 +1644,12 @@ msgstr "Slutter (valgfrit)"
 msgid "Event created."
 msgstr "Begivenhed oprettet."
 
-#: lib/kammer_web/live/event_live/show.ex:356
+#: lib/kammer_web/live/event_live/show.ex:564
 #, elixir-autogen, elixir-format
 msgid "Event deleted."
 msgstr "Begivenhed slettet."
 
-#: lib/kammer_web/live/event_live/show.ex:271
+#: lib/kammer_web/live/event_live/show.ex:391
 #, elixir-autogen, elixir-format
 msgid "Event not found."
 msgstr "Begivenheden blev ikke fundet."
@@ -1650,8 +1659,8 @@ msgstr "Begivenheden blev ikke fundet."
 msgid "Host group"
 msgstr "Værtsgruppe"
 
-#: lib/kammer_web/live/event_live/show.ex:411
-#: lib/kammer_web/live/guest_live/manage.ex:154
+#: lib/kammer_web/live/event_live/show.ex:619
+#: lib/kammer_web/live/guest_live/manage.ex:193
 #, elixir-autogen, elixir-format
 msgid "I'm going"
 msgstr "Jeg kommer"
@@ -1671,8 +1680,8 @@ msgstr "Sted"
 msgid "Location link (optional)"
 msgstr "Link til sted (valgfrit)"
 
-#: lib/kammer_web/live/event_live/show.ex:412
-#: lib/kammer_web/live/guest_live/manage.ex:155
+#: lib/kammer_web/live/event_live/show.ex:620
+#: lib/kammer_web/live/guest_live/manage.ex:194
 #, elixir-autogen, elixir-format
 msgid "Maybe"
 msgstr "Måske"
@@ -1684,7 +1693,7 @@ msgstr "Måske"
 msgid "New event"
 msgstr "Ny begivenhed"
 
-#: lib/kammer_web/live/event_live/show.ex:200
+#: lib/kammer_web/live/event_live/show.ex:320
 #, elixir-autogen, elixir-format
 msgid "No comments."
 msgstr "Ingen kommentarer."
@@ -2367,7 +2376,7 @@ msgid_plural "+%{count} guests"
 msgstr[0] "+%{count} gæst"
 msgstr[1] "+%{count} gæster"
 
-#: lib/kammer_web/live/event_live/show.ex:330
+#: lib/kammer_web/live/event_live/show.ex:450
 #, elixir-autogen, elixir-format
 msgid "Almost there — follow the link we just emailed you to confirm your RSVP."
 msgstr "Næsten i mål — følg linket, vi lige har sendt til din e-mail, for at bekræfte din tilmelding."
@@ -2377,33 +2386,34 @@ msgstr "Næsten i mål — følg linket, vi lige har sendt til din e-mail, for a
 msgid "Answer"
 msgstr "Svar"
 
-#: lib/kammer/guests/guest_notifier.ex:59
+#: lib/kammer/guests/guest_notifier.ex:60
 #, elixir-autogen, elixir-format
 msgid "Change your answer, or erase everything we store about you, anytime:"
 msgstr "Skift dit svar, eller slet alt, hvad vi gemmer om dig, når som helst:"
 
-#: lib/kammer/guests/guest_notifier.ex:28
+#: lib/kammer/guests/guest_notifier.ex:29
 #, elixir-autogen, elixir-format
 msgid "Confirm your RSVP to %{title}"
 msgstr "Bekræft din tilmelding til %{title}"
 
-#: lib/kammer_web/live/guest_live/manage.ex:84
+#: lib/kammer_web/live/guest_live/manage.ex:108
 #, elixir-autogen, elixir-format
 msgid "Erase my data"
 msgstr "Slet mine data"
 
-#: lib/kammer_web/live/guest_live/manage.ex:81
+#: lib/kammer_web/live/guest_live/manage.ex:105
 #, elixir-autogen, elixir-format
 msgid "Erase your data? This cannot be undone."
 msgstr "Slet dine data? Dette kan ikke fortrydes."
 
-#: lib/kammer/guests/guest_notifier.ex:32
+#: lib/kammer/guests/guest_notifier.ex:33
 #, elixir-autogen, elixir-format
 msgid "Follow this link to confirm your RSVP to %{title}:"
 msgstr "Følg dette link for at bekræfte din tilmelding til %{title}:"
 
-#: lib/kammer/guests/guest_notifier.ex:36
-#: lib/kammer/guests/guest_notifier.ex:103
+#: lib/kammer/guests/guest_notifier.ex:37
+#: lib/kammer/guests/guest_notifier.ex:107
+#: lib/kammer/guests/guest_notifier.ex:167
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this, you can ignore this email — nothing is recorded until you confirm."
 msgstr "Hvis du ikke har bedt om dette, kan du ignorere denne e-mail — intet gemmes, før du bekræfter."
@@ -2413,7 +2423,8 @@ msgstr "Hvis du ikke har bedt om dette, kan du ignorere denne e-mail — intet g
 msgid "No account needed — we'll email you a confirmation link."
 msgstr "Ingen konto nødvendig — vi sender dig et bekræftelseslink på e-mail."
 
-#: lib/kammer_web/live/event_live/show.ex:341
+#: lib/kammer_web/live/event_live/show.ex:461
+#: lib/kammer_web/live/event_live/show.ex:549
 #, elixir-autogen, elixir-format
 msgid "Please check your name and email address."
 msgstr "Tjek venligst dit navn og din e-mailadresse."
@@ -2438,36 +2449,39 @@ msgstr "Sender..."
 msgid "Thanks %{name} — your RSVP to %{title} is confirmed. We emailed you a calendar file and a link to change it."
 msgstr "Tak, %{name} — din tilmelding til %{title} er bekræftet. Vi har sendt dig en kalenderfil og et link til at ændre den."
 
+#: lib/kammer_web/controllers/guest_claim_controller.ex:35
 #: lib/kammer_web/controllers/guest_comment_controller.ex:31
 #: lib/kammer_web/controllers/guest_rsvp_controller.ex:31
-#: lib/kammer_web/live/guest_live/manage.ex:106
-#: lib/kammer_web/live/guest_live/manage.ex:123
-#: lib/kammer_web/live/guest_live/manage.ex:136
+#: lib/kammer_web/live/guest_live/manage.ex:131
+#: lib/kammer_web/live/guest_live/manage.ex:148
+#: lib/kammer_web/live/guest_live/manage.ex:161
+#: lib/kammer_web/live/guest_live/manage.ex:174
 #, elixir-autogen, elixir-format
 msgid "That link is invalid or has expired."
 msgstr "Linket er ugyldigt eller udløbet."
 
-#: lib/kammer_web/live/event_live/show.ex:335
+#: lib/kammer_web/live/event_live/show.ex:455
+#: lib/kammer_web/live/event_live/show.ex:545
 #, elixir-autogen, elixir-format
 msgid "Too many attempts. Please try again later."
 msgstr "For mange forsøg. Prøv igen senere."
 
-#: lib/kammer/guests/guest_notifier.ex:53
+#: lib/kammer/guests/guest_notifier.ex:54
 #, elixir-autogen, elixir-format
 msgid "Your RSVP to %{title}"
 msgstr "Din tilmelding til %{title}"
 
-#: lib/kammer/guests/guest_notifier.ex:57
+#: lib/kammer/guests/guest_notifier.ex:58
 #, elixir-autogen, elixir-format
 msgid "Your RSVP to %{title} is recorded."
 msgstr "Din tilmelding til %{title} er registreret."
 
-#: lib/kammer_web/live/guest_live/manage.ex:120
+#: lib/kammer_web/live/guest_live/manage.ex:145
 #, elixir-autogen, elixir-format
 msgid "Your answer is updated."
 msgstr "Dit svar er opdateret."
 
-#: lib/kammer_web/live/guest_live/manage.ex:132
+#: lib/kammer_web/live/guest_live/manage.ex:170
 #, elixir-autogen, elixir-format
 msgid "Your data has been erased."
 msgstr "Dine data er slettet."
@@ -2563,7 +2577,7 @@ msgstr "Versionshistorik"
 msgid "current"
 msgstr "nuværende"
 
-#: lib/kammer/guests/guest_notifier.ex:101
+#: lib/kammer/guests/guest_notifier.ex:165
 #, elixir-autogen, elixir-format
 msgid "A moderator reviews guest comments before they appear."
 msgstr "En moderator gennemgår gæstekommentarer, før de vises."
@@ -2578,7 +2592,7 @@ msgstr "Tjek din e-mail — følg linket dér for at indsende din kommentar."
 msgid "Comment as a guest"
 msgstr "Kommentér som gæst"
 
-#: lib/kammer/guests/guest_notifier.ex:93
+#: lib/kammer/guests/guest_notifier.ex:157
 #, elixir-autogen, elixir-format
 msgid "Confirm your comment in %{group}"
 msgstr "Bekræft din kommentar i %{group}"
@@ -2588,7 +2602,7 @@ msgstr "Bekræft din kommentar i %{group}"
 msgid "Everything this instance stores about you, %{name}"
 msgstr "Alt, denne instans gemmer om dig, %{name}"
 
-#: lib/kammer/guests/guest_notifier.ex:97
+#: lib/kammer/guests/guest_notifier.ex:161
 #, elixir-autogen, elixir-format
 msgid "Follow this link to submit your comment in %{group}:"
 msgstr "Følg dette link for at indsende din kommentar i %{group}:"
@@ -2613,12 +2627,12 @@ msgstr "Afvis"
 msgid "Reject and delete this comment?"
 msgstr "Afvis og slet denne kommentar?"
 
-#: lib/kammer_web/live/guest_live/manage.ex:65
+#: lib/kammer_web/live/guest_live/manage.ex:89
 #, elixir-autogen, elixir-format
 msgid "Removed"
 msgstr "Fjernet"
 
-#: lib/kammer/guests/guest_notifier.ex:125
+#: lib/kammer/guests/guest_notifier.ex:189
 #, elixir-autogen, elixir-format
 msgid "See your comments and RSVPs, or erase everything we store about you, anytime:"
 msgstr "Se dine kommentarer og tilmeldinger, eller slet alt, vi gemmer om dig, når som helst:"
@@ -2638,7 +2652,7 @@ msgstr "Tak %{name} — din kommentar er indsendt og vises, når en moderator ha
 msgid "Too many attempts — please try again later."
 msgstr "For mange forsøg — prøv igen senere."
 
-#: lib/kammer_web/live/guest_live/manage.ex:74
+#: lib/kammer_web/live/guest_live/manage.ex:98
 #, elixir-autogen, elixir-format
 msgid "We store your name, email address, and what you see above — nothing else. Erasing removes all of it immediately."
 msgstr "Vi gemmer dit navn, din e-mailadresse og det, du ser ovenfor — intet andet. Sletning fjerner det hele med det samme."
@@ -2653,17 +2667,17 @@ msgstr "Vi sender dig et bekræftelseslink på e-mail. En moderator godkender g�
 msgid "Your RSVPs"
 msgstr "Dine tilmeldinger"
 
-#: lib/kammer/guests/guest_notifier.ex:119
+#: lib/kammer/guests/guest_notifier.ex:183
 #, elixir-autogen, elixir-format
 msgid "Your comment in %{group}"
 msgstr "Din kommentar i %{group}"
 
-#: lib/kammer/guests/guest_notifier.ex:123
+#: lib/kammer/guests/guest_notifier.ex:187
 #, elixir-autogen, elixir-format
 msgid "Your comment in %{group} is submitted and will appear once a moderator approves it."
 msgstr "Din kommentar i %{group} er indsendt og vises, når en moderator har godkendt den."
 
-#: lib/kammer_web/live/guest_live/manage.ex:56
+#: lib/kammer_web/live/guest_live/manage.ex:80
 #, elixir-autogen, elixir-format
 msgid "Your comments"
 msgstr "Dine kommentarer"
@@ -2674,6 +2688,130 @@ msgid "Your guest data"
 msgstr "Dine gæstedata"
 
 #: lib/kammer_web/components/feed_components.ex:462
+#: lib/kammer_web/live/event_live/show.ex:222
 #, elixir-autogen, elixir-format
 msgid "Your name"
 msgstr "Dit navn"
+
+#: lib/kammer_web/live/event_live/show.ex:635
+#, elixir-autogen, elixir-format
+msgid "%{name} (guest)"
+msgstr "%{name} (gæst)"
+
+#: lib/kammer_web/live/event_live/show.ex:169
+#, elixir-autogen, elixir-format
+msgid "%{taken} of %{capacity} taken"
+msgstr "%{taken} af %{capacity} taget"
+
+#: lib/kammer_web/live/event_live/show.ex:267
+#, elixir-autogen, elixir-format
+msgid "Add slot"
+msgstr "Tilføj tjans"
+
+#: lib/kammer_web/live/event_live/show.ex:537
+#, elixir-autogen, elixir-format
+msgid "Almost there — follow the link we just emailed you to confirm your signup."
+msgstr "Næsten i mål — følg linket, vi lige har sendt til din e-mail, for at bekræfte din tilmelding."
+
+#: lib/kammer/guests/guest_notifier.ex:99
+#, elixir-autogen, elixir-format
+msgid "Confirm your signup: %{slot} — %{title}"
+msgstr "Bekræft din tilmelding: %{slot} — %{title}"
+
+#: lib/kammer_web/live/event_live/show.ex:199
+#, elixir-autogen, elixir-format
+msgid "Delete slot"
+msgstr "Slet tjans"
+
+#: lib/kammer_web/live/event_live/show.ex:197
+#, elixir-autogen, elixir-format
+msgid "Delete this slot and its signups?"
+msgstr "Slet denne tjans og dens tilmeldinger?"
+
+#: lib/kammer/guests/guest_notifier.ex:103
+#, elixir-autogen, elixir-format
+msgid "Follow this link to confirm you're taking \"%{slot}\" for %{title}:"
+msgstr "Følg dette link for at bekræfte, at du tager \"%{slot}\" til %{title}:"
+
+#: lib/kammer_web/live/event_live/show.ex:191
+#: lib/kammer_web/live/guest_live/manage.ex:73
+#, elixir-autogen, elixir-format
+msgid "Give it up"
+msgstr "Giv den fra dig"
+
+#: lib/kammer_web/live/guest_live/manage.ex:70
+#, elixir-autogen, elixir-format
+msgid "Give up this signup?"
+msgstr "Giv denne tilmelding fra dig?"
+
+#: lib/kammer_web/live/event_live/show.ex:255
+#, elixir-autogen, elixir-format
+msgid "How many?"
+msgstr "Hvor mange?"
+
+#: lib/kammer_web/live/event_live/show.ex:182
+#: lib/kammer_web/live/event_live/show.ex:233
+#, elixir-autogen, elixir-format
+msgid "I'll take it"
+msgstr "Den tager jeg"
+
+#: lib/kammer_web/live/event_live/show.ex:476
+#, elixir-autogen, elixir-format
+msgid "Please give the slot a title."
+msgstr "Giv venligst tjansen en titel."
+
+#: lib/kammer/guests/guest_notifier.ex:133
+#, elixir-autogen, elixir-format
+msgid "See everything you've signed up for, or erase everything we store about you, anytime:"
+msgstr "Se alt, du har meldt dig til, eller slet alt, vi gemmer om dig, når som helst:"
+
+#: lib/kammer_web/live/event_live/show.ex:158
+#, elixir-autogen, elixir-format
+msgid "Signups"
+msgstr "Tjanser"
+
+#: lib/kammer_web/controllers/guest_claim_controller.ex:30
+#, elixir-autogen, elixir-format
+msgid "Sorry — that slot filled up in the meantime."
+msgstr "Beklager — den tjans blev fyldt i mellemtiden."
+
+#: lib/kammer_web/controllers/guest_claim_controller.ex:22
+#, elixir-autogen, elixir-format
+msgid "Thanks %{name} — you're signed up. We emailed you a link to manage it."
+msgstr "Tak %{name} — du er tilmeldt. Vi har sendt dig et link til at administrere den."
+
+#: lib/kammer_web/live/event_live/show.ex:503
+#: lib/kammer_web/live/event_live/show.ex:541
+#, elixir-autogen, elixir-format
+msgid "That slot just filled up."
+msgstr "Den tjans blev lige fyldt."
+
+#: lib/kammer_web/live/event_live/show.ex:245
+#, elixir-autogen, elixir-format
+msgid "What's needed?"
+msgstr "Hvad er der brug for?"
+
+#: lib/kammer/guests/guest_notifier.ex:127
+#, elixir-autogen, elixir-format
+msgid "You're signed up: %{slot} — %{title}"
+msgstr "Du er tilmeldt: %{slot} — %{title}"
+
+#: lib/kammer/guests/guest_notifier.ex:131
+#, elixir-autogen, elixir-format
+msgid "You're taking \"%{slot}\" for %{title}. Thanks!"
+msgstr "Du tager \"%{slot}\" til %{title}. Tak!"
+
+#: lib/kammer_web/live/guest_live/manage.ex:158
+#, elixir-autogen, elixir-format
+msgid "Your signup is released."
+msgstr "Din tilmelding er givet fri."
+
+#: lib/kammer_web/live/guest_live/manage.ex:56
+#, elixir-autogen, elixir-format
+msgid "Your signups"
+msgstr "Dine tjanser"
+
+#: lib/kammer_web/live/event_live/show.ex:250
+#, elixir-autogen, elixir-format
+msgid "e.g. Bring cake"
+msgstr "f.eks. Tag kage med"

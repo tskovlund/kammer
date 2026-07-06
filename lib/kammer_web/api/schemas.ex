@@ -199,7 +199,22 @@ defmodule KammerWeb.Api.Schemas do
           },
           required: [:yes, :maybe, :no]
         },
-        my_rsvp: %Schema{type: :string, enum: ["yes", "no", "maybe"], nullable: true}
+        my_rsvp: %Schema{type: :string, enum: ["yes", "no", "maybe"], nullable: true},
+        slots: %Schema{
+          type: :array,
+          description: "Volunteer signup slots — present on event detail, empty on lists",
+          items: %Schema{
+            type: :object,
+            properties: %{
+              id: %Schema{type: :string, format: :uuid},
+              title: %Schema{type: :string},
+              capacity: %Schema{type: :integer},
+              taken: %Schema{type: :integer},
+              claimants: %Schema{type: :array, items: Author}
+            },
+            required: [:id, :title, :capacity, :taken]
+          }
+        }
       },
       required: [:id, :group_id, :title, :starts_at, :all_day, :timezone, :rsvp_counts]
     })

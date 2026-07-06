@@ -12,6 +12,7 @@ defmodule Kammer.Guests.GuestNotifier do
   alias Kammer.Calendar.ICS
   alias Kammer.Communities
   alias Kammer.Events.Event
+  alias Kammer.Events.EventSlot
   alias Kammer.Groups.Group
   alias Kammer.Guests.GuestIdentity
   alias Kammer.Mailer
@@ -71,6 +72,69 @@ defmodule Kammer.Guests.GuestNotifier do
       with {:ok, _metadata} <- Mailer.deliver(email) do
         {:ok, email}
       end
+    end)
+  end
+
+  @doc """
+  Asks the guest to confirm their signup-slot claim by following a
+  signed link (issue #37). Nothing is stored until it's followed.
+  """
+  @spec deliver_claim_confirmation_request(
+          String.t(),
+          String.t(),
+          EventSlot.t(),
+          Event.t(),
+          String.t()
+        ) :: {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_claim_confirmation_request(
+        email_address,
+        display_name,
+        %EventSlot{} = slot,
+        %Event{} = event,
+        confirm_url
+      ) do
+    with_instance_locale(fn ->
+      deliver(
+        email_address,
+        gettext("Confirm your signup: %{slot} — %{title}", slot: slot.title, title: event.title),
+        """
+        #{gettext("Hi %{name},", name: display_name)}
+
+        #{gettext("Follow this link to confirm you're taking \"%{slot}\" for %{title}:", slot: slot.title, title: event.title)}
+
+        #{confirm_url}
+
+        #{gettext("If you didn't request this, you can ignore this email — nothing is recorded until you confirm.")}
+        """
+      )
+    end)
+  end
+
+  @doc """
+  Confirms the recorded slot claim, with the guest's management link.
+  """
+  @spec deliver_claim_confirmed(GuestIdentity.t(), EventSlot.t(), Event.t(), String.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_claim_confirmed(
+        %GuestIdentity{} = identity,
+        %EventSlot{} = slot,
+        %Event{} = event,
+        manage_url
+      ) do
+    with_instance_locale(fn ->
+      deliver(
+        identity.email,
+        gettext("You're signed up: %{slot} — %{title}", slot: slot.title, title: event.title),
+        """
+        #{gettext("Hi %{name},", name: identity.display_name)}
+
+        #{gettext("You're taking \"%{slot}\" for %{title}. Thanks!", slot: slot.title, title: event.title)}
+
+        #{gettext("See everything you've signed up for, or erase everything we store about you, anytime:")}
+
+        #{manage_url}
+        """
+      )
     end)
   end
 

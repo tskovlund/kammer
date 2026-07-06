@@ -18,6 +18,8 @@ defmodule Kammer.Events do
   alias Kammer.Communities.Community
   alias Kammer.Events.Event
   alias Kammer.Events.EventRsvp
+  alias Kammer.Events.EventSlot
+  alias Kammer.Events.SlotClaim
   alias Kammer.Feed.Comment
   alias Kammer.Groups.Group
   alias Kammer.Guests
@@ -52,16 +54,23 @@ defmodule Kammer.Events do
         Repo.one(
           from(event in Event,
             where: event.id == ^event_id and event.community_id == ^community.id,
-            preload: [
-              rsvps: [:user, :guest_identity],
-              comments: [:author_user, replies: [:author_user]]
-            ]
+            preload: ^event_preloads()
           )
         )
 
       :error ->
         nil
     end
+  end
+
+  defp event_preloads do
+    slots_query = from(slot in EventSlot, order_by: [asc: slot.position, asc: slot.inserted_at])
+
+    [
+      rsvps: [:user, :guest_identity],
+      comments: [:author_user, replies: [:author_user]],
+      slots: {slots_query, claims: [:user, :guest_identity]}
+    ]
   end
 
   @doc """
@@ -347,6 +356,213 @@ defmodule Kammer.Events do
     {%{}, types}
     |> Ecto.Changeset.cast(attrs, Map.keys(types))
     |> Ecto.Changeset.validate_required([:email, :display_name, :status])
+    |> Ecto.Changeset.update_change(:email, &String.downcase/1)
+    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
+    |> Ecto.Changeset.validate_length(:email, max: 160)
+    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
+  end
+
+  ## Signup slots (issue #37, collaborative track #17): "bring cake ×2".
+  ## Slots are managed by event managers; claims are one-tap for anyone
+  ## who can RSVP, and email-verified for guests (same two-link flow as
+  ## guest RSVPs). Capacity is enforced under a row lock — a full slot
+  ## refuses, it never overbooks.
+
+  @doc """
+  Adds a signup slot to an event (event managers only).
+  """
+  @spec create_slot(User.t(), Event.t(), map()) ::
+          {:ok, EventSlot.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def create_slot(%User{} = actor, %Event{} = event, attrs) do
+    group = Repo.get!(Group, event.group_id)
+
+    if can_manage_event?(actor, event, group) do
+      position =
+        Repo.one(
+          from(slot in EventSlot,
+            where: slot.event_id == ^event.id,
+            select: coalesce(max(slot.position), -1)
+          )
+        ) + 1
+
+      %EventSlot{event_id: event.id, position: position}
+      |> EventSlot.changeset(Map.drop(attrs, ["position"]))
+      |> Repo.insert()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Deletes a slot and every claim on it (event managers only).
+  """
+  @spec delete_slot(User.t(), EventSlot.t()) ::
+          {:ok, EventSlot.t()} | {:error, :unauthorized}
+  def delete_slot(%User{} = actor, %EventSlot{} = slot) do
+    event = Repo.get!(Event, slot.event_id)
+    group = Repo.get!(Group, event.group_id)
+
+    if can_manage_event?(actor, event, group) do
+      Repo.delete(slot)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Claims a slot for a member — anyone who can RSVP to the event. Fails
+  with `:slot_full` when capacity is reached (checked under a row lock,
+  so concurrent claims never overbook).
+  """
+  @spec claim_slot(User.t(), EventSlot.t()) ::
+          {:ok, SlotClaim.t()} | {:error, :slot_full | :unauthorized | Ecto.Changeset.t()}
+  def claim_slot(%User{} = actor, %EventSlot{} = slot) do
+    event = Repo.get!(Event, slot.event_id)
+    group = Repo.get!(Group, event.group_id)
+    relationship = Authorization.relationship(actor, group)
+
+    if Authorization.can_react?(actor, group, relationship) do
+      insert_claim(slot, fn locked_slot ->
+        SlotClaim.changeset(%SlotClaim{}, %{slot_id: locked_slot.id, user_id: actor.id})
+      end)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Releases a claim: your own, or any claim if you manage the event.
+  """
+  @spec unclaim_slot(User.t(), SlotClaim.t()) ::
+          {:ok, SlotClaim.t()} | {:error, :unauthorized}
+  def unclaim_slot(%User{} = actor, %SlotClaim{} = claim) do
+    slot = Repo.get!(EventSlot, claim.slot_id)
+    event = Repo.get!(Event, slot.event_id)
+    group = Repo.get!(Group, event.group_id)
+
+    if claim.user_id == actor.id or can_manage_event?(actor, event, group) do
+      Repo.delete(claim)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  First step of a guest claim (same shape as guest RSVPs): validates,
+  rate-limits, and emails a signed confirm link. Records nothing yet.
+  Guests claim on the same policy that lets them RSVP.
+  """
+  @spec request_guest_claim(EventSlot.t(), Event.t(), Group.t(), map(), keyword()) ::
+          :ok | {:error, :unauthorized | :rate_limited | :slot_full | Ecto.Changeset.t()}
+  def request_guest_claim(%EventSlot{} = slot, %Event{} = event, %Group{} = group, attrs, opts) do
+    changeset = guest_claim_request_changeset(attrs)
+
+    with true <- Authorization.can_guest_rsvp?(group) or {:error, :unauthorized},
+         true <- slot.event_id == event.id or {:error, :unauthorized},
+         {:ok, request} <- Ecto.Changeset.apply_action(changeset, :insert),
+         true <- slot_has_room?(slot) or {:error, :slot_full},
+         {:allow, _count} <- RateLimit.hit_guest_email(request.email),
+         {:allow, _count} <- RateLimit.hit_guest_ip(opts[:client_ip]) do
+      token =
+        GuestToken.sign_confirm(%{
+          slot_id: slot.id,
+          email: request.email,
+          display_name: request.display_name
+        })
+
+      confirm_url = opts |> Keyword.fetch!(:confirm_url_fun) |> then(& &1.(token))
+
+      GuestNotifier.deliver_claim_confirmation_request(
+        request.email,
+        request.display_name,
+        slot,
+        event,
+        confirm_url
+      )
+
+      :ok
+    else
+      {:deny, _retry_after} -> {:error, :rate_limited}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Second step, from the emailed confirm link: records the verified
+  identity and the claim (capacity re-checked under the lock), and
+  sends the confirmation with the guest's management link.
+  """
+  @spec confirm_guest_claim(String.t(), (String.t() -> String.t())) ::
+          {:ok, Event.t(), GuestIdentity.t()} | {:error, :invalid | :slot_full}
+  def confirm_guest_claim(token, manage_url_fun) do
+    with {:ok, %{slot_id: slot_id, email: email, display_name: display_name}} <-
+           GuestToken.verify_confirm(token),
+         %EventSlot{} = slot <- Repo.get(EventSlot, slot_id),
+         %Event{} = event <- Repo.get(Event, slot.event_id),
+         %Group{} = group <- Repo.get(Group, event.group_id),
+         true <- Authorization.can_guest_rsvp?(group),
+         {:ok, identity} <- Guests.verify_identity(email, display_name),
+         {:ok, _claim} <-
+           insert_claim(slot, fn locked_slot ->
+             SlotClaim.guest_changeset(%SlotClaim{}, %{
+               slot_id: locked_slot.id,
+               guest_identity_id: identity.id
+             })
+           end) do
+      manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
+      GuestNotifier.deliver_claim_confirmed(identity, slot, event, manage_url_fun.(manage_token))
+      {:ok, event, identity}
+    else
+      {:error, :slot_full} -> {:error, :slot_full}
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  @doc """
+  Releases a guest's claim through their signed management link.
+  """
+  @spec unclaim_slot_by_token(String.t(), Ecto.UUID.t()) ::
+          {:ok, SlotClaim.t()} | {:error, :invalid}
+  def unclaim_slot_by_token(manage_token, claim_id) do
+    with {:ok, %{identity_id: identity_id}} <- GuestToken.verify_manage(manage_token),
+         %SlotClaim{guest_identity_id: ^identity_id} = claim <- Repo.get(SlotClaim, claim_id) do
+      Repo.delete(claim)
+    else
+      _invalid_or_gone -> {:error, :invalid}
+    end
+  end
+
+  # Claims must never exceed capacity: lock the slot row, count, insert.
+  # Duplicate claims surface as changeset errors from the partial unique
+  # indexes, inside the same transaction.
+  defp insert_claim(%EventSlot{} = slot, changeset_fun) do
+    Repo.transact(fn ->
+      locked_slot =
+        Repo.one!(
+          from(candidate in EventSlot, where: candidate.id == ^slot.id, lock: "FOR UPDATE")
+        )
+
+      claims = Repo.aggregate(from(claim in SlotClaim, where: claim.slot_id == ^slot.id), :count)
+
+      if claims < locked_slot.capacity do
+        Repo.insert(changeset_fun.(locked_slot))
+      else
+        {:error, :slot_full}
+      end
+    end)
+  end
+
+  defp slot_has_room?(%EventSlot{} = slot) do
+    claims = Repo.aggregate(from(claim in SlotClaim, where: claim.slot_id == ^slot.id), :count)
+    claims < slot.capacity
+  end
+
+  defp guest_claim_request_changeset(attrs) do
+    types = %{email: :string, display_name: :string}
+
+    {%{}, types}
+    |> Ecto.Changeset.cast(attrs, Map.keys(types))
+    |> Ecto.Changeset.validate_required([:email, :display_name])
     |> Ecto.Changeset.update_change(:email, &String.downcase/1)
     |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
     |> Ecto.Changeset.validate_length(:email, max: 160)

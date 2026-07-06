@@ -87,7 +87,8 @@ defmodule KammerWeb.Api.Serializer do
       location_name: event.location_name,
       location_url: event.location_url,
       rsvp_counts: rsvp_counts(event),
-      my_rsvp: my_rsvp && my_rsvp.status
+      my_rsvp: my_rsvp && my_rsvp.status,
+      slots: slots(event)
     }
   end
 
@@ -106,6 +107,28 @@ defmodule KammerWeb.Api.Serializer do
     do: %{type: "guest", id: guest.id, display_name: guest.display_name}
 
   defp comment_author(_comment), do: nil
+
+  defp slots(%Event{slots: slot_list}) when is_list(slot_list) do
+    Enum.map(slot_list, fn slot ->
+      %{
+        id: slot.id,
+        title: slot.title,
+        capacity: slot.capacity,
+        taken: if(is_list(slot.claims), do: length(slot.claims), else: 0),
+        claimants: if(is_list(slot.claims), do: Enum.map(slot.claims, &claimant/1), else: [])
+      }
+    end)
+  end
+
+  defp slots(_event), do: []
+
+  defp claimant(%{user: %{id: id, display_name: name}}),
+    do: %{type: "user", id: id, display_name: name}
+
+  defp claimant(%{guest_identity: %Kammer.Guests.GuestIdentity{} = guest}),
+    do: %{type: "guest", id: guest.id, display_name: guest.display_name}
+
+  defp claimant(_claim), do: nil
 
   defp reaction_counts(reactions) when is_list(reactions) do
     reactions

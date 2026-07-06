@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Signup slots on events: "bring cake ×2, drive ×4" — event managers
+  add capacity-bounded slots, members claim with one tap (never
+  overbooked, enforced in the database), and on public events guests
+  sign up through the same email-confirm flow as guest RSVPs. The
+  guest management page lists signups next to RSVPs and comments; the
+  API event detail now includes slots.
 - Guest comments on posts in public groups that opt in
   (`members_and_guests` comment policy): name + email + comment, a
   signed confirm link (nothing stored until followed — the comment

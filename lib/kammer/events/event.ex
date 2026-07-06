@@ -31,6 +31,7 @@ defmodule Kammer.Events.Event do
 
     has_many :rsvps, Kammer.Events.EventRsvp
     has_many :comments, Kammer.Feed.Comment
+    has_many :slots, Kammer.Events.EventSlot
 
     timestamps(type: :utc_datetime)
   end
