@@ -25,10 +25,11 @@ defmodule Kammer.Groups.Group do
 
   # Per-group feature toggles (ADR 0016). The feed is not toggleable —
   # a group without a wall is a different product concept. New features
-  # join this list shipping OFF by default (the migration default only
-  # covers the launch set).
-  @features [:feed, :events, :files]
-  @toggleable_features [:events, :files]
+  # join @features and @toggleable_features but NOT @default_features:
+  # they ship OFF by default, for new and existing groups alike.
+  @features [:feed, :events, :files, :availability]
+  @toggleable_features [:events, :files, :availability]
+  @default_features [:feed, :events, :files]
 
   @slug_format ~r/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
 
@@ -44,7 +45,7 @@ defmodule Kammer.Groups.Group do
     field :comment_policy, Ecto.Enum, values: @comment_policies, default: :members
     field :approval_queue, :boolean, default: false
     field :sealed, :boolean, default: false
-    field :features, {:array, Ecto.Enum}, values: @features, default: @features
+    field :features, {:array, Ecto.Enum}, values: @features, default: @default_features
     field :archived_at, :utc_datetime
     field :ics_token, :string, redact: true
     field :storage_quota_bytes, :integer

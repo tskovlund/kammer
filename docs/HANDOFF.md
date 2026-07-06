@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **371 tests + 17 properties, zero failures**, ~83%
+Suite at handoff: **381 tests + 17 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -224,11 +224,23 @@ PRs, one issue tracker; separate repo only if CI time hurts). Then:
 
 ### 5.5 Collaborative track (issue #17 — accepted; sub-issue each)
 
-Order: **signup slots ✅ (#37) → availability polls → assignments →
-decisions log → rotations.** Design bullets live in #17; each
-feature: file a sub-issue, RFC only if the design deviates from #17's
-bullets, feature atom in the group toggles (OFF by default), EN+DA,
-property tests on any visibility rule.
+Order: **signup slots ✅ (#37) → availability polls ✅ (#39) →
+assignments → decisions log → rotations.** Design bullets live in
+#17; each feature: file a sub-issue, RFC only if the design deviates
+from #17's bullets, feature atom in the group toggles (OFF by
+default), EN+DA, property tests on any visibility rule.
+
+Availability SHIPPED (#39): `Kammer.Availability` context,
+`availability_polls/options/responses`, `:availability` feature atom
+(the Group schema now has `@default_features` separate from
+`@features` — new atoms join `@features`/`@toggleable_features` only,
+so they're OFF everywhere until a group opts in). Create follows
+`post_in_group`, answering follows the RSVP rule, close/convert is
+creator-or-moderator; convert calls `Events.create_event` (fan-out
+included) and stamps `converted_event_id`. UI: "Find a date" on the
+group page, grid at `/c/:slug/availability/:poll_id`, open polls
+listed on the events page. Members-only in v1 — guest availability is
+a follow-up if asked for. API deferred to #30.
 
 Slots SHIPPED (#37): `event_slots` + `slot_claims` (user XOR guest,
 exactly-one — claims die with their person, delete_all both ways),

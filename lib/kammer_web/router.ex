@@ -77,6 +77,7 @@ defmodule KammerWeb.Router do
       live "/groups/new", GroupLive.New, :new
       live "/g/:group_slug/settings", GroupLive.Settings, :edit
       live "/g/:group_slug/files", FileLive.Index, :group
+      live "/g/:group_slug/availability/new", AvailabilityLive.New, :new
       live "/files", FileLive.Index, :community
       live "/members", CommunityLive.Members, :index
       live "/settings", CommunityLive.Settings, :edit
@@ -99,6 +100,7 @@ defmodule KammerWeb.Router do
       # feeds do: anonymous viewers see events of public groups only —
       # which is what guest RSVP (SPEC §6) requires.
       live "/events/:event_id", EventLive.Show, :show
+      live "/availability/:poll_id", AvailabilityLive.Show, :show
     end
   end
 
