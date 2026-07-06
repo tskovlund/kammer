@@ -46,7 +46,9 @@ config :kammer, Oban,
      crontab: [
        {"30 3 * * *", Kammer.Workers.PurgeDeletedContentWorker},
        # No-op unless BACKUP_DIR is configured (SPEC §14).
-       {"15 4 * * *", Kammer.Workers.BackupWorker}
+       {"15 4 * * *", Kammer.Workers.BackupWorker},
+       # Delivers only to users who opted in (digest_frequency).
+       {"0 6 * * *", Kammer.Workers.DigestWorker}
      ]}
   ]
 

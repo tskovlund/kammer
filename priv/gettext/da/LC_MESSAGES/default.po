@@ -37,7 +37,7 @@ msgstr "Vi kan ikke finde internettet"
 msgid "close"
 msgstr "luk"
 
-#: lib/kammer_web/live/user_live/settings.ex:141
+#: lib/kammer_web/live/user_live/settings.ex:151
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Et link til at bekræfte din e-mailændring er sendt til den nye adresse."
@@ -62,12 +62,12 @@ msgstr "En e-mail er sendt til %{email} — åbn den for at bekræfte din konto.
 msgid "Browser"
 msgstr "Browser"
 
-#: lib/kammer_web/live/user_live/settings.ex:69
+#: lib/kammer_web/live/user_live/settings.ex:79
 #, elixir-autogen, elixir-format
 msgid "Change email"
 msgstr "Skift e-mail"
 
-#: lib/kammer_web/live/user_live/settings.ex:68
+#: lib/kammer_web/live/user_live/settings.ex:78
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr "Skifter..."
@@ -140,17 +140,17 @@ msgstr "Visningsnavn"
 #: lib/kammer_web/live/event_live/show.ex:231
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
-#: lib/kammer_web/live/user_live/settings.ex:63
+#: lib/kammer_web/live/user_live/settings.ex:73
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr "E-mail"
 
-#: lib/kammer_web/live/user_live/settings.ex:95
+#: lib/kammer_web/live/user_live/settings.ex:105
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr "Linket til e-mailændring er ugyldigt eller udløbet."
 
-#: lib/kammer_web/live/user_live/settings.ex:92
+#: lib/kammer_web/live/user_live/settings.ex:102
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr "E-mail ændret."
@@ -171,6 +171,7 @@ msgstr "Engelsk"
 #: lib/kammer/accounts/user_notifier.ex:46
 #: lib/kammer/accounts/user_notifier.ex:73
 #: lib/kammer/accounts/user_notifier.ex:89
+#: lib/kammer/digests.ex:153
 #: lib/kammer/events/event_notifier.ex:34
 #: lib/kammer/guests/guest_notifier.ex:31
 #: lib/kammer/guests/guest_notifier.ex:56
@@ -223,7 +224,7 @@ msgstr "Du er logget ud."
 msgid "Magic link is invalid or it has expired."
 msgstr "Login-linket er ugyldigt eller udløbet."
 
-#: lib/kammer_web/live/user_live/settings.ex:77
+#: lib/kammer_web/live/user_live/settings.ex:87
 #, elixir-autogen, elixir-format
 msgid "Manage devices and sessions"
 msgstr "Administrér enheder og sessioner"
@@ -243,7 +244,7 @@ msgstr "Ny her?"
 msgid "No password needed — we email you a sign-in link."
 msgstr "Ingen adgangskode nødvendig — vi sender dig et login-link på e-mail."
 
-#: lib/kammer_web/live/user_live/settings.ex:169
+#: lib/kammer_web/live/user_live/settings.ex:179
 #, elixir-autogen, elixir-format
 msgid "Profile updated."
 msgstr "Profil opdateret."
@@ -255,14 +256,14 @@ msgstr "Profil opdateret."
 msgid "Revoke"
 msgstr "Log ud"
 
-#: lib/kammer_web/live/user_live/settings.ex:53
+#: lib/kammer_web/live/user_live/settings.ex:63
 #, elixir-autogen, elixir-format
 msgid "Save profile"
 msgstr "Gem profil"
 
 #: lib/kammer_web/live/community_live/settings.ex:58
 #: lib/kammer_web/live/group_live/settings.ex:102
-#: lib/kammer_web/live/user_live/settings.ex:52
+#: lib/kammer_web/live/user_live/settings.ex:62
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr "Gemmer..."
@@ -545,7 +546,7 @@ msgstr "Gennemse grupper"
 #: lib/kammer_web/live/event_live/show.ex:277
 #: lib/kammer_web/live/group_live/new.ex:72
 #: lib/kammer_web/live/group_live/settings.ex:75
-#: lib/kammer_web/live/search_live/index.ex:62
+#: lib/kammer_web/live/search_live/index.ex:63
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr "Kommentarer"
@@ -666,7 +667,7 @@ msgstr "Beskrivelse"
 #: lib/kammer_web/components/layouts.ex:291
 #: lib/kammer_web/live/event_live/index.ex:28
 #: lib/kammer_web/live/group_live/settings.ex:442
-#: lib/kammer_web/live/search_live/index.ex:79
+#: lib/kammer_web/live/search_live/index.ex:81
 #, elixir-autogen, elixir-format
 msgid "Events"
 msgstr "Begivenheder"
@@ -854,7 +855,7 @@ msgid "Mentions, replies, and event reminders will land here."
 msgstr "Omtaler, svar og påmindelser om begivenheder lander her."
 
 #: lib/kammer_web/live/user_live/bookmarks.ex:20
-#: lib/kammer_web/live/user_live/settings.ex:80
+#: lib/kammer_web/live/user_live/settings.ex:90
 #, elixir-autogen, elixir-format
 msgid "My other servers"
 msgstr "Mine andre servere"
@@ -916,9 +917,10 @@ msgstr "Notifikationer"
 
 #: lib/kammer_web/live/group_live/new.ex:76
 #: lib/kammer_web/live/group_live/settings.ex:79
+#: lib/kammer_web/live/user_live/settings.ex:57
 #, elixir-autogen, elixir-format
 msgid "Off"
-msgstr "Slået fra"
+msgstr "Fra"
 
 #: lib/kammer_web/live/community_live/new.ex:62
 #, elixir-autogen, elixir-format
@@ -1370,6 +1372,7 @@ msgstr "Opslaget kunne ikke oprettes."
 msgid "Delete permanently"
 msgstr "Slet permanent"
 
+#: lib/kammer/digests.ex:205
 #: lib/kammer_web/components/feed_components.ex:632
 #: lib/kammer_web/components/feed_components.ex:649
 #: lib/kammer_web/live/assignment_live/show.ex:197
@@ -1378,7 +1381,7 @@ msgstr "Slet permanent"
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
 #: lib/kammer_web/live/search_live/index.ex:54
-#: lib/kammer_web/live/search_live/index.ex:71
+#: lib/kammer_web/live/search_live/index.ex:72
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
 msgstr "Slettet bruger"
@@ -3174,7 +3177,7 @@ msgstr "forslag & afstemning"
 msgid "recorded by %{name}"
 msgstr "protokolleret af %{name}"
 
-#: lib/kammer_web/live/search_live/index.ex:96
+#: lib/kammer_web/live/search_live/index.ex:98
 #, elixir-autogen, elixir-format
 msgid "Nothing found"
 msgstr "Intet fundet"
@@ -3195,7 +3198,44 @@ msgstr "Søg"
 msgid "Search posts, comments, and events…"
 msgstr "Søg i opslag, kommentarer og begivenheder…"
 
-#: lib/kammer_web/live/search_live/index.ex:97
+#: lib/kammer_web/live/search_live/index.ex:99
 #, elixir-autogen, elixir-format
 msgid "Try different words — search looks at posts, comments, and events."
 msgstr "Prøv andre ord — søgningen kigger i opslag, kommentarer og begivenheder."
+
+#: lib/kammer/digests.ex:178
+#, elixir-autogen, elixir-format
+msgid "%{count} new post"
+msgid_plural "%{count} new posts"
+msgstr[0] "%{count} nyt opslag"
+msgstr[1] "%{count} nye opslag"
+
+#: lib/kammer/digests.ex:141
+#, elixir-autogen, elixir-format
+msgid "%{product} digest: what you missed"
+msgstr "%{product}-opsummering: det, du gik glip af"
+
+#: lib/kammer/digests.ex:196
+#, elixir-autogen, elixir-format
+msgid "Coming up this week"
+msgstr "På programmet i denne uge"
+
+#: lib/kammer_web/live/user_live/settings.ex:58
+#, elixir-autogen, elixir-format
+msgid "Daily"
+msgstr "Dagligt"
+
+#: lib/kammer_web/live/user_live/settings.ex:55
+#, elixir-autogen, elixir-format
+msgid "Email digest"
+msgstr "E-mailopsummering"
+
+#: lib/kammer_web/live/user_live/settings.ex:59
+#, elixir-autogen, elixir-format
+msgid "Weekly (Mondays)"
+msgstr "Ugentligt (mandage)"
+
+#: lib/kammer/digests.ex:157
+#, elixir-autogen, elixir-format
+msgid "You get this because your digest setting is on — change it under Account settings."
+msgstr "Du får denne mail, fordi din opsummering er slået til — ændr det under Kontoindstillinger."
