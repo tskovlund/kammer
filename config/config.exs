@@ -41,7 +41,11 @@ config :kammer, Oban,
   queues: [default: 10, media: 5, mailers: 10, scheduled: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)},
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"30 3 * * *", Kammer.Workers.PurgeDeletedContentWorker}
+     ]}
   ]
 
 # Configure the endpoint

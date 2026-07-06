@@ -36,6 +36,15 @@ defmodule Kammer.RateLimit do
     hit("magic_link:ip:#{format_ip(ip_address)}", @fifteen_minutes_in_milliseconds, 10)
   end
 
+  @doc """
+  Rate limit for `@everyone` broadcast mentions, keyed by group: at most
+  2 per group per hour (SPEC §5: gated and rate-limited).
+  """
+  @spec hit_everyone_mention(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_everyone_mention(group_id) do
+    hit("everyone_mention:group:#{group_id}", 60 * 60 * 1000, 2)
+  end
+
   defp format_ip(ip_address) when is_binary(ip_address), do: ip_address
 
   defp format_ip(ip_address) when is_tuple(ip_address),

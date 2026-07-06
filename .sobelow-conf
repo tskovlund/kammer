@@ -5,6 +5,18 @@
   router: "lib/kammer_web/router.ex",
   exit: "low",
   format: "txt",
-  ignore: ["Config.HTTPS"],
+  # Config.HTTPS: TLS terminates at the reverse proxy (deployment model).
+  # Traversal.FileModule / Traversal.SendFile: Kammer.Storage.Local guards
+  #   every path against escaping the uploads root; storage keys are
+  #   server-generated UUID paths, never user input.
+  # XSS.ContentType: stored content types pass a sanitizing allowlist and
+  #   non-image files are served with Content-Disposition: attachment and
+  #   X-Content-Type-Options: nosniff (KammerWeb.FileController).
+  ignore: [
+    "Config.HTTPS",
+    "Traversal.FileModule",
+    "Traversal.SendFile",
+    "XSS.ContentType"
+  ],
   ignore_files: []
 ]

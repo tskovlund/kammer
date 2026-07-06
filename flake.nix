@@ -51,6 +51,9 @@
               export LANG=C.UTF-8
               export LC_ALL=C.UTF-8
               export ERL_AFLAGS="-kernel shell_history enabled"
+              # Image processing uses the same platform libvips as the
+              # release image (Vix compiles against it via pkg-config).
+              export VIX_COMPILATION_MODE=PLATFORM_PROVIDED_LIBVIPS
             '';
           };
         });

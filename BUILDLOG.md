@@ -170,3 +170,66 @@ steps), "My other servers" bookmarks page.
   owner-equivalent powers (group).
 
 **Coverage note**: suite at 89.1% with 205 tests / 10 properties.
+
+## 2026-07-06 — Step 4: feed (SPEC §5, §16.4)
+
+**Domain** (`Kammer.Feed`): Markdown posts (MDEx, raw HTML stripped, one
+rendering config in `Kammer.Markdown`), polls (single/multi, close date,
+anonymity toggle, single-choice replaces vote), reactions (curated emoji
+set on posts and comments, DB-constrained one-subject), comments with
+exactly one reply level (replies-to-replies reparent to the top-level
+comment — ADR 0007), per-post comment locks, pins (pinned first, then
+strictly chronological — ADR 0006), scheduled publishing (future
+`published_at` + Oban job for live appearance), acknowledgment-required
+posts with author/admin-only status, edit history (author-only editing;
+admins moderate but never rewrite), soft-delete stubs with 30-day content
+purge (daily Oban cron), approval queue (holds non-moderator posts),
+`@everyone` gated to broadcast rights + rate limited (2/group/hour),
+per-user new-since-last-visit markers (private, no "seen-by"), PubSub
+live updates on a per-group topic.
+
+**Files/media slice** (shared infra, completed in files step):
+`Kammer.Storage` behaviour + Local adapter (traversal-guarded),
+`Kammer.Media` (libvips): every image re-encoded to JPEG (destroys
+payloads §11, strips EXIF §19, auto-rotates), WebP thumbnails, HEIC in
+the accepted set; non-images stored as-is and always served as downloads
+with nosniff (SVG never inline). Transient attachments auto-expire after
+30 days (daily cron). File access enforces the visibility baseline
+(group files ⇒ `:view_group`, community files ⇒ `:view_community`).
+
+**Authorization additions**: pure post-level rules (`can_edit_post?`,
+`can_soft_delete_post?`, `can_hard_delete_post?`, `can_pin_post?`,
+`can_lock_post_comments?`, `can_view_acknowledgments?`,
+`can_view_edit_history?`, `can_react?`).
+
+**Web**: shared `FeedEventHandlers` so group feed and aggregated home
+feed behave identically; composer (Markdown textarea, ack toggle,
+post-as-group, datetime-local scheduling in the user's timezone, poll
+builder, multi-file uploads with transient toggle); post cards with
+image grids/file rows/live polls/reaction picker/collapsible replies/
+ack modal; CSP added (Sobelow caught the §11 requirement).
+
+**Decisions / trims (with completion paths)**:
+- *S3 storage adapter*: deferred to the files step — behaviour is in
+  place; implement `Kammer.Storage.S3` (req-based, SigV4 or a small
+  S3 lib) reading `S3_*` env, register in runtime.exs.
+- *Rich-text toolbar*: composer is a Markdown textarea (placeholder says
+  so). Complete: small JS hook wrapping selection in Markdown markers +
+  toolbar buttons; no editor dependency planned.
+- *User @mentions*: `@everyone`/`@admins` extracted (`Feed.Mentions`);
+  per-user `@Display Name` mentions resolve at notification time
+  (step 7) — no stable usernames exist by design.
+- *Lightbox*: images open the re-encoded display file in a new tab;
+  a JS lightbox is cosmetic follow-up.
+- *Home feed*: aggregates the groups the user is a member of (SPEC says
+  "aggregated home feed scoped to the active community" — membership is
+  the boring reading; community-visible non-member groups are browsable
+  via the directory instead).
+- *MDEx NIF in restricted build environments*: precompiled NIF downloads
+  from GitHub releases; this container's proxy blocks that, so the NIF
+  was built from source (optional `rustler` dep added; set
+  `MDEX_NATIVE_BUILD=1` + Rust toolchain). Normal contributors and CI
+  fetch the precompiled binary; nothing to complete.
+- *Oban in tests*: `testing: :manual` — the scheduled-post worker is unit-
+  invisible; its behavior (hidden until published_at) is tested via the
+  feed query.

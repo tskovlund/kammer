@@ -8,9 +8,17 @@ defmodule KammerWeb.CommunityLive.Home do
 
   use KammerWeb, :live_view
 
+  import KammerWeb.FeedComponents
   import KammerWeb.KammerComponents
 
+  alias Kammer.Authorization
+  alias Kammer.Feed
   alias Kammer.Groups
+  alias KammerWeb.FeedEventHandlers
+
+  @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
+                  show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
+                  soft_delete_post hard_delete_post)
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -32,24 +40,23 @@ defmodule KammerWeb.CommunityLive.Home do
           </:subtitle>
         </.header>
 
-        <section :if={@member_groups != []} class="space-y-2">
-          <h2 class="text-sm font-medium uppercase tracking-wide text-base-content/50">
-            {gettext("Your groups")}
-          </h2>
-          <.link
-            :for={group <- @member_groups}
-            navigate={~p"/c/#{@active_community.slug}/g/#{group.slug}"}
-            class="flex items-center gap-3 rounded-box border border-base-200 p-4 hover:bg-base-200"
-          >
-            <div class="min-w-0">
-              <p class="truncate font-medium">{group.name}</p>
-              <p :if={group.description} class="truncate text-sm text-base-content/60">
-                {group.description}
-              </p>
-            </div>
-            <.visibility_badge visibility={group.visibility} />
-          </.link>
+        <section :if={@home_posts != []} class="space-y-3">
+          <div :for={post <- @home_posts}>
+            <.post_card
+              post={post}
+              current_user={@current_scope.user}
+              permissions={post_permissions(post, @current_scope.user)}
+              group_name={post.group.name}
+            />
+          </div>
         </section>
+
+        <.empty_state
+          :if={@home_posts == [] and @member_groups != []}
+          icon="hero-chat-bubble-left-right"
+          headline={gettext("Nothing in your feed yet")}
+          description={gettext("Posts from your groups appear here, newest first.")}
+        />
 
         <.empty_state
           :if={@member_groups == []}
@@ -111,12 +118,61 @@ defmodule KammerWeb.CommunityLive.Home do
   def mount(_params, _session, socket) do
     socket =
       if member?(socket.assigns.community_relationship) do
-        assign(socket, :public_groups, [])
+        current_user = socket.assigns.current_scope.user
+
+        if connected?(socket) do
+          Enum.each(socket.assigns.member_groups, &Feed.subscribe/1)
+        end
+
+        socket
+        |> assign(:public_groups, [])
+        |> assign(:acknowledgment_status, nil)
+        |> load_home_feed(current_user)
       else
-        assign(socket, :public_groups, Groups.list_public_groups(socket.assigns.active_community))
+        socket
+        |> assign(:home_posts, [])
+        |> assign(:public_groups, Groups.list_public_groups(socket.assigns.active_community))
       end
 
     {:ok, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({Kammer.Feed, _event}, socket) do
+    {:noreply, load_home_feed(socket, socket.assigns.current_scope.user)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event(event, params, socket) when event in @feed_events do
+    FeedEventHandlers.handle(event, params, socket, fn socket ->
+      load_home_feed(socket, socket.assigns.current_scope.user)
+    end)
+  end
+
+  defp load_home_feed(socket, current_user) do
+    assign(
+      socket,
+      :home_posts,
+      Feed.list_home_feed(current_user, socket.assigns.active_community)
+    )
+  end
+
+  defp post_permissions(post, current_user) do
+    group = post.group
+    relationship = Authorization.relationship(current_user, group)
+
+    %{
+      edit: false,
+      soft_delete: Authorization.can_soft_delete_post?(current_user, post, group, relationship),
+      hard_delete: Authorization.can_hard_delete_post?(current_user, post, group, relationship),
+      pin: false,
+      lock_comments: false,
+      view_acknowledgments:
+        Authorization.can_view_acknowledgments?(current_user, post, group, relationship),
+      approve: false,
+      comment: Authorization.can?(current_user, :comment_in_group, group, relationship),
+      react: Authorization.can_react?(current_user, group, relationship)
+    }
   end
 
   defp member?(%{community_role: role}), do: role != nil

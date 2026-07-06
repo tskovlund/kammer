@@ -235,6 +235,106 @@ defmodule Kammer.Authorization do
     community_admin?(relationship)
   end
 
+  ## Post-level rules (SPEC §5) — pure; the post's group and the actor's
+  ## relationship are passed explicitly.
+
+  @doc """
+  Whether the actor may edit the post's body. Authors only — admins
+  moderate (delete/pin/lock) but never rewrite someone's words.
+  """
+  @spec can_edit_post?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_edit_post?(actor, post, %Group{} = group, relationship) do
+    author?(actor, post) and is_nil(post.deleted_at) and not Group.archived?(group) and
+      (relationship.group_role != nil or group_admin_powers?(group, relationship))
+  end
+
+  @doc """
+  Whether the actor may soft-delete the post (author) — the stub
+  preserves thread coherence (SPEC §5).
+  """
+  @spec can_soft_delete_post?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_soft_delete_post?(actor, post, %Group{} = _group, _relationship) do
+    author?(actor, post) and is_nil(post.deleted_at)
+  end
+
+  @doc """
+  Whether the actor may hard-delete the post immediately (admins,
+  SPEC §5; GDPR erasure also routes here).
+  """
+  @spec can_hard_delete_post?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_hard_delete_post?(_actor, _post, %Group{} = group, relationship) do
+    group_admin_powers?(group, relationship)
+  end
+
+  @doc """
+  Whether the actor may pin/unpin the post.
+  """
+  @spec can_pin_post?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_pin_post?(_actor, _post, %Group{} = group, relationship) do
+    group_admin_powers?(group, relationship) and not Group.archived?(group)
+  end
+
+  @doc """
+  Whether the actor may lock/unlock comments on the post — available to
+  the author and admins (SPEC §3).
+  """
+  @spec can_lock_post_comments?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_lock_post_comments?(actor, post, %Group{} = group, relationship) do
+    author?(actor, post) or group_admin_powers?(group, relationship)
+  end
+
+  @doc """
+  Whether the actor may see who has and hasn't acknowledged the post —
+  the author and admins (SPEC §5).
+  """
+  @spec can_view_acknowledgments?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_view_acknowledgments?(actor, post, %Group{} = group, relationship) do
+    author?(actor, post) or group_admin_powers?(group, relationship)
+  end
+
+  @doc """
+  Whether the actor may see the post's edit history — the author and
+  admins, never the public (SPEC §5).
+  """
+  @spec can_view_edit_history?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_view_edit_history?(actor, post, %Group{} = group, relationship) do
+    author?(actor, post) or group_admin_powers?(group, relationship)
+  end
+
+  @doc """
+  Whether the actor may edit or delete the given comment (author for
+  both; admins may delete via `:moderate_group`).
+  """
+  @spec can_edit_comment?(actor(), map(), Group.t(), relationship()) :: boolean()
+  def can_edit_comment?(actor, comment, %Group{} = group, _relationship) do
+    comment_author?(actor, comment) and is_nil(comment.deleted_at) and
+      not Group.archived?(group)
+  end
+
+  @doc """
+  Whether the actor may react in the group (group members; archived
+  groups are read-only).
+  """
+  @spec can_react?(actor(), Group.t(), relationship()) :: boolean()
+  def can_react?(actor, %Group{} = group, relationship) do
+    signed_in?(actor) and not Group.archived?(group) and
+      (relationship.group_role != nil or group_admin_powers?(group, relationship))
+  end
+
+  defp author?(actor, %{author_user_id: author_user_id}) do
+    case unwrap_user(actor) do
+      %User{id: user_id} -> user_id == author_user_id
+      nil -> false
+    end
+  end
+
+  defp comment_author?(actor, %{author_user_id: author_user_id}) do
+    case unwrap_user(actor) do
+      %User{id: user_id} -> user_id == author_user_id
+      nil -> false
+    end
+  end
+
   ## Listing / query scoping — the only place list filtering logic lives
 
   @doc """

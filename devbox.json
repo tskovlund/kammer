@@ -15,7 +15,8 @@
     "HEX_HOME": "$PWD/.nix-hex",
     "LANG": "C.UTF-8",
     "LC_ALL": "C.UTF-8",
-    "ERL_AFLAGS": "-kernel shell_history enabled"
+    "ERL_AFLAGS": "-kernel shell_history enabled",
+    "VIX_COMPILATION_MODE": "PLATFORM_PROVIDED_LIBVIPS"
   },
   "shell": {
     "init_hook": [

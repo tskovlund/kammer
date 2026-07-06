@@ -9,7 +9,16 @@ defmodule KammerWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {KammerWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+
+    # SPEC §11: CSP. 'unsafe-inline' styles are required by the runtime
+    # accent-tinting (style attributes) and inline theme bootstrap.
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" =>
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; " <>
+          "script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; " <>
+          "object-src 'none'; frame-ancestors 'self'; base-uri 'self'"
+    }
+
     plug :fetch_current_scope_for_user
   end
 
@@ -23,6 +32,10 @@ defmodule KammerWeb.Router do
     end
 
     get "/invite/:token/accept", InviteController, :accept
+
+    get "/files/:id", FileController, :show
+    get "/files/:id/thumbnail", FileController, :thumbnail
+    get "/files/:id/download", FileController, :download
   end
 
   ## Community-scoped routes
