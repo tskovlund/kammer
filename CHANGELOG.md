@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- Backups (SPEC §14): `mix kammer.backup` /
+  `Kammer.Release.backup/1` write a restorable snapshot — pg_dump
+  custom-format database dump plus an uploads tarball — with optional
+  age encryption and per-kind retention pruning. Setting `BACKUP_DIR`
+  turns on a nightly scheduled backup. Restore guide (both
+  directions, verified steps) in docs/backups.md.
 - Global search within a community: one box over posts, comments, and
   events (Postgres full-text, mixed-language friendly), filtered by
   the same listing visibility as everything else — property-tested so

@@ -184,4 +184,13 @@ if config_env() == :prod do
   config :kammer, :mail_from,
     address: System.get_env("MAIL_FROM_ADDRESS", "kammer@#{host}"),
     name: System.get_env("MAIL_FROM_NAME", "Kammer")
+
+  # ## Scheduled backups (SPEC §14). Opt-in: without BACKUP_DIR the
+  # nightly job is a no-op — see docs/backups.md.
+  if backup_dir = System.get_env("BACKUP_DIR") do
+    config :kammer, :backup,
+      dir: backup_dir,
+      keep: String.to_integer(System.get_env("BACKUP_KEEP", "14")),
+      age_recipient: System.get_env("BACKUP_AGE_RECIPIENT")
+  end
 end

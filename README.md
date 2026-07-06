@@ -34,9 +34,9 @@ screen.
   pinned posts. What your community posts is what your community sees.
 - **Privacy-first.** No tracking, no analytics, no phone-home. Honest about
   limits: we tell you exactly what the server operator can and cannot see.
-- **A joy to self-host.** One `docker compose up`, a first-run wizard, and a
-  reproducible Nix-defined dev environment for contributors. Built-in
-  backups and guest comments are next on the roadmap.
+- **A joy to self-host.** One `docker compose up`, a first-run wizard,
+  built-in backups with a restore guide, and a reproducible Nix-defined
+  dev environment for contributors.
 - **Institutional memory is the product.** Groups archive instead of
   vanishing; files stay browsable; seasonal bands and committees keep their
   history.
@@ -52,13 +52,21 @@ screen.
   thumbnailed), polls, file attachments, emoji reactions, single-level
   comment threads, mentions, pinned + scheduled + acknowledgment-required
   posts, live updates.
+- **Guest interactions** — on public groups that opt in, people without
+  accounts can RSVP, sign up for slots, and comment (moderator-approved),
+  all through signed email links with one-click full erasure.
 - **Events** — timezone-aware, all-day/multi-day, RSVP, comments, email
-  reminders, ICS calendar feeds — and **guest RSVP** on public events:
-  name + email, no account, with a signed link to change or erase
-  everything later.
+  reminders, ICS calendar feeds, and **signup slots** ("bring cake ×2,
+  drive ×4") that members and guests claim with one tap.
 - **Files** — community and group spaces, shallow folders, preset-based
-  permissions with a centrally enforced visibility invariant, quotas if you
-  want them.
+  permissions with a centrally enforced visibility invariant, version
+  history on every file, quotas if you want them.
+- **Collaboration tools, per group** — date-finding polls that become
+  events, a flat assignments list built on volunteering, and a decisions
+  register for minutes-grade institutional memory. Each is a toggle,
+  off by default.
+- **Search** — full-text across posts, comments, and events, guaranteed
+  (property-tested) never to surface anything you couldn't already see.
 - **Notifications** — in-app center, email, and Web Push with sane
   "highlights" defaults.
 - **Home** — one merged, strictly chronological view of everything you
@@ -93,6 +101,7 @@ live at `/healthz`; put a TLS proxy in front (see
 | ----------------------------------------- | ---------------------------------------------------------- |
 | [Development](docs/development.md)        | Workflow, everyday commands, what the automation does      |
 | [Releasing](docs/release.md)              | Tag-driven releases, versioning, immutability              |
+| [Backups & restore](docs/backups.md)      | Taking snapshots, restoring them, retention and encryption |
 | [Deployment](docs/deploy/)                | Reverse-proxy example; `.env.example` documents all config |
 | [Architecture decisions](docs/decisions/) | The ADRs — the "why" behind the shape of the system        |
 

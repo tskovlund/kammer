@@ -24,6 +24,27 @@ defmodule Kammer.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
+  @doc """
+  Writes a backup snapshot from a running release (SPEC §14) —
+  `bin/kammer eval 'Kammer.Release.backup("/backups")'`. Options as in
+  `Kammer.Backups.run/2`; restore steps in docs/backups.md.
+  """
+  @spec backup(Path.t(), keyword()) :: :ok
+  def backup(target_dir, opts \\ []) do
+    load_app()
+    {:ok, _apps} = Application.ensure_all_started(@app)
+
+    case Kammer.Backups.run(target_dir, opts) do
+      {:ok, result} ->
+        IO.puts("database: #{result.database}")
+        if result.uploads, do: IO.puts("uploads:  #{result.uploads}")
+        :ok
+
+      {:error, reason} ->
+        raise "backup failed: #{inspect(reason)}"
+    end
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end
