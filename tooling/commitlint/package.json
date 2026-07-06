@@ -1,0 +1,9 @@
+{
+  "name": "kammer-commitlint",
+  "private": true,
+  "description": "Dev-only tooling: commitlint for Conventional Commits enforcement (SPEC §17). Not part of the application build.",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
+  }
+}

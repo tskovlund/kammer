@@ -1,0 +1,24 @@
+# Git hooks for Kammer (SPEC §17).
+# Installed automatically by `mix setup` (runs `lefthook install`).
+# All commands run inside whichever dev shell you use (nix develop /
+# devbox shell / direnv) — lefthook itself is provided by that shell.
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --prefix tooling/commitlint --yes commitlint --config tooling/commitlint/commitlint.config.mjs --edit {1}
+
+pre-commit:
+  parallel: false
+  commands:
+    format:
+      run: mix format --check-formatted
+    credo:
+      run: mix credo --strict
+    compile:
+      run: mix compile --warnings-as-errors
+
+pre-push:
+  commands:
+    test:
+      run: mix test
