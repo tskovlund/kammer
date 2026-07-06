@@ -1,0 +1,44 @@
+# Mix / Elixir build artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+*.ez
+*.beam
+/config/*.secret.exs
+.elixir_ls/
+.elixir-tools/
+
+# Project-local Mix/Hex state (created by the Nix/devbox shells)
+/.nix-mix/
+/.nix-hex/
+
+# direnv
+/.direnv/
+
+# devbox
+/.devbox/
+
+# Node tooling (commitlint) and Phoenix asset pipeline
+/assets/node_modules/
+/node_modules/
+
+# Static artifacts built by mix assets.deploy
+/priv/static/assets/
+/priv/static/cache_manifest.json
+
+# Uploaded files in local dev (Storage local adapter)
+/priv/uploads/
+
+# Dialyzer PLTs
+/priv/plts/
+
+# Environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# OS noise
+.DS_Store

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
+  "description": "Kammer dev environment for contributors who don't use Nix directly. Mirrors flake.nix — keep the two in sync.",
+  "packages": [
+    "elixir@1.18",
+    "nodejs@22",
+    "postgresql@16",
+    "vips@latest",
+    "pkg-config@latest",
+    "lefthook@latest",
+    "inotify-tools@latest"
+  ],
+  "env": {
+    "MIX_HOME": "$PWD/.nix-mix",
+    "HEX_HOME": "$PWD/.nix-hex",
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "ERL_AFLAGS": "-kernel shell_history enabled"
+  },
+  "shell": {
+    "init_hook": [
+      "export PATH=\"$MIX_HOME/bin:$MIX_HOME/escripts:$HEX_HOME/bin:$PATH\""
+    ],
+    "scripts": {
+      "setup": "mix setup",
+      "server": "mix phx.server",
+      "test": "mix test",
+      "lint": "mix format --check-formatted && mix credo --strict",
+      "format": "mix format"
+    }
+  }
+}
