@@ -1,0 +1,59 @@
+# Tag-driven releases: push a `vX.Y.Z` tag and this creates the GitHub
+# Release with notes extracted from that version's CHANGELOG section.
+# The Docker workflow independently publishes ghcr.io/…:X.Y.Z from the
+# same tag. Releases are immutable (repo setting): never re-tag — ship
+# a fix-forward vX.Y.Z+1 instead. Full process: docs/release.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify tag matches mix.exs version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MIX_VERSION=$(grep -o 'version: "[^"]*"' mix.exs | head -1 | cut -d'"' -f2)
+          if [ "$TAG" != "$MIX_VERSION" ]; then
+            echo "Tag v$TAG does not match mix.exs version $MIX_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          awk -v ver="$TAG" '
+            $0 ~ "^## \\[" ver "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if ! [ -s RELEASE_NOTES.md ]; then
+            echo "CHANGELOG.md has no section for [$TAG] — add one before tagging" >&2
+            exit 1
+          fi
+          {
+            echo ""
+            echo "---"
+            echo "**Container image:** \`ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME#v}\`"
+          } >> RELEASE_NOTES.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag
