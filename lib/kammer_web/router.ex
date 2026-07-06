@@ -131,6 +131,20 @@ defmodule KammerWeb.Router do
     pipe_through [:api, :api_authenticated]
 
     delete "/auth/device-token", AuthController, :revoke
+
+    get "/home", HomeController, :show
+    get "/communities", CommunityController, :index
+    get "/communities/:community_slug/groups", CommunityController, :groups
+    get "/communities/:community_slug/groups/:group_slug/posts", PostController, :index
+    post "/communities/:community_slug/groups/:group_slug/posts", PostController, :create
+
+    post "/communities/:community_slug/groups/:group_slug/posts/:post_id/comments",
+         PostController,
+         :create_comment
+
+    get "/communities/:community_slug/events", EventController, :index
+    get "/communities/:community_slug/events/:event_id", EventController, :show
+    put "/communities/:community_slug/events/:event_id/rsvp", EventController, :rsvp
   end
 
   # Guest links (SPEC §6/§11): signed, expiring tokens are the whole

@@ -80,6 +80,54 @@ defmodule Kammer.Feed do
   end
 
   @doc """
+  A cursor page of the group feed (RFC 0001): strictly chronological
+  (newest first, no pinned reordering — clients render the pinned flag),
+  the cursor being `{published_at, id}` of the last seen post. Returns
+  `{posts, next_cursor}` with `next_cursor` nil on the last page.
+  """
+  @spec list_group_feed_page(
+          User.t() | nil,
+          Group.t(),
+          {DateTime.t(), Ecto.UUID.t()} | nil,
+          pos_integer()
+        ) :: {[Post.t()], {DateTime.t(), Ecto.UUID.t()} | nil}
+  def list_group_feed_page(actor, %Group{} = group, cursor, limit)
+      when limit > 0 and limit <= 100 do
+    now = DateTime.utc_now(:second)
+    relationship = Authorization.relationship(actor, group)
+    moderator? = Authorization.can?(actor, :moderate_group, group, relationship)
+    actor_id = actor_id(actor)
+
+    query =
+      from(post in Post,
+        where: post.group_id == ^group.id,
+        order_by: [desc: post.published_at, desc: post.id],
+        limit: ^(limit + 1),
+        preload: ^@preloads
+      )
+
+    query =
+      case cursor do
+        nil ->
+          query
+
+        {cursor_at, cursor_id} ->
+          from(post in query,
+            where:
+              post.published_at < ^cursor_at or
+                (post.published_at == ^cursor_at and post.id < ^cursor_id)
+          )
+      end
+
+    posts = query |> visible_posts(actor_id, moderator?, now) |> Repo.all()
+
+    case Enum.split(posts, limit) do
+      {page, []} -> {page, nil}
+      {page, _more} -> {page, page |> List.last() |> then(&{&1.published_at, &1.id})}
+    end
+  end
+
+  @doc """
   The aggregated home feed for the active community (SPEC §5): posts
   from the groups the user is a member of, strictly chronological.
   """

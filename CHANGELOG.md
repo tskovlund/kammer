@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- JSON API v1 (`/api/v1`): passwordless device-token auth (request
+  link → exchange → revoke, tokens hashed at rest and revocable from
+  the devices page), instance capability discovery, communities and
+  groups, cursor-paginated group feeds with post and comment creation,
+  events with RSVP, and the merged Home — every route through the same
+  authorization module as the UI, with a property test guaranteeing
+  API/UI visibility parity.
 - Home: the instance start page now merges upcoming events and recent
   activity across all communities and groups you belong to — strictly
   chronological, read-only, with a per-group "Show in Home" switch on
