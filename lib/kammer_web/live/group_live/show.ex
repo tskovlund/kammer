@@ -51,6 +51,13 @@ defmodule KammerWeb.GroupLive.Show do
         </:subtitle>
         <:actions>
           <.link
+            :if={@membership || @permissions.manage}
+            navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/files"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-folder" class="size-4" /> {gettext("Files")}
+          </.link>
+          <.link
             :if={@permissions.manage}
             navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/settings"}
             class="btn btn-ghost btn-sm"

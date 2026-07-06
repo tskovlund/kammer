@@ -335,6 +335,83 @@ defmodule Kammer.Authorization do
     end
   end
 
+  ## File-space rules (SPEC §7, ADR 0009) — presets only, no ACLs.
+  ##
+  ## THE INVARIANT (enforced here, property-tested): file/folder visibility
+  ## can never exceed the owning scope's visibility preset. Reading always
+  ## requires scope view access first; folder overrides can only restrict
+  ## further, never widen.
+
+  @typedoc "The owning scope of a file space: a group or the community."
+  @type file_scope() :: Group.t() | Community.t()
+
+  @doc """
+  Whether the actor may read files in the given folder chain (root-first
+  ancestors, innermost last; `[]` for the space root).
+
+  Requires scope view access (`:view_group` / `:view_community`) — the
+  invariant — and honors `admins_only` read overrides anywhere in the
+  chain (subfolders inherit restrictions from parents).
+  """
+  @spec can_read_folder?(actor(), file_scope(), [struct()], relationship()) :: boolean()
+  def can_read_folder?(actor, scope, folder_chain, relationship) do
+    scope_viewable?(actor, scope, relationship) and
+      (not chain_restricted?(folder_chain, :read_override) or
+         scope_admin_powers?(scope, relationship))
+  end
+
+  @doc """
+  Whether the actor may write (upload/create folders) in the folder
+  chain. Baseline write access is scope membership (SPEC §7:
+  `inherit(members)`); `admins_only` write overrides anywhere in the
+  chain restrict to admins. Archived groups are read-only.
+  """
+  @spec can_write_folder?(actor(), file_scope(), [struct()], relationship()) :: boolean()
+  def can_write_folder?(actor, scope, folder_chain, relationship) do
+    signed_in?(actor) and
+      scope_writable_baseline?(scope, relationship) and
+      (not chain_restricted?(folder_chain, :write_override) or
+         scope_admin_powers?(scope, relationship))
+  end
+
+  @doc """
+  Whether the actor may manage the file space (folder overrides, deleting
+  others' files): scope admin powers.
+  """
+  @spec can_manage_files?(actor(), file_scope(), relationship()) :: boolean()
+  def can_manage_files?(_actor, scope, relationship) do
+    scope_admin_powers?(scope, relationship)
+  end
+
+  defp scope_viewable?(actor, %Group{} = group, relationship) do
+    can?(actor, :view_group, group, relationship)
+  end
+
+  defp scope_viewable?(actor, %Community{} = community, relationship) do
+    can?(actor, :view_community, community, relationship)
+  end
+
+  defp scope_writable_baseline?(%Group{} = group, relationship) do
+    not Group.archived?(group) and
+      (relationship.group_role != nil or group_admin_powers?(group, relationship))
+  end
+
+  defp scope_writable_baseline?(%Community{}, relationship) do
+    relationship.community_role != nil
+  end
+
+  defp scope_admin_powers?(%Group{} = group, relationship) do
+    group_admin_powers?(group, relationship)
+  end
+
+  defp scope_admin_powers?(%Community{}, relationship) do
+    community_admin?(relationship)
+  end
+
+  defp chain_restricted?(folder_chain, override_field) do
+    Enum.any?(folder_chain, fn folder -> Map.fetch!(folder, override_field) == :admins_only end)
+  end
+
   ## Listing / query scoping — the only place list filtering logic lives
 
   @doc """

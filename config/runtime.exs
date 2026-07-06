@@ -137,6 +137,33 @@ if config_env() == :prod do
       raise "unsupported MAILER_ADAPTER #{inspect(other)} (expected \"smtp\" or \"local\")"
   end
 
+  # ## File storage (SPEC §1: local disk default, S3-compatible optional)
+  case System.get_env("STORAGE_ADAPTER", "local") do
+    "local" ->
+      config :kammer, :storage_adapter, Kammer.Storage.Local
+
+      config :kammer,
+             :uploads_path,
+             System.get_env("UPLOADS_PATH", "/app/uploads")
+
+    "s3" ->
+      config :kammer, :storage_adapter, Kammer.Storage.S3
+
+      config :kammer, :s3,
+        endpoint: System.get_env("S3_ENDPOINT"),
+        bucket: System.fetch_env!("S3_BUCKET"),
+        access_key_id: System.fetch_env!("S3_ACCESS_KEY_ID"),
+        secret_access_key: System.fetch_env!("S3_SECRET_ACCESS_KEY"),
+        region: System.get_env("S3_REGION", "us-east-1")
+
+    other ->
+      raise "unsupported STORAGE_ADAPTER #{inspect(other)} (expected \"local\" or \"s3\")"
+  end
+
+  config :kammer,
+         :upload_max_megabytes,
+         String.to_integer(System.get_env("UPLOAD_MAX_MB", "100"))
+
   config :kammer, :mail_from,
     address: System.get_env("MAIL_FROM_ADDRESS", "kammer@#{host}"),
     name: System.get_env("MAIL_FROM_NAME", "Kammer")

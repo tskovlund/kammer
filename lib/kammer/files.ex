@@ -14,6 +14,7 @@ defmodule Kammer.Files do
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
   alias Kammer.Media
@@ -53,18 +54,69 @@ defmodule Kammer.Files do
         DateTime.add(DateTime.utc_now(:second), @default_transient_days, :day)
       end
 
+    folder_id =
+      cond do
+        transient_expires_at -> nil
+        folder = Keyword.get(opts, :folder) -> folder.id
+        true -> feed_uploads_folder(group).id
+      end
+
     base_attrs = %{
       "filename" => sanitize_filename(filename),
       "community_id" => group.community_id,
       "group_id" => group.id,
+      "folder_id" => folder_id,
       "uploader_user_id" => uploader.id,
       "transient_expires_at" => transient_expires_at
     }
 
-    if Media.image_content_type?(declared_content_type) do
-      store_image(source_path, base_attrs)
+    with :ok <- check_quota(group, source_path) do
+      if Media.image_content_type?(declared_content_type) do
+        store_image(source_path, base_attrs)
+      else
+        store_plain_file(source_path, declared_content_type, base_attrs)
+      end
+    end
+  end
+
+  @doc """
+  Uploads into a specific folder of a file space (community or group),
+  enforcing the write presets and quota.
+  """
+  @spec upload_to_space(User.t(), Community.t() | Group.t(), Folder.t() | nil, Path.t(), map()) ::
+          {:ok, StoredFile.t()} | {:error, term()}
+  def upload_to_space(%User{} = uploader, scope, folder, source_path, file_info) do
+    relationship = Authorization.relationship(uploader, scope)
+    folder_chain = folder_chain(folder)
+
+    with true <-
+           Authorization.can_write_folder?(uploader, scope, folder_chain, relationship) ||
+             :unauthorized,
+         :ok <- check_quota(scope, source_path) do
+      declared_content_type = Map.get(file_info, :content_type, "application/octet-stream")
+
+      {community_id, group_id} =
+        case scope do
+          %Group{} = group -> {group.community_id, group.id}
+          %Community{} = community -> {community.id, nil}
+        end
+
+      base_attrs = %{
+        "filename" => sanitize_filename(Map.fetch!(file_info, :filename)),
+        "community_id" => community_id,
+        "group_id" => group_id,
+        "folder_id" => folder && folder.id,
+        "uploader_user_id" => uploader.id
+      }
+
+      if Media.image_content_type?(declared_content_type) do
+        store_image(source_path, base_attrs)
+      else
+        store_plain_file(source_path, declared_content_type, base_attrs)
+      end
     else
-      store_plain_file(source_path, declared_content_type, base_attrs)
+      :unauthorized -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -157,6 +209,392 @@ defmodule Kammer.Files do
     end)
 
     length(expired_files)
+  end
+
+  ## Folders (SPEC §7: shallow tree, presets only — ADR 0009)
+
+  @doc """
+  The system "Feed uploads" folder of a group, created on first use
+  (SPEC §5: feed attachments default here).
+  """
+  @spec feed_uploads_folder(Group.t()) :: Folder.t()
+  def feed_uploads_folder(%Group{} = group) do
+    Repo.get_by(Folder, group_id: group.id, system_key: "feed_uploads") ||
+      Repo.insert!(
+        %Folder{
+          community_id: group.community_id,
+          group_id: group.id,
+          name: "Feed uploads",
+          system_key: "feed_uploads"
+        },
+        on_conflict: :nothing,
+        conflict_target:
+          {:unsafe_fragment,
+           "(group_id, system_key) WHERE system_key IS NOT NULL AND group_id IS NOT NULL"}
+      ) ||
+      Repo.get_by!(Folder, group_id: group.id, system_key: "feed_uploads")
+  end
+
+  @doc """
+  The readable folders directly under `parent_folder` (nil = space root),
+  applying read presets through `Kammer.Authorization`.
+  """
+  @spec list_folders(User.t() | nil, Community.t() | Group.t(), Folder.t() | nil) :: [Folder.t()]
+  def list_folders(actor, scope, parent_folder \\ nil) do
+    relationship = Authorization.relationship(actor, scope)
+    parent_chain = folder_chain(parent_folder)
+
+    scope
+    |> folders_in_scope_query(parent_folder)
+    |> Repo.all()
+    |> Enum.filter(fn folder ->
+      Authorization.can_read_folder?(actor, scope, parent_chain ++ [folder], relationship)
+    end)
+  end
+
+  defp folders_in_scope_query(%Group{} = group, parent_folder) do
+    from(folder in Folder,
+      where: folder.group_id == ^group.id,
+      where: ^parent_condition(parent_folder),
+      order_by: folder.name
+    )
+  end
+
+  defp folders_in_scope_query(%Community{} = community, parent_folder) do
+    from(folder in Folder,
+      where: folder.community_id == ^community.id and is_nil(folder.group_id),
+      where: ^parent_condition(parent_folder),
+      order_by: folder.name
+    )
+  end
+
+  defp parent_condition(nil), do: dynamic([folder], is_nil(folder.parent_folder_id))
+
+  defp parent_condition(%Folder{id: parent_id}),
+    do: dynamic([folder], folder.parent_folder_id == ^parent_id)
+
+  @doc """
+  Files directly in `folder` (nil = space root) the actor may read.
+  """
+  @spec list_files(User.t() | nil, Community.t() | Group.t(), Folder.t() | nil) ::
+          {:ok, [StoredFile.t()]} | {:error, :unauthorized}
+  def list_files(actor, scope, folder \\ nil) do
+    relationship = Authorization.relationship(actor, scope)
+    chain = folder_chain(folder)
+
+    if Authorization.can_read_folder?(actor, scope, chain, relationship) do
+      {:ok,
+       scope
+       |> files_in_scope_query(folder)
+       |> Repo.all()}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  defp files_in_scope_query(%Group{} = group, folder) do
+    from(stored_file in StoredFile,
+      where: stored_file.group_id == ^group.id,
+      where: is_nil(stored_file.transient_expires_at),
+      where: ^file_folder_condition(folder),
+      order_by: stored_file.filename
+    )
+  end
+
+  defp files_in_scope_query(%Community{} = community, folder) do
+    from(stored_file in StoredFile,
+      where: stored_file.community_id == ^community.id and is_nil(stored_file.group_id),
+      where: is_nil(stored_file.transient_expires_at),
+      where: ^file_folder_condition(folder),
+      order_by: stored_file.filename
+    )
+  end
+
+  defp file_folder_condition(nil), do: dynamic([stored_file], is_nil(stored_file.folder_id))
+
+  defp file_folder_condition(%Folder{id: folder_id}),
+    do: dynamic([stored_file], stored_file.folder_id == ^folder_id)
+
+  @doc """
+  Creates a folder (write access at the parent; depth-limited — the tree
+  stays shallow).
+  """
+  @spec create_folder(User.t(), Community.t() | Group.t(), Folder.t() | nil, String.t()) ::
+          {:ok, Folder.t()} | {:error, term()}
+  def create_folder(%User{} = actor, scope, parent_folder, name) do
+    relationship = Authorization.relationship(actor, scope)
+    parent_chain = folder_chain(parent_folder)
+
+    cond do
+      not Authorization.can_write_folder?(actor, scope, parent_chain, relationship) ->
+        {:error, :unauthorized}
+
+      length(parent_chain) >= Folder.maximum_depth() ->
+        {:error, :too_deep}
+
+      true ->
+        {community_id, group_id} =
+          case scope do
+            %Group{} = group -> {group.community_id, group.id}
+            %Community{} = community -> {community.id, nil}
+          end
+
+        %Folder{}
+        |> Folder.changeset(%{
+          "name" => name,
+          "community_id" => community_id,
+          "group_id" => group_id,
+          "parent_folder_id" => parent_folder && parent_folder.id
+        })
+        |> Repo.insert()
+    end
+  end
+
+  @doc """
+  Sets a folder's read/write preset overrides (admins only; overrides can
+  only restrict — ADR 0009).
+  """
+  @spec update_folder_overrides(User.t(), Community.t() | Group.t(), Folder.t(), map()) ::
+          {:ok, Folder.t()} | {:error, term()}
+  def update_folder_overrides(%User{} = actor, scope, %Folder{} = folder, attrs) do
+    relationship = Authorization.relationship(actor, scope)
+
+    if Authorization.can_manage_files?(actor, scope, relationship) do
+      folder
+      |> Ecto.Changeset.cast(attrs, [:read_override, :write_override])
+      |> Repo.update()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Deletes a folder (admins only). Subfolders are removed; files fall back
+  to the space root (never deleted — files outlive their folders).
+  """
+  @spec delete_folder(User.t(), Community.t() | Group.t(), Folder.t()) ::
+          {:ok, Folder.t()} | {:error, term()}
+  def delete_folder(%User{} = actor, scope, %Folder{} = folder) do
+    relationship = Authorization.relationship(actor, scope)
+
+    cond do
+      not Authorization.can_manage_files?(actor, scope, relationship) -> {:error, :unauthorized}
+      folder.system_key != nil -> {:error, :system_folder}
+      true -> Repo.delete(folder)
+    end
+  end
+
+  @doc """
+  Deletes a file: the uploader may remove their own; admins any.
+  The stored bytes are deleted too.
+  """
+  @spec delete_file(User.t(), StoredFile.t()) :: {:ok, StoredFile.t()} | {:error, :unauthorized}
+  def delete_file(%User{} = actor, %StoredFile{} = stored_file) do
+    scope = scope_of(stored_file)
+    relationship = Authorization.relationship(actor, scope)
+
+    if stored_file.uploader_user_id == actor.id or
+         Authorization.can_manage_files?(actor, scope, relationship) do
+      Storage.delete(stored_file.storage_key)
+      if stored_file.thumbnail_key, do: Storage.delete(stored_file.thumbnail_key)
+      Repo.delete(stored_file)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  The full ancestor chain of a folder, root-first (inclusive).
+  """
+  @spec folder_chain(Folder.t() | nil) :: [Folder.t()]
+  def folder_chain(nil), do: []
+
+  def folder_chain(%Folder{} = folder) do
+    build_chain(folder, [folder], Folder.maximum_depth() + 1)
+  end
+
+  defp build_chain(_folder, chain, 0), do: chain
+
+  defp build_chain(%Folder{parent_folder_id: nil}, chain, _remaining), do: chain
+
+  defp build_chain(%Folder{parent_folder_id: parent_id}, chain, remaining) do
+    case Repo.get(Folder, parent_id) do
+      nil -> chain
+      parent -> build_chain(parent, [parent | chain], remaining - 1)
+    end
+  end
+
+  @doc """
+  Loads a folder within a scope, or `nil`.
+  """
+  @spec get_folder(Community.t() | Group.t(), Ecto.UUID.t() | nil) :: Folder.t() | nil
+  def get_folder(_scope, nil), do: nil
+
+  def get_folder(scope, folder_id) do
+    case Ecto.UUID.cast(folder_id) do
+      {:ok, _uuid} ->
+        case scope do
+          %Group{} = group ->
+            Repo.get_by(Folder, id: folder_id, group_id: group.id)
+
+          %Community{} = community ->
+            Repo.one(
+              from(folder in Folder,
+                where:
+                  folder.id == ^folder_id and folder.community_id == ^community.id and
+                    is_nil(folder.group_id)
+              )
+            )
+        end
+
+      :error ->
+        nil
+    end
+  end
+
+  ## Auto-collections (SPEC §7)
+
+  @doc """
+  The "Images" auto-collection: every readable image in the scope.
+  Folder read restrictions are honored per file.
+  """
+  @spec list_image_collection(User.t() | nil, Community.t() | Group.t()) :: [StoredFile.t()]
+  def list_image_collection(actor, scope) do
+    list_collection(actor, scope, dynamic([stored_file], stored_file.kind == :image))
+  end
+
+  @doc """
+  The "Posted in feed" auto-collection: files attached to posts.
+  """
+  @spec list_feed_collection(User.t() | nil, Community.t() | Group.t()) :: [StoredFile.t()]
+  def list_feed_collection(actor, scope) do
+    attached_ids =
+      from(attachment in Kammer.Feed.PostAttachment, select: attachment.stored_file_id)
+
+    list_collection(
+      actor,
+      scope,
+      dynamic([stored_file], stored_file.id in subquery(attached_ids))
+    )
+  end
+
+  defp list_collection(actor, scope, condition) do
+    relationship = Authorization.relationship(actor, scope)
+
+    scope_condition =
+      case scope do
+        %Group{} = group ->
+          dynamic([stored_file], stored_file.group_id == ^group.id)
+
+        %Community{} = community ->
+          dynamic(
+            [stored_file],
+            stored_file.community_id == ^community.id and is_nil(stored_file.group_id)
+          )
+      end
+
+    from(stored_file in StoredFile,
+      where: ^scope_condition,
+      where: ^condition,
+      where: is_nil(stored_file.transient_expires_at),
+      order_by: [desc: stored_file.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.filter(fn stored_file ->
+      chain = stored_file.folder_id && folder_chain(Repo.get(Folder, stored_file.folder_id))
+      Authorization.can_read_folder?(actor, scope, chain || [], relationship)
+    end)
+  end
+
+  ## Storage policy (SPEC §7: unmetered or quota mode)
+
+  @doc """
+  Bytes used by a scope's file space.
+  """
+  @spec space_usage_bytes(Community.t() | Group.t()) :: non_neg_integer()
+  def space_usage_bytes(%Group{} = group) do
+    Repo.one(
+      from(stored_file in StoredFile,
+        where: stored_file.group_id == ^group.id,
+        select: type(coalesce(sum(stored_file.byte_size), 0), :integer)
+      )
+    )
+  end
+
+  def space_usage_bytes(%Community{} = community) do
+    Repo.one(
+      from(stored_file in StoredFile,
+        where: stored_file.community_id == ^community.id and is_nil(stored_file.group_id),
+        select: type(coalesce(sum(stored_file.byte_size), 0), :integer)
+      )
+    )
+  end
+
+  @doc """
+  Per-user contribution stats for a scope (SPEC §7: shown in either
+  storage-policy mode), largest first.
+  """
+  @spec contribution_stats(Community.t() | Group.t()) :: [
+          %{user: User.t() | nil, bytes: non_neg_integer()}
+        ]
+  def contribution_stats(scope) do
+    scope_condition =
+      case scope do
+        %Group{} = group ->
+          dynamic([stored_file], stored_file.group_id == ^group.id)
+
+        %Community{} = community ->
+          dynamic(
+            [stored_file],
+            stored_file.community_id == ^community.id and is_nil(stored_file.group_id)
+          )
+      end
+
+    Repo.all(
+      from(stored_file in StoredFile,
+        where: ^scope_condition,
+        left_join: user in assoc(stored_file, :uploader_user),
+        group_by: user.id,
+        select: %{user: user, bytes: type(coalesce(sum(stored_file.byte_size), 0), :integer)},
+        order_by: [desc: coalesce(sum(stored_file.byte_size), 0)]
+      )
+    )
+  end
+
+  @doc """
+  The scope's effective quota in bytes, or `nil` when unmetered.
+  """
+  @spec effective_quota_bytes(Community.t() | Group.t()) :: non_neg_integer() | nil
+  def effective_quota_bytes(scope) do
+    settings = Kammer.Communities.get_instance_settings()
+
+    if settings.storage_policy == :quota do
+      scope.storage_quota_bytes
+    end
+  end
+
+  defp check_quota(scope, source_path) do
+    case effective_quota_bytes(scope) do
+      nil ->
+        :ok
+
+      quota_bytes ->
+        upload_size = File.stat!(source_path).size
+
+        if space_usage_bytes(scope) + upload_size > quota_bytes do
+          {:error, :quota_exceeded}
+        else
+          :ok
+        end
+    end
+  end
+
+  defp scope_of(%StoredFile{group_id: nil} = stored_file) do
+    Repo.get!(Community, stored_file.community_id)
+  end
+
+  defp scope_of(%StoredFile{group_id: group_id}) do
+    Repo.get!(Group, group_id)
   end
 
   defp sanitize_filename(filename) do

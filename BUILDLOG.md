@@ -264,3 +264,40 @@ Kammer.Authorization; creating events follows the posting policy.
 - *Event editing UI*: context supports update_event (tested); the UI
   exposes delete only — add an edit form mirroring EventLive.New bound
   to change_event. Recorded as a small gap to close in polish.
+
+## 2026-07-06 — Step 6: files (SPEC §7, §16.6)
+
+**Completed on top of the step-4 slice**: shallow folder trees for both
+scopes (max depth 4), preset-only permissions with `admins_only`
+read/write overrides inherited down the chain (ADR 0009), the
+**file-visibility invariant** with a dedicated property suite
+(`authorization_files_test.exs`: read never exceeds scope visibility;
+overrides only restrict; sealed groups grant admins nothing extra; writes
+require membership and a live group), system "Feed uploads" folder per
+group (feed attachments land there; transient files have no folder),
+auto-collections ("Images", "Posted in feed"), storage policy modes
+(instance `unmetered`/`quota`; per-space quota bytes; uploads blocked at
+cap with clear messaging; usage + per-user contribution stats shown in
+either mode), file-space browser UI for both scopes with breadcrumbs,
+uploads, folder admin menu, quota bar, and an S3-compatible adapter
+(`Kammer.Storage.S3`) on Req's native SigV4 with path-style addressing,
+selected via `STORAGE_ADAPTER=s3` at runtime.
+
+**Decisions / trims (with completion paths)**:
+- *File read baseline = scope visibility, not membership*: a public
+  group's feed images must render for signed-out readers, so read access
+  equals `:view_group` (which for private/community groups is
+  membership). This is the only reading under which public feeds work;
+  the invariant (never exceeds scope visibility) holds by construction.
+- *req_s3 not used*: it pins req ~> 0.5.6 against our req 0.6; Req's
+  built-in `aws_sigv4` option covers put/get/delete directly. S3 adapter
+  is unit-level code without an integration test in this container (no
+  MinIO); verify against MinIO via docker compose `--profile minio` when
+  network-unrestricted: set STORAGE_ADAPTER=s3 + S3_* and upload a file.
+- *No file move/rename UI*: files land where uploaded; deleting a folder
+  reparents files to the root. Complete: add `move_file(actor, file,
+  folder)` (write check at target) + a move menu in FileLive.
+- *FTS over filenames/extracted text*: Phase 2 per SPEC §16 (global
+  search step).
+- *Attached-to-event collection*: events have no attachments in v1
+  (cover image deferred); collection added when they do.

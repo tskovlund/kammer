@@ -31,6 +31,7 @@ defmodule Kammer.Files.StoredFile do
 
     belongs_to :community, Kammer.Communities.Community
     belongs_to :group, Kammer.Groups.Group
+    belongs_to :folder, Kammer.Files.Folder
     belongs_to :uploader_user, Kammer.Accounts.User
 
     timestamps(type: :utc_datetime)
@@ -55,6 +56,7 @@ defmodule Kammer.Files.StoredFile do
       :transient_expires_at,
       :community_id,
       :group_id,
+      :folder_id,
       :uploader_user_id
     ])
     |> validate_required([:filename, :content_type, :byte_size, :storage_key, :community_id])

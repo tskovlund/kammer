@@ -7,8 +7,8 @@ file-sharing half of Google Drive — for associations, bands, clubs, and every
 other community that exists first in the real world and only second on a
 screen.
 
-Built for and battle-tested with TÅGEKAMMERET, a Danish student association,
-and its 70-year anniversary revy band.
+Built with TÅGEKAMMERET — a Danish student association and its anniversary
+revy band — as the founding use case.
 
 ## Why Kammer
 

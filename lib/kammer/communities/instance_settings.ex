@@ -24,6 +24,7 @@ defmodule Kammer.Communities.InstanceSettings do
       values: @community_creation_policies,
       default: :operators_only
 
+    field :storage_policy, Ecto.Enum, values: [:unmetered, :quota], default: :unmetered
     field :setup_completed_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
@@ -39,6 +40,7 @@ defmodule Kammer.Communities.InstanceSettings do
       :instance_name,
       :default_locale,
       :community_creation_policy,
+      :storage_policy,
       :setup_completed_at
     ])
     |> validate_inclusion(:default_locale, ["en", "da"])

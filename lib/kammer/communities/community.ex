@@ -23,6 +23,7 @@ defmodule Kammer.Communities.Community do
     field :default_locale, :string, default: "en"
     field :listed_on_instance, :boolean, default: false
     field :require_real_names, :boolean, default: false
+    field :storage_quota_bytes, :integer
 
     has_many :memberships, Kammer.Communities.CommunityMembership
     has_many :groups, Kammer.Groups.Group

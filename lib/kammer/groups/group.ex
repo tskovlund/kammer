@@ -39,6 +39,7 @@ defmodule Kammer.Groups.Group do
     field :sealed, :boolean, default: false
     field :archived_at, :utc_datetime
     field :ics_token, :string, redact: true
+    field :storage_quota_bytes, :integer
 
     belongs_to :community, Kammer.Communities.Community
     has_many :memberships, Kammer.Groups.GroupMembership

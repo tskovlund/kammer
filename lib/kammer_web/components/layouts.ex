@@ -187,6 +187,13 @@ defmodule KammerWeb.Layouts do
                 {gettext("Members")}
               </.sidebar_link>
               <.sidebar_link
+                navigate={~p"/c/#{@active_community.slug}/files"}
+                icon="hero-folder"
+                active={@current_tab == :files}
+              >
+                {gettext("Community files")}
+              </.sidebar_link>
+              <.sidebar_link
                 :if={admin?(@community_relationship)}
                 navigate={~p"/c/#{@active_community.slug}/settings"}
                 icon="hero-cog-6-tooth"
