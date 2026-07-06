@@ -1,5 +1,12 @@
 # Kammer
 
+[![CI](https://github.com/tskovlund/kammer/actions/workflows/ci.yml/badge.svg)](https://github.com/tskovlund/kammer/actions/workflows/ci.yml)
+[![Docker](https://github.com/tskovlund/kammer/actions/workflows/docker.yml/badge.svg)](https://github.com/tskovlund/kammer/actions/workflows/docker.yml)
+[![CodeQL](https://github.com/tskovlund/kammer/actions/workflows/codeql.yml/badge.svg)](https://github.com/tskovlund/kammer/actions/workflows/codeql.yml)
+[![License](https://img.shields.io/github/license/tskovlund/kammer)](LICENSE)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org)
+[![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovate)](https://github.com/tskovlund/.github/blob/main/default.json)
+
 **A calm, self-hosted home for real-world communities.**
 
 Kammer replaces Facebook Groups/Pages/Events, the group email thread, and the

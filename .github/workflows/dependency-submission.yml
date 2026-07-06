@@ -1,0 +1,29 @@
+# GitHub's dependency graph has no native Hex/mix support, so Elixir
+# dependencies are submitted explicitly via the dependency submission
+# API. This is what makes Dependabot alerts and the dependency-review
+# check see mix.lock — the "Automatic dependency submission" repo
+# setting only covers Maven-style ecosystems and stays off.
+name: Dependency submission
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit mix dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18.4"
+          otp-version: "27.3"
+      - uses: erlef/mix-dependency-submission@v1

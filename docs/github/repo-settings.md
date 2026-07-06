@@ -14,8 +14,9 @@ upload [`rulesets/main-protection.json`](rulesets/main-protection.json).
 What it enforces on the default branch:
 
 - **Pull requests only** — no direct pushes; review threads must be
-  resolved; **merge commits only** (owner decision: an honest,
-  unrewritten history — no squash, no rebase).
+  resolved; **merge commits by default, squash allowed** (owner
+  decision: honest history first, squash "can be okay sometimes";
+  rebase stays off).
 - **Required checks before merge**: `Conventional Commits`,
   `Format, Credo, Sobelow, audit, Dialyzer, tests`, and `Docker image`,
   each up to date with the base branch (strict mode).
@@ -46,8 +47,9 @@ secret, and add a scheduled workflow running `renovatebot/github-action`
 
 ## 3. One-time settings (Settings → General)
 
-- Merge buttons: allow **merge commits only** — disable squash and
-  rebase (matches the ruleset and the honest-history policy).
+- Merge buttons: allow **merge commits and squash**, disable rebase
+  (matches the ruleset; merge commits are the default habit, squash is
+  the occasional exception).
 - **Allow auto-merge**: on — Renovate's auto-merge relies on it.
 - **Automatically delete head branches**: on.
 
@@ -67,6 +69,11 @@ Enable everything that is free for the repository's visibility:
   researchers at it.
 - **Code scanning**: the CodeQL workflow uploads results automatically
   (public repos; private repos need GitHub Advanced Security).
+- **Automatic dependency submission**: leave **off** — it only covers
+  Maven-style ecosystems and does nothing for mix. The
+  dependency-submission workflow in this repo submits mix.lock to the
+  dependency graph instead, which is what lets Dependabot alerts and
+  the dependency-review check see Elixir dependencies.
 
 ## 5. Actions hygiene (Settings → Actions → General)
 
@@ -74,6 +81,20 @@ Enable everything that is free for the repository's visibility:
   need more declare it per-job; keep the default minimal).
 - Allow GitHub Actions to create and approve pull requests: **off**
   (nothing here needs it; the Renovate app is not affected).
+- **"Require actions to be pinned to a full-length commit SHA": off.**
+  It would also block `uses: tskovlund/.github/...@main`, and the
+  auto-propagating shared workflows are deliberate. Renovate's
+  pinGitHubActionDigests preset keeps third-party actions SHA-pinned
+  without giving that up.
+- **Actions policy**: "Allow tskovlund, and select non-tskovlund,
+  actions and reusable workflows", with "Allow actions created by
+  GitHub" checked and this allow-list:
+
+      DeterminateSystems/*, docker/*, erlef/*, gitleaks/*,
+      nix-community/*, pnpm/*
+
+  Stricter than "allow all", and new entries are rare (Renovate SHA
+  updates never touch the list because it matches by name).
 
 ## Choices made autonomously (and why)
 
