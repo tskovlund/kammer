@@ -708,3 +708,17 @@ Decision (owner signed off on the split):
   `docs/github/rulesets/main-protection.json`; the owner needs to
   re-import the ruleset for it to become required (documented in
   docs/github/repo-settings.md).
+
+## 2026-07-06 — Contribution model: prompt requests
+
+Owner decision: contributions arrive as **prompt requests** — anyone
+opens issues (bugs, features, design sketches, full implementation
+plans); maintainers implement. Pull requests are maintainer-only;
+unsolicited ones are closed with a friendly pointer to CONTRIBUTING.
+Rationale: solo-maintainer review debt is the scarcest resource, and
+the no-hacks bar makes reviewing external code costlier than writing
+it. Precedent: SQLite, Litestream. GitHub cannot technically disable
+PRs on a public repository, so this is policy, documented in
+CONTRIBUTING.md; an auto-close Action is deliberately NOT built until
+drive-by PRs actually occur. The path to more maintainers stays open —
+that's how the model scales.
