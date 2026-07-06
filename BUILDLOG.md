@@ -301,3 +301,48 @@ selected via `STORAGE_ADAPTER=s3` at runtime.
   search step).
 - *Attached-to-event collection*: events have no attachments in v1
   (cover image deferred); collection added when they do.
+
+## 2026-07-06 — Step 7: notifications (SPEC §9, §16.7)
+
+**Domain** (`Kammer.Notifications`): pure channel matrix
+(`channels_for/2`) encoding the §9 defaults — mentions reach every
+unmuted level with push+email; replies-to-you, acknowledgment-required
+posts, and event activity are highlight-class (push+email+in-app at
+highlights); ordinary posts are in-app only at highlights and everything
+at "everything"; muted gets nothing. Broadcast groups (admins-only
+posting) default to "everything". Per-user per-group levels
+(everything/highlights/mentions_only/muted) with an upserting selector
+on the group page. Fan-out runs async in Oban (posting stays instant,
+SPEC §20) for posts (incl. scheduled publication and approval-queue
+release — pending posts never fan out), comments (post author + parent
+comment author = "reply to you"), and events. Mentions: @everyone,
+@admins (role-scoped), and @Display Name containment match. In-app
+center with unread markers/mark-all-read and an unread dot on the tab
+bar bell. Event reminders route through the same matrix (email keeps the
+ICS attachment).
+
+**Web Push**: web_push_ex 0.2.0 (RFC 8291 aes128gcm; the only maintained
+Elixir option per §22 verification) + Req for delivery; dead
+subscriptions (404/410) pruned. VAPID via env (optional — everything
+degrades gracefully without keys). PWA: manifest.json + service worker
+(app-shell caching only, content online-only per SPEC §1) + PushSubscribe
+LiveView hook.
+
+**Decisions / trims (with completion paths)**:
+- *Digest frequency (instant/daily/weekly/off)*: Phase 2 per SPEC §16
+  ("newsletter subscriptions + digests"). Schema-ready: add a
+  digest_frequency column to notification_preferences and an Oban cron
+  assembling unsent in-app rows.
+- *Display-name mentions use containment matching* ("@Name" in body) —
+  no stable usernames exist by design; false positives are possible for
+  prefix-named members. Complete: composer autocomplete inserting
+  `@[Name](user:UUID)` and parsing that form.
+- *Live badge updates*: the unread dot refreshes on navigation, not via
+  PubSub push. Complete: subscribe layouts to a per-user topic and
+  broadcast from deliver/4.
+- *Push not end-to-end testable here* (no browser): subscription CRUD,
+  matrix, and payloads are unit-tested; WebPushEx handles RFC 8291.
+  Verify manually: set VAPID keys, open /c/:slug/notifications, Enable,
+  post a mention from another account.
+- *iOS PWA icon*: manifest uses the scaffold SVG logo; real raster icons
+  (192/512 PNG) should replace it before launch (cosmetic).

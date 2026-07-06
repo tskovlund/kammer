@@ -80,6 +80,7 @@ defmodule Kammer.MixProject do
       # source (MDEX_BUILD=1) instead of fetching the precompiled binary.
       {:rustler, ">= 0.0.0", optional: true},
       {:vix, "~> 0.40"},
+      {:web_push_ex, "~> 0.2.0"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},

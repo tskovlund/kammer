@@ -164,6 +164,18 @@ if config_env() == :prod do
          :upload_max_megabytes,
          String.to_integer(System.get_env("UPLOAD_MAX_MB", "100"))
 
+  # ## Web Push (SPEC §1: VAPID). Optional — push is disabled without keys.
+  if vapid_private_key = System.get_env("VAPID_PRIVATE_KEY") do
+    config :web_push_ex, :vapid,
+      private_key: vapid_private_key,
+      public_key: System.fetch_env!("VAPID_PUBLIC_KEY"),
+      subject:
+        System.get_env(
+          "VAPID_SUBJECT",
+          "mailto:#{System.get_env("MAIL_FROM_ADDRESS", "kammer@" <> host)}"
+        )
+  end
+
   config :kammer, :mail_from,
     address: System.get_env("MAIL_FROM_ADDRESS", "kammer@#{host}"),
     name: System.get_env("MAIL_FROM_NAME", "Kammer")

@@ -69,6 +69,7 @@ defmodule KammerWeb.CommunityScope do
     |> assign(:community_relationship, relationship)
     |> assign(:member_communities, member_communities(current_user))
     |> assign(:member_groups, member_groups(current_user, relationship, community))
+    |> assign(:unread_notifications, Kammer.Notifications.unread_count(current_user))
   end
 
   defp current_user(socket) do

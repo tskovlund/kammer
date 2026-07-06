@@ -33,6 +33,7 @@ defmodule KammerWeb.GroupLive.Show do
       member_communities={@member_communities}
       member_groups={@member_groups}
       community_relationship={@community_relationship}
+      unread_notifications={@unread_notifications}
       current_tab={:groups}
     >
       <.header>
@@ -91,6 +92,21 @@ defmodule KammerWeb.GroupLive.Show do
         >
           {gettext("Leave group")}
         </.button>
+
+        <form :if={@membership} phx-change="set_notification_level" class="ml-auto">
+          <label class="flex items-center gap-1.5 text-sm text-base-content/60">
+            <.icon name="hero-bell" class="size-4" />
+            <select name="level" class="select select-xs">
+              <option
+                :for={{value, label} <- notification_level_options()}
+                value={value}
+                selected={@notification_level == value}
+              >
+                {label}
+              </option>
+            </select>
+          </label>
+        </form>
       </div>
 
       <%!-- Composer --%>
@@ -463,6 +479,20 @@ defmodule KammerWeb.GroupLive.Show do
     end
   end
 
+  def handle_event("set_notification_level", %{"level" => level}, socket)
+      when level in ~w(everything highlights mentions_only muted) do
+    current_user = current_user(socket.assigns)
+
+    {:ok, _preference} =
+      Kammer.Notifications.set_level(
+        current_user,
+        socket.assigns.group,
+        String.to_existing_atom(level)
+      )
+
+    {:noreply, refresh(socket, current_user)}
+  end
+
   def handle_event("leave", _params, socket) do
     current_user = current_user(socket.assigns)
 
@@ -576,8 +606,14 @@ defmodule KammerWeb.GroupLive.Show do
       post_as_group: Authorization.can?(current_user, :post_as_group, group, relationship)
     }
 
+    notification_level =
+      if current_user do
+        Atom.to_string(Kammer.Notifications.effective_level(current_user, group))
+      end
+
     socket
     |> assign(:relationship, relationship)
+    |> assign(:notification_level, notification_level)
     |> assign(:membership, Groups.get_membership(group, current_user))
     |> assign(:pending_request?, Groups.pending_join_request?(current_user, group))
     |> assign(:members, members)
@@ -636,6 +672,15 @@ defmodule KammerWeb.GroupLive.Show do
 
   defp member_of_community?(%{community_role: role}), do: role != nil
   defp member_of_community?(_relationship), do: false
+
+  defp notification_level_options do
+    [
+      {"everything", gettext("Everything")},
+      {"highlights", gettext("Highlights")},
+      {"mentions_only", gettext("Mentions only")},
+      {"muted", gettext("Muted")}
+    ]
+  end
 
   defp role_label(:owner), do: gettext("Owner")
   defp role_label(:admin), do: gettext("Admin")

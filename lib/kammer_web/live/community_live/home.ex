@@ -30,6 +30,7 @@ defmodule KammerWeb.CommunityLive.Home do
       member_communities={@member_communities}
       member_groups={@member_groups}
       community_relationship={@community_relationship}
+      unread_notifications={@unread_notifications}
       current_tab={:home}
     >
       <%= if member?(@community_relationship) do %>

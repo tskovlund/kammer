@@ -206,6 +206,7 @@ defmodule Kammer.Feed do
             |> Oban.insert()
           else
             broadcast(group, {:post_created, post.id})
+            enqueue_fanout("post", post.id)
           end
 
           {:ok, get_post!(group, post.id)}
@@ -402,6 +403,14 @@ defmodule Kammer.Feed do
       |> Ecto.Changeset.change(pending_approval: false)
       |> Repo.update()
       |> tap_broadcast(group, fn post -> {:post_created, post.id} end)
+      |> case do
+        {:ok, approved_post} = result ->
+          enqueue_fanout("post", approved_post.id)
+          result
+
+        error ->
+          error
+      end
     end
   end
 
@@ -494,7 +503,21 @@ defmodule Kammer.Feed do
         })
         |> Repo.insert()
         |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+        |> tap_fanout_comment()
     end
+  end
+
+  defp tap_fanout_comment({:ok, comment} = result) do
+    enqueue_fanout("comment", comment.id)
+    result
+  end
+
+  defp tap_fanout_comment(other_result), do: other_result
+
+  defp enqueue_fanout(type, id) do
+    %{"type" => type, "id" => id}
+    |> Kammer.Workers.NotificationFanoutWorker.new()
+    |> Oban.insert()
   end
 
   # One reply level everywhere: replying to a reply reparents to the top.

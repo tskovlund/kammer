@@ -127,6 +127,11 @@ defmodule Kammer.Events do
 
       with {:ok, event} <- %Event{} |> Event.changeset(attrs) |> Repo.insert() do
         schedule_reminder(event)
+
+        %{"type" => "event", "id" => event.id}
+        |> Kammer.Workers.NotificationFanoutWorker.new()
+        |> Oban.insert()
+
         {:ok, %Event{event | group: group}}
       end
     end

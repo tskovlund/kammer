@@ -39,8 +39,33 @@ defmodule Kammer.Workers.EventReminderWorker do
         )
       )
 
+    group = Repo.get!(Kammer.Groups.Group, event.group_id)
+
     Enum.each(attendees, fn user ->
-      Kammer.Events.EventNotifier.deliver_reminder(user, event)
+      level = Kammer.Notifications.effective_level(user, group)
+      channels = Kammer.Notifications.channels_for(:event_reminder, level)
+
+      if :email in channels do
+        Kammer.Events.EventNotifier.deliver_reminder(user, event)
+      end
+
+      if :in_app in channels do
+        Repo.insert!(%Kammer.Notifications.Notification{
+          user_id: user.id,
+          community_id: event.community_id,
+          group_id: event.group_id,
+          kind: :event_reminder,
+          event_id: event.id
+        })
+      end
+
+      if :push in channels do
+        Kammer.Notifications.send_push(user, %{
+          title: event.title,
+          body: Calendar.strftime(event.starts_at, "%Y-%m-%d %H:%M UTC"),
+          url: KammerWeb.Endpoint.url()
+        })
+      end
     end)
 
     :ok

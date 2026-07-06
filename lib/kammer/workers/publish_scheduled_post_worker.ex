@@ -25,6 +25,12 @@ defmodule Kammer.Workers.PublishScheduledPostWorker do
           {Kammer.Feed, {:post_created, post.id}}
         )
 
+        unless post.pending_approval do
+          %{"type" => "post", "id" => post.id}
+          |> Kammer.Workers.NotificationFanoutWorker.new()
+          |> Oban.insert()
+        end
+
         :ok
     end
   end

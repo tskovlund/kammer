@@ -1,3 +1,41 @@
+
+// ── Kammer PWA: service worker (app-shell only) + Web Push hook ──────────
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
+const PushSubscribe = {
+  mounted() {
+    const button = this.el.querySelector("[data-push-enable]");
+    if (!button) return;
+    if (!("PushManager" in window) || Notification.permission === "denied") {
+      this.pushEvent("push_denied", {});
+      return;
+    }
+    button.addEventListener("click", async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(this.el.dataset.vapidKey),
+        });
+        this.pushEvent("push_subscription", subscription.toJSON());
+      } catch (_error) {
+        this.pushEvent("push_denied", {});
+      }
+    });
+  },
+};
+
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.
 // import "./user_socket.js"
@@ -29,7 +67,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: { PushSubscribe, ...colocatedHooks},
 })
 
 // Show progress bar on live navigation and form submits

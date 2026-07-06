@@ -38,6 +38,7 @@ defmodule KammerWeb.Layouts do
   attr :member_groups, :list, default: []
   attr :community_relationship, :map, default: nil
   attr :current_tab, :atom, default: nil
+  attr :unread_notifications, :integer, default: 0
 
   slot :inner_block, required: true
 
@@ -57,6 +58,7 @@ defmodule KammerWeb.Layouts do
           member_groups={@member_groups}
           community_relationship={@community_relationship}
           current_tab={@current_tab}
+          unread_notifications={@unread_notifications}
         >
           {render_slot(@inner_block)}
         </.community_shell>
@@ -122,6 +124,7 @@ defmodule KammerWeb.Layouts do
   attr :member_groups, :list, default: []
   attr :community_relationship, :map, default: nil
   attr :current_tab, :atom, default: nil
+  attr :unread_notifications, :integer, default: 0
   slot :inner_block, required: true
 
   defp community_shell(assigns) do
@@ -291,6 +294,7 @@ defmodule KammerWeb.Layouts do
         icon="hero-bell"
         active={@current_tab == :notifications}
         label={gettext("Notifications")}
+        badge={@unread_notifications}
       />
       <.tab_link
         navigate={~p"/users/settings"}
@@ -327,11 +331,19 @@ defmodule KammerWeb.Layouts do
   attr :icon, :string, required: true
   attr :label, :string, required: true
   attr :active, :boolean, default: false
+  attr :badge, :integer, default: 0
 
   defp tab_link(assigns) do
     ~H"""
     <.link navigate={@navigate} class={@active && "dock-active"} aria-current={@active && "page"}>
-      <.icon name={@icon} class="size-5" />
+      <span class="relative">
+        <.icon name={@icon} class="size-5" />
+        <span
+          :if={@badge > 0}
+          class="absolute -right-1.5 -top-1 size-2 rounded-full bg-[var(--accent,#3E6B48)]"
+          aria-label={gettext("Unread notifications")}
+        ></span>
+      </span>
       <span class="dock-label">{@label}</span>
     </.link>
     """

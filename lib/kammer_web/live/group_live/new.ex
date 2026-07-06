@@ -22,6 +22,7 @@ defmodule KammerWeb.GroupLive.New do
       member_communities={@member_communities}
       member_groups={@member_groups}
       community_relationship={@community_relationship}
+      unread_notifications={@unread_notifications}
       current_tab={:groups}
     >
       <.header>
