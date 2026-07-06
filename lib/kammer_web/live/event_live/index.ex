@@ -37,6 +37,31 @@ defmodule KammerWeb.EventLive.Index do
         </:actions>
       </.header>
 
+      <%!-- Open availability polls (issue #39): dates being found --%>
+      <section :if={@open_polls != []} class="space-y-2">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Finding a date")}
+        </h2>
+        <.link
+          :for={poll <- @open_polls}
+          navigate={~p"/c/#{@active_community.slug}/availability/#{poll.id}"}
+          class="flex items-center gap-4 rounded-box border border-dashed border-base-300 p-4 hover:bg-base-200"
+        >
+          <.icon name="hero-calendar-date-range" class="size-6 shrink-0 text-base-content/40" />
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-medium">{poll.title}</p>
+            <p class="truncate text-sm text-base-content/60">
+              {poll.group.name} · {ngettext(
+                "%{count} candidate date",
+                "%{count} candidate dates",
+                length(poll.options)
+              )}
+            </p>
+          </div>
+          <span class="shrink-0 text-sm text-base-content/50">{gettext("Answer")}</span>
+        </.link>
+      </section>
+
       <div :if={@upcoming_events != []} class="space-y-2">
         <.event_row
           :for={event <- @upcoming_events}
@@ -135,6 +160,7 @@ defmodule KammerWeb.EventLive.Index do
      socket
      |> assign(:upcoming_events, Events.list_upcoming_events(current_user, community))
      |> assign(:past_events, Events.list_past_events(current_user, community))
+     |> assign(:open_polls, Kammer.Availability.list_open_polls(current_user, community))
      |> assign(:ics_url, nil)}
   end
 

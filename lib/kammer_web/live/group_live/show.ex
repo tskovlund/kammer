@@ -62,6 +62,13 @@ defmodule KammerWeb.GroupLive.Show do
             <.icon name="hero-folder" class="size-4" /> {gettext("Files")}
           </.link>
           <.link
+            :if={@permissions.post && Kammer.Groups.Group.feature_enabled?(@group, :availability)}
+            navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/availability/new"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-calendar-date-range" class="size-4" /> {gettext("Find a date")}
+          </.link>
+          <.link
             :if={@permissions.manage}
             navigate={~p"/c/#{@active_community.slug}/g/#{@group.slug}/settings"}
             class="btn btn-ghost btn-sm"

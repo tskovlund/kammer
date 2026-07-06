@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Added
 
+- Availability polls ("Date finding", per-group toggle, off by
+  default): propose candidate dates, members answer yes / if needed /
+  no on a shared grid, and closing the poll turns the winning date
+  into a real event with one click. Open polls appear on the events
+  page under "Finding a date".
 - Signup slots on events: "bring cake ×2, drive ×4" — event managers
   add capacity-bounded slots, members claim with one tap (never
   overbooked, enforced in the database), and on public events guests
