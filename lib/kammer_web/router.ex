@@ -165,6 +165,7 @@ defmodule KammerWeb.Router do
 
     get "/guest/rsvp/confirm/:token", GuestRsvpController, :confirm
     get "/guest/comment/confirm/:token", GuestCommentController, :confirm
+    get "/guest/claim/confirm/:token", GuestClaimController, :confirm
 
     live_session :guest_links,
       on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do

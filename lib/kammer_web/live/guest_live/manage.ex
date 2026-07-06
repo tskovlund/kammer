@@ -51,6 +51,30 @@ defmodule KammerWeb.GuestLive.Manage do
           </div>
         </section>
 
+        <section :if={@claims != []} class="rounded-box border border-base-200 p-4">
+          <h2 class="pb-3 text-sm font-medium uppercase tracking-wide text-base-content/50">
+            {gettext("Your signups")}
+          </h2>
+          <div
+            :for={claim <- @claims}
+            class="flex items-center gap-3 border-t border-base-200 py-3 first:border-t-0"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">{claim.slot.title}</p>
+              <p class="text-xs text-base-content/60">{claim.slot.event.title}</p>
+            </div>
+            <.button
+              id={"release-claim-#{claim.id}"}
+              phx-click="release_claim"
+              phx-value-claim-id={claim.id}
+              data-confirm={gettext("Give up this signup?")}
+              class="btn btn-sm btn-outline"
+            >
+              {gettext("Give it up")}
+            </.button>
+          </div>
+        </section>
+
         <section :if={@comments != []} class="rounded-box border border-base-200 p-4">
           <h2 class="pb-3 text-sm font-medium uppercase tracking-wide text-base-content/50">
             {gettext("Your comments")}
@@ -98,6 +122,7 @@ defmodule KammerWeb.GuestLive.Manage do
          |> assign(:token, token)
          |> assign(:identity, state.identity)
          |> assign(:rsvps, state.rsvps)
+         |> assign(:claims, state.claims)
          |> assign(:comments, state.comments)}
 
       {:error, :invalid} ->
@@ -124,6 +149,19 @@ defmodule KammerWeb.GuestLive.Manage do
     end
   end
 
+  def handle_event("release_claim", %{"claim-id" => claim_id}, socket) do
+    case Events.unclaim_slot_by_token(socket.assigns.token, claim_id) do
+      {:ok, _claim} ->
+        {:noreply,
+         socket
+         |> reload_state()
+         |> put_flash(:info, gettext("Your signup is released."))}
+
+      {:error, :invalid} ->
+        {:noreply, put_flash(socket, :error, gettext("That link is invalid or has expired."))}
+    end
+  end
+
   def handle_event("erase", _params, socket) do
     case Guests.erase_by_token(socket.assigns.token) do
       :ok ->
@@ -142,6 +180,7 @@ defmodule KammerWeb.GuestLive.Manage do
       {:ok, state} ->
         socket
         |> assign(:rsvps, state.rsvps)
+        |> assign(:claims, state.claims)
         |> assign(:comments, state.comments)
 
       {:error, :invalid} ->

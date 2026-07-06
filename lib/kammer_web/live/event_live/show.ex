@@ -149,6 +149,128 @@ defmodule KammerWeb.EventLive.Show do
         </div>
       </section>
 
+      <%!-- Signup slots (issue #37): "bring cake ×2" --%>
+      <section
+        :if={@event.slots != [] or @can_manage?}
+        class="rounded-box border border-base-200 p-4"
+      >
+        <h2 class="pb-3 text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Signups")}
+        </h2>
+
+        <div
+          :for={slot <- @event.slots}
+          id={"slot-#{slot.id}"}
+          class="border-t border-base-200 py-3 first:border-t-0"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-medium">{slot.title}</p>
+            <span class="badge badge-ghost badge-sm">
+              {gettext("%{taken} of %{capacity} taken",
+                taken: length(slot.claims),
+                capacity: slot.capacity
+              )}
+            </span>
+            <span class="ml-auto flex gap-2">
+              <.button
+                :if={
+                  @can_rsvp? and not claimed_by_me?(slot, @current_scope.user) and slot_open?(slot)
+                }
+                id={"claim-slot-#{slot.id}"}
+                phx-click="claim_slot"
+                phx-value-slot-id={slot.id}
+                class="btn btn-primary btn-sm"
+              >
+                {gettext("I'll take it")}
+              </.button>
+              <.button
+                :if={@can_rsvp? and claimed_by_me?(slot, @current_scope.user)}
+                id={"unclaim-slot-#{slot.id}"}
+                phx-click="unclaim_slot"
+                phx-value-slot-id={slot.id}
+                class="btn btn-outline btn-sm"
+              >
+                {gettext("Give it up")}
+              </.button>
+              <button
+                :if={@can_manage?}
+                phx-click="delete_slot"
+                phx-value-slot-id={slot.id}
+                data-confirm={gettext("Delete this slot and its signups?")}
+                class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100"
+                title={gettext("Delete slot")}
+              >
+                <.icon name="hero-trash" class="size-3.5" />
+              </button>
+            </span>
+          </div>
+
+          <p :if={slot.claims != []} class="pt-1 text-sm text-base-content/70">
+            {slot.claims |> Enum.map(&claimant_name/1) |> Enum.join(", ")}
+          </p>
+
+          <%!-- Guest claim (same policy + flow as guest RSVP) --%>
+          <form
+            :if={@guest_rsvp_allowed? and slot_open?(slot)}
+            id={"guest-claim-form-#{slot.id}"}
+            phx-submit="guest_claim"
+            class="flex flex-wrap items-center gap-2 pt-2"
+          >
+            <input type="hidden" name="slot_id" value={slot.id} />
+            <input
+              type="text"
+              name="guest[display_name]"
+              required
+              placeholder={gettext("Your name")}
+              class="input input-sm flex-1"
+            />
+            <input
+              type="email"
+              name="guest[email]"
+              required
+              placeholder={gettext("Email")}
+              class="input input-sm flex-1"
+            />
+            <button type="submit" class="btn btn-outline btn-sm">
+              {gettext("I'll take it")}
+            </button>
+          </form>
+        </div>
+
+        <form
+          :if={@can_manage?}
+          id="add-slot-form"
+          phx-submit="add_slot"
+          class="flex flex-wrap items-end gap-2 border-t border-base-200 pt-3"
+        >
+          <label class="flex flex-1 flex-col gap-1 text-xs text-base-content/60">
+            {gettext("What's needed?")}
+            <input
+              type="text"
+              name="slot[title]"
+              required
+              placeholder={gettext("e.g. Bring cake")}
+              class="input input-sm"
+            />
+          </label>
+          <label class="flex w-24 flex-col gap-1 text-xs text-base-content/60">
+            {gettext("How many?")}
+            <input
+              type="number"
+              name="slot[capacity]"
+              min="1"
+              max="1000"
+              value="1"
+              required
+              class="input input-sm"
+            />
+          </label>
+          <button type="submit" class="btn btn-ghost btn-sm">
+            <.icon name="hero-plus" class="size-4" /> {gettext("Add slot")}
+          </button>
+        </form>
+      </section>
+
       <%!-- Comments (same engine as posts) --%>
       <section class="space-y-3">
         <h2 class="text-sm font-medium uppercase tracking-wide text-base-content/50">
@@ -345,6 +467,93 @@ defmodule KammerWeb.EventLive.Show do
     end
   end
 
+  def handle_event("add_slot", %{"slot" => slot_params}, socket) do
+    current_user = socket.assigns.current_scope.user
+
+    case Events.create_slot(current_user, socket.assigns.event, slot_params) do
+      {:ok, _slot} ->
+        {:noreply, reload(socket)}
+
+      {:error, %Ecto.Changeset{}} ->
+        {:noreply, put_flash(socket, :error, gettext("Please give the slot a title."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("delete_slot", %{"slot-id" => slot_id}, socket) do
+    current_user = socket.assigns.current_scope.user
+
+    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+         {:ok, _slot} <- Events.delete_slot(current_user, slot) do
+      {:noreply, reload(socket)}
+    else
+      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("claim_slot", %{"slot-id" => slot_id}, socket) do
+    current_user = socket.assigns.current_scope.user
+
+    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+         {:ok, _claim} <- Events.claim_slot(current_user, slot) do
+      {:noreply, reload(socket)}
+    else
+      {:error, :slot_full} ->
+        {:noreply, socket |> put_flash(:error, gettext("That slot just filled up.")) |> reload()}
+
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("unclaim_slot", %{"slot-id" => slot_id}, socket) do
+    current_user = socket.assigns.current_scope.user
+
+    claim =
+      Kammer.Repo.get_by(Kammer.Events.SlotClaim, slot_id: slot_id, user_id: current_user.id)
+
+    with %Kammer.Events.SlotClaim{} <- claim,
+         {:ok, _claim} <- Events.unclaim_slot(current_user, claim) do
+      {:noreply, reload(socket)}
+    else
+      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("guest_claim", %{"slot_id" => slot_id, "guest" => guest_params}, socket) do
+    event = socket.assigns.event
+
+    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+         :ok <-
+           Events.request_guest_claim(slot, event, event.group, guest_params,
+             client_ip: socket.assigns.client_ip,
+             confirm_url_fun: fn token -> url(~p"/guest/claim/confirm/#{token}") end
+           ) do
+      {:noreply,
+       put_flash(
+         socket,
+         :info,
+         gettext("Almost there — follow the link we just emailed you to confirm your signup.")
+       )}
+    else
+      {:error, :slot_full} ->
+        {:noreply, socket |> put_flash(:error, gettext("That slot just filled up.")) |> reload()}
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts. Please try again later."))}
+
+      {:error, %Ecto.Changeset{}} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Please check your name and email address."))}
+
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
   def handle_event("delete_event", _params, socket) do
     current_user = socket.assigns.current_scope.user
     community = socket.assigns.active_community
@@ -415,6 +624,18 @@ defmodule KammerWeb.EventLive.Show do
   end
 
   defp count(event, status), do: Enum.count(event.rsvps, fn rsvp -> rsvp.status == status end)
+
+  defp slot_open?(slot), do: length(slot.claims) < slot.capacity
+
+  defp claimed_by_me?(_slot, nil), do: false
+  defp claimed_by_me?(slot, user), do: Enum.any?(slot.claims, &(&1.user_id == user.id))
+
+  defp claimant_name(%{user: %{display_name: name}}) when is_binary(name), do: name
+
+  defp claimant_name(%{guest_identity: %{display_name: name}}) when is_binary(name),
+    do: gettext("%{name} (guest)", name: name)
+
+  defp claimant_name(_claim), do: gettext("Deleted user")
 
   defp going(event) do
     event.rsvps

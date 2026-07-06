@@ -11,6 +11,7 @@ defmodule Kammer.Guests do
 
   alias Kammer.Accounts.User
   alias Kammer.Events.EventRsvp
+  alias Kammer.Events.SlotClaim
   alias Kammer.Feed.Comment
   alias Kammer.Guests.GuestIdentity
   alias Kammer.Repo
@@ -74,8 +75,20 @@ defmodule Kammer.Guests do
             from(comment in Comment, where: comment.guest_identity_id == ^identity.id)
             |> Repo.update_all(set: [author_user_id: user.id, guest_identity_id: nil])
 
-            # Remaining guest RSVPs are duplicates of member ones; the
-            # identity delete cascades them away.
+            already_claimed =
+              from(claim in SlotClaim,
+                where: claim.user_id == ^user.id,
+                select: claim.slot_id
+              )
+
+            from(claim in SlotClaim,
+              where: claim.guest_identity_id == ^identity.id,
+              where: claim.slot_id not in subquery(already_claimed)
+            )
+            |> Repo.update_all(set: [user_id: user.id, guest_identity_id: nil])
+
+            # Remaining guest RSVPs and slot claims are duplicates of
+            # member ones; the identity delete cascades them away.
             Repo.delete!(identity)
             {:ok, :claimed}
           end)
@@ -86,12 +99,18 @@ defmodule Kammer.Guests do
 
   @doc """
   Everything behind a guest's management link (SPEC §12): the identity,
-  their RSVPs (events preloaded), and their comments (posts and groups
-  preloaded) — the full inventory the manage page lists and the erasure
-  removes.
+  their RSVPs (events preloaded), their signup-slot claims (slots and
+  events preloaded), and their comments (posts and groups preloaded) —
+  the full inventory the manage page lists and the erasure removes.
   """
   @spec fetch_manage_state(String.t()) ::
-          {:ok, %{identity: GuestIdentity.t(), rsvps: [EventRsvp.t()], comments: [Comment.t()]}}
+          {:ok,
+           %{
+             identity: GuestIdentity.t(),
+             rsvps: [EventRsvp.t()],
+             claims: [SlotClaim.t()],
+             comments: [Comment.t()]
+           }}
           | {:error, :invalid}
   def fetch_manage_state(manage_token) do
     with {:ok, %{identity_id: identity_id}} <- Kammer.Guests.Token.verify_manage(manage_token),
@@ -105,6 +124,15 @@ defmodule Kammer.Guests do
           )
         )
 
+      claims =
+        Repo.all(
+          from(claim in SlotClaim,
+            where: claim.guest_identity_id == ^identity.id,
+            preload: [slot: :event],
+            order_by: [asc: claim.inserted_at]
+          )
+        )
+
       comments =
         Repo.all(
           from(comment in Comment,
@@ -114,7 +142,7 @@ defmodule Kammer.Guests do
           )
         )
 
-      {:ok, %{identity: identity, rsvps: rsvps, comments: comments}}
+      {:ok, %{identity: identity, rsvps: rsvps, claims: claims, comments: comments}}
     else
       _invalid_or_gone -> {:error, :invalid}
     end
