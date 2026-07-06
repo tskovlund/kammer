@@ -677,3 +677,34 @@ daisyUI classes with equivalent bespoke component classes in
 app.css/core_components.ex screen by screen; the vendored plugin can
 then be dropped from assets/vendor. Cost estimate: a focused design
 pass, no data or logic changes.
+
+## 2026-07-06 — Smoke test in CI; screenshots stay human-committed
+
+Owner asked whether CI should run a real populated instance as a smoke
+test on every PR/merge **and** auto-update the committed screenshots.
+Decision (owner signed off on the split):
+
+- **Adopted:** a `Smoke test` CI job on every PR and merge drives the
+  entire product surface through a headless browser — the same
+  `scripts/screenshots.mjs` that generates README screenshots now
+  walks the wizard, three invite-link signups, posts, reactions, a
+  poll with votes, an acknowledgment post, an event with RSVPs and a
+  comment, file uploads into a folder, and a sealed group. Screenshots
+  upload as workflow artifacts on every run. The Docker workflow also
+  boots the freshly built image against Postgres and polls `/healthz`,
+  so the shipped artifact itself is proven to start and migrate.
+- **Rejected:** CI committing regenerated screenshots. Pixels are
+  nondeterministic (fonts, timing, and the demo event date is
+  relative, so PNGs would differ daily with zero UI change), binary
+  churn on every merge bloats history permanently, and a bot pushing
+  to PR branches fights the strict up-to-date required-checks policy.
+  Committed screenshots remain a deliberate act, reviewed like any
+  other diff; the PR template asks.
+- Sample data is owner-approved: the Kammerkoret quartet is Frida
+  (conductor/operator), Agnetha, Björn, and Benny — recognizable on
+  purpose, first names only. One member deliberately never
+  acknowledges the ack post; someone always has to be chased.
+- `Smoke test` was added to the required checks in
+  `docs/github/rulesets/main-protection.json`; the owner needs to
+  re-import the ruleset for it to become required (documented in
+  docs/github/repo-settings.md).

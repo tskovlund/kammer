@@ -47,6 +47,7 @@ npm-debug.log
 # Root and tooling node_modules
 /node_modules
 /tooling/commitlint/node_modules
+/scripts/node_modules
 
 # Uploaded files in local dev (Storage local adapter)
 /priv/uploads/
