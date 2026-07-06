@@ -151,7 +151,14 @@ schema split (no `supersedes_id` chain hack).
 7. Tests: context CRUD + retention pruning + permission matrix +
    property: version visibility ≡ entry visibility. Close #15 on merge.
 
-### 5.2 OpenAPI document (finishes ADR 0014's contract promise)
+### 5.2 OpenAPI document — ✅ SHIPPED
+
+Served at `/api/v1/openapi.json`; schemas in `KammerWeb.Api.Schemas`
+mirror the serializer; paths declared in `KammerWeb.ApiSpec`; the
+drift test (`openapi_test.exs`) pins document ↔ router. Remaining #30
+boxes (Channels, endpoints) still open. Original spec below.
+
+### 5.2 (original spec) OpenAPI document (finishes ADR 0014's contract promise)
 
 1. `open_api_spex` is already a dep. Add `KammerWeb.ApiSpec` (info,
    servers from endpoint config, bearer security scheme), schema

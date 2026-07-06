@@ -29,6 +29,7 @@ defmodule KammerWeb.Router do
   # browser stack asks — the API adds transport, never policy.
   pipeline :api do
     plug :accepts, ["json"]
+    plug OpenApiSpex.Plug.PutApiSpec, module: KammerWeb.ApiSpec
     plug :fetch_api_scope
   end
 
@@ -125,6 +126,14 @@ defmodule KammerWeb.Router do
     get "/instance", InstanceController, :show
     post "/auth/request-link", AuthController, :request_link
     post "/auth/exchange", AuthController, :exchange
+  end
+
+  # Unaliased scope: RenderSpec is a library plug, not a KammerWeb.Api
+  # controller.
+  scope "/api/v1" do
+    pipe_through :api
+
+    get "/openapi.json", OpenApiSpex.Plug.RenderSpec, []
   end
 
   scope "/api/v1", KammerWeb.Api do
