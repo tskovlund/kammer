@@ -14,6 +14,17 @@ file-sharing half of Google Drive — for associations, bands, clubs, and every
 other community that exists first in the real world and only second on a
 screen.
 
+<p align="center">
+  <img src="docs/screenshots/feed-desktop.png" alt="A group feed in Kammer: Markdown posts, reactions, comments, and a composer with polls, scheduling, and acknowledgment-required posts" width="800">
+</p>
+<p align="center">
+  <img src="docs/screenshots/feed-mobile.png" alt="The mobile feed with bottom tab navigation" width="189">
+  <img src="docs/screenshots/feed-desktop-dark.png" alt="The same feed in dark mode" width="399">
+  <img src="docs/screenshots/event-desktop.png" alt="An event page with RSVP" width="399">
+</p>
+
+<sub>Screenshots are generated from a real instance by `scripts/screenshots.sh` and regenerated when the UI changes.</sub>
+
 ## Why Kammer
 
 - **No ads. No algorithm. Ever.** Feeds are strictly chronological plus
@@ -63,6 +74,17 @@ creates your operator account, instance settings, first community and group,
 an invite link, and (optionally) a removable demo community. Health checks
 live at `/healthz`; put a TLS proxy in front (see
 `docs/deploy/Caddyfile.example`).
+
+## Documentation
+
+| Document                                             | What it covers                                             |
+| ---------------------------------------------------- | ---------------------------------------------------------- |
+| [Development](docs/development.md)                   | Workflow, everyday commands, what the automation does      |
+| [Releasing](docs/release.md)                         | Tag-driven releases, versioning, immutability              |
+| [Deployment](docs/deploy/)                           | Reverse-proxy example; `.env.example` documents all config |
+| [Architecture decisions](docs/decisions/)            | Twelve ADRs — the "why" behind the shape of the system     |
+| [GitHub configuration](docs/github/repo-settings.md) | Repo automation and the one-time admin settings            |
+| [SPEC.md](SPEC.md) / [BUILDLOG.md](BUILDLOG.md)      | The product spec and the build journal                     |
 
 ## Contributing
 
