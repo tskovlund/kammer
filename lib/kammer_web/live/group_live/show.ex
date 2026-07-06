@@ -129,7 +129,7 @@ defmodule KammerWeb.GroupLive.Show do
             required
             placeholder={gettext("Write something… Markdown works.")}
             class="textarea w-full"
-          >{@composer_body}</textarea>
+          >{@composer_form[:body_markdown].value}</textarea>
 
           <div class="flex flex-wrap items-center gap-3 pt-2 text-sm">
             <label class="flex cursor-pointer items-center gap-1.5">
@@ -137,6 +137,7 @@ defmodule KammerWeb.GroupLive.Show do
                 type="checkbox"
                 name="post[acknowledgment_required]"
                 value="true"
+                checked={@composer_form[:acknowledgment_required].value == "true"}
                 class="checkbox checkbox-xs"
               />
               {gettext("Requires acknowledgment")}
@@ -146,13 +147,19 @@ defmodule KammerWeb.GroupLive.Show do
                 type="checkbox"
                 name="post[author_type]"
                 value="group"
+                checked={@composer_form[:author_type].value == "group"}
                 class="checkbox checkbox-xs"
               />
               {gettext("Post as %{group}", group: @group.name)}
             </label>
             <label class="flex items-center gap-1.5">
               {gettext("Schedule")}
-              <input type="datetime-local" name="post[scheduled_for]" class="input input-xs" />
+              <input
+                type="datetime-local"
+                name="post[scheduled_for]"
+                value={@composer_form[:scheduled_for].value}
+                class="input input-xs"
+              />
             </label>
             <button
               type="button"
@@ -176,6 +183,7 @@ defmodule KammerWeb.GroupLive.Show do
               :for={index <- 0..(@poll_option_count - 1)}
               type="text"
               name={"post[poll][options][#{index}][text]"}
+              value={poll_param(@composer_form, ["options", Integer.to_string(index), "text"])}
               placeholder={gettext("Option %{number}", number: index + 1)}
               class="input input-sm w-full"
             />
@@ -188,6 +196,7 @@ defmodule KammerWeb.GroupLive.Show do
                   type="checkbox"
                   name="post[poll][multiple_choice]"
                   value="true"
+                  checked={poll_param(@composer_form, ["multiple_choice"]) == "true"}
                   class="checkbox checkbox-xs"
                 />
                 {gettext("Multiple choice")}
@@ -197,13 +206,19 @@ defmodule KammerWeb.GroupLive.Show do
                   type="checkbox"
                   name="post[poll][anonymous]"
                   value="true"
+                  checked={poll_param(@composer_form, ["anonymous"]) == "true"}
                   class="checkbox checkbox-xs"
                 />
                 {gettext("Anonymous votes")}
               </label>
               <label class="flex items-center gap-1.5">
                 {gettext("Closes")}
-                <input type="datetime-local" name="post[poll][closes_for]" class="input input-xs" />
+                <input
+                  type="datetime-local"
+                  name="post[poll][closes_for]"
+                  value={poll_param(@composer_form, ["closes_for"])}
+                  class="input input-xs"
+                />
               </label>
             </div>
           </div>
@@ -229,7 +244,13 @@ defmodule KammerWeb.GroupLive.Show do
               </p>
             </div>
             <label class="flex cursor-pointer items-center gap-1.5 pt-1 text-sm">
-              <input type="checkbox" name="post[transient]" value="true" class="checkbox checkbox-xs" />
+              <input
+                type="checkbox"
+                name="post[transient]"
+                value="true"
+                checked={@composer_form[:transient].value == "true"}
+                class="checkbox checkbox-xs"
+              />
               {gettext("Transient attachments (no file-space home, auto-delete after 30 days)")}
             </label>
           </div>
@@ -349,7 +370,6 @@ defmodule KammerWeb.GroupLive.Show do
          socket
          |> assign(:group, group)
          |> assign(:previous_visit, previous_visit)
-         |> assign(:composer_body, "")
          |> assign(:composer_form, to_form(%{}, as: "post"))
          |> assign(:show_poll_builder, false)
          |> assign(:poll_option_count, 2)
@@ -382,8 +402,12 @@ defmodule KammerWeb.GroupLive.Show do
     end)
   end
 
+  # Round-trip ALL composer params: LiveView resets unfocused inputs to
+  # server-rendered values on every patch, so any field not driven by
+  # @composer_form (poll options, checkboxes) would silently lose user
+  # input the moment another field triggers a change event.
   def handle_event("validate_post", %{"post" => post_params}, socket) do
-    {:noreply, assign(socket, :composer_body, post_params["body_markdown"] || "")}
+    {:noreply, assign(socket, :composer_form, to_form(post_params, as: "post"))}
   end
 
   def handle_event("toggle_poll_builder", _params, socket) do
@@ -414,7 +438,7 @@ defmodule KammerWeb.GroupLive.Show do
       {:ok, _post} ->
         {:noreply,
          socket
-         |> assign(:composer_body, "")
+         |> assign(:composer_form, to_form(%{}, as: "post"))
          |> assign(:show_poll_builder, false)
          |> assign(:poll_option_count, 2)
          |> refresh(current_user)}
@@ -544,6 +568,10 @@ defmodule KammerWeb.GroupLive.Show do
       datetime -> Map.put(attrs, "published_at", datetime)
     end
   end
+
+  # Reads a nested poll param ("post[poll][...]") back out of the
+  # composer form for controlled rendering.
+  defp poll_param(form, path), do: get_in(form.params, ["poll" | path])
 
   defp put_poll_attrs(attrs, current_user) do
     case attrs["poll"] do
