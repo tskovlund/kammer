@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Europe/Copenhagen",
+  "schedule": ["before 7am on monday"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 10,
+  "semanticCommits": "enabled",
+  "packageRules": [
+    {
+      "description": "Auto-merge non-major updates once required checks pass (majors wait for a human)",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "semanticCommitType": "ci"
+    },
+    {
+      "matchFileNames": ["tooling/commitlint/**"],
+      "groupName": "commitlint tooling",
+      "semanticCommitType": "ci"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "semanticCommitType": "build"
+    },
+    {
+      "matchManagers": ["mix"],
+      "semanticCommitType": "build"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  }
+}

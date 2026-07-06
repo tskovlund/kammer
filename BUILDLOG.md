@@ -580,3 +580,37 @@ push notifications need VAPID keys and a real browser to verify
 end-to-end; the standalone-tailwind × vendored-daisyUI question rides on
 the Docker CI job (see the smoke-test entry); backups/restore tooling is
 Phase 2 (do not launch real data without your own pg_dump cron).
+
+## 2026-07-06 — Merge policy, Renovate, and first live-CI findings (owner requests)
+
+Owner decisions applied:
+- **Merge commits only** (honest history, no rewriting): ruleset now
+  allows only the merge method; squash/rebase should be disabled in
+  Settings → General; the required-linear-history rule was dropped —
+  it is mutually exclusive with merge commits.
+- **Renovate replaces Dependabot** for version updates: renovate.json
+  committed (weekly, grouped, Conventional-Commit messages, auto-merge
+  for non-major once required checks pass, security updates any time);
+  .github/dependabot.yml and the dependabot-automerge workflow removed.
+  Activation needs one admin action: install the Mend Renovate app on
+  the repo (no PAT needed). Self-hosted-with-PAT documented as the
+  fallback.
+
+Repo management performed (owner asked me to manage dependency PRs):
+- Dependabot had already opened PRs #1 (commitlint group) and #2
+  (13 GitHub-Actions bumps) against the default branch. On both, the
+  full quality gate and Gitleaks were GREEN on real GitHub runners —
+  first external confirmation that the Nix-based CI works. The three
+  red checks were all pre-existing/ours, not the PRs' fault:
+  1. **Docker image**: real Dockerfile bug — `mix assets.deploy` ran
+     before `mix compile`, but app.css imports the colocated CSS that
+     compilation extracts into _build. Order swapped; this also means
+     the standalone tailwind binary got PAST plugin loading on GitHub,
+     so the daisyUI-options concern is still unproven either way — next
+     Docker CI run after this fix will settle it.
+  2. **Dependency review**: the Dependency graph toggle is off in repo
+     settings (documented admin step).
+  3. **Conventional Commits**: Dependabot capitalizes "Bump…", which
+     violates commitlint subject-case. Moot after the Renovate switch
+     (Renovate writes lowercase conventional subjects).
+  Both PRs merged with merge commits after that analysis.

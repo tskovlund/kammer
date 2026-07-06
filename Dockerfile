@@ -38,8 +38,10 @@ COPY priv priv
 COPY lib lib
 COPY assets assets
 
-RUN mix assets.deploy
+# Compile before bundling assets: app.css imports the colocated CSS that
+# the compiler extracts into _build (phoenix-colocated).
 RUN mix compile
+RUN mix assets.deploy
 
 COPY config/runtime.exs config/
 COPY rel rel
