@@ -443,5 +443,6 @@ defmodule KammerWeb.GroupLive.Settings do
   defp feature_label(:files), do: gettext("Files")
   defp feature_label(:availability), do: gettext("Date finding")
   defp feature_label(:assignments), do: gettext("Assignments")
+  defp feature_label(:decisions), do: gettext("Decisions")
   defp feature_label(feature), do: feature |> Atom.to_string() |> String.capitalize()
 end

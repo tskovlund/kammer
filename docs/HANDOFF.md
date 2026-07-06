@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **390 tests + 17 properties, zero failures**, ~83%
+Suite at handoff: **399 tests + 17 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -225,7 +225,7 @@ PRs, one issue tracker; separate repo only if CI time hurts). Then:
 ### 5.5 Collaborative track (issue #17 — accepted; sub-issue each)
 
 Order: **signup slots ✅ (#37) → availability polls ✅ (#39) →
-assignments ✅ (#41) → decisions log → rotations.** Design bullets
+assignments ✅ (#41) → decisions log ✅ (#43) → rotations.** Design bullets
 live in #17; each feature: file a sub-issue, RFC only if the design
 deviates from #17's bullets, feature atom in the group toggles (OFF
 by default), EN+DA, property tests on any visibility rule.
@@ -237,8 +237,16 @@ is now `num_nonnulls(post_id, event_id, assignment_id) = 1` and
 `Feed.delete_comment` routes assignment comments too. Complete/reopen
 follow the RSVP rule (trust by default; `completed_by_user_id` shows
 who). Due-date nudges deferred to the digests work (#33); API to #30.
-Remaining in the track: decisions log, rotations (design bullets in
-#17).
+Decisions SHIPPED (#43): `Kammer.Decisions`, a `decisions` register
+row per motion; the motion itself is a normal feed post created
+through `Feed.create_post` with a default For/Against/Abstain
+single-choice named vote (options text stored in the instance's
+default locale at creation). Outcome = adopted/rejected/noted +
+note, recorded by proposer-or-moderator, amendable pre-1.0 (audit
+trail belongs to #33's audit log). Register page at
+`/g/:slug/decisions`. Remaining in the track: rotations (design
+bullets in #17) — recurring duty rosters; needs an Oban rotation
+tick and a roster schema; spec it in a sub-issue first.
 
 Availability SHIPPED (#39): `Kammer.Availability` context,
 `availability_polls/options/responses`, `:availability` feature atom
