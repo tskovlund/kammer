@@ -309,6 +309,28 @@ defmodule KammerWeb.CommunityFlowsTest do
     end
   end
 
+  describe "member-only routes (CommunityScope :require_member)" do
+    test "a non-member is redirected to the community's public page", %{conn: conn} do
+      {community, _owner} = community_with_owner_fixture()
+      outsider = user_fixture()
+
+      assert {:error, {:redirect, %{to: destination}}} =
+               conn |> log_in_user(outsider) |> live(~p"/c/#{community.slug}/groups")
+
+      assert destination == "/c/#{community.slug}"
+    end
+
+    test "a member reaches the member-only route", %{conn: conn} do
+      {community, _owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+
+      {:ok, _lv, html} =
+        conn |> log_in_user(member) |> live(~p"/c/#{community.slug}/groups")
+
+      assert html =~ community.name
+    end
+  end
+
   describe "group settings page" do
     test "plain members cannot open group settings", %{conn: conn} do
       {community, _owner} = community_with_owner_fixture()
