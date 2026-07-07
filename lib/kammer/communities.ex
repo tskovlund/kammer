@@ -9,6 +9,7 @@ defmodule Kammer.Communities do
   import Ecto.Query, warn: false
 
   alias Kammer.Accounts.User
+  alias Kammer.Audit
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Communities.CommunityMembership
@@ -89,10 +90,16 @@ defmodule Kammer.Communities do
   @spec update_community(User.t(), Community.t(), map()) ::
           {:ok, Community.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def update_community(%User{} = actor, %Community{} = community, attrs) do
-    with :ok <- Authorization.authorize(actor, :manage_community, community) do
-      community
-      |> Community.changeset(attrs)
-      |> Repo.update()
+    with :ok <- Authorization.authorize(actor, :manage_community, community),
+         {:ok, updated} <- community |> Community.changeset(attrs) |> Repo.update() do
+      Audit.record(
+        community,
+        actor,
+        "community.settings_updated",
+        "#{actor.display_name} updated the community settings"
+      )
+
+      {:ok, updated}
     end
   end
 
@@ -209,9 +216,22 @@ defmodule Kammer.Communities do
         (not owner_transition? or actor_relationship.community_role == :owner)
 
     if authorized? do
-      membership
-      |> CommunityMembership.changeset(%{role: new_role})
-      |> Repo.update()
+      previous_role = membership.role
+
+      with {:ok, updated} <-
+             membership |> CommunityMembership.changeset(%{role: new_role}) |> Repo.update() do
+        target = Repo.get!(User, membership.user_id)
+
+        Audit.record(
+          community,
+          actor,
+          "member.role_changed",
+          "#{actor.display_name} changed #{target.display_name}'s role from " <>
+            "#{previous_role} to #{new_role}"
+        )
+
+        {:ok, updated}
+      end
     else
       {:error, :unauthorized}
     end
@@ -231,10 +251,24 @@ defmodule Kammer.Communities do
 
       membership.user_id == actor.id or
           Authorization.can?(actor, :manage_community, community) ->
-        Repo.transact(fn ->
-          delete_group_memberships_in_community(community, membership.user_id)
-          Repo.delete(membership)
-        end)
+        target = Repo.get!(User, membership.user_id)
+
+        with {:ok, removed} <-
+               Repo.transact(fn ->
+                 delete_group_memberships_in_community(community, membership.user_id)
+                 Repo.delete(membership)
+               end) do
+          if actor.id != target.id do
+            Audit.record(
+              community,
+              actor,
+              "member.removed",
+              "#{actor.display_name} removed #{target.display_name} from the community"
+            )
+          end
+
+          {:ok, removed}
+        end
 
       true ->
         {:error, :unauthorized}

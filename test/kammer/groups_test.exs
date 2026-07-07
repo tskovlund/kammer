@@ -4,6 +4,7 @@ defmodule Kammer.GroupsTest do
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
+  alias Kammer.Audit
   alias Kammer.Groups
 
   describe "create_group/3" do
@@ -49,7 +50,7 @@ defmodule Kammer.GroupsTest do
 
   describe "update_group/3 and the sealed invariant" do
     test "group admins update settings; sealed is never cast on update" do
-      {community, _owner} = community_with_owner_fixture()
+      {community, owner} = community_with_owner_fixture()
       group = group_fixture(community, sealed: true, visibility: :private)
       group_admin = group_member_fixture(group, :admin)
 
@@ -61,6 +62,7 @@ defmodule Kammer.GroupsTest do
                })
 
       assert updated.sealed, "sealed flag must be irreversible"
+      assert [%{action: "group.settings_updated"}] = Audit.list_events(owner, community)
     end
 
     test "community admins cannot manage sealed groups" do
@@ -77,6 +79,8 @@ defmodule Kammer.GroupsTest do
 
       assert {:ok, _updated} =
                Groups.update_group(owner, group, %{"name" => "Managed", "slug" => group.slug})
+
+      assert [%{action: "group.settings_updated"}] = Audit.list_events(owner, community)
     end
   end
 
@@ -100,6 +104,46 @@ defmodule Kammer.GroupsTest do
 
       assert {:error, :unauthorized} = Groups.delete_group(plain_member, group)
       assert {:ok, _deleted} = Groups.delete_group(owner, group)
+
+      assert [%{action: "group.deleted"}] = Audit.list_events(owner, community)
+    end
+  end
+
+  describe "update_member_role/4" do
+    test "group owners change roles; a community admin acting via override is flagged" do
+      {community, owner} = community_with_owner_fixture()
+      group = group_fixture(community)
+      group_owner = group_member_fixture(group, :owner)
+      plain_member = group_member_fixture(group)
+      membership = Groups.get_membership(group, plain_member)
+
+      assert {:ok, promoted} =
+               Groups.update_member_role(group_owner, group, membership, :admin)
+
+      assert promoted.role == :admin
+
+      assert [%{action: "group_member.role_changed", metadata: %{"override" => false}}] =
+               Audit.list_events(owner, community)
+
+      # The owner is not a member of the group at all — this is the
+      # community-admin-overrides-into-groups path SPEC §11 calls out.
+      assert {:ok, %{role: :member}} =
+               Groups.update_member_role(owner, group, promoted, :member)
+
+      assert [
+               %{action: "group_member.role_changed", metadata: %{"override" => true}},
+               %{action: "group_member.role_changed", metadata: %{"override" => false}}
+             ] = Audit.list_events(owner, community)
+    end
+
+    test "community admins cannot override sealed groups" do
+      {community, owner} = community_with_owner_fixture()
+      group = group_fixture(community, sealed: true, visibility: :private)
+      plain_member = group_member_fixture(group)
+      membership = Groups.get_membership(group, plain_member)
+
+      assert {:error, :unauthorized} =
+               Groups.update_member_role(owner, group, membership, :admin)
     end
   end
 

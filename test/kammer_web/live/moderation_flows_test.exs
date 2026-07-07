@@ -63,6 +63,33 @@ defmodule KammerWeb.ModerationFlowsTest do
 
       assert Repo.get(Post, post.id) == nil
       assert render(queue_lv) =~ "No open reports"
+
+      # Resolving the report is an admin action, so it lands in the
+      # audit log the same page shows further down.
+      html = render(queue_lv)
+      assert html =~ "Audit log"
+      assert html =~ "removed a reported post"
+    end
+
+    test "the audit log is admin-only", %{
+      community: community,
+      owner: owner,
+      reporter: reporter
+    } do
+      Kammer.Audit.record(community, owner, "community.settings_updated", "did something")
+
+      owner_conn = log_in_user(build_conn(), owner)
+      {:ok, _owner_lv, owner_html} = live(owner_conn, ~p"/c/#{community.slug}/moderation")
+      assert owner_html =~ "Audit log"
+      assert owner_html =~ "did something"
+
+      reporter_conn = log_in_user(build_conn(), reporter)
+
+      {:ok, _reporter_lv, reporter_html} =
+        live(reporter_conn, ~p"/c/#{community.slug}/moderation")
+
+      refute reporter_html =~ "Audit log"
+      refute reporter_html =~ "did something"
     end
 
     test "ban from the members page shows up on the moderation page", %{

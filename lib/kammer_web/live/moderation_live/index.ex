@@ -9,6 +9,8 @@ defmodule KammerWeb.ModerationLive.Index do
 
   import KammerWeb.KammerComponents
 
+  alias Kammer.Audit
+  alias Kammer.Authorization
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
   alias Kammer.Moderation
@@ -110,6 +112,29 @@ defmodule KammerWeb.ModerationLive.Index do
           </.button>
         </div>
       </section>
+
+      <section :if={@can_view_audit_log?} class="pt-6">
+        <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Audit log")}
+        </h2>
+        <div
+          :for={event <- @audit_events}
+          id={"audit-event-#{event.id}"}
+          class="rounded-box border border-base-200 p-3"
+        >
+          <p class="text-sm">{event.summary}</p>
+          <p class="text-xs text-base-content/60">
+            {Calendar.strftime(event.inserted_at, "%d %b %Y %H:%M")}
+          </p>
+        </div>
+
+        <.empty_state
+          :if={@audit_events == []}
+          icon="hero-clipboard-document-list"
+          headline={gettext("No audit events yet")}
+          description={gettext("Admin actions in this community will show up here.")}
+        />
+      </section>
     </Layouts.app>
     """
   end
@@ -160,6 +185,11 @@ defmodule KammerWeb.ModerationLive.Index do
     socket
     |> assign(:reports, Moderation.list_open_reports(current_user, community))
     |> assign(:bans, Moderation.list_bans(current_user, community))
+    |> assign(
+      :can_view_audit_log?,
+      Authorization.can?(current_user, :manage_community, community)
+    )
+    |> assign(:audit_events, Audit.list_events(current_user, community))
   end
 
   defp subject_excerpt(%Report{post: %Post{} = post}) do

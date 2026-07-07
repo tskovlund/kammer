@@ -10,6 +10,7 @@ defmodule Kammer.ModerationTest do
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
+  alias Kammer.Audit
   alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Feed.Post
@@ -93,6 +94,7 @@ defmodule Kammer.ModerationTest do
 
     test "resolving removes the content (and the report dies with it)", %{
       community: community,
+      owner: owner,
       moderator: moderator,
       reporter: reporter,
       post: post
@@ -103,6 +105,11 @@ defmodule Kammer.ModerationTest do
       assert Repo.get(Post, post.id) == nil
       assert Repo.get(Report, report.id) == nil
       assert Moderation.list_open_reports(moderator, community) == []
+
+      assert [%{action: "content.removed", metadata: %{"report_id" => report_id}}] =
+               Audit.list_events(owner, community)
+
+      assert report_id == report.id
     end
   end
 
@@ -122,8 +129,13 @@ defmodule Kammer.ModerationTest do
       # The single choke-point: no invite path can re-add them.
       assert {:error, :banned} = Communities.add_member(community, author)
 
+      assert [%{action: "member.banned"}] = Audit.list_events(owner, community)
+
       assert {:ok, _lifted} = Moderation.unban(owner, ban)
       assert {:ok, _membership} = Communities.add_member(community, author)
+
+      assert [%{action: "member.unbanned"}, %{action: "member.banned"}] =
+               Audit.list_events(owner, community)
     end
 
     test "only admins ban; nobody bans admins or themselves", %{
