@@ -30,10 +30,10 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
-  erasure, and the audit log** (§5.6) — see that section for what
-  shipped and what remains in each.
+  erasure, the audit log, and passkeys** (§5.6) — see that section
+  for what shipped and what remains in each.
 
-Suite at handoff: **428 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **445 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -324,8 +324,23 @@ atom. Danish register: a slot is "en tjans".
   (resolve-report, ban, unban). Read-gated to community admins
   (`list_events/3`); UI is a third section on the moderation page
   (`/c/:slug/moderation`).
-- **Passkeys**: `webauthn_components` or `wax`; register after first
-  magic-link login; device page lists them.
+- ✅ **Passkeys** — SHIPPED (ADR 0018): `wax_` (Hex name for Wax).
+  Registration and usernameless authentication each get a small
+  JSON options endpoint/LiveView `handle_event` pair generating a
+  `Wax.Challenge`; a colocated JS hook drives
+  `navigator.credentials`. Registration verifies and stores entirely
+  inside the (already-authenticated) `UserLive.Devices` process.
+  Login verifies inside `UserLive.Login`, then hands off through a
+  single-use, ~2-minute `UserToken` ("passkey-exchange" context) to
+  `UserSessionController.create_from_passkey/2` — the same
+  `UserAuth.log_in_user/3` finalization every other sign-in path
+  uses, since LiveView has no `conn` to set the session cookie with.
+  `user_passkeys.credential_id` is unique instance-wide (usernameless
+  sign-in looks it up before it knows who's signing in).
+  `test/support/webauthn_helper.ex` hand-crafts valid ES256
+  attestations/assertions (real P-256 keys, real CBOR, real ECDSA)
+  so the test suite exercises actual Wax verification without a
+  browser. Devices page lists passkeys alongside sessions.
 - **Recurrence + attendance matrix**: RRULE-lite (weekly/biweekly/
   monthly), materialized occurrences, per-occurrence RSVP grid.
 - **Admin update notice** (SPEC Phase 2): the instance surfaces

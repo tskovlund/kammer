@@ -223,6 +223,7 @@ defmodule KammerWeb.Router do
     end
 
     post "/users/log-in", UserSessionController, :create
+    post "/users/log-in/passkey", UserSessionController, :create_from_passkey
     delete "/users/log-out", UserSessionController, :delete
   end
 end

@@ -10,7 +10,7 @@ defmodule Kammer.Accounts do
 
   import Ecto.Query, warn: false
 
-  alias Kammer.Accounts.{User, UserNotifier, UserToken}
+  alias Kammer.Accounts.{User, UserNotifier, UserPasskey, UserToken}
   alias Kammer.RateLimit
   alias Kammer.Repo
 
@@ -172,6 +172,150 @@ defmodule Kammer.Accounts do
     )
 
     :ok
+  end
+
+  ## Passkeys (ADR 0018, SPEC §16): WebAuthn credentials, registered
+  ## after first login. Sign-in is usernameless — no `allow_credentials`
+  ## is set on the authentication challenge, so the browser offers every
+  ## resident credential it holds for this origin, and the returned
+  ## credential id (unique instance-wide) identifies the user. This
+  ## context stays free of the web layer: callers pass `origin`
+  ## (`KammerWeb.Endpoint.url/0`) rather than it being read here.
+
+  @doc """
+  Starts a passkey registration ceremony for the given user.
+  """
+  @spec new_passkey_registration_challenge(User.t(), String.t()) :: Wax.Challenge.t()
+  def new_passkey_registration_challenge(%User{}, origin) do
+    Wax.new_registration_challenge(origin: origin, rp_id: :auto)
+  end
+
+  @doc """
+  Verifies and stores a newly registered passkey against the challenge
+  `new_passkey_registration_challenge/2` returned.
+  """
+  @spec register_passkey(User.t(), binary(), String.t(), Wax.Challenge.t(), String.t() | nil) ::
+          {:ok, UserPasskey.t()} | {:error, term()}
+  def register_passkey(user, attestation_object, client_data_json, challenge, nickname \\ nil)
+
+  def register_passkey(%User{} = user, attestation_object, client_data_json, challenge, nickname) do
+    with {:ok, {auth_data, _attestation_result}} <-
+           Wax.register(attestation_object, client_data_json, challenge) do
+      credential = auth_data.attested_credential_data
+
+      %UserPasskey{user_id: user.id}
+      |> Ecto.Changeset.change(
+        credential_id: credential.credential_id,
+        public_key_cose: :erlang.term_to_binary(credential.credential_public_key),
+        aaguid: Wax.AuthenticatorData.get_aaguid(auth_data),
+        nickname: nickname
+      )
+      |> Ecto.Changeset.unique_constraint(:credential_id)
+      |> Repo.insert()
+    end
+  end
+
+  @doc """
+  The user's registered passkeys, newest first.
+  """
+  @spec list_passkeys(User.t()) :: [UserPasskey.t()]
+  def list_passkeys(%User{} = user) do
+    Repo.all(
+      from(passkey in UserPasskey,
+        where: passkey.user_id == ^user.id,
+        order_by: [desc: passkey.inserted_at]
+      )
+    )
+  end
+
+  @doc """
+  Deletes one of the user's passkeys. Scoped to the given user so one
+  user can never delete another's.
+  """
+  @spec delete_passkey(User.t(), Ecto.UUID.t()) :: :ok
+  def delete_passkey(%User{} = user, passkey_id) do
+    Repo.delete_all(
+      from(passkey in UserPasskey,
+        where: passkey.id == ^passkey_id and passkey.user_id == ^user.id
+      )
+    )
+
+    :ok
+  end
+
+  @doc """
+  Starts a usernameless passkey authentication ceremony.
+  """
+  @spec new_passkey_authentication_challenge(String.t()) :: Wax.Challenge.t()
+  def new_passkey_authentication_challenge(origin) do
+    Wax.new_authentication_challenge(origin: origin, rp_id: :auto)
+  end
+
+  @doc """
+  Verifies a passkey authentication assertion and returns the user it
+  identifies. Updates `sign_count` (clone detection per WebAuthn §7.2,
+  tolerated at a standing `0` — most platform authenticators never
+  increment it) and `last_used_at` on success.
+  """
+  @spec login_user_by_passkey(binary(), binary(), binary(), String.t(), Wax.Challenge.t()) ::
+          {:ok, User.t()} | {:error, :not_found | term()}
+  def login_user_by_passkey(credential_id, auth_data_bin, sig, client_data_json, challenge) do
+    with %UserPasskey{} = passkey <- Repo.get_by(UserPasskey, credential_id: credential_id),
+         cose_key = :erlang.binary_to_term(passkey.public_key_cose, [:safe]),
+         {:ok, auth_data} <-
+           Wax.authenticate(credential_id, auth_data_bin, sig, client_data_json, challenge, [
+             {credential_id, cose_key}
+           ]) do
+      record_passkey_use(passkey, auth_data.sign_count)
+      {:ok, get_user!(passkey.user_id)}
+    else
+      nil -> {:error, :not_found}
+      {:error, _} = error -> error
+    end
+  end
+
+  # A standing 0 is normal (most passkey authenticators never
+  # increment it); anything else must strictly increase, or the
+  # credential may have been cloned. Either way the sign-in itself
+  # already succeeded — this only updates bookkeeping.
+  defp record_passkey_use(passkey, new_sign_count) do
+    if new_sign_count == 0 or new_sign_count > passkey.sign_count do
+      passkey
+      |> Ecto.Changeset.change(
+        sign_count: new_sign_count,
+        last_used_at: DateTime.utc_now(:second)
+      )
+      |> Repo.update!()
+    end
+
+    :ok
+  end
+
+  @doc """
+  Mints the short-lived token that hands a passkey login off to
+  `login_user_by_passkey_exchange_token/1` (see ADR 0018: WebAuthn
+  verification happens inside a LiveView process, which has no `conn`
+  to set the session cookie with).
+  """
+  @spec build_passkey_login_exchange(User.t()) :: String.t()
+  def build_passkey_login_exchange(%User{} = user) do
+    {token, user_token} = UserToken.build_passkey_exchange_token(user)
+    Repo.insert!(user_token)
+    token
+  end
+
+  @doc """
+  Consumes a passkey login exchange token (single-use, ~2 minutes).
+  """
+  @spec login_user_by_passkey_exchange_token(String.t()) :: {:ok, User.t()} | {:error, :not_found}
+  def login_user_by_passkey_exchange_token(token) do
+    with {:ok, query} <- UserToken.verify_passkey_exchange_token_query(token),
+         {user, token_row} <- Repo.one(query) do
+      Repo.delete!(token_row)
+      {:ok, user}
+    else
+      _not_found -> {:error, :not_found}
+    end
   end
 
   @doc """
