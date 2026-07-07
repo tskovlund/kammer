@@ -96,6 +96,33 @@ defmodule KammerWeb.AssignmentFlowsTest do
       assert comment.author_user_id == member.id
     end
 
+    test "member reports a comment on an assignment (SPEC §11)", %{
+      community: community,
+      group: group,
+      creator: creator,
+      member: member
+    } do
+      {:ok, assignment} = Assignments.create_assignment(creator, group, %{"title" => "Kaffe"})
+
+      {:ok, comment} =
+        Assignments.create_comment(member, assignment, %{"body_markdown" => "Tvivlsomt"})
+
+      conn = log_in_user(build_conn(), creator)
+
+      {:ok, lv, _html} =
+        live(conn, ~p"/c/#{community.slug}/g/#{group.slug}/assignments/#{assignment.id}")
+
+      lv |> element("#report-comment-#{comment.id}") |> render_click()
+
+      lv
+      |> form("#report-form", %{reason: "Det her hører ikke hjemme her"})
+      |> render_submit()
+
+      assert [report] = Repo.all(Kammer.Moderation.Report)
+      assert report.comment_id == comment.id
+      assert report.reason == "Det her hører ikke hjemme her"
+    end
+
     test "gated-off groups 404 the pages", %{community: community, creator: creator} do
       plain_group = group_fixture(community)
       Kammer.Groups.add_member(plain_group, creator)

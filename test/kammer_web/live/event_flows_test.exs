@@ -72,6 +72,27 @@ defmodule KammerWeb.EventFlowsTest do
       assert html =~ "Husk noderne!"
     end
 
+    test "member reports a comment on the event (SPEC §11)", %{
+      conn: conn,
+      community: community,
+      event: event,
+      member: member
+    } do
+      {:ok, comment} = Events.create_comment(member, event, %{"body_markdown" => "Tvivlsomt"})
+
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/events/#{event.id}")
+
+      lv |> element("#report-comment-#{comment.id}") |> render_click()
+
+      lv
+      |> form("#report-form", %{reason: "Det her hører ikke hjemme her"})
+      |> render_submit()
+
+      assert [report] = Kammer.Repo.all(Kammer.Moderation.Report)
+      assert report.comment_id == comment.id
+      assert report.reason == "Det her hører ikke hjemme her"
+    end
+
     test "outsiders to a private group cannot open its event", %{community: community} do
       private_group = group_fixture(community, visibility: :private)
       private_member = group_member_fixture(private_group)
