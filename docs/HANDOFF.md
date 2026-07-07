@@ -30,7 +30,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 
-Suite at handoff: **420 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **422 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -299,8 +299,17 @@ atom. Danish register: a slot is "en tjans".
   members page + queue. Remaining: instance-level bans, report
   surfaces beyond the group feed (event/assignment pages), full
   rate-limit coverage of posting/commenting/uploads.
-- **GDPR export/erasure**: per-user JSON+files zip export (Oban job,
-  download link) + account erasure (soft-delete content per SPEC §12).
+- ✅ **GDPR export/erasure** — SHIPPED: `Kammer.Gdpr` — export builds a
+  zip synchronously (data.json + every file the person uploaded,
+  fetched through the storage adapter) and streams it from
+  `GdprController` (no Oban job — the query set is small enough that
+  async buys nothing but complexity); `delete_account/1` is one
+  `Repo.delete!` — the schema does the SPEC §12 work already
+  (`nilify_all` anonymizes authored content to "Deleted user",
+  `delete_all` cascades personal rows). UI: "Your data" section on
+  Account settings (download + delete, with an honest pre-confirm
+  explanation). Revisit async export if the query set grows (e.g.
+  very large communities) — not needed yet.
 - **Audit log**: append-only `audit_events` for admin/operator actions,
   visible to community owners / instance operator.
 - **Passkeys**: `webauthn_components` or `wax`; register after first
@@ -388,9 +397,15 @@ Give a fresh agent session on `tskovlund/kammer` exactly this:
 >
 > **Environment:** read HANDOFF.md §3 before your first shell command.
 >
-> **Your queue:** HANDOFF.md §5, mirrored by milestone issues
-> #15, #17, #30, #31, #32, #33 — work from the issues and keep their
-> checklists ticked. Take the top unfinished item unless an owner
+> **Your queue:** HANDOFF.md §5 is the up-to-date executable roadmap —
+> read it fully before picking work; sections marked ✅ SHIPPED are
+> done, 🟡 partial ones list exactly what remains. Cross-check against
+> the live GitHub issues (#17 collaborative track, #30 API completions,
+> #32 Svelte PWA, #33 Phase 2 umbrella are the standing milestones) —
+> owner comments there override this document. If GitHub tool access
+> shows as disconnected at session start, tell the owner it needs
+> re-authorization before you can manage issues/PRs; local git commits
+> still work without it. Take the top unfinished item unless an owner
 > comment redirects you.
 >
 > Work steadily, prove everything with tests, and when in doubt about

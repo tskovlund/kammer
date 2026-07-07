@@ -9,6 +9,10 @@
   # Traversal.FileModule / Traversal.SendFile: Kammer.Storage.Local guards
   #   every path against escaping the uploads root; storage keys are
   #   server-generated UUID paths, never user input.
+  # Traversal.SendDownload: the one send_download/2 call (GdprController)
+  #   streams a zip whose path is built entirely inside Kammer.Gdpr.export/1
+  #   (System.tmp_dir!/0 joined with the current user's id and a monotonic
+  #   integer) — never derived from request params.
   # XSS.ContentType: stored content types pass a sanitizing allowlist and
   #   non-image files are served with Content-Disposition: attachment and
   #   X-Content-Type-Options: nosniff (KammerWeb.FileController).
@@ -16,6 +20,7 @@
     "Config.HTTPS",
     "Traversal.FileModule",
     "Traversal.SendFile",
+    "Traversal.SendDownload",
     "XSS.ContentType"
   ],
   ignore_files: []

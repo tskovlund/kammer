@@ -37,7 +37,7 @@ msgstr ""
 msgid "close"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:151
+#: lib/kammer_web/live/user_live/settings.ex:186
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr ""
@@ -145,12 +145,12 @@ msgstr ""
 msgid "Email"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:105
+#: lib/kammer_web/live/user_live/settings.ex:140
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:102
+#: lib/kammer_web/live/user_live/settings.ex:137
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr ""
@@ -244,7 +244,7 @@ msgstr ""
 msgid "No password needed — we email you a sign-in link."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/settings.ex:179
+#: lib/kammer_web/live/user_live/settings.ex:223
 #, elixir-autogen, elixir-format
 msgid "Profile updated."
 msgstr ""
@@ -1201,9 +1201,9 @@ msgstr ""
 #: lib/kammer_web/live/group_live/show.ex:659
 #: lib/kammer_web/live/group_live/show.ex:672
 #: lib/kammer_web/live/group_live/show.ex:705
-#: lib/kammer_web/live/moderation_live/index.ex:127
-#: lib/kammer_web/live/moderation_live/index.ex:138
-#: lib/kammer_web/live/moderation_live/index.ex:149
+#: lib/kammer_web/live/moderation_live/index.ex:130
+#: lib/kammer_web/live/moderation_live/index.ex:141
+#: lib/kammer_web/live/moderation_live/index.ex:152
 #, elixir-autogen, elixir-format
 msgid "You are not allowed to do that."
 msgstr ""
@@ -1386,8 +1386,8 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:345
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
-#: lib/kammer_web/live/moderation_live/index.ex:43
-#: lib/kammer_web/live/moderation_live/index.ex:176
+#: lib/kammer_web/live/moderation_live/index.ex:46
+#: lib/kammer_web/live/moderation_live/index.ex:179
 #: lib/kammer_web/live/search_live/index.ex:54
 #: lib/kammer_web/live/search_live/index.ex:72
 #, elixir-autogen, elixir-format
@@ -3217,19 +3217,19 @@ msgstr ""
 msgid "You get this because your digest setting is on — change it under Account settings."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:163
-#: lib/kammer_web/live/moderation_live/index.ex:167
+#: lib/kammer_web/live/moderation_live/index.ex:166
 #: lib/kammer_web/live/moderation_live/index.ex:170
+#: lib/kammer_web/live/moderation_live/index.ex:173
 #, elixir-autogen, elixir-format
 msgid "(no text)"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:80
+#: lib/kammer_web/live/moderation_live/index.ex:83
 #, elixir-autogen, elixir-format
 msgid "A calm queue is a healthy community."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:86
+#: lib/kammer_web/live/moderation_live/index.ex:89
 #, elixir-autogen, elixir-format
 msgid "Active bans"
 msgstr ""
@@ -3244,22 +3244,22 @@ msgstr ""
 msgid "Ban this member? They are removed everywhere and their email cannot rejoin until the ban is lifted (Moderation page)."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:136
+#: lib/kammer_web/live/moderation_live/index.ex:139
 #, elixir-autogen, elixir-format
 msgid "Content removed."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:62
+#: lib/kammer_web/live/moderation_live/index.ex:65
 #, elixir-autogen, elixir-format
 msgid "Dismiss"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:106
+#: lib/kammer_web/live/moderation_live/index.ex:109
 #, elixir-autogen, elixir-format
 msgid "Lift ban"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:103
+#: lib/kammer_web/live/moderation_live/index.ex:106
 #, elixir-autogen, elixir-format
 msgid "Lift this ban?"
 msgstr ""
@@ -3275,17 +3275,17 @@ msgstr ""
 msgid "Moderation"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:79
+#: lib/kammer_web/live/moderation_live/index.ex:82
 #, elixir-autogen, elixir-format
 msgid "No open reports"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:71
+#: lib/kammer_web/live/moderation_live/index.ex:74
 #, elixir-autogen, elixir-format
 msgid "Remove content"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:68
+#: lib/kammer_web/live/moderation_live/index.ex:71
 #, elixir-autogen, elixir-format
 msgid "Remove the reported content? This cannot be undone."
 msgstr ""
@@ -3301,12 +3301,12 @@ msgstr ""
 msgid "Report to the moderators"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:42
+#: lib/kammer_web/live/moderation_live/index.ex:44
 #, elixir-autogen, elixir-format
 msgid "Reported by %{name}"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:32
+#: lib/kammer_web/live/moderation_live/index.ex:33
 #, elixir-autogen, elixir-format
 msgid "Reports land here; only you and the other moderators see them."
 msgstr ""
@@ -3329,4 +3329,44 @@ msgstr ""
 #: lib/kammer_web/live/group_live/show.ex:555
 #, elixir-autogen, elixir-format
 msgid "You already reported this — the moderators have it."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:125
+#, elixir-autogen, elixir-format
+msgid "Delete my account"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:119
+#, elixir-autogen, elixir-format
+msgid "Delete your account? This cannot be undone. Download your data first if you want it."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:111
+#, elixir-autogen, elixir-format
+msgid "Deleting your account removes your identity, sessions, RSVPs, signups, and votes immediately. Your posts and comments stay, shown as \"Deleted user\" — the shared history belongs to the groups. Files you uploaded to shared spaces also stay, without your name."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:102
+#, elixir-autogen, elixir-format
+msgid "Download everything this instance stores about you — profile, posts, comments, answers, and your uploaded files — as one zip."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:107
+#, elixir-autogen, elixir-format
+msgid "Download my data"
+msgstr ""
+
+#: lib/kammer_web/controllers/gdpr_controller.ex:23
+#, elixir-autogen, elixir-format
+msgid "The export failed — please try again."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:211
+#, elixir-autogen, elixir-format
+msgid "Your account has been deleted."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/settings.ex:99
+#, elixir-autogen, elixir-format
+msgid "Your data"
 msgstr ""
