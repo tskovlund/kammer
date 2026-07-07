@@ -258,13 +258,13 @@ defmodule Kammer.Moderation do
     target = Repo.get_by(User, email: normalized_email)
 
     cond do
-      not actor.instance_operator ->
+      not Authorization.instance_operator?(actor) ->
         {:error, :unauthorized}
 
       normalized_email == String.downcase(actor.email) ->
         {:error, :unauthorized}
 
-      match?(%User{instance_operator: true}, target) ->
+      Authorization.instance_operator?(target) ->
         {:error, :unauthorized}
 
       true ->
@@ -300,23 +300,27 @@ defmodule Kammer.Moderation do
   """
   @spec unban_instance(User.t(), InstanceBan.t()) ::
           {:ok, InstanceBan.t()} | {:error, :unauthorized}
-  def unban_instance(%User{instance_operator: true}, %InstanceBan{} = ban) do
-    Repo.delete(ban)
+  def unban_instance(%User{} = actor, %InstanceBan{} = ban) do
+    if Authorization.instance_operator?(actor) do
+      Repo.delete(ban)
+    else
+      {:error, :unauthorized}
+    end
   end
-
-  def unban_instance(%User{}, %InstanceBan{}), do: {:error, :unauthorized}
 
   @doc """
   All instance-wide bans (instance operators; empty otherwise).
   """
   @spec list_instance_bans(User.t() | nil) :: [InstanceBan.t()]
-  def list_instance_bans(%User{instance_operator: true}) do
-    Repo.all(
-      from(ban in InstanceBan, order_by: [desc: ban.inserted_at], preload: [:banned_by_user])
-    )
+  def list_instance_bans(actor) do
+    if Authorization.instance_operator?(actor) do
+      Repo.all(
+        from(ban in InstanceBan, order_by: [desc: ban.inserted_at], preload: [:banned_by_user])
+      )
+    else
+      []
+    end
   end
-
-  def list_instance_bans(_actor), do: []
 
   @doc """
   Whether the email is banned instance-wide — the check

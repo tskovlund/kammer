@@ -9,6 +9,7 @@ defmodule KammerWeb.InstanceLive.Home do
 
   import KammerWeb.KammerComponents
 
+  alias Kammer.Authorization
   alias Kammer.Communities
 
   @impl Phoenix.LiveView
@@ -230,7 +231,7 @@ defmodule KammerWeb.InstanceLive.Home do
       end
 
     my_communities = if user, do: Communities.list_user_communities(user), else: []
-    operator? = user != nil and user.instance_operator
+    operator? = Authorization.instance_operator?(user)
     instance_settings = if operator?, do: Communities.get_instance_settings()
 
     demo_community =

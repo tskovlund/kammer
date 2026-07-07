@@ -37,13 +37,15 @@ defmodule Kammer.Communities do
   """
   @spec update_instance_settings(User.t(), map()) ::
           {:ok, InstanceSettings.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
-  def update_instance_settings(%User{instance_operator: true}, attrs) do
-    get_instance_settings()
-    |> InstanceSettings.changeset(attrs)
-    |> Repo.update()
+  def update_instance_settings(%User{} = actor, attrs) do
+    if Authorization.instance_operator?(actor) do
+      get_instance_settings()
+      |> InstanceSettings.changeset(attrs)
+      |> Repo.update()
+    else
+      {:error, :unauthorized}
+    end
   end
-
-  def update_instance_settings(%User{}, _attrs), do: {:error, :unauthorized}
 
   @doc """
   Builds a changeset for editing instance settings, for form rendering.

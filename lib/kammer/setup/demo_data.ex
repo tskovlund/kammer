@@ -13,6 +13,7 @@ defmodule Kammer.Setup.DemoData do
   use Gettext, backend: KammerWeb.Gettext
 
   alias Kammer.Accounts.User
+  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Communities.Community
   alias Kammer.Events
@@ -41,22 +42,24 @@ defmodule Kammer.Setup.DemoData do
   only. The tracking reference is cleared by the database (`nilify_all`).
   """
   @spec purge(User.t()) :: {:ok, Community.t()} | {:error, :unauthorized | :no_demo_community}
-  def purge(%User{instance_operator: true}) do
-    settings = Communities.get_instance_settings()
+  def purge(%User{} = actor) do
+    if Authorization.instance_operator?(actor) do
+      settings = Communities.get_instance_settings()
 
-    case settings.demo_community_id do
-      nil ->
-        {:error, :no_demo_community}
+      case settings.demo_community_id do
+        nil ->
+          {:error, :no_demo_community}
 
-      community_id ->
-        case Repo.delete(Repo.get!(Community, community_id)) do
-          {:ok, community} -> {:ok, community}
-          {:error, _changeset} -> {:error, :no_demo_community}
-        end
+        community_id ->
+          case Repo.delete(Repo.get!(Community, community_id)) do
+            {:ok, community} -> {:ok, community}
+            {:error, _changeset} -> {:error, :no_demo_community}
+          end
+      end
+    else
+      {:error, :unauthorized}
     end
   end
-
-  def purge(%User{}), do: {:error, :unauthorized}
 
   defp build(operator, settings) do
     locale = settings.default_locale || "en"

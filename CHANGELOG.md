@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Fixed
 
+- Consolidated the instance-operator check (`user.instance_operator`)
+  into `Kammer.Authorization.instance_operator?/1`, replacing raw
+  struct-field checks scattered across three context modules
+  (`Kammer.Legal`, `Kammer.Communities`, `Kammer.Moderation`,
+  `Kammer.Setup.DemoData`) and four LiveViews (legal page edit/show,
+  instance settings, instance moderation, instance home) — the third
+  and final authorization-consolidation fix from the same audit.
+  Behavior-preserving; existing tests for all eight sites pass
+  unmodified.
 - `KammerWeb.CommunityScope`'s `:require_member` `on_mount` hook — the
   route-level gate for most of the app's community-scoped LiveViews
   (groups, files, members, moderation, settings, events, assignments,

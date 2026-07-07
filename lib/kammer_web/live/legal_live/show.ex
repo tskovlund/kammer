@@ -7,6 +7,7 @@ defmodule KammerWeb.LegalLive.Show do
 
   use KammerWeb, :live_view
 
+  alias Kammer.Authorization
   alias Kammer.Legal
 
   @impl Phoenix.LiveView
@@ -32,11 +33,7 @@ defmodule KammerWeb.LegalLive.Show do
   @impl Phoenix.LiveView
   def mount(%{"key" => key}, _session, socket) do
     if Legal.valid_key?(key) do
-      operator? =
-        case socket.assigns.current_scope do
-          %{user: %{instance_operator: true}} -> true
-          _other -> false
-        end
+      operator? = Authorization.instance_operator?(socket.assigns.current_scope)
 
       {:ok,
        socket
