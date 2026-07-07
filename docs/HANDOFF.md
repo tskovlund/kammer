@@ -104,15 +104,6 @@ override everything below.
 Roughly descending priority; owner has said to use judgment on
 ordering within this list.
 
-### Newsletter subscriptions
-
-Guest identities subscribing to a public group's feed (ADR 0013's
-email-only-identity pattern again): double opt-in, per-post or
-daily/weekly digest choice, one-click unsubscribe
-(`List-Unsubscribe` header), signed management link reusing the guest
-manage page. Digest delivery can likely share `Kammer.Digests`'
-cadence logic once the subscriber isn't a `User`.
-
 ### File search + text extraction
 
 Remaining half of global search (posts/comments/events already ship).

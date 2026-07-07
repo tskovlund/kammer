@@ -14,6 +14,7 @@ defmodule Kammer.Guests do
   alias Kammer.Events.SlotClaim
   alias Kammer.Feed.Comment
   alias Kammer.Guests.GuestIdentity
+  alias Kammer.Newsletters.NewsletterSubscription
   alias Kammer.Repo
 
   @doc """
@@ -100,8 +101,9 @@ defmodule Kammer.Guests do
   @doc """
   Everything behind a guest's management link (SPEC §12): the identity,
   their RSVPs (events preloaded), their signup-slot claims (slots and
-  events preloaded), and their comments (posts and groups preloaded) —
-  the full inventory the manage page lists and the erasure removes.
+  events preloaded), their comments (posts and groups preloaded), and
+  their newsletter subscriptions (groups preloaded) — the full
+  inventory the manage page lists and the erasure removes.
   """
   @spec fetch_manage_state(String.t()) ::
           {:ok,
@@ -109,7 +111,8 @@ defmodule Kammer.Guests do
              identity: GuestIdentity.t(),
              rsvps: [EventRsvp.t()],
              claims: [SlotClaim.t()],
-             comments: [Comment.t()]
+             comments: [Comment.t()],
+             subscriptions: [NewsletterSubscription.t()]
            }}
           | {:error, :invalid}
   def fetch_manage_state(manage_token) do
@@ -142,7 +145,23 @@ defmodule Kammer.Guests do
           )
         )
 
-      {:ok, %{identity: identity, rsvps: rsvps, claims: claims, comments: comments}}
+      subscriptions =
+        Repo.all(
+          from(subscription in NewsletterSubscription,
+            where: subscription.guest_identity_id == ^identity.id,
+            preload: [group: :community],
+            order_by: [asc: subscription.inserted_at]
+          )
+        )
+
+      {:ok,
+       %{
+         identity: identity,
+         rsvps: rsvps,
+         claims: claims,
+         comments: comments,
+         subscriptions: subscriptions
+       }}
     else
       _invalid_or_gone -> {:error, :invalid}
     end

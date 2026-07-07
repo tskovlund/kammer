@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Added
 
+- Newsletter subscriptions (SPEC §8, ADR 0013 extended): anonymous
+  visitors on a public group's page can subscribe by email — no
+  account, double opt-in through a signed confirm link, choice of
+  every-post or a daily/weekly digest. Delivery reuses
+  `Kammer.Digests`' cadence math (own Oban worker, offset cron tick)
+  and every email carries a one-click `List-Unsubscribe` header (RFC
+  8058) alongside a signed management link that reuses the existing
+  guest-manage page — change cadence or unsubscribe, same as changing
+  a guest RSVP.
 - Report surfaces on event and assignment pages (SPEC §11): the
   "Report to the moderators" flow the group feed already had for
   posts and comments now covers comments on events and assignments

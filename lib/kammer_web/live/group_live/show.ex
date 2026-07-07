@@ -17,6 +17,7 @@ defmodule KammerWeb.GroupLive.Show do
   alias Kammer.Files
   alias Kammer.Groups
   alias Kammer.Groups.Group
+  alias Kammer.Newsletters
   alias KammerWeb.FeedEventHandlers
   alias KammerWeb.ReportHandlers
 
@@ -166,6 +167,50 @@ defmodule KammerWeb.GroupLive.Show do
           </label>
         </form>
       </div>
+
+      <%!-- Newsletter subscription (SPEC §8): guests only, public groups only --%>
+      <section
+        :if={@guest_subscribe_allowed?}
+        class="rounded-box border border-base-200 p-4"
+      >
+        <h2 class="pb-2 text-sm font-medium">{gettext("Get new posts by email")}</h2>
+        <.form
+          for={@subscribe_form}
+          id="subscribe-form"
+          phx-submit="subscribe"
+          class="flex flex-wrap items-end gap-2"
+        >
+          <div class="fieldset">
+            <label class="label" for="subscribe_display_name">{gettext("Name")}</label>
+            <input
+              type="text"
+              name="subscribe[display_name]"
+              id="subscribe_display_name"
+              required
+              class="input input-sm"
+            />
+          </div>
+          <div class="fieldset">
+            <label class="label" for="subscribe_email">{gettext("Email")}</label>
+            <input
+              type="email"
+              name="subscribe[email]"
+              id="subscribe_email"
+              required
+              class="input input-sm"
+            />
+          </div>
+          <div class="fieldset">
+            <label class="label" for="subscribe_cadence">{gettext("How often")}</label>
+            <select name="subscribe[cadence]" id="subscribe_cadence" class="select select-sm">
+              <option value="per_post">{gettext("Every new post")}</option>
+              <option value="daily">{gettext("Daily digest")}</option>
+              <option value="weekly">{gettext("Weekly digest")}</option>
+            </select>
+          </div>
+          <.button variant="primary" class="btn-sm">{gettext("Subscribe")}</.button>
+        </.form>
+      </section>
 
       <%!-- Composer --%>
       <section :if={@permissions.post} class="rounded-box border border-base-200 p-4">
@@ -434,6 +479,12 @@ defmodule KammerWeb.GroupLive.Show do
     current_user = current_user(socket.assigns)
     community = socket.assigns.active_community
 
+    client_ip =
+      case get_connect_info(socket, :peer_data) do
+        %{address: address} -> address
+        _no_peer_data -> nil
+      end
+
     case Groups.fetch_viewable_group(current_user, community, group_slug) do
       {:ok, group} ->
         if connected?(socket), do: Feed.subscribe(group)
@@ -442,6 +493,7 @@ defmodule KammerWeb.GroupLive.Show do
         {:ok,
          socket
          |> assign(:group, group)
+         |> assign(:client_ip, client_ip)
          |> assign(:previous_visit, previous_visit)
          |> assign(:composer_form, to_form(%{}, as: "post"))
          |> assign(:show_poll_builder, false)
@@ -449,6 +501,7 @@ defmodule KammerWeb.GroupLive.Show do
          |> assign(:editing_post_id, nil)
          |> assign(:acknowledgment_status, nil)
          |> assign(:reporting, nil)
+         |> assign(:subscribe_form, to_form(%{}, as: "subscribe"))
          |> allow_upload(:attachments,
            accept: :any,
            max_entries: 8,
@@ -494,7 +547,7 @@ defmodule KammerWeb.GroupLive.Show do
     with %Kammer.Feed.Post{} = post <- Kammer.Repo.get(Kammer.Feed.Post, post_id),
          :ok <-
            Feed.request_guest_comment(post, group, guest_params,
-             client_ip: nil,
+             client_ip: socket.assigns.client_ip,
              confirm_url_fun: fn token -> url(~p"/guest/comment/confirm/#{token}") end
            ) do
       {:noreply,
@@ -511,6 +564,34 @@ defmodule KammerWeb.GroupLive.Show do
       {:error, %Ecto.Changeset{}} ->
         {:noreply,
          put_flash(socket, :error, gettext("Please fill in a valid name, email, and comment."))}
+
+      _error ->
+        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
+    end
+  end
+
+  def handle_event("subscribe", %{"subscribe" => subscribe_params}, socket) do
+    group = socket.assigns.group
+
+    case Newsletters.request_subscription(group, subscribe_params,
+           client_ip: socket.assigns.client_ip,
+           confirm_url_fun: fn token -> url(~p"/newsletter/confirm/#{token}") end
+         ) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(:subscribe_form, to_form(%{}, as: "subscribe"))
+         |> put_flash(
+           :info,
+           gettext("Check your email — follow the link there to confirm your subscription.")
+         )}
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts — please try again later."))}
+
+      {:error, %Ecto.Changeset{}} ->
+        {:noreply, put_flash(socket, :error, gettext("Please fill in a valid name and email."))}
 
       _error ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
@@ -785,6 +866,10 @@ defmodule KammerWeb.GroupLive.Show do
     |> assign(
       :guest_comment_allowed?,
       is_nil(current_user) and Authorization.can_guest_comment?(group)
+    )
+    |> assign(
+      :guest_subscribe_allowed?,
+      is_nil(current_user) and Authorization.can_guest_subscribe?(group)
     )
     |> assign(:notification_level, notification_level)
     |> assign(:membership, Groups.get_membership(group, current_user))

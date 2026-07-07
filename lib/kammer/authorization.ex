@@ -348,6 +348,18 @@ defmodule Kammer.Authorization do
   end
 
   @doc """
+  Whether account-less guests may subscribe to this group's feed by
+  email (newsletter subscriptions): the same public-and-live gate as
+  the RSS/Atom feeds every public group already exposes — a
+  subscription is just a different delivery channel for the same
+  already-public content, so no separate feature toggle.
+  """
+  @spec can_guest_subscribe?(Group.t()) :: boolean()
+  def can_guest_subscribe?(%Group{} = group) do
+    group.visibility in [:public_link, :public_listed] and not Group.archived?(group)
+  end
+
+  @doc """
   The feature gate (ADR 0016): a disabled feature is indistinguishable
   from one the actor may not see — the same `:not_found` surface, so
   toggling leaks nothing. Contexts call this beside `authorize/3` for
