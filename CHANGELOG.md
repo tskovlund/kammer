@@ -10,6 +10,21 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Feed.create_engine_comment/5`'s reply-flattening
+  (`normalize_parent/1`, now `/2`) accepted any `parent_comment_id`
+  the client sent and looked it up globally, with no check that the
+  candidate parent belonged to the same post/event/assignment as the
+  comment being created. Since replies render via a
+  `has_many :replies` preload keyed purely on `parent_comment_id`,
+  this let any member with comment access anywhere on the instance
+  inject a comment that would render nested inside an unrelated
+  thread they had no visibility into at all — including a
+  comment-locked or archived thread, or one in a sealed group. Found
+  by a second, more thorough full-codebase audit (round 2). Now
+  verifies the candidate parent shares the same subject before
+  adopting it; a cross-subject `parent_comment_id` is silently
+  treated the same as a missing one (becomes a root comment),
+  matching the existing not-found fallback.
 - Extracted `Kammer.Validation.validate_email_format/3` and
   `validate_display_name_length/3`, replacing six duplicated copies of
   the same email-format/length and display-name-length rules across

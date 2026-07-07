@@ -649,7 +649,7 @@ defmodule Kammer.Feed do
     # would let any commenter reach broadcast rights they don't have.
     with :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]),
          :ok <- check_comment_rate_limit(author.id) do
-      parent_id = normalize_parent(attrs["parent_comment_id"])
+      parent_id = normalize_parent(attrs["parent_comment_id"], seed)
 
       seed
       |> Comment.create_changeset(%{
@@ -821,16 +821,27 @@ defmodule Kammer.Feed do
   end
 
   # One reply level everywhere: replying to a reply reparents to the top.
-  defp normalize_parent(nil), do: nil
-  defp normalize_parent(""), do: nil
+  # The candidate parent must belong to the same subject (post/event/
+  # assignment) as the comment being created — otherwise a comment ID
+  # from an unrelated, possibly locked or invisible-to-the-actor thread
+  # could be adopted as a parent, since Repo.get/2 alone doesn't scope
+  # by subject and reply rendering is keyed on parent_comment_id alone.
+  defp normalize_parent(nil, _seed), do: nil
+  defp normalize_parent("", _seed), do: nil
 
-  defp normalize_parent(parent_comment_id) do
+  defp normalize_parent(parent_comment_id, %Comment{} = seed) do
     case Repo.get(Comment, parent_comment_id) do
       nil -> nil
-      %Comment{parent_comment_id: nil} = parent -> parent.id
-      %Comment{parent_comment_id: grandparent_id} -> grandparent_id
+      %Comment{} = parent -> if same_subject?(parent, seed), do: root_of(parent), else: nil
     end
   end
+
+  defp same_subject?(%Comment{} = a, %Comment{} = b) do
+    a.post_id == b.post_id and a.event_id == b.event_id and a.assignment_id == b.assignment_id
+  end
+
+  defp root_of(%Comment{parent_comment_id: nil} = comment), do: comment.id
+  defp root_of(%Comment{parent_comment_id: grandparent_id}), do: grandparent_id
 
   @doc """
   Soft-deletes a comment (author) or hard-deletes (moderators). Handles
