@@ -20,13 +20,31 @@ comments on issues override everything below.
 - Issues that are explicitly the owner's own action (real-machine
   testing, human review passes, infra deploys, final naming/business
   calls) are read, never resolved unilaterally — comment status
-  deltas, don't close them yourself.
+  deltas, don't close them yourself (label `action`).
+- Keep the owner assigned on a GitHub issue only while it's genuinely
+  waiting on their input — a `decision` or `action` issue with an open
+  question or an unchecked owner-only step. Unassign once that's
+  resolved (the issue itself can stay open for tracking); implementation
+  work, including sequencing already-approved backlog items, is never
+  a reason to keep the owner assigned.
 - Renovate runs Mondays 07:00 CPH; non-major dependency PRs automerge
   when checks pass, majors wait for the owner.
 - Message the owner only at milestones or when genuinely blocked.
 - One coherent PR at a time: unrelated concerns (a feature vs. a docs
   reorg vs. a dependency bump) get separate branches/PRs, even
   mid-session.
+- Continuously and critically evaluate the process itself, not just
+  the product — unprompted, as work happens, on every abstraction
+  level: orchestration (solo vs. delegating to an Agent, vs. a
+  Workflow swarm — pick per task, don't default), tracking (Issues
+  vs. the session task list; prune staleness, don't let two sources
+  of truth drift), prioritization (what's being deferred and why,
+  said out loud rather than assumed), owner-interaction cadence
+  (surface a process/convention question when there's no precedent in
+  the docs, rather than picking one silently), and whether what was
+  just decided is written down somewhere durable or only lives in
+  this conversation. Give opinions and concrete optimization
+  proposals as they come up, not only when asked.
 
 ## Kammer: remote container notes (Claude Code on the web)
 
