@@ -10,9 +10,10 @@ tooling wherever possible; the rest is enforced in review.
   root cause, even when it costs more now.
 - If a workaround is genuinely unavoidable (an upstream bug, a platform
   limitation outside our control), it must be **(1) justified in a
-  comment stating the external cause, (2) tracked** (issue or BUILDLOG
-  entry with a completion path), and **(3) removed** when the external
-  cause goes away. Untracked workarounds are treated as bugs.
+  comment stating the external cause, (2) tracked** (an issue, or a
+  note in `docs/HANDOFF.md`'s backlog, with a completion path), and
+  **(3) removed** when the external cause goes away. Untracked
+  workarounds are treated as bugs.
 - The bar for the whole codebase: lean, documented where a constraint
   can't be expressed in code (never narrating the obvious),
   industry-standard, portfolio-worthy. When a shortcut is tempting,
@@ -72,7 +73,7 @@ tooling wherever possible; the rest is enforced in review.
 
 - Prescribed set in SPEC.md §22. Prefer boring, maintained, well-documented
   libraries. If a needed library is stale, implement the minimal internal
-  version instead and record the decision in BUILDLOG.md.
+  version instead and say why in the PR.
 - `mix hex.audit` and `mix deps.audit` run in CI.
 
 ## Dev environment
@@ -91,5 +92,6 @@ tooling wherever possible; the rest is enforced in review.
 
 - Architecture decisions live in `docs/decisions/` as short ADRs
   (context → decision → consequences, ≤ 1 page).
-- Scope trims, stubs, and deferrals are recorded in BUILDLOG.md — silent
-  stubs are forbidden.
+- Scope trims, stubs, and deferrals go in the PR description and, if
+  they outlive it, into `docs/HANDOFF.md`'s backlog — silent stubs are
+  forbidden.

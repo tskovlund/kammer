@@ -1,50 +1,23 @@
-# HANDOFF — state, process, and the executable roadmap
+# HANDOFF — process, environment, and the backlog
 
-Written 2026-07-06 at the end of the Fable-5 build run, for the agent
-(and humans) picking the work up. Everything here is current as of
-the guest-comments PR. **Keep this document true**: every PR that changes the state
-of the roadmap updates it — a stale handoff is worse than none.
+Operating notes for continued work on Kammer. This is not a shipped-
+feature log — that's CHANGELOG.md and git history. It's not the
+product spec — that's SPEC.md, kept current in place. This file holds
+what those two can't: process rules, environment gotchas, reusable
+patterns, and the backlog of what's left, detailed enough to start
+without re-deriving it. Update it when the backlog changes; don't let
+shipped-feature narrative creep back in here.
 
-## 1. Where the product stands
+Read order for picking this up cold: SPEC.md (what the product is),
+this file (how to work on it, what's left), `docs/decisions/` (why
+past calls were made), then open GitHub issues — owner comments there
+override everything below.
 
-Phase 1 (SPEC.md, the authoritative product spec) is complete and
-merged, plus, from Phase 2 and the decided roadmap:
+## 1. Process (non-negotiable)
 
-- **Guest RSVP on public events** (ADR 0013) — email-only guest
-  identities, signed confirm/management links, ICS attachment, full
-  guest erasure, automatic history claim on sign-in.
-- **Guest comments with approval queue** (§5.3) — the
-  `members_and_guests` comment policy is now real: confirm-by-email,
-  pending-until-approved, inline moderation, general guest manage
-  page at `/guest/manage/:token`.
-- **Versioned files** (ADR 0017) and the **OpenAPI document** with
-  its router drift guard (§5.1, §5.2).
-- **Per-group feature toggles** (ADR 0016) — `features` on groups;
-  one gate (`Authorization.feature_gate/2`); disabled == not-found.
-- **Cross-community Home** (ADR 0015) — merged chronological lens on
-  the start page; `show_in_home` on memberships (default ON, sealed
-  included, prominent toggle on the group page).
-- **JSON API v1 core** (ADR 0014) — device-token auth, one error
-  envelope, cursor pagination, instance discovery, communities/
-  groups/feeds/posts/comments/events/RSVP/Home endpoints, and the
-  **transport-parity property test** (API hides exactly what the UI
-  hides).
-- **Guest interactions, search, backups, moderation, GDPR export/
-  erasure, the audit log, passkeys, event recurrence, the admin
-  update notice, RSS/Atom feeds, content-minimized email mode, custom
-  profile fields + the member roster, and the activity-sort feed
-  view** (§5.6) — see that section for what shipped and what remains
-  in each.
-
-Suite at handoff: **531 tests + 18 properties, zero failures**, ~83%
-coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
-explains). All CI required checks green on `main`.
-
-## 2. The process (non-negotiable)
-
-1. **One coherent PR at a time** from your designated branch to
-   `main`; merge commits (squash only for noise); required checks:
-   Conventional Commits, the quality gate, Docker image, Smoke test.
+1. **One coherent PR at a time** into `main`; merge commits (squash
+   only for noise); required checks: Conventional Commits, the
+   quality gate, Docker image, Smoke test.
 2. **`mix precommit` green before every push.** Hooks run it partly;
    CI fully. Never weaken a check to pass it.
 3. **Authorization changes live in `lib/kammer/authorization.ex`
@@ -54,55 +27,64 @@ explains). All CI required checks green on `main`.
 4. **Every user-facing string through Gettext, English AND Danish**
    (`mix gettext.extract --merge`, then fill `priv/gettext/da/`).
    API error messages are deliberately English-only (clients localize).
-5. **Docs move with the change** — README, docs/, CHANGELOG
-   (`## [Unreleased]`), this file. **Issues too**: close what's
-   settled, comment status deltas, no stale debt anywhere (owner rule).
+5. **Docs move with the change**: SPEC.md when a decision changes what
+   the product is, CHANGELOG.md (`## [Unreleased]`) for what shipped,
+   this file's backlog when scope moves. Issues too: close what's
+   settled, comment status deltas, no stale debt.
 6. **Decisions**: implementation choices are yours; product-shaping
    choices (pricing, naming, UX philosophy, new scope) go to a GitHub
    issue assigned to `tskovlund` with concrete options and a
    recommendation. Owner comments on issues override everything —
-   read open issues at the start of every work session.
-7. **Deliberate decisions get written down**: architecture → one-page
-   ADR in `docs/decisions/`; designs awaiting owner sign-off → RFC in
-   `docs/rfcs/`; scope trims/tradeoffs → BUILDLOG.md entry.
+   read open issues at the start of every session.
+7. **Architecture decisions get a one-page ADR** in `docs/decisions/`
+   (context → decision → consequences) — only for calls a contributor
+   would relitigate, not routine feature work.
 8. **No hacks** (CONVENTIONS.md): a workaround needs a comment naming
    the external cause, a tracked completion path, and removal when the
    cause dies. When pressed, shrink scope, not quality.
-9. Migration churn is **welcome pre-0.1.0** (owner decision): design
-   schemas properly rather than adding compatibility warts.
+9. Migration churn is welcome pre-0.1.0: design schemas properly
+   rather than adding compatibility warts.
 
-## 3. Environment traps (the ones that cost hours)
+## 2. Environment traps (the ones that cost hours)
 
 - The remote container: run `export PATH=/nix/var/nix/profiles/default/bin:$PATH`
   in every shell; `pg_ctlcluster 16 main start` after container
-  restarts (stale pid is normal); commit/push inside
-  `nix develop --command` (hooks need mix); committer identity must be
+  restarts (stale pid is normal — Postgres also drops mid-session
+  sometimes, same fix); commit/push inside `nix develop --command`
+  (hooks need mix); committer identity must be
   `Claude <noreply@anthropic.com>`.
 - **CSS cannot be built in the container** (the proxy blocks the
   Tailwind standalone binary; the npm CLI chokes on the vendored
-  daisyUI bundle). Don't fight it: CI builds assets, the **Screenshots
-  workflow** (manually dispatched, never on `main`) regenerates
+  daisyUI bundle). CI builds assets; the **Screenshots workflow**
+  (manually dispatched, never on `main`) regenerates
   `docs/screenshots/` on a PR branch and its commits trigger CI
   (pushes with `SCREENSHOTS_PUSH_TOKEN`).
 - LiveView forms must be **fully driven by `to_form`** — any field not
-  round-tripped through the change event resets on re-render (this bug
-  shipped once; the composer fix in PR #24's history is the pattern).
+  round-tripped through the change event resets on re-render.
 - Swoosh test assertions pop the _next_ mailbox message — drain
-  fixture-generated emails first (see `drain_delivered_emails` in
-  existing tests).
+  fixture-generated emails first (`drain_delivered_emails` helper).
 - Route order matters: literal segments (`/events/new`) must be
   defined before wildcards (`/events/:event_id`) across live_sessions.
 - ETS rate limiter is global across async tests — use unique emails
   per test (`System.unique_integer`).
+- `phx-value-*` attributes are **not** merged into a native
+  `change`/`submit` event's payload for bare `<input>`/`<select>`
+  elements (only for click-type events, and for elements inside an
+  actual `<form>`). A per-field control that needs to identify itself
+  needs a real `<form>` wrapper with a hidden input, not a bare
+  element with `phx-value-*`.
+- If GitHub tool access shows as disconnected, it needs
+  re-authorization from the owner (`claude mcp` / `/mcp` — cannot be
+  done from an agent session); local git still works without it.
 
-## 4. Patterns to reuse (don't reinvent)
+## 3. Patterns to reuse (don't reinvent)
 
 - **Guest identities** (`Kammer.Guests`) are the substrate for any
   account-less interaction: guest comments, signup slots, newsletter
   subscriptions. Nullable FK + `num_nonnulls(...) = 1` check, cascade
   erasure, claim on sign-in.
 - **Feature gate**: anything new that's per-group-toggleable adds a
-  feature atom in `Group @features` (ships OFF by default!) and calls
+  feature atom in `Group @features` (ships OFF by default) and calls
   `Authorization.feature_gate/2` at context entry points.
 - **API**: `KammerWeb.Api.Serializer` is the only wire-shaping layer;
   `ApiError` the only error shape; `Pagination` the only cursor code.
@@ -110,415 +92,154 @@ explains). All CI required checks green on `main`.
   policy in contexts/authorization.
 - **Comments/reactions** are one engine (ADR 0007) — reuse for any
   new commentable/reactable thing.
+- **Non-access-control visibility redaction** (e.g. which profile
+  fields a viewer sees) doesn't need to route through
+  `Kammer.Authorization` — a small local predicate fed by
+  `Authorization.relationship/2`'s role is fine (ADR 0020). Reserve
+  the central module for actual access control (can this person reach
+  this group/file/post at all).
 
-## 5. The roadmap, in order, with executable detail
+## 4. Backlog
 
-### 5.1 Versioned files — ✅ SHIPPED (ADR 0017; #15 closed)
+Roughly descending priority; owner has said to use judgment on
+ordering within this list.
 
-Same-name-same-place uploads append versions; listings show current
-versions only; history UI in FileLive; retention on groups+
-communities; `version_seq` for deterministic order. Remaining
-follow-up lives in #30 (API file endpoints). Original spec kept below
-for reference.
+### Moderation gaps
 
-### 5.1 (original spec) Versioned files (issue #15 — all decisions made)
+Instance-level bans (today's ban is community-scoped only — needs an
+instance-wide block list keyed on email, checked wherever
+`Communities.add_member/3` already checks the community ban).
+Report surfaces beyond the group feed (event pages, assignment pages —
+reuse the existing `Kammer.Moderation.report_post/comment` shape).
+Full rate-limit coverage of posting/commenting/uploads (today's
+`Hammer` usage covers magic-link issuance and a few guest endpoints;
+audit `Kammer.RateLimit` call sites against SPEC §11's full list).
 
-The schema-surgery item. Owner decisions: history visible to everyone
-who can see the file; unlimited versions default with admin-configurable
-retention; replacing requires write permission on the entry; proper
-schema split (no `supersedes_id` chain hack).
+### Newsletter subscriptions
 
-1. Migration: `file_entries` table (id uuid, community_id NOT NULL,
-   group_id nullable, folder_id nullable, name string NOT NULL,
-   current_version_id nullable FK → stored_files, timestamps; index on
-   (community_id, group_id, folder_id)). Add
-   `stored_files.file_entry_id` (nullable FK, delete_all from entry).
-2. Backfill in the same migration: every stored_file that is a
-   file-space file (has `folder_id` OR (`kind = 'file'` AND no
-   transient_expires_at AND not referenced by post_attachments —
-   check the attachments join table name in `lib/kammer/feed/`))
-   gets a file_entry (name = filename, current_version = itself).
-   Feed attachments and transient files stay entry-less.
-3. Context (`Kammer.Files`): `upload_to_space` creates entry+version
-   for new names; **new** `upload_new_version(actor, entry, path, info)`
-   requires `can_write_folder?` on the entry's folder chain, runs the
-   same hardening pipeline, appends a version, moves
-   `current_version_id`. `list_files` returns entries with current
-   version preloaded. `list_versions(actor, entry)` (visibility = can
-   see the entry). `delete_file` → deletes entry + all versions;
-   `delete_version` (uploader/admins; cannot delete the only version;
-   deleting current moves the pointer to the newest remaining).
-   Retention: `version_retention` (int, nullable=unlimited) on
-   communities+groups settings; prune oldest on upload past the limit.
-4. Quota/contributions already count all stored_files — unchanged
-   (each version attributes to its uploader; verify
-   `contribution_stats` and `space_usage_bytes` still true in tests).
-5. UI (`FileLive.Index`): file rows get an "Upload new version" action
-   (write-permitted users) and a version-history disclosure (uploader,
-   time, size, download per version). Downloads of old versions via
-   the existing `file_controller` path (a version is a stored_file —
-   `fetch_accessible_file` must resolve visibility **via the entry**).
-6. API: `GET .../files` entries endpoint later (not required in this
-   PR; note it in the API backlog section of this file when done).
-7. Tests: context CRUD + retention pruning + permission matrix +
-   property: version visibility ≡ entry visibility. Close #15 on merge.
+Guest identities subscribing to a public group's feed (ADR 0013's
+email-only-identity pattern again): double opt-in, per-post or
+daily/weekly digest choice, one-click unsubscribe
+(`List-Unsubscribe` header), signed management link reusing the guest
+manage page. Digest delivery can likely share `Kammer.Digests`'
+cadence logic once the subscriber isn't a `User`.
 
-### 5.2 OpenAPI document — ✅ SHIPPED
+### File search + text extraction
 
-Served at `/api/v1/openapi.json`; schemas in `KammerWeb.Api.Schemas`
-mirror the serializer; paths declared in `KammerWeb.ApiSpec`; the
-drift test (`openapi_test.exs`) pins document ↔ router. Remaining #30
-boxes (Channels, endpoints) still open. Original spec below.
+Remaining half of global search (posts/comments/events already ship).
+Must ride the existing folder-permission invariant — a file's search
+visibility can never exceed its folder's. Extracted text (PDF,
+plaintext) via an Oban job, graceful skip on unsupported types, same
+FTS index pattern as `Kammer.Search`.
 
-### 5.2 (original spec) OpenAPI document (finishes ADR 0014's contract promise)
+### Rotations
 
-1. `open_api_spex` is already a dep. Add `KammerWeb.ApiSpec` (info,
-   servers from endpoint config, bearer security scheme), schema
-   modules mirroring `Serializer` output exactly, operation specs on
-   the existing API controllers.
-2. Serve `/api/v1/openapi.json` (public). Test: spec validates, every
-   router API path appears in it (enumerate `KammerWeb.Router.__routes__/0`
-   filtered on `/api/` and assert coverage — that test is the drift guard).
-3. Document in `docs/development.md`: clients generate from this
-   (TypeScript now; Swift/Kotlin when native starts).
+Recurring duty rosters (SPEC §23): a roster of members + a rotation
+rule (weekly/monthly), an Oban tick advances whose turn it is,
+notification when it becomes your week. Needs its own schema (not a
+fit for `Kammer.Assignments`, which is claim-based, not
+rotation-based). Spec the exact rotation semantics in an issue before
+building — "whose turn" gets ambiguous fast around skips/vacations.
 
-### 5.2b API completions (as clients need them — additive only)
+### Branding UI
 
-Deferred deliberately from the core: **Phoenix Channels realtime** for
-API clients (same PubSub topics LiveView uses); **API registration**
-(v1 is web-only — decide with the owner before enabling); notification
-endpoints (list/mark-read); file endpoints (entries + versions, after
-5.1); push-subscription registration for native clients. Guest RSVP
-stays web-only by design (guests hold no device tokens).
+SPEC §13: instance name, logo, accent color, and default language
+editable from settings, not just the first-run wizard.
+`Kammer.Communities.update_instance_settings/2` already exists and is
+already authorization-gated on `instance_operator: true` — this is
+UI-only work on `/instance/settings` (already exists, ships the
+content-minimized-email toggle) plus a logo upload (reuse the existing
+upload-hardening pipeline). Per-community branding (name/accent
+already editable at `/c/:slug/settings`) is unaffected — this item is
+the instance-level fields only.
 
-### 5.3 Guest comments + approval queue — ✅ SHIPPED
+### Observability: Prometheus
 
-Groups with `comment_policy: :members_and_guests` (public presets
-only, `Authorization.can_guest_comment?/1`): guest form on the public
-feed → signed confirm link (the comment travels inside the token,
-gzip-compressed, capped at 2000 chars — nothing stored until the link
-is followed) → pending comment → inline approve/reject for moderators
-(approve fires the deferred notification fan-out; reject
-hard-deletes). Pending comments are filtered out at the database for
-non-moderators (`Kammer.Feed.preloads/1`). The guest manage page is
-now general (`/guest/manage/:token`, `GuestLive.Manage`): all RSVPs
-(changeable) + all comments + full erasure; manage tokens carry
-`%{identity_id}` only. `Guests.claim_history/1` moves comments too.
-Note: the author check constraint is `num_nonnulls(...) <= 1`, not
-`= 1` — user deletion nilifies `author_user_id`, and that must stay
-legal. Tests: `test/kammer/guest_comments_test.exs`,
-`test/kammer_web/live/guest_comment_flows_test.exs`.
+SPEC §13: optional `/metrics` (Telemetry-backed, PromEx is the
+obvious library — verify current maintenance status first per SPEC
+§22's "boring, maintained" rule). Off by default; docs should be
+explicit about what's exposed (no per-user data).
 
-### 5.4 Svelte PWA (ADR 0001; owner has signed off — #20 "go now")
+### ClamAV option
 
-First: file a **decision issue** for repo placement (recommend a
-`clients/web/` directory in this repo — shared CI, atomic API+client
-PRs, one issue tracker; separate repo only if CI time hurts). Then:
+SPEC §11: optional AV sidecar for uploads, config-flag gated,
+documentation explicit that signature-based AV is imperfect (don't
+oversell it). `docker-compose.yml` gets an optional service; the
+upload pipeline gets a scan-hook call point that no-ops when disabled.
 
-1. Scaffold SvelteKit (static adapter) + TypeScript + generated API
-   client from `/api/v1/openapi.json` (openapi-typescript).
-2. Multi-instance session-holder model per ADR 0001: instance list
-   (add-by-URL), one device token per instance (localStorage; the
-   Home screen merges `GET /home` across instances client-side).
-3. v1 screens in order: sign-in (magic-link request + exchange),
-   merged Home, community list, group feed (read + compose + comment
-   - react later), events (list/detail/RSVP). PWA manifest + SW
-     (app-shell only), Web Push via the existing VAPID endpoints later.
-4. CI: separate job (node, pnpm, typecheck, vitest, build). Don't put
-   it in the Elixir quality gate.
-5. Keep LiveView fully working — parity before any deprecation talk.
+### NixOS module
 
-### 5.5 Collaborative track (issue #17 — accepted; sub-issue each)
+SPEC §14: the flake already provides the canonical dev shell; a
+packaged NixOS module (systemd service, Postgres, reverse proxy
+example) is the piece still missing, for anyone deploying via NixOS
+rather than Docker Compose.
 
-Order: **signup slots ✅ (#37) → availability polls ✅ (#39) →
-assignments ✅ (#41) → decisions log ✅ (#43) → rotations.** Design bullets
-live in #17; each feature: file a sub-issue, RFC only if the design
-deviates from #17's bullets, feature atom in the group toggles (OFF
-by default), EN+DA, property tests on any visibility rule.
+### Svelte PWA (ADR 0001 — owner has signed off, "go now")
 
-Assignments SHIPPED (#41): `Kammer.Assignments` context, flat list
-(open → done, due-date ordered), multi-claimant `assignment_claims`,
-`:assignments` atom. Comments got their THIRD subject: the constraint
-is now `num_nonnulls(post_id, event_id, assignment_id) = 1` and
-`Feed.delete_comment` routes assignment comments too. Complete/reopen
-follow the RSVP rule (trust by default; `completed_by_user_id` shows
-who). Due-date nudges deferred to the digests work (#33); API to #30.
-Decisions SHIPPED (#43): `Kammer.Decisions`, a `decisions` register
-row per motion; the motion itself is a normal feed post created
-through `Feed.create_post` with a default For/Against/Abstain
-single-choice named vote (options text stored in the instance's
-default locale at creation). Outcome = adopted/rejected/noted +
-note, recorded by proposer-or-moderator, amendable pre-1.0 (audit
-trail belongs to #33's audit log). Register page at
-`/g/:slug/decisions`. Remaining in the track: rotations (design
-bullets in #17) — recurring duty rosters; needs an Oban rotation
-tick and a roster schema; spec it in a sub-issue first.
+File a decision issue for repo placement first (recommend
+`clients/web/` in this repo — shared CI, atomic API+client PRs, one
+tracker; separate repo only if CI time hurts). Then:
 
-Availability SHIPPED (#39): `Kammer.Availability` context,
-`availability_polls/options/responses`, `:availability` feature atom
-(the Group schema now has `@default_features` separate from
-`@features` — new atoms join `@features`/`@toggleable_features` only,
-so they're OFF everywhere until a group opts in). Create follows
-`post_in_group`, answering follows the RSVP rule, close/convert is
-creator-or-moderator; convert calls `Events.create_event` (fan-out
-included) and stamps `converted_event_id`. UI: "Find a date" on the
-group page, grid at `/c/:slug/availability/:poll_id`, open polls
-listed on the events page. Members-only in v1 — guest availability is
-a follow-up if asked for. API deferred to #30.
+1. SvelteKit (static adapter) + TypeScript + a generated API client
+   from `/api/v1/openapi.json` (openapi-typescript).
+2. Multi-instance session-holder model (ADR 0001): instance list
+   (add-by-URL), one device token per instance (localStorage), the
+   merged Home view built by merging `GET /home` client-side across
+   instances.
+3. Screens in order: sign-in (magic-link request + exchange), merged
+   Home, community list, group feed (read/compose/comment), events
+   (list/detail/RSVP).
+4. PWA manifest + service worker (app-shell only); Web Push later via
+   the existing VAPID endpoints.
+5. Its own CI job (node/pnpm/typecheck/vitest/build) — not inside the
+   Elixir quality gate.
+6. LiveView stays fully functional throughout — parity before any
+   deprecation talk (ADR 0001 never authorized retiring it early).
 
-Slots SHIPPED (#37): `event_slots` + `slot_claims` (user XOR guest,
-exactly-one — claims die with their person, delete_all both ways),
-capacity under a `FOR UPDATE` row lock (race-tested), guest claims
-via the ADR 0013 two-link flow on the `can_guest_rsvp?` policy,
-manage page + claim-on-sign-in + erasure extended, slots in the API
-event serializer. No new feature atom — slots live inside `events`
-(an event without slots shows nothing); assignments WILL get its own
-atom. Danish register: a slot is "en tjans".
+### API completions (additive only, as clients need them)
 
-### 5.6 Remaining Phase 2 (SPEC §16 list, descending priority)
+Phoenix Channels realtime for API clients (same PubSub topics
+LiveView already subscribes to; token auth on the socket).
+Notification endpoints (list, mark-read). File endpoints (entries +
+versions). Push-subscription registration for native/PWA clients
+(VAPID infra already exists). Open decision for the owner: enable API
+registration, or keep v1 web-only (current default)? Guest RSVP stays
+web-only by design regardless — guests hold no device tokens.
 
-- ✅ **Global search** — SHIPPED: `Kammer.Search` (posts, comments,
-  events; 'simple' FTS config for mixed da/en; GIN expression
-  indexes; `listable_groups_query` filter — surfacing follows listing
-  visibility, so `public_link` content never leaks), invisibility
-  property test in `test/kammer/search_test.exs`, page at
-  `/c/:slug/search` (anonymous searches the public face). Remaining:
-  **file search** (must ride the folder-permission invariant) + file
-  text extraction.
-- 🟡 **Email digests + newsletter subscriptions** — digests SHIPPED:
-  `Kammer.Digests` + `DigestWorker` (06:00 UTC cron; daily every day,
-  weekly on Mondays; `last_digest_at` double-send guard; empty period
-  sends nothing; own posts excluded), `digest_frequency` on users
-  (opt-in, `:off` default), setting under Account settings. Remaining:
-  **newsletter subscriptions** (guest_identities subscribing to public
-  groups, ADR 0013 again).
-- ✅ **Backups** — SHIPPED: `Kammer.Backups` (pg_dump custom format +
-  uploads tar, optional age encryption, per-kind pruning),
-  `mix kammer.backup`, `Kammer.Release.backup/1`, nightly Oban cron
-  no-op unless `BACKUP_DIR` set, restore guide in docs/backups.md.
-- 🟡 **Moderation** — reports + community bans SHIPPED:
-  `Kammer.Moderation` (report_post/comment on `view_group`, queue for
-  community admins + group moderators, dismiss / resolve-removes-
-  content, `ban_member` keyed on email with the single choke-point in
-  `Communities.add_member/3` — `{:error, :banned}`). Report UI on the
-  group feed (modal); queue at `/c/:slug/moderation`; ban/unban via
-  members page + queue. Remaining: instance-level bans, report
-  surfaces beyond the group feed (event/assignment pages), full
-  rate-limit coverage of posting/commenting/uploads.
-- ✅ **GDPR export/erasure** — SHIPPED: `Kammer.Gdpr` — export builds a
-  zip synchronously (data.json + every file the person uploaded,
-  fetched through the storage adapter) and streams it from
-  `GdprController` (no Oban job — the query set is small enough that
-  async buys nothing but complexity); `delete_account/1` is one
-  `Repo.delete!` — the schema does the SPEC §12 work already
-  (`nilify_all` anonymizes authored content to "Deleted user",
-  `delete_all` cascades personal rows). UI: "Your data" section on
-  Account settings (download + delete, with an honest pre-confirm
-  explanation). Revisit async export if the query set grows (e.g.
-  very large communities) — not needed yet.
-- ✅ **Audit log** — SHIPPED: `Kammer.Audit` (append-only
-  `audit_events`, `record/5` fire-and-forget from the caller's
-  transaction, `summary` precomputed in plain language at write time
-  so entries stay readable after the row they describe is gone).
-  Instrumented at every SPEC §11 call site: `Communities` (settings
-  update, role change, member removal), `Groups` (settings update,
-  delete, role change — community-admin overrides into groups carry
-  an `"override" => true` metadata flag), `Moderation`
-  (resolve-report, ban, unban). Read-gated to community admins
-  (`list_events/3`); UI is a third section on the moderation page
-  (`/c/:slug/moderation`).
-- ✅ **Passkeys** — SHIPPED (ADR 0018): `wax_` (Hex name for Wax).
-  Registration and usernameless authentication each get a small
-  JSON options endpoint/LiveView `handle_event` pair generating a
-  `Wax.Challenge`; a colocated JS hook drives
-  `navigator.credentials`. Registration verifies and stores entirely
-  inside the (already-authenticated) `UserLive.Devices` process.
-  Login verifies inside `UserLive.Login`, then hands off through a
-  single-use, ~2-minute `UserToken` ("passkey-exchange" context) to
-  `UserSessionController.create_from_passkey/2` — the same
-  `UserAuth.log_in_user/3` finalization every other sign-in path
-  uses, since LiveView has no `conn` to set the session cookie with.
-  `user_passkeys.credential_id` is unique instance-wide (usernameless
-  sign-in looks it up before it knows who's signing in).
-  `test/support/webauthn_helper.ex` hand-crafts valid ES256
-  attestations/assertions (real P-256 keys, real CBOR, real ECDSA)
-  so the test suite exercises actual Wax verification without a
-  browser. Devices page lists passkeys alongside sessions.
-- ✅ **Recurrence + attendance matrix** — SHIPPED (ADR 0019):
-  `Kammer.Events.Recurrence` (pure date math, not an RRULE
-  parser/library — weekly/biweekly/monthly, day-of-month preserved
-  and clamped for short months, computed from the original date each
-  time so it never permanently drifts, DST-safe, capped at 52
-  occurrences) plus `EventSeries` (just the rule). Occurrences
-  materialize as ordinary `Event` rows sharing a `series_id` — RSVPs,
-  slots, comments, ICS, and reminders all run unmodified through the
-  existing single-event code. "Cancel one date" is a nullable
-  `cancelled_at` (row stays, excluded from listings/reminders/feeds);
-  "move one date" is just `update_event/3` on that row — no new code.
-  New `EventLive.Series` page (`/events/series/:id`, organizer-only):
-  every occurrence with cancel/restore, and the attendance matrix
-  (members × upcoming instances) computed from existing RSVP data.
-  `EventLive.New` gained a "Repeats" section; `EventLive.Show` shows
-  series/cancellation banners. Remaining: ICS feeds emit one `VEVENT`
-  per occurrence rather than a native RFC 5545 `RRULE` block — a
-  deliberate "lite" simplification (ADR 0019), revisit only if users
-  ask for real recurring-event grouping in their calendar app.
-- ✅ **Admin update notice** — SHIPPED: `Kammer.UpdateCheck` +
-  `Kammer.Workers.UpdateCheckWorker` (daily cron, 05:00 UTC) hit
-  GitHub's releases API once and record the result on the singleton
-  `InstanceSettings` row — no live fetch per page load. Opt-out via
-  `DISABLE_UPDATE_CHECK` (default on); the banner shows on the
-  instance home page (`InstanceLive.Home`), operators only, only when
-  a newer version is actually recorded. Tested against a stubbed
-  `Req.Test` transport, not a live GitHub call.
-- ✅ **RSS/Atom for public groups** — SHIPPED: `Kammer.Feed.Syndication`
-  (hand-rolled, same pattern as `Kammer.Calendar.ICS` — no
-  feed-generation dependency) + `KammerWeb.GroupFeedController` at
-  `/c/:slug/g/:group_slug/feed.{rss,atom}`. No secret token — gated
-  by the exact same `Groups.fetch_viewable_group/3` anonymous-
-  visibility check the group page itself uses, so it's public for
-  `public_link`/`public_listed` groups and 404s otherwise. Reuses
-  `Feed.list_group_feed_page/4` (chronological, no pinned reordering)
-  capped at 20 posts; soft-deleted posts excluded. Linked from the
-  group page. Remaining: no per-post permalink exists yet in the UI,
-  so every item links to the group page rather than a specific post —
-  revisit once/if posts get individual URLs.
-- ✅ **Content-minimized email mode** — SHIPPED (ADR 0011):
-  `InstanceSettings.content_minimized_emails` (operator-only toggle,
-  default off) at `/instance/settings` (new, linked from the instance
-  home for operators — the first post-setup instance-settings edit
-  surface; `instance_name`/`community_creation_policy`/
-  `storage_policy` still have none). Per-event notification emails
-  (`Kammer.Notifications.NotificationEmail`) never carried post
-  content to begin with — activity-kind summaries only ("X mentioned
-  you") — so the toggle only changes `Kammer.Digests`: minimized
-  digests drop author names and excerpts for a per-group count + link
-  ("N new posts in {group}"). Auth/RSVP emails are exempt by
-  construction — they were never touched.
-- ✅ **Custom profile fields + roster** — SHIPPED (ADR 0020):
-  community admins define fields (text/single-choice, members/admins
-  visibility, optional `required`) from `/c/:slug/settings`'s new
-  "Member profile fields" section. Required fields hard-block at
-  invite acceptance (both the in-place LiveView accept and the
-  sign-in-then-accept controller path redirect to a new
-  `CommunityLive.CompleteProfile` step first); making an existing
-  field required only nags already-joined members via a banner on
-  `CommunityLive.Home` linking to the same page — never a lockout,
-  driven by the one shared `missing_required_custom_fields/2` query.
-  The member directory (`CommunityLive.Members`) shows each member's
-  visible answers (one batched query, not N+1) and gains filter
-  dropdowns for single-choice fields. Also shipped: personal bio,
-  pronouns, and phone/email/other contact fields under Account
-  settings, each contact field independently
-  hidden/members/admins-only (default hidden). Visibility redaction
-  is deliberately two small predicates outside `Kammer.Authorization`
-  — see ADR 0020 for why. Remaining: `instance_name`/
-  `community_creation_policy`/`storage_policy` still have no
-  post-setup edit UI.
-- ✅ **Activity-sort feed view** — SHIPPED (ADR 0006, already
-  anticipated it): `User.feed_sort` (`:chronological | :activity`,
-  default chronological), toggled from a small dropdown on both
-  `GroupLive.Show` and `CommunityLive.Home`. `Kammer.Feed`'s
-  `list_group_feed/3` and `list_home_feed/3` share one `order_by`
-  builder — chronological is unchanged; activity orders by a
-  correlated-subquery "last comment time, else published_at",
-  pinned posts still sorting first in either mode. No ranking, no
-  engagement metrics — exactly the one alternate ordering ADR 0006
-  always reserved, nothing more.
-- Then: branding UI, Prometheus (PromEx), ClamAV option, NixOS
-  module.
-- ✅ **Security hardening, pre-1.0: nonce-based CSP** — SHIPPED
-  (ADR 0021): `KammerWeb.Plugs.CspNonce` replaces `script-src
-'unsafe-inline'` with a fresh per-request nonce; the root layout's
-  one inline script (theme bootstrap) carries it. Colocated LiveView
-  hooks were never affected — they compile into `app.js`, not inline
-  `<script>` tags. Verified with a unit + real-request integration
-  test and a live-browser Playwright check (zero CSP console
-  violations). `Config.CSP` added to `.sobelow-conf` — Sobelow's
-  static check only recognizes a literal `content-security-policy`
-  key in `put_secure_browser_headers`, so it can't see a header a
-  separate plug sets; documented false positive.
-- **Far-future path already decided** (SPEC v1 non-goals): group type
-  templates ("Announcement channel", "Discussion forum", …) are the
-  sanctioned route to configurable comment mechanics — never raw
-  per-group threading switches.
-
-### 5.7 Native apps (after the PWA settles — not before)
+### Native apps (after the PWA settles, not before)
 
 Swift + Kotlin, thin clients generated from the OpenAPI document
-(swift-openapi-generator / openapi-generator kotlin). Per-platform:
-UI shell, push (APNs/FCM), secure token storage. LiveView freezes at
-Svelte parity, retired later (ADR 0001) — plan, don't rush it.
+(swift-openapi-generator / openapi-generator kotlin). Per platform: UI
+shell, push (APNs/FCM), secure token storage.
 
-### 5.8 Standing operations
+### Smaller loose ends
 
-- Babysit every PR to green; Renovate fires Mondays 07:00 CPH —
-  non-major automerges when checks pass, majors wait for the owner.
-- Owner-court items to leave alone: #7 (test-drive), #8 (human review),
-  #9 (miles deploy — assemble the nix-config PR when asked), #22
-  (business model — act on answers when they arrive).
-- Release: owner cuts v0.1.0 after #7 via docs/release.md. Fix
+- No per-post permalink exists yet, so RSS/Atom items and any
+  "link to this post" affordance point at the group page, not the
+  specific post. Revisit once posts get individual URLs.
+- `instance_name` / `community_creation_policy` / `storage_policy` are
+  still wizard-only with no post-setup edit UI (branding UI above
+  covers `instance_name`; the other two would need their own small
+  settings additions).
+
+## 5. Standing operations
+
+- Babysit every open PR to green CI, merge yourself. Renovate fires
+  Mondays 07:00 CPH — non-major automerges when checks pass, majors
+  wait for the owner.
+- Owner-court items, leave alone unless asked: #7 (real-machine test
+  drive), #8 (human review pass), #9 (miles deploy), #22 (business
+  model — act on answers when they arrive).
+- Release: owner cuts v0.1.0 after #7, via docs/release.md. Fix
   forward, never re-tag.
-- **Naming** (SPEC §15): "Kammer" is a working title; the display name
-  is one config constant. Final-name verification is owner-court —
-  raise it before any public marketing, never decide it.
-- **Business model implications** (issue #22, when the owner answers):
-  per-community active-member stats, billing integration, DPA
-  template, instance-admin tooling for shared-instance hosting.
+- Naming (SPEC §15) and final business-model calls (issue #22) are
+  owner-court — raise before acting, never decide them yourself.
 
 ## 6. Definition of done, every PR
 
-`mix precommit` green · EN+DA strings · authorization single-module +
-property tests where invariants · ADR/RFC/BUILDLOG as applicable ·
-CHANGELOG Unreleased entry · issues updated/closed · this file updated
-if the roadmap moved · PR description says what and why, checklist
-filled honestly.
-
-## 7. Successor pickup prompt (verbatim — works with zero chat context)
-
-Give a fresh agent session on `tskovlund/kammer` exactly this:
-
-> You are taking over autonomous development of **Kammer**, a
-> self-hosted community platform (Elixir/Phoenix/LiveView + JSON API).
-> The owner is tskovlund; he is often away — you work autonomously and
-> he decides asynchronously through GitHub issues.
->
-> **Read first, in order:** `docs/HANDOFF.md` (your operating manual —
-> state, process, environment traps, patterns, and the full roadmap;
-> update it with every PR), then `CONVENTIONS.md` and `CLAUDE.md`
-> (binding standards, including the no-hacks rule), then `SPEC.md`
-> (the owner's original product prompt; its status note explains what
-> is live), then skim `docs/decisions/` and **all open issues** —
-> owner comments on issues override every plan; check them first,
-> every session.
->
-> **Process, non-negotiable:** develop on your designated branch; one
-> coherent PR at a time into `main`; merge commits; `mix precommit`
-> green before every push (never weaken a check); every user-facing
-> string in English AND Danish via Gettext; all permission/visibility
-> logic in `lib/kammer/authorization.ex` only, property-tested when an
-> invariant is involved — the transport-parity property must never
-> break. Update CHANGELOG, docs, issues, and HANDOFF.md with every
-> change; close issues when settled; no stale debt. Architecture
-> decisions get an ADR; product-shaping questions (pricing, naming, UX
-> philosophy, scope) become issues assigned to tskovlund with options
-> and a recommendation — never decide those yourself. Babysit every PR
-> to green CI and merge it yourself.
->
-> **Environment:** read HANDOFF.md §3 before your first shell command.
->
-> **Your queue:** HANDOFF.md §5 is the up-to-date executable roadmap —
-> read it fully before picking work; sections marked ✅ SHIPPED are
-> done, 🟡 partial ones list exactly what remains. Cross-check against
-> the live GitHub issues (#17 collaborative track, #30 API completions,
-> #32 Svelte PWA, #33 Phase 2 umbrella are the standing milestones) —
-> owner comments there override this document. If GitHub tool access
-> shows as disconnected at session start, tell the owner it needs
-> re-authorization before you can manage issues/PRs; local git commits
-> still work without it. Take the top unfinished item unless an owner
-> comment redirects you.
->
-> Work steadily, prove everything with tests, and when in doubt about
-> quality versus speed: shrink scope, never quality. Begin with the
-> reading, then confirm your understanding of the queue in one short
-> message before your first PR.
+`mix precommit` green · EN+DA strings · authorization changes in the
+single module + property tests where an invariant is involved ·
+ADR only if architecture-shaping · CHANGELOG `## [Unreleased]` entry ·
+SPEC.md updated if a product decision changed · this file's backlog
+updated if scope moved · issues updated/closed · PR description says
+what and why.

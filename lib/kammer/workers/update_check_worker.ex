@@ -1,6 +1,6 @@
 defmodule Kammer.Workers.UpdateCheckWorker do
   @moduledoc """
-  Daily admin update notice check (HANDOFF §5.6): a single small
+  Daily admin update notice check (SPEC §13): a single small
   request to this project's GitHub releases API. A documented no-op
   when the operator set `DISABLE_UPDATE_CHECK` — see
   `Kammer.UpdateCheck.enabled?/0`.

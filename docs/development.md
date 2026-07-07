@@ -52,14 +52,16 @@ never surprise you.
 4. **Permission or visibility changes** happen in
    `lib/kammer/authorization.ex` only, with context-level tests —
    property-based (StreamData) when an invariant is involved.
-5. **Agent handoff / roadmap state** lives in [HANDOFF.md](HANDOFF.md)
-   — the executable roadmap and process contract for whoever (human or
-   agent) picks up the build; it must move with every roadmap change.
+5. **Process, environment notes, and the backlog** live in
+   [HANDOFF.md](HANDOFF.md) — not a feature log (that's the CHANGELOG)
+   and not the product spec (that's [SPEC.md](../SPEC.md), kept
+   current in place); it must move with every backlog or process
+   change.
 6. **Architecture-shaping decisions** get a one-page ADR in
    [`docs/decisions/`](decisions/); designs still awaiting an owner
-   decision live as RFCs in [`docs/rfcs/`](rfcs/); scope trims and
-   deferrals go to [BUILDLOG.md](../BUILDLOG.md). Silent stubs are
-   forbidden.
+   decision live as RFCs in [`docs/rfcs/`](rfcs/). Scope trims and
+   deferrals go in the PR description and, if they outlive it, into
+   HANDOFF's backlog — never silent stubs.
 7. **Docs move with the change**: if a PR alters behavior described in
    README, this directory, or `.env.example`, the same PR updates it
    (the PR template asks).

@@ -1,6 +1,6 @@
 defmodule Kammer.UpdateCheckTest do
   @moduledoc """
-  The admin update notice (HANDOFF §5.6): opt-out gate, version
+  The admin update notice (SPEC §13): opt-out gate, version
   comparison, and recording a check result on the singleton instance
   settings row.
   """

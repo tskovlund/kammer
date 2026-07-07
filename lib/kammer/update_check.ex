@@ -1,6 +1,6 @@
 defmodule Kammer.UpdateCheck do
   @moduledoc """
-  The admin update notice (HANDOFF §5.6): a periodic, low-frequency
+  The admin update notice (SPEC §13): a periodic, low-frequency
   check against this project's GitHub releases so instance operators
   know when a newer Kammer exists. Privacy-respecting by design — one
   small request a day at most, no payload beyond the version fetch,

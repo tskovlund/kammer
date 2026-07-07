@@ -1,11 +1,11 @@
 # BUILDLOG
 
-Session journal and decision record for the Kammer Phase 1 build (SPEC.md §16).
-Every scope trim, stub, deferral, or library substitution is recorded here —
-silent stubs are forbidden by the one-shot build rule (SPEC.md §16).
-
-Format: newest entries at the bottom. Each entry: date, what was done/decided,
-why, and (for trims) precisely how to complete the cut work.
+**Frozen.** This was the session journal for the original Phase 1
+one-shot build (SPEC.md §16's build rule) — every scope trim, stub, or
+substitution during that build, recorded so nothing silently vanished.
+Phase 1 ended; nothing has been added since and nothing should be.
+Scope notes for later work belong where the diff is: the PR
+description and CHANGELOG.md. Kept for history only.
 
 ---
 

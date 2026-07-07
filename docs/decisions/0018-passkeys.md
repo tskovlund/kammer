@@ -47,7 +47,7 @@ detection per WebAuthn §7.2) but tolerated at a standing `0` — most
 platform authenticators (synced passkeys) never increment it.
 
 **UI**: passkeys live on the existing Devices page (sudo-mode gated),
-not a separate page — HANDOFF's "device page lists them".
+not a separate page.
 
 ## Consequences
 
