@@ -10,6 +10,18 @@ and this project adheres to
 
 ### Fixed
 
+- Consolidated comment creation for posts, events, and assignments
+  into one `Kammer.Feed.create_engine_comment/5` (ADR 0007's "one
+  comment engine," which had drifted into three near-identical
+  copies). Fixes two real bugs the drift had caused: event and
+  assignment comments skipped the `@everyone`-mention rate limit that
+  post comments already enforced, and — activated for the first time
+  by this same fix, since event/assignment comments were never
+  previously enqueued for fan-out — `Kammer.Notifications.fanout_comment/1`
+  assumed every comment belonged to a post and would raise
+  `Ecto.NoResultsError` for any event or assignment comment. Fan-out
+  now resolves the comment's host (post, event, or assignment)
+  polymorphically, with regression tests covering all three subjects.
 - Consolidated the instance-operator check (`user.instance_operator`)
   into `Kammer.Authorization.instance_operator?/1`, replacing raw
   struct-field checks scattered across three context modules

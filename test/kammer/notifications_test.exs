@@ -5,8 +5,12 @@ defmodule Kammer.NotificationsTest do
   import Kammer.CommunitiesFixtures
   import Swoosh.TestAssertions
 
+  alias Kammer.Assignments
+  alias Kammer.Events
   alias Kammer.Feed
+  alias Kammer.Groups.Group
   alias Kammer.Notifications
+  alias Kammer.Repo
   alias Kammer.Workers.NotificationFanoutWorker
 
   defp notification_context do
@@ -203,6 +207,42 @@ defmodule Kammer.NotificationsTest do
 
       assert [%{kind: :reply}] = Notifications.list_notifications(author)
       assert Notifications.list_notifications(group_owner) == []
+      assert Notifications.list_notifications(reader) == []
+    end
+
+    test "event comments notify the event creator (no post to resolve)",
+         %{group: group, author: author, reader: reader} do
+      {:ok, event} =
+        Events.create_event(author, group, %{
+          "title" => "Fanout Fest",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 48, :hour)
+        })
+
+      {:ok, comment} = Events.create_comment(reader, event, %{"body_markdown" => "see you there"})
+
+      assert :ok =
+               perform_job(NotificationFanoutWorker, %{"type" => "comment", "id" => comment.id})
+
+      assert [%{kind: :reply}] = Notifications.list_notifications(author)
+      assert Notifications.list_notifications(reader) == []
+    end
+
+    test "assignment comments notify the assignment creator (no post to resolve)",
+         %{group: group, author: author, reader: reader} do
+      group =
+        group
+        |> Group.features_changeset(%{"features" => ["feed", "assignments"]})
+        |> Repo.update!()
+
+      {:ok, assignment} = Assignments.create_assignment(author, group, %{"title" => "Bring cups"})
+
+      {:ok, comment} =
+        Assignments.create_comment(reader, assignment, %{"body_markdown" => "on it"})
+
+      assert :ok =
+               perform_job(NotificationFanoutWorker, %{"type" => "comment", "id" => comment.id})
+
+      assert [%{kind: :reply}] = Notifications.list_notifications(author)
       assert Notifications.list_notifications(reader) == []
     end
   end

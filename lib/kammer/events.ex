@@ -22,6 +22,7 @@ defmodule Kammer.Events do
   alias Kammer.Events.EventSlot
   alias Kammer.Events.Recurrence
   alias Kammer.Events.SlotClaim
+  alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Groups
   alias Kammer.Groups.Group
@@ -833,37 +834,21 @@ defmodule Kammer.Events do
           {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_comment(%User{} = author, %Event{} = event, attrs) do
     group = Repo.get!(Group, event.group_id)
+    relationship = Authorization.relationship(author, group)
 
     cond do
-      not Authorization.can?(author, :comment_in_group, group) or
+      not Authorization.can?(author, :comment_in_group, group, relationship) or
           not is_nil(event.comment_locked_at) ->
         {:error, :unauthorized}
 
-      match?({:deny, _retry}, RateLimit.hit_comment_create(author.id)) ->
-        {:error, :rate_limited}
-
       true ->
-        parent_id = normalize_parent(attrs["parent_comment_id"])
-
-        %Comment{}
-        |> Comment.create_changeset(%{
-          "body_markdown" => attrs["body_markdown"],
-          "parent_comment_id" => parent_id,
-          "author_user_id" => author.id
-        })
-        |> Ecto.Changeset.put_change(:event_id, event.id)
-        |> Repo.insert()
-    end
-  end
-
-  defp normalize_parent(nil), do: nil
-  defp normalize_parent(""), do: nil
-
-  defp normalize_parent(parent_comment_id) do
-    case Repo.get(Comment, parent_comment_id) do
-      nil -> nil
-      %Comment{parent_comment_id: nil} = parent -> parent.id
-      %Comment{parent_comment_id: grandparent_id} -> grandparent_id
+        Feed.create_engine_comment(
+          author,
+          group,
+          relationship,
+          %Comment{event_id: event.id},
+          attrs
+        )
     end
   end
 

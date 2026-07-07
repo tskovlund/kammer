@@ -18,9 +18,9 @@ defmodule Kammer.Assignments do
   alias Kammer.Assignments.Assignment
   alias Kammer.Assignments.AssignmentClaim
   alias Kammer.Authorization
+  alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Groups.Group
-  alias Kammer.RateLimit
   alias Kammer.Repo
 
   @doc """
@@ -215,34 +215,18 @@ defmodule Kammer.Assignments do
           {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_comment(%User{} = author, %Assignment{} = assignment, attrs) do
     group = Repo.get!(Group, assignment.group_id)
+    relationship = Authorization.relationship(author, group)
 
-    cond do
-      not Authorization.can?(author, :comment_in_group, group) ->
-        {:error, :unauthorized}
-
-      match?({:deny, _retry}, RateLimit.hit_comment_create(author.id)) ->
-        {:error, :rate_limited}
-
-      true ->
-        parent_id = normalize_parent(attrs["parent_comment_id"])
-
-        %Comment{assignment_id: assignment.id, author_user_id: author.id}
-        |> Comment.create_changeset(%{
-          "body_markdown" => attrs["body_markdown"],
-          "parent_comment_id" => parent_id
-        })
-        |> Repo.insert()
-    end
-  end
-
-  defp normalize_parent(nil), do: nil
-  defp normalize_parent(""), do: nil
-
-  defp normalize_parent(parent_comment_id) do
-    case Repo.get(Comment, parent_comment_id) do
-      nil -> nil
-      %Comment{parent_comment_id: nil} = parent -> parent.id
-      %Comment{parent_comment_id: grandparent_id} -> grandparent_id
+    if Authorization.can?(author, :comment_in_group, group, relationship) do
+      Feed.create_engine_comment(
+        author,
+        group,
+        relationship,
+        %Comment{assignment_id: assignment.id},
+        attrs
+      )
+    else
+      {:error, :unauthorized}
     end
   end
 

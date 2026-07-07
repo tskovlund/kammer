@@ -612,26 +612,52 @@ defmodule Kammer.Feed do
         {:error, :unauthorized}
 
       true ->
-        # `@everyone` in a comment gets the same gate + rate limit as a
-        # post — fanout_comment/1 already escalates it to a full-group
-        # broadcast (Kammer.Notifications), so leaving it ungated here
-        # would let any commenter reach broadcast rights they don't
-        # have.
-        with :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]),
-             :ok <- check_comment_rate_limit(author.id) do
-          parent_id = normalize_parent(attrs["parent_comment_id"])
+        author
+        |> create_engine_comment(group, relationship, %Comment{post_id: post.id}, attrs)
+        |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+    end
+  end
 
-          %Comment{}
-          |> Comment.create_changeset(%{
-            "body_markdown" => attrs["body_markdown"],
-            "post_id" => post.id,
-            "parent_comment_id" => parent_id,
-            "author_user_id" => author.id
-          })
-          |> Repo.insert()
-          |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
-          |> tap_fanout_comment()
-        end
+  @doc """
+  The shared tail of "one comment engine, three subjects" (ADR 0007):
+  the `@everyone`-mention gate, the rate limit, the one-reply-level
+  rule, persistence, and notification fan-out — identical regardless
+  of whether the comment is on a post, an event, or an assignment.
+  Callers do their own subject-specific gating first (comment policy,
+  locked state) and pass a `Comment` struct already carrying the right
+  foreign key (`post_id` / `event_id` / `assignment_id`).
+  """
+  @spec create_engine_comment(
+          User.t(),
+          Group.t(),
+          Authorization.relationship(),
+          Comment.t(),
+          map()
+        ) ::
+          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
+  def create_engine_comment(
+        %User{} = author,
+        %Group{} = group,
+        relationship,
+        %Comment{} = seed,
+        attrs
+      ) do
+    # `@everyone` in a comment gets the same gate + rate limit as a
+    # post — fanout_comment/1 already escalates it to a full-group
+    # broadcast (Kammer.Notifications), so leaving it ungated here
+    # would let any commenter reach broadcast rights they don't have.
+    with :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]),
+         :ok <- check_comment_rate_limit(author.id) do
+      parent_id = normalize_parent(attrs["parent_comment_id"])
+
+      seed
+      |> Comment.create_changeset(%{
+        "body_markdown" => attrs["body_markdown"],
+        "parent_comment_id" => parent_id,
+        "author_user_id" => author.id
+      })
+      |> Repo.insert()
+      |> tap_fanout_comment()
     end
   end
 
