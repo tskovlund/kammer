@@ -4,8 +4,7 @@ defmodule KammerWeb.KammerComponents do
   designed empty states, and small shared pieces of the design language.
   """
 
-  use Phoenix.Component
-  use Gettext, backend: KammerWeb.Gettext
+  use KammerWeb, :html
 
   alias Kammer.Accounts.User
   alias Kammer.Communities.Community
@@ -81,6 +80,41 @@ defmodule KammerWeb.KammerComponents do
         {render_slot(@action)}
       </div>
     </div>
+    """
+  end
+
+  @doc """
+  The "report to moderators" dialog (SPEC §11), shared by every page
+  that can report a post or comment: group feed, event, and
+  assignment pages. Pairs with `KammerWeb.ReportHandlers`, which owns
+  the `start_report` / `cancel_report` / `submit_report` events this
+  markup emits — the host LiveView just needs a `reporting` assign.
+  """
+  attr :reporting, :map, default: nil
+
+  @spec report_modal(map()) :: Phoenix.LiveView.Rendered.t()
+  def report_modal(assigns) do
+    ~H"""
+    <dialog :if={@reporting} open class="modal modal-open" phx-click="cancel_report">
+      <div class="modal-box" phx-click={JS.exec("phx-noop")}>
+        <h3 class="pb-2 font-semibold">{gettext("Report to the moderators")}</h3>
+        <form id="report-form" phx-submit="submit_report" class="space-y-3">
+          <textarea
+            name="reason"
+            rows="3"
+            required
+            placeholder={gettext("What's wrong? The moderators see exactly what you write.")}
+            class="textarea w-full"
+          ></textarea>
+          <div class="flex justify-end gap-2">
+            <button type="button" phx-click="cancel_report" class="btn btn-ghost btn-sm">
+              {gettext("Cancel")}
+            </button>
+            <.button variant="primary" class="btn-sm">{gettext("Send report")}</.button>
+          </div>
+        </form>
+      </div>
+    </dialog>
     """
   end
 

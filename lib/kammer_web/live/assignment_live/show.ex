@@ -13,6 +13,7 @@ defmodule KammerWeb.AssignmentLive.Show do
   alias Kammer.Assignments
   alias Kammer.Assignments.Assignment
   alias Kammer.Feed
+  alias KammerWeb.ReportHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -174,6 +175,8 @@ defmodule KammerWeb.AssignmentLive.Show do
           <button type="submit" class="btn btn-primary btn-sm">{gettext("Reply")}</button>
         </form>
       </section>
+
+      <.report_modal reporting={@reporting} />
     </Layouts.app>
     """
   end
@@ -207,6 +210,17 @@ defmodule KammerWeb.AssignmentLive.Show do
         <% end %>
       </div>
       <button
+        :if={@current_user && !@comment.deleted_at}
+        id={"report-comment-#{@comment.id}"}
+        phx-click="start_report"
+        phx-value-type="comment"
+        phx-value-id={@comment.id}
+        class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100"
+        title={gettext("Report")}
+      >
+        <.icon name="hero-flag" class="size-3.5" />
+      </button>
+      <button
         :if={
           @current_user &&
             (@can_moderate or (@current_user.id == @comment.author_user_id && !@comment.deleted_at))
@@ -233,6 +247,7 @@ defmodule KammerWeb.AssignmentLive.Show do
          socket
          |> assign(:assignment_id, assignment.id)
          |> assign(:timezone, current_user.timezone)
+         |> assign(:reporting, nil)
          |> load_assignment(assignment, group)}
 
       {:error, _reason} ->
@@ -319,6 +334,11 @@ defmodule KammerWeb.AssignmentLive.Show do
     else
       _error -> {:noreply, refuse(socket)}
     end
+  end
+
+  def handle_event(report_event, params, socket)
+      when report_event in ~w(start_report cancel_report submit_report) do
+    ReportHandlers.handle(report_event, params, socket)
   end
 
   defp reload(socket) do

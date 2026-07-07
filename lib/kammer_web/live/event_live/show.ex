@@ -12,6 +12,7 @@ defmodule KammerWeb.EventLive.Show do
 
   alias Kammer.Events
   alias Kammer.Feed
+  alias KammerWeb.ReportHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -339,6 +340,8 @@ defmodule KammerWeb.EventLive.Show do
           {gettext("No comments.")}
         </p>
       </section>
+
+      <.report_modal reporting={@reporting} />
     </Layouts.app>
     """
   end
@@ -372,6 +375,17 @@ defmodule KammerWeb.EventLive.Show do
         <% end %>
       </div>
       <button
+        :if={@current_user && !@comment.deleted_at}
+        id={"report-comment-#{@comment.id}"}
+        phx-click="start_report"
+        phx-value-type="comment"
+        phx-value-id={@comment.id}
+        class="btn btn-ghost btn-xs btn-square opacity-40 hover:opacity-100"
+        title={gettext("Report")}
+      >
+        <.icon name="hero-flag" class="size-3.5" />
+      </button>
+      <button
         :if={
           @current_user &&
             (@can_moderate or (@current_user.id == @comment.author_user_id && !@comment.deleted_at))
@@ -398,7 +412,7 @@ defmodule KammerWeb.EventLive.Show do
         _no_peer_data -> nil
       end
 
-    socket = assign(socket, :client_ip, client_ip)
+    socket = socket |> assign(:client_ip, client_ip) |> assign(:reporting, nil)
 
     case Events.fetch_viewable_event(current_user, community, event_id) do
       {:ok, event} ->
@@ -452,6 +466,11 @@ defmodule KammerWeb.EventLive.Show do
       _error ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
     end
+  end
+
+  def handle_event(report_event, params, socket)
+      when report_event in ~w(start_report cancel_report submit_report) do
+    ReportHandlers.handle(report_event, params, socket)
   end
 
   def handle_event("guest_rsvp", %{"guest" => guest_params}, socket) do

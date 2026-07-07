@@ -18,6 +18,7 @@ defmodule KammerWeb.GroupLive.Show do
   alias Kammer.Groups
   alias Kammer.Groups.Group
   alias KammerWeb.FeedEventHandlers
+  alias KammerWeb.ReportHandlers
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
                   show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
@@ -408,27 +409,7 @@ defmodule KammerWeb.GroupLive.Show do
         </div>
       </dialog>
 
-      <%!-- Report modal (SPEC §11) --%>
-      <dialog :if={@reporting} open class="modal modal-open" phx-click="cancel_report">
-        <div class="modal-box" phx-click={Phoenix.LiveView.JS.exec("phx-noop")}>
-          <h3 class="pb-2 font-semibold">{gettext("Report to the moderators")}</h3>
-          <form id="report-form" phx-submit="submit_report" class="space-y-3">
-            <textarea
-              name="reason"
-              rows="3"
-              required
-              placeholder={gettext("What's wrong? The moderators see exactly what you write.")}
-              class="textarea w-full"
-            ></textarea>
-            <div class="flex justify-end gap-2">
-              <button type="button" phx-click="cancel_report" class="btn btn-ghost btn-sm">
-                {gettext("Cancel")}
-              </button>
-              <.button variant="primary" class="btn-sm">{gettext("Send report")}</.button>
-            </div>
-          </form>
-        </div>
-      </dialog>
+      <.report_modal reporting={@reporting} />
 
       <section :if={@members != []} class="pt-6">
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
@@ -536,55 +517,9 @@ defmodule KammerWeb.GroupLive.Show do
     end
   end
 
-  def handle_event("start_report", %{"type" => type, "id" => subject_id}, socket)
-      when type in ["post", "comment"] do
-    {:noreply, assign(socket, :reporting, %{type: type, id: subject_id})}
-  end
-
-  def handle_event("cancel_report", _params, socket) do
-    {:noreply, assign(socket, :reporting, nil)}
-  end
-
-  def handle_event("submit_report", %{"reason" => reason}, socket) do
-    current_user = current_user(socket.assigns)
-    reporting = socket.assigns.reporting
-
-    result =
-      case reporting do
-        %{type: "post", id: post_id} ->
-          with %Kammer.Feed.Post{} = post <- Kammer.Repo.get(Kammer.Feed.Post, post_id) do
-            Kammer.Moderation.report_post(current_user, post, reason)
-          end
-
-        %{type: "comment", id: comment_id} ->
-          with %Kammer.Feed.Comment{} = comment <-
-                 Kammer.Repo.get(Kammer.Feed.Comment, comment_id) do
-            Kammer.Moderation.report_comment(current_user, comment, reason)
-          end
-
-        _no_subject ->
-          {:error, :unauthorized}
-      end
-
-    case result do
-      {:ok, _report} ->
-        {:noreply,
-         socket
-         |> assign(:reporting, nil)
-         |> put_flash(:info, gettext("Thanks — the moderators will take a look."))}
-
-      {:error, %Ecto.Changeset{}} ->
-        {:noreply,
-         socket
-         |> assign(:reporting, nil)
-         |> put_flash(:info, gettext("You already reported this — the moderators have it."))}
-
-      _error ->
-        {:noreply,
-         socket
-         |> assign(:reporting, nil)
-         |> put_flash(:error, gettext("You are not allowed to do that."))}
-    end
+  def handle_event(event, params, socket)
+      when event in ~w(start_report cancel_report submit_report) do
+    ReportHandlers.handle(event, params, socket)
   end
 
   def handle_event("toggle_poll_builder", _params, socket) do

@@ -104,11 +104,6 @@ override everything below.
 Roughly descending priority; owner has said to use judgment on
 ordering within this list.
 
-### Moderation gaps
-
-Report surfaces beyond the group feed (event pages, assignment pages —
-reuse the existing `Kammer.Moderation.report_post/comment` shape).
-
 ### Newsletter subscriptions
 
 Guest identities subscribing to a public group's feed (ADR 0013's

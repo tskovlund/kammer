@@ -10,6 +10,16 @@ and this project adheres to
 
 ### Added
 
+- Report surfaces on event and assignment pages (SPEC §11): the
+  "Report to the moderators" flow the group feed already had for
+  posts and comments now covers comments on events and assignments
+  too — `Kammer.Moderation.report_comment/3` already handled any
+  comment regardless of subject, only the UI was missing. The modal
+  and its handlers moved into a shared
+  `KammerWeb.KammerComponents.report_modal/1` /
+  `KammerWeb.ReportHandlers` pair, so all three pages use the
+  identical code path instead of three copies. Closes out HANDOFF's
+  Moderation gaps backlog.
 - Instance-wide bans (SPEC §11): operators get a second, broader ban
   list at `/instance/moderation` — ban an email instance-wide and it
   can't rejoin *any* community on the instance, not just one. Same
