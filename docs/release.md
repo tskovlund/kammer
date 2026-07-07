@@ -22,6 +22,7 @@ release is bad, ship a fix-forward patch release, never re-tag.
    into prose rather than pasting it as a chronological build log.
    Every release after 0.1.0 follows the literal move-the-entries
    process above.
+
 2. **Bump the version** in `mix.exs` (`version: "X.Y.Z"`). The release
    workflow refuses tags that don't match it.
 3. **PR and merge** those two changes to `main` (required checks
