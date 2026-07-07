@@ -90,6 +90,41 @@ defmodule KammerWeb.UserLive.Settings do
           {gettext("My other servers")}
         </.link>
       </div>
+
+      <div class="divider" />
+
+      <%!-- Data rights (SPEC §12) --%>
+      <section class="rounded-box border border-base-200 p-4">
+        <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Your data")}
+        </h2>
+        <p class="pb-3 text-sm text-base-content/70">
+          {gettext(
+            "Download everything this instance stores about you — profile, posts, comments, answers, and your uploaded files — as one zip."
+          )}
+        </p>
+        <a href={~p"/users/settings/export"} class="btn btn-outline btn-sm" id="export-data">
+          {gettext("Download my data")}
+        </a>
+
+        <p class="pb-3 pt-6 text-sm text-base-content/70">
+          {gettext(
+            "Deleting your account removes your identity, sessions, RSVPs, signups, and votes immediately. Your posts and comments stay, shown as \"Deleted user\" — the shared history belongs to the groups. Files you uploaded to shared spaces also stay, without your name."
+          )}
+        </p>
+        <.button
+          id="delete-account"
+          phx-click="delete_account"
+          data-confirm={
+            gettext(
+              "Delete your account? This cannot be undone. Download your data first if you want it."
+            )
+          }
+          class="btn btn-outline btn-sm text-error"
+        >
+          {gettext("Delete my account")}
+        </.button>
+      </section>
     </Layouts.app>
     """
   end
@@ -166,6 +201,15 @@ defmodule KammerWeb.UserLive.Settings do
       |> to_form()
 
     {:noreply, assign(socket, settings_form: settings_form)}
+  end
+
+  def handle_event("delete_account", _params, socket) do
+    :ok = Kammer.Gdpr.delete_account(socket.assigns.current_scope.user)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("Your account has been deleted."))
+     |> redirect(to: ~p"/")}
   end
 
   def handle_event("update_settings", params, socket) do

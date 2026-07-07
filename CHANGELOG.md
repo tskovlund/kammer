@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- GDPR data rights (SPEC §12): download everything the instance
+  stores about you — profile, posts, comments, reactions, poll
+  votes, RSVPs, signup and assignment claims, availability answers,
+  and every file you uploaded — as one zip, and delete your account
+  self-serve. Deletion removes your identity and personal records
+  immediately; your posts and comments stay so group history isn't
+  broken, shown as "Deleted user". Both live under Account settings.
 - Moderation: a Report action on every post and comment (one open
   report per person per subject — signal, not spam), a queue for
   community admins and group moderators with dismiss /

@@ -202,6 +202,8 @@ defmodule KammerWeb.Router do
   scope "/", KammerWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    get "/users/settings/export", GdprController, :export
+
     live_session :require_authenticated_user,
       on_mount: [{KammerWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
