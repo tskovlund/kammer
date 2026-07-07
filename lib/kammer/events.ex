@@ -32,6 +32,7 @@ defmodule Kammer.Events do
   alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.RateLimit
   alias Kammer.Repo
+  alias Kammer.Validation
 
   ## Reading
 
@@ -612,9 +613,8 @@ defmodule Kammer.Events do
     |> Ecto.Changeset.cast(attrs, Map.keys(types))
     |> Ecto.Changeset.validate_required([:email, :display_name, :status])
     |> Ecto.Changeset.update_change(:email, &String.downcase/1)
-    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
-    |> Ecto.Changeset.validate_length(:email, max: 160)
-    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
+    |> Validation.validate_email_format()
+    |> Validation.validate_display_name_length()
   end
 
   ## Signup slots (issue #37, collaborative track #17): "bring cake ×2".
@@ -819,9 +819,8 @@ defmodule Kammer.Events do
     |> Ecto.Changeset.cast(attrs, Map.keys(types))
     |> Ecto.Changeset.validate_required([:email, :display_name])
     |> Ecto.Changeset.update_change(:email, &String.downcase/1)
-    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
-    |> Ecto.Changeset.validate_length(:email, max: 160)
-    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
+    |> Validation.validate_email_format()
+    |> Validation.validate_display_name_length()
   end
 
   ## Comments — the same engine as posts (ADR 0007)

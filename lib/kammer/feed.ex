@@ -31,6 +31,7 @@ defmodule Kammer.Feed do
   alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.RateLimit
   alias Kammer.Repo
+  alias Kammer.Validation
 
   # Pending guest comments (SPEC §3 `members_and_guests`) exist only for
   # moderators until approved, so the comment preload is viewer-dependent:
@@ -808,9 +809,8 @@ defmodule Kammer.Feed do
     |> Ecto.Changeset.cast(attrs, Map.keys(types))
     |> Ecto.Changeset.validate_required([:email, :display_name, :body_markdown])
     |> Ecto.Changeset.update_change(:email, &String.downcase/1)
-    |> Ecto.Changeset.validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/)
-    |> Ecto.Changeset.validate_length(:email, max: 160)
-    |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 120)
+    |> Validation.validate_email_format()
+    |> Validation.validate_display_name_length()
     |> Ecto.Changeset.validate_length(:body_markdown, min: 1, max: 2_000)
   end
 

@@ -10,6 +10,17 @@ and this project adheres to
 
 ### Fixed
 
+- Extracted `Kammer.Validation.validate_email_format/3` and
+  `validate_display_name_length/3`, replacing six duplicated copies of
+  the same email-format/length and display-name-length rules across
+  `Kammer.Newsletters`, `Kammer.Events` (two guest-request
+  changesets), `Kammer.Feed`, `Kammer.Guests.GuestIdentity`, and
+  `Kammer.Accounts.User` — the last of the DRY violations from the
+  full-codebase audit (#74). Deliberately narrow: normalization (e.g.
+  downcasing email) stays with each caller since not everyone wants it
+  — `User`'s email notably never has. Behavior-preserving at every
+  site, including `User`'s 100-character display-name bound (the
+  other five use 120) via the shared helper's `max` parameter.
 - Added direct test coverage for two previously-untested
   security-relevant boundaries flagged by the full-codebase audit:
   `Kammer.Storage.Local`'s path-traversal guard (every key reaching

@@ -10,6 +10,8 @@ defmodule Kammer.Guests.GuestIdentity do
 
   import Ecto.Changeset
 
+  alias Kammer.Validation
+
   @type t() :: %__MODULE__{}
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -33,11 +35,8 @@ defmodule Kammer.Guests.GuestIdentity do
     |> cast(attrs, [:email, :display_name])
     |> validate_required([:email, :display_name])
     |> update_change(:email, &String.downcase/1)
-    |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-      message: "must have the @ sign and no spaces"
-    )
-    |> validate_length(:email, max: 160)
-    |> validate_length(:display_name, min: 1, max: 120)
+    |> Validation.validate_email_format(:email, message: "must have the @ sign and no spaces")
+    |> Validation.validate_display_name_length()
     |> unique_constraint(:email)
   end
 end

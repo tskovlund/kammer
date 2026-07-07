@@ -13,6 +13,7 @@ defmodule Kammer.Accounts.User do
   import Ecto.Changeset
 
   alias Kammer.Accounts.User
+  alias Kammer.Validation
 
   @type t() :: %__MODULE__{}
   @type visibility() :: :hidden | :members | :admins
@@ -129,10 +130,7 @@ defmodule Kammer.Accounts.User do
     changeset =
       changeset
       |> validate_required([:email])
-      |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-        message: "must have the @ sign and no spaces"
-      )
-      |> validate_length(:email, max: 160)
+      |> Validation.validate_email_format(:email, message: "must have the @ sign and no spaces")
 
     if Keyword.get(opts, :validate_unique, true) do
       changeset
@@ -156,7 +154,7 @@ defmodule Kammer.Accounts.User do
     changeset
     |> validate_required([:display_name])
     |> update_change(:display_name, &String.trim/1)
-    |> validate_length(:display_name, min: 1, max: 100)
+    |> Validation.validate_display_name_length(:display_name, 100)
   end
 
   defp validate_timezone(changeset) do
