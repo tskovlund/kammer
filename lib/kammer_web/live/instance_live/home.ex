@@ -43,7 +43,13 @@ defmodule KammerWeb.InstanceLive.Home do
         </a>
       </div>
 
-      <div :if={@operator?} class="mb-4 flex justify-end">
+      <div :if={@operator?} class="mb-4 flex justify-end gap-4">
+        <.link
+          navigate={~p"/instance/moderation"}
+          class="text-sm text-base-content/60 hover:underline"
+        >
+          {gettext("Instance moderation")}
+        </.link>
         <.link navigate={~p"/instance/settings"} class="text-sm text-base-content/60 hover:underline">
           {gettext("Instance settings")}
         </.link>

@@ -121,6 +121,7 @@ defmodule KammerWeb.Router do
       live "/users/settings/servers", UserLive.Bookmarks, :index
       live "/legal/:key/edit", LegalLive.Edit, :edit
       live "/instance/settings", InstanceLive.Settings, :edit
+      live "/instance/moderation", InstanceLive.Moderation, :index
     end
   end
 

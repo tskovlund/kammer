@@ -123,7 +123,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 ## 11. Moderation, abuse, security
 
-- Report → admin queues (community-wide and per-group): dismiss, remove, warn, remove/ban member (community ban blocks rejoin by email).
+- Report → admin queues (community-wide and per-group): dismiss, remove, warn, remove/ban member (community ban blocks rejoin by email). Instance operators additionally hold an instance-wide ban list, keyed the same way, that blocks rejoin on every community on the instance rather than one.
 - **Rate limits**: magic-link issuance (per email + IP), signup, posting/commenting, guest endpoints, uploads, @everyone.
 - **Upload hardening (always on)**: strict content-type validation; images re-encoded (destroys embedded payloads); SVGs sanitized or forced-download; user uploads never served executable/inline from the app origin without `Content-Disposition` protection. **Optional ClamAV sidecar** (config flag; docs honest that AV is signature-based and imperfect).
 - Signed expiring tokens for all guest links. CSRF, secure cookies, CSP, sanitized Markdown rendering.

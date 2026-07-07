@@ -156,4 +156,65 @@ defmodule Kammer.ModerationTest do
       assert {:error, :unauthorized} = Moderation.ban_member(owner, community, author, nil)
     end
   end
+
+  describe "instance bans" do
+    setup :reported_post_context
+
+    test "banning removes memberships everywhere and blocks rejoin anywhere; lifting restores",
+         %{community: community, owner: owner, author: author} do
+      operator = instance_operator_fixture()
+      other_community = community_fixture()
+      {:ok, _other_membership} = Communities.add_member(other_community, author)
+
+      assert {:ok, ban} = Moderation.ban_instance(operator, author.email, "Chikane")
+
+      assert Communities.get_membership(community, author) == nil
+      assert Communities.get_membership(other_community, author) == nil
+      assert Moderation.instance_banned?(author.email)
+
+      # The choke-point catches instance bans ahead of the per-community list.
+      assert {:error, :instance_banned} = Communities.add_member(community, author)
+
+      # The affected community's own admins see it in their audit log —
+      # there is no single global log an instance-wide action belongs to.
+      assert [%{action: "member.banned"}] = Audit.list_events(owner, community)
+
+      assert {:ok, _lifted} = Moderation.unban_instance(operator, ban)
+      assert {:ok, _membership} = Communities.add_member(community, author)
+    end
+
+    test "can ban an email with no account yet — blocks the eventual signup", %{
+      community: community
+    } do
+      operator = instance_operator_fixture()
+      email = unique_user_email()
+
+      assert {:ok, _ban} = Moderation.ban_instance(operator, email, nil)
+
+      future_signup = user_fixture(%{email: email})
+      assert {:error, :instance_banned} = Communities.add_member(community, future_signup)
+    end
+
+    test "only operators ban instance-wide; nobody bans themselves or another operator", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+      other_operator = instance_operator_fixture()
+
+      assert {:error, :unauthorized} = Moderation.ban_instance(author, other_operator.email, nil)
+      assert {:error, :unauthorized} = Moderation.ban_instance(operator, operator.email, nil)
+
+      assert {:error, :unauthorized} =
+               Moderation.ban_instance(operator, other_operator.email, nil)
+    end
+
+    test "list_instance_bans is operator-only", %{author: author} do
+      operator = instance_operator_fixture()
+      {:ok, _ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      assert [%Moderation.InstanceBan{}] = Moderation.list_instance_bans(operator)
+      assert Moderation.list_instance_bans(author) == []
+      assert Moderation.list_instance_bans(nil) == []
+    end
+  end
 end

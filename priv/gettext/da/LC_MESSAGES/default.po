@@ -98,7 +98,7 @@ msgstr "Bekræft din nye e-mailadresse"
 msgid "Confirming..."
 msgstr "Bekræfter..."
 
-#: lib/kammer_web/live/instance_live/home.ex:172
+#: lib/kammer_web/live/instance_live/home.ex:178
 #: lib/kammer_web/live/user_live/login.ex:141
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
@@ -139,6 +139,7 @@ msgstr "Visningsnavn"
 #: lib/kammer_web/live/community_live/members.ex:273
 #: lib/kammer_web/live/event_live/show.ex:154
 #: lib/kammer_web/live/event_live/show.ex:248
+#: lib/kammer_web/live/instance_live/moderation.ex:28
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
 #: lib/kammer_web/live/user_live/settings.ex:116
@@ -277,7 +278,7 @@ msgstr "Sessioner logget ind på din konto. Log dem ud, du ikke genkender."
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
 #: lib/kammer_web/live/community_live/home.ex:148
-#: lib/kammer_web/live/instance_live/home.ex:169
+#: lib/kammer_web/live/instance_live/home.ex:175
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
 #: lib/kammer_web/live/user_live/registration.ex:23
@@ -432,7 +433,7 @@ msgstr "%{inviter} har inviteret dig til %{target}"
 msgid "A band, a committee, a project — a room of its own."
 msgstr "Et band, et udvalg, et projekt — et rum for sig selv."
 
-#: lib/kammer_web/live/instance_live/home.ex:163
+#: lib/kammer_web/live/instance_live/home.ex:169
 #, elixir-autogen, elixir-format
 msgid "A calm, self-hosted home for real-world communities. No ads, no algorithm — just your people."
 msgstr "Et roligt, selvhostet hjem for virkelige fællesskaber. Ingen reklamer, ingen algoritme — kun jeres folk."
@@ -560,12 +561,12 @@ msgstr "Kommentarer"
 msgid "Communities"
 msgstr "Fællesskaber"
 
-#: lib/kammer_web/live/instance_live/home.ex:146
+#: lib/kammer_web/live/instance_live/home.ex:152
 #, elixir-autogen, elixir-format
 msgid "Communities are joined by invitation. Ask an organizer for an invite link — or create your own community."
 msgstr "Man bliver medlem af et fællesskab via invitation. Bed en arrangør om et invitationslink — eller opret dit eget fællesskab."
 
-#: lib/kammer_web/live/instance_live/home.ex:179
+#: lib/kammer_web/live/instance_live/home.ex:185
 #, elixir-autogen, elixir-format
 msgid "Communities on this instance"
 msgstr "Fællesskaber på denne server"
@@ -597,7 +598,7 @@ msgstr "Fællesskabsindstillinger"
 msgid "Could not send that invitation."
 msgstr "Invitationen kunne ikke sendes."
 
-#: lib/kammer_web/live/instance_live/home.ex:153
+#: lib/kammer_web/live/instance_live/home.ex:159
 #, elixir-autogen, elixir-format
 msgid "Create a community"
 msgstr "Opret et fællesskab"
@@ -943,7 +944,7 @@ msgstr "Ejer"
 msgid "Owners must transfer ownership before leaving."
 msgstr "Ejere skal overdrage ejerskabet, før de kan forlade gruppen."
 
-#: lib/kammer_web/live/instance_live/home.ex:56
+#: lib/kammer_web/live/instance_live/home.ex:62
 #, elixir-autogen, elixir-format
 msgid "Pick a community to continue."
 msgstr "Vælg et fællesskab for at fortsætte."
@@ -1212,6 +1213,8 @@ msgstr "Dig"
 #: lib/kammer_web/live/group_live/show.ex:684
 #: lib/kammer_web/live/group_live/show.ex:697
 #: lib/kammer_web/live/group_live/show.ex:741
+#: lib/kammer_web/live/instance_live/moderation.ex:107
+#: lib/kammer_web/live/instance_live/moderation.ex:118
 #: lib/kammer_web/live/moderation_live/index.ex:155
 #: lib/kammer_web/live/moderation_live/index.ex:166
 #: lib/kammer_web/live/moderation_live/index.ex:177
@@ -1239,12 +1242,12 @@ msgstr "Du er helt opdateret"
 msgid "You're invited to %{name}"
 msgstr "Du er inviteret til %{name}"
 
-#: lib/kammer_web/live/instance_live/home.ex:144
+#: lib/kammer_web/live/instance_live/home.ex:150
 #, elixir-autogen, elixir-format
 msgid "You're not in any community yet"
 msgstr "Du er ikke med i noget fællesskab endnu"
 
-#: lib/kammer_web/live/instance_live/home.ex:54
+#: lib/kammer_web/live/instance_live/home.ex:60
 #, elixir-autogen, elixir-format
 msgid "Your communities"
 msgstr "Dine fællesskaber"
@@ -2106,7 +2109,7 @@ msgstr "Indhold"
 msgid "Continue"
 msgstr "Fortsæt"
 
-#: lib/kammer_web/live/instance_live/home.ex:215
+#: lib/kammer_web/live/instance_live/home.ex:221
 #, elixir-autogen, elixir-format
 msgid "Could not remove the demo community."
 msgstr "Demofællesskabet kunne ikke fjernes."
@@ -2121,7 +2124,7 @@ msgstr "Opret et demofællesskab"
 msgid "Create your first community and group."
 msgstr "Opret dit første fællesskab og din første gruppe."
 
-#: lib/kammer_web/live/instance_live/home.ex:134
+#: lib/kammer_web/live/instance_live/home.ex:140
 #, elixir-autogen, elixir-format
 msgid "Delete the demo community and everything in it?"
 msgstr "Slet demofællesskabet og alt i det?"
@@ -2131,7 +2134,7 @@ msgstr "Slet demofællesskabet og alt i det?"
 msgid "Demo community"
 msgstr "Demofællesskab"
 
-#: lib/kammer_web/live/instance_live/home.ex:211
+#: lib/kammer_web/live/instance_live/home.ex:217
 #, elixir-autogen, elixir-format
 msgid "Demo community removed."
 msgstr "Demofællesskabet er fjernet."
@@ -2274,7 +2277,7 @@ msgstr "Udgives på /legal/%{key} — Markdown understøttes."
 msgid "Published."
 msgstr "Udgivet."
 
-#: lib/kammer_web/live/instance_live/home.ex:137
+#: lib/kammer_web/live/instance_live/home.ex:143
 #, elixir-autogen, elixir-format
 msgid "Remove demo"
 msgstr "Fjern demo"
@@ -2326,7 +2329,7 @@ msgstr "Nøglen passer ikke. Find den aktuelle i serverens log."
 msgid "The common room"
 msgstr "Fællesrummet"
 
-#: lib/kammer_web/live/instance_live/home.ex:129
+#: lib/kammer_web/live/instance_live/home.ex:135
 #, elixir-autogen, elixir-format
 msgid "The demo community “%{name}” is still around."
 msgstr "Demofællesskabet “%{name}” findes stadig."
@@ -2576,17 +2579,17 @@ msgstr "Feed"
 msgid "always on"
 msgstr "altid til"
 
-#: lib/kammer_web/live/instance_live/home.ex:81
+#: lib/kammer_web/live/instance_live/home.ex:87
 #, elixir-autogen, elixir-format
 msgid "Coming up"
 msgstr "Kommende"
 
-#: lib/kammer_web/live/instance_live/home.ex:118
+#: lib/kammer_web/live/instance_live/home.ex:124
 #, elixir-autogen, elixir-format
 msgid "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
 msgstr "Hjem viser de grupper, du er med i, nyeste først. Hver gruppeside har en \"Vis på Hjem\"-knap, hvis du vil have en ud herfra."
 
-#: lib/kammer_web/live/instance_live/home.ex:102
+#: lib/kammer_web/live/instance_live/home.ex:108
 #, elixir-autogen, elixir-format
 msgid "Recent activity"
 msgstr "Seneste aktivitet"
@@ -3303,6 +3306,7 @@ msgstr "Indholdet er fjernet."
 msgid "Dismiss"
 msgstr "Afvis"
 
+#: lib/kammer_web/live/instance_live/moderation.ex:57
 #: lib/kammer_web/live/moderation_live/index.ex:111
 #, elixir-autogen, elixir-format
 msgid "Lift ban"
@@ -3654,7 +3658,7 @@ msgstr "Indholdsminimeret e-mail-tilstand"
 msgid "Digest emails carry only counts and a link — no post text or author names. Auth and RSVP emails are already minimal and are unaffected. Off by default; most communities prefer the extra context."
 msgstr "Sammendrags-e-mails indeholder kun antal og et link — ingen opslagstekst eller forfatternavne. Login- og tilmeldings-e-mails er allerede minimale og påvirkes ikke. Slået fra som standard; de fleste fællesskaber foretrækker den ekstra kontekst."
 
-#: lib/kammer_web/live/instance_live/home.ex:48
+#: lib/kammer_web/live/instance_live/home.ex:54
 #: lib/kammer_web/live/instance_live/settings.ex:18
 #: lib/kammer_web/live/instance_live/settings.ex:59
 #, elixir-autogen, elixir-format
@@ -3871,3 +3875,60 @@ msgstr "Aktivitet"
 #, elixir-autogen, elixir-format
 msgid "Newest"
 msgstr "Nyeste"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:37
+#, elixir-autogen, elixir-format
+msgid "Active instance bans"
+msgstr "Aktive server-udelukkelser"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:31
+#, elixir-autogen, elixir-format
+msgid "Ban instance-wide"
+msgstr "Udeluk fra hele serveren"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:99
+#, elixir-autogen, elixir-format
+msgid "Banned instance-wide."
+msgstr "Udelukket fra hele serveren."
+
+#: lib/kammer_web/live/instance_live/moderation.ex:30
+#, elixir-autogen, elixir-format
+msgid "Banning…"
+msgstr "Udelukker…"
+
+#: lib/kammer_web/live/instance_live/home.ex:51
+#: lib/kammer_web/live/instance_live/moderation.ex:21
+#: lib/kammer_web/live/instance_live/moderation.ex:79
+#, elixir-autogen, elixir-format
+msgid "Instance moderation"
+msgstr "Server-moderation"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:54
+#, elixir-autogen, elixir-format
+msgid "Lift this instance ban?"
+msgstr "Ophæv denne server-udelukkelse?"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:64
+#, elixir-autogen, elixir-format
+msgid "No instance bans"
+msgstr "Ingen server-udelukkelser"
+
+#: lib/kammer_web/live/instance_live/moderation.ex:65
+#, elixir-autogen, elixir-format
+msgid "Nobody is blocked instance-wide right now."
+msgstr "Ingen er udelukket fra hele serveren lige nu."
+
+#: lib/kammer_web/live/instance_live/moderation.ex:85
+#, elixir-autogen, elixir-format
+msgid "Only instance operators can view instance moderation."
+msgstr "Kun serveroperatører kan se server-moderation."
+
+#: lib/kammer_web/live/instance_live/moderation.ex:23
+#, elixir-autogen, elixir-format
+msgid "Operator-only. Blocks rejoin on every community, not just one."
+msgstr "Kun for operatører. Blokerer genindmeldelse i alle fællesskaber, ikke kun ét."
+
+#: lib/kammer_web/live/instance_live/moderation.ex:29
+#, elixir-autogen, elixir-format
+msgid "Reason (optional)"
+msgstr "Årsag (valgfri)"

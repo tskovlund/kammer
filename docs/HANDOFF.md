@@ -106,9 +106,6 @@ ordering within this list.
 
 ### Moderation gaps
 
-Instance-level bans (today's ban is community-scoped only — needs an
-instance-wide block list keyed on email, checked wherever
-`Communities.add_member/3` already checks the community ban).
 Report surfaces beyond the group feed (event pages, assignment pages —
 reuse the existing `Kammer.Moderation.report_post/comment` shape).
 Full rate-limit coverage of posting/commenting/uploads (today's

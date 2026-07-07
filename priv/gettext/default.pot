@@ -98,7 +98,7 @@ msgstr ""
 msgid "Confirming..."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:172
+#: lib/kammer_web/live/instance_live/home.ex:178
 #: lib/kammer_web/live/user_live/login.ex:141
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
@@ -139,6 +139,7 @@ msgstr ""
 #: lib/kammer_web/live/community_live/members.ex:273
 #: lib/kammer_web/live/event_live/show.ex:154
 #: lib/kammer_web/live/event_live/show.ex:248
+#: lib/kammer_web/live/instance_live/moderation.ex:28
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
 #: lib/kammer_web/live/user_live/settings.ex:116
@@ -277,7 +278,7 @@ msgstr ""
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
 #: lib/kammer_web/live/community_live/home.ex:148
-#: lib/kammer_web/live/instance_live/home.ex:169
+#: lib/kammer_web/live/instance_live/home.ex:175
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
 #: lib/kammer_web/live/user_live/registration.ex:23
@@ -432,7 +433,7 @@ msgstr ""
 msgid "A band, a committee, a project — a room of its own."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:163
+#: lib/kammer_web/live/instance_live/home.ex:169
 #, elixir-autogen, elixir-format
 msgid "A calm, self-hosted home for real-world communities. No ads, no algorithm — just your people."
 msgstr ""
@@ -560,12 +561,12 @@ msgstr ""
 msgid "Communities"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:146
+#: lib/kammer_web/live/instance_live/home.ex:152
 #, elixir-autogen, elixir-format
 msgid "Communities are joined by invitation. Ask an organizer for an invite link — or create your own community."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:179
+#: lib/kammer_web/live/instance_live/home.ex:185
 #, elixir-autogen, elixir-format
 msgid "Communities on this instance"
 msgstr ""
@@ -597,7 +598,7 @@ msgstr ""
 msgid "Could not send that invitation."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:153
+#: lib/kammer_web/live/instance_live/home.ex:159
 #, elixir-autogen, elixir-format
 msgid "Create a community"
 msgstr ""
@@ -943,7 +944,7 @@ msgstr ""
 msgid "Owners must transfer ownership before leaving."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:56
+#: lib/kammer_web/live/instance_live/home.ex:62
 #, elixir-autogen, elixir-format
 msgid "Pick a community to continue."
 msgstr ""
@@ -1212,6 +1213,8 @@ msgstr ""
 #: lib/kammer_web/live/group_live/show.ex:684
 #: lib/kammer_web/live/group_live/show.ex:697
 #: lib/kammer_web/live/group_live/show.ex:741
+#: lib/kammer_web/live/instance_live/moderation.ex:107
+#: lib/kammer_web/live/instance_live/moderation.ex:118
 #: lib/kammer_web/live/moderation_live/index.ex:155
 #: lib/kammer_web/live/moderation_live/index.ex:166
 #: lib/kammer_web/live/moderation_live/index.ex:177
@@ -1239,12 +1242,12 @@ msgstr ""
 msgid "You're invited to %{name}"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:144
+#: lib/kammer_web/live/instance_live/home.ex:150
 #, elixir-autogen, elixir-format
 msgid "You're not in any community yet"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:54
+#: lib/kammer_web/live/instance_live/home.ex:60
 #, elixir-autogen, elixir-format
 msgid "Your communities"
 msgstr ""
@@ -2096,7 +2099,7 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:215
+#: lib/kammer_web/live/instance_live/home.ex:221
 #, elixir-autogen, elixir-format
 msgid "Could not remove the demo community."
 msgstr ""
@@ -2111,7 +2114,7 @@ msgstr ""
 msgid "Create your first community and group."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:134
+#: lib/kammer_web/live/instance_live/home.ex:140
 #, elixir-autogen, elixir-format
 msgid "Delete the demo community and everything in it?"
 msgstr ""
@@ -2121,7 +2124,7 @@ msgstr ""
 msgid "Demo community"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:211
+#: lib/kammer_web/live/instance_live/home.ex:217
 #, elixir-autogen, elixir-format
 msgid "Demo community removed."
 msgstr ""
@@ -2264,7 +2267,7 @@ msgstr ""
 msgid "Published."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:137
+#: lib/kammer_web/live/instance_live/home.ex:143
 #, elixir-autogen, elixir-format
 msgid "Remove demo"
 msgstr ""
@@ -2316,7 +2319,7 @@ msgstr ""
 msgid "The common room"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:129
+#: lib/kammer_web/live/instance_live/home.ex:135
 #, elixir-autogen, elixir-format
 msgid "The demo community “%{name}” is still around."
 msgstr ""
@@ -2545,17 +2548,17 @@ msgstr ""
 msgid "always on"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:81
+#: lib/kammer_web/live/instance_live/home.ex:87
 #, elixir-autogen, elixir-format
 msgid "Coming up"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:118
+#: lib/kammer_web/live/instance_live/home.ex:124
 #, elixir-autogen, elixir-format
 msgid "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:102
+#: lib/kammer_web/live/instance_live/home.ex:108
 #, elixir-autogen, elixir-format
 msgid "Recent activity"
 msgstr ""
@@ -3272,6 +3275,7 @@ msgstr ""
 msgid "Dismiss"
 msgstr ""
 
+#: lib/kammer_web/live/instance_live/moderation.ex:57
 #: lib/kammer_web/live/moderation_live/index.ex:111
 #, elixir-autogen, elixir-format
 msgid "Lift ban"
@@ -3623,7 +3627,7 @@ msgstr ""
 msgid "Digest emails carry only counts and a link — no post text or author names. Auth and RSVP emails are already minimal and are unaffected. Off by default; most communities prefer the extra context."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:48
+#: lib/kammer_web/live/instance_live/home.ex:54
 #: lib/kammer_web/live/instance_live/settings.ex:18
 #: lib/kammer_web/live/instance_live/settings.ex:59
 #, elixir-autogen, elixir-format
@@ -3839,4 +3843,61 @@ msgstr ""
 #: lib/kammer_web/live/group_live/show.ex:328
 #, elixir-autogen, elixir-format
 msgid "Newest"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:37
+#, elixir-autogen, elixir-format
+msgid "Active instance bans"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:31
+#, elixir-autogen, elixir-format
+msgid "Ban instance-wide"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:99
+#, elixir-autogen, elixir-format
+msgid "Banned instance-wide."
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:30
+#, elixir-autogen, elixir-format
+msgid "Banning…"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/home.ex:51
+#: lib/kammer_web/live/instance_live/moderation.ex:21
+#: lib/kammer_web/live/instance_live/moderation.ex:79
+#, elixir-autogen, elixir-format
+msgid "Instance moderation"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:54
+#, elixir-autogen, elixir-format
+msgid "Lift this instance ban?"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:64
+#, elixir-autogen, elixir-format
+msgid "No instance bans"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:65
+#, elixir-autogen, elixir-format
+msgid "Nobody is blocked instance-wide right now."
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:85
+#, elixir-autogen, elixir-format
+msgid "Only instance operators can view instance moderation."
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:23
+#, elixir-autogen, elixir-format
+msgid "Operator-only. Blocks rejoin on every community, not just one."
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/moderation.ex:29
+#, elixir-autogen, elixir-format
+msgid "Reason (optional)"
 msgstr ""

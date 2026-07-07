@@ -19,6 +19,7 @@ defmodule Kammer.Moderation do
   alias Kammer.Feed.Post
   alias Kammer.Groups.Group
   alias Kammer.Moderation.CommunityBan
+  alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
   alias Kammer.Repo
 
@@ -241,6 +242,91 @@ defmodule Kammer.Moderation do
     )
   end
 
+  ## Instance-wide bans (SPEC §11: blocks every community, not just one)
+
+  @doc """
+  Bans an email instance-wide: if an account with that email exists,
+  removes its memberships across every community on the instance (not
+  just one, unlike `ban_member/4`) before recording the block. Instance
+  operators only; forbids self-ban and banning another operator without
+  demoting them first — same two-step rule as community bans.
+  """
+  @spec ban_instance(User.t(), String.t(), String.t() | nil) ::
+          {:ok, InstanceBan.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
+  def ban_instance(%User{} = actor, email, reason) when is_binary(email) do
+    normalized_email = String.downcase(email)
+    target = Repo.get_by(User, email: normalized_email)
+
+    cond do
+      not actor.instance_operator ->
+        {:error, :unauthorized}
+
+      normalized_email == String.downcase(actor.email) ->
+        {:error, :unauthorized}
+
+      match?(%User{instance_operator: true}, target) ->
+        {:error, :unauthorized}
+
+      true ->
+        affected_communities = target && communities_for(target)
+
+        with {:ok, ban} <-
+               Repo.transact(fn ->
+                 if target, do: remove_all_memberships(target)
+
+                 %InstanceBan{banned_by_user_id: actor.id}
+                 |> InstanceBan.changeset(%{email: normalized_email, reason: reason})
+                 |> Repo.insert()
+               end) do
+          Enum.each(affected_communities || [], fn community ->
+            Audit.record(
+              community,
+              actor,
+              "member.banned",
+              "#{actor.display_name} banned #{target.display_name} (#{target.email}) instance-wide" <>
+                if(reason, do: " — #{reason}", else: "")
+            )
+          end)
+
+          {:ok, ban}
+        end
+    end
+  end
+
+  @doc """
+  Lifts an instance ban (instance operators). Unlike lifting a
+  community ban, there is no single community to write an audit entry
+  against — the ban list itself is the record.
+  """
+  @spec unban_instance(User.t(), InstanceBan.t()) ::
+          {:ok, InstanceBan.t()} | {:error, :unauthorized}
+  def unban_instance(%User{instance_operator: true}, %InstanceBan{} = ban) do
+    Repo.delete(ban)
+  end
+
+  def unban_instance(%User{}, %InstanceBan{}), do: {:error, :unauthorized}
+
+  @doc """
+  All instance-wide bans (instance operators; empty otherwise).
+  """
+  @spec list_instance_bans(User.t() | nil) :: [InstanceBan.t()]
+  def list_instance_bans(%User{instance_operator: true}) do
+    Repo.all(
+      from(ban in InstanceBan, order_by: [desc: ban.inserted_at], preload: [:banned_by_user])
+    )
+  end
+
+  def list_instance_bans(_actor), do: []
+
+  @doc """
+  Whether the email is banned instance-wide — the check
+  `Communities.add_member/3` enforces ahead of the per-community ban.
+  """
+  @spec instance_banned?(String.t()) :: boolean()
+  def instance_banned?(email) when is_binary(email) do
+    Repo.exists?(from(ban in InstanceBan, where: ban.email == ^String.downcase(email)))
+  end
+
   ## Internals
 
   defp authorize_on_report(actor, report) do
@@ -298,6 +384,28 @@ defmodule Kammer.Moderation do
     Repo.delete_all(
       from(membership in Kammer.Communities.CommunityMembership,
         where: membership.community_id == ^community.id and membership.user_id == ^target.id
+      )
+    )
+  end
+
+  defp remove_all_memberships(target) do
+    Repo.delete_all(
+      from(membership in Kammer.Groups.GroupMembership, where: membership.user_id == ^target.id)
+    )
+
+    Repo.delete_all(
+      from(membership in Kammer.Communities.CommunityMembership,
+        where: membership.user_id == ^target.id
+      )
+    )
+  end
+
+  defp communities_for(target) do
+    Repo.all(
+      from(community in Community,
+        join: membership in Kammer.Communities.CommunityMembership,
+        on: membership.community_id == community.id,
+        where: membership.user_id == ^target.id
       )
     )
   end
