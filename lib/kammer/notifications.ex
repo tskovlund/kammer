@@ -178,13 +178,13 @@ defmodule Kammer.Notifications do
   end
 
   @doc """
-  Fans a new comment out: "reply to you" for the post author and the
-  parent comment author; mentions escalate for everyone mentioned.
+  Fans a new comment out: "reply to you" for the subject's author and the
+  parent comment author; mentions escalate for everyone mentioned. Covers
+  post, event, and assignment comments alike — one engine (ADR 0007).
   """
   @spec fanout_comment(Comment.t()) :: :ok
   def fanout_comment(%Comment{} = comment) do
-    post = Repo.get!(Post, comment.post_id)
-    group = Repo.get!(Group, post.group_id)
+    {group, subject_author_id, references} = comment_subject(comment)
     mentions = Mentions.extract(comment.body_markdown)
 
     parent_author_id =
@@ -197,7 +197,7 @@ defmodule Kammer.Notifications do
       end
 
     reply_target_ids =
-      [post.author_user_id, parent_author_id]
+      [subject_author_id, parent_author_id]
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
       |> Enum.reject(&(&1 == comment.author_user_id))
@@ -212,23 +212,34 @@ defmodule Kammer.Notifications do
           :ok
 
         mentioned?(mentions, membership, recipient, comment.body_markdown) ->
-          deliver(recipient, group, :mention,
-            post: post,
-            comment: comment,
-            actor_id: comment.author_user_id
-          )
+          deliver(recipient, group, :mention, [actor_id: comment.author_user_id] ++ references)
 
         recipient.id in reply_target_ids ->
-          deliver(recipient, group, :reply,
-            post: post,
-            comment: comment,
-            actor_id: comment.author_user_id
-          )
+          deliver(recipient, group, :reply, [actor_id: comment.author_user_id] ++ references)
 
         true ->
           :ok
       end
     end)
+  end
+
+  # The comment's host (post, event, or assignment), its author (for
+  # "reply to you" fan-out), and the reference keys `deliver/4` attaches
+  # to the notification.
+  defp comment_subject(%Comment{post_id: post_id} = comment) when is_binary(post_id) do
+    post = Repo.get!(Post, post_id)
+    {Repo.get!(Group, post.group_id), post.author_user_id, [post: post, comment: comment]}
+  end
+
+  defp comment_subject(%Comment{event_id: event_id} = comment) when is_binary(event_id) do
+    event = Repo.get!(Kammer.Events.Event, event_id)
+    {Repo.get!(Group, event.group_id), event.created_by_user_id, [event: event, comment: comment]}
+  end
+
+  defp comment_subject(%Comment{assignment_id: assignment_id} = comment)
+       when is_binary(assignment_id) do
+    assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
+    {Repo.get!(Group, assignment.group_id), assignment.created_by_user_id, [comment: comment]}
   end
 
   @doc """
