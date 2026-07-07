@@ -43,6 +43,12 @@ defmodule KammerWeb.InstanceLive.Home do
         </a>
       </div>
 
+      <div :if={@operator?} class="mb-4 flex justify-end">
+        <.link navigate={~p"/instance/settings"} class="text-sm text-base-content/60 hover:underline">
+          {gettext("Instance settings")}
+        </.link>
+      </div>
+
       <%= if @current_scope && @current_scope.user do %>
         <.header>
           {gettext("Your communities")}

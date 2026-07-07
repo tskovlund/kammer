@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- Content-minimized email mode (SPEC §9, ADR 0011): an operator-only
+  instance toggle at `/instance/settings` — new, linked from the
+  instance home — that strips digest emails down to a per-group post
+  count and a link, dropping author names and post excerpts.
+  Per-event notification emails never carried post content in the
+  first place, so they're unaffected; auth and RSVP emails stay
+  exempt by construction.
 - RSS and Atom feeds for public groups (SPEC §8): every `public_link`
   and `public_listed` group exposes `/feed.rss` and `/feed.atom` —
   no account, no secret token, gated by the same visibility check the

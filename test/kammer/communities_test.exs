@@ -26,6 +26,17 @@ defmodule Kammer.CommunitiesTest do
 
       assert settings.instance_name == "Kammer Test"
     end
+
+    test "content_minimized_emails defaults off and is toggleable" do
+      operator = instance_operator_fixture()
+
+      refute Communities.get_instance_settings().content_minimized_emails
+
+      assert {:ok, settings} =
+               Communities.update_instance_settings(operator, %{content_minimized_emails: true})
+
+      assert settings.content_minimized_emails
+    end
   end
 
   describe "create_community/2" do

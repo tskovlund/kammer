@@ -1,8 +1,10 @@
 defmodule Kammer.Notifications.NotificationEmail do
   @moduledoc """
-  Notification emails (SPEC §9), localized per recipient. Bodies carry a
-  short summary and a link; the instance-wide content-minimized mode
-  (SPEC §9) is a Phase 2 toggle documented in BUILDLOG.
+  Notification emails (SPEC §9), localized per recipient. Bodies carry
+  only an activity-kind summary ("X mentioned you", never post text)
+  and a link, so they're already content-minimized by construction —
+  the instance-wide content-minimized toggle (ADR 0011) only changes
+  what `Kammer.Digests` renders.
   """
 
   use Gettext, backend: KammerWeb.Gettext

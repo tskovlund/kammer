@@ -11,6 +11,7 @@ defmodule Kammer.DigestsTest do
   import Kammer.CommunitiesFixtures
   import Swoosh.TestAssertions
 
+  alias Kammer.Communities
   alias Kammer.Digests
   alias Kammer.Events
   alias Kammer.Feed
@@ -122,6 +123,33 @@ defmodule Kammer.DigestsTest do
       drain_delivered_emails()
 
       assert :skipped = Digests.deliver_digest(me, DateTime.utc_now(:second))
+    end
+
+    test "content-minimized mode (ADR 0011) sends counts and links, never post text" do
+      operator = instance_operator_fixture()
+
+      {:ok, _settings} =
+        Communities.update_instance_settings(operator, %{content_minimized_emails: true})
+
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community)
+      me = set_frequency(group_member_fixture(group), :daily)
+      author = group_member_fixture(group)
+
+      {:ok, _post} =
+        Feed.create_post(author, group, %{"body_markdown" => "Følsomt referat af mødet"})
+
+      drain_delivered_emails()
+
+      assert :sent = Digests.deliver_digest(me, DateTime.utc_now(:second))
+
+      assert_email_sent(fn email ->
+        refute email.text_body =~ "Følsomt referat af mødet"
+        refute email.text_body =~ author.display_name
+        assert email.text_body =~ "1 new post"
+        assert email.text_body =~ "/c/#{community.slug}/g/#{group.slug}"
+        true
+      end)
     end
   end
 end
