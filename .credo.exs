@@ -33,9 +33,8 @@
            include_defp: false, files: %{excluded: ["priv/repo/migrations/", "test/"]}}
         ],
         disabled: [
-          # Deferred work is tracked in an issue or docs/HANDOFF.md's
-          # backlog; TODO comments must reference one, so the tag itself
-          # is not an issue.
+          # Deferred work is tracked in a GitHub issue; TODO comments
+          # must reference one, so the tag itself is not an issue.
           {Credo.Check.Design.TagTODO, []}
         ]
       }

@@ -14,5 +14,7 @@
 - [ ] User-facing strings via Gettext, EN + DA complete
 - [ ] Permission/visibility decisions go through `Kammer.Authorization` only
 - [ ] ADR added if an architecture-shaping decision changed; SPEC.md updated if a product decision changed
-- [ ] Docs still true (README, docs/, `.env.example`) — updated here if not
+- [ ] `CHANGELOG.md` entry under `## [Unreleased]` for any user-facing change
+- [ ] Docs still true (README, `AGENTS.md`/`CLAUDE.md`, docs/, `.env.example`) — updated here if not
+- [ ] What's left tracked as a GitHub issue, not left as a silent stub
 - [ ] UI changed visibly? Regenerate `docs/screenshots/` (`scripts/screenshots.sh`)

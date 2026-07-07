@@ -52,19 +52,42 @@ never surprise you.
 4. **Permission or visibility changes** happen in
    `lib/kammer/authorization.ex` only, with context-level tests —
    property-based (StreamData) when an invariant is involved.
-5. **Process, environment notes, and the backlog** live in
-   [HANDOFF.md](HANDOFF.md) — not a feature log (that's the CHANGELOG)
-   and not the product spec (that's [SPEC.md](../SPEC.md), kept
-   current in place); it must move with every backlog or process
-   change.
+5. **What's left to build lives as GitHub issues**, not a backlog doc —
+   not a feature log (that's the CHANGELOG) and not the product spec
+   (that's [SPEC.md](../SPEC.md), kept current in place). Engineering
+   process lives in [CONVENTIONS.md](../CONVENTIONS.md) and
+   [CONTRIBUTING.md](../CONTRIBUTING.md); this page is the "what you
+   run, when" reference.
 6. **Architecture-shaping decisions** get a one-page ADR in
    [`docs/decisions/`](decisions/); designs still awaiting an owner
    decision live as RFCs in [`docs/rfcs/`](rfcs/). Scope trims and
-   deferrals go in the PR description and, if they outlive it, into
-   HANDOFF's backlog — never silent stubs.
+   deferrals go in the PR description and, if they outlive it, into a
+   GitHub issue — never silent stubs.
 7. **Docs move with the change**: if a PR alters behavior described in
    README, this directory, or `.env.example`, the same PR updates it
    (the PR template asks).
+
+## Common pitfalls
+
+The ones that cost real time — check here before you burn an hour on
+the same one:
+
+- **LiveView forms must be fully driven by `to_form`** — any field not
+  round-tripped through the change event resets on re-render.
+- **`phx-value-*` attributes are not merged** into a native
+  `change`/`submit` event's payload for bare `<input>`/`<select>`
+  elements (only for click-type events, and for elements inside an
+  actual `<form>`). A per-field control that needs to identify itself
+  needs a real `<form>` wrapper with a hidden input, not a bare
+  element with `phx-value-*`.
+- **Route order matters**: literal segments (`/events/new`) must be
+  defined before wildcards (`/events/:event_id`) across `live_session`s.
+- **Swoosh test assertions pop the _next_ mailbox message** — drain
+  fixture-generated emails first (`drain_delivered_emails` helper,
+  used throughout the test suite).
+- **The ETS rate limiter is global across async tests** — use unique
+  emails per test (`System.unique_integer/1`) to avoid cross-test
+  interference.
 
 ## What runs automatically
 
