@@ -335,6 +335,48 @@ defmodule Kammer.FeedTest do
       assert reply_to_reply.parent_comment_id == top_comment.id
     end
 
+    test "a parent_comment_id from a different post is rejected, not adopted", %{
+      group: group,
+      member: member
+    } do
+      {:ok, other_post} = Feed.create_post(member, group, %{"body_markdown" => "other post"})
+      {:ok, foreign_comment} = Feed.create_comment(member, other_post, %{"body_markdown" => "x"})
+
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+
+      {:ok, comment} =
+        Feed.create_comment(member, post, %{
+          "body_markdown" => "trying to reply into another post's thread",
+          "parent_comment_id" => foreign_comment.id
+        })
+
+      assert comment.parent_comment_id == nil
+    end
+
+    test "a parent_comment_id from a different subject (an event) is rejected", %{
+      group: group,
+      member: member
+    } do
+      {:ok, event} =
+        Kammer.Events.create_event(member, group, %{
+          "title" => "Elsewhere",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 24, :hour)
+        })
+
+      {:ok, event_comment} =
+        Kammer.Events.create_comment(member, event, %{"body_markdown" => "x"})
+
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+
+      {:ok, comment} =
+        Feed.create_comment(member, post, %{
+          "body_markdown" => "trying to reply into an event's thread",
+          "parent_comment_id" => event_comment.id
+        })
+
+      assert comment.parent_comment_id == nil
+    end
+
     test "comment lock blocks new comments; author and admins can lock", %{
       group: group,
       member: member,
