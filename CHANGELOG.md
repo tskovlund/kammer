@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- RSS and Atom feeds for public groups (SPEC §8): every `public_link`
+  and `public_listed` group exposes `/feed.rss` and `/feed.atom` —
+  no account, no secret token, gated by the same visibility check the
+  group page itself already uses. A feed reader can follow a group's
+  posts without ever creating a Kammer account. Linked from the group
+  page for anyone who can see it.
 - Admin update notice (HANDOFF §5.6): a daily, privacy-respecting
   check against this project's GitHub releases surfaces "a newer
   Kammer exists" to instance operators on the home page — no payload

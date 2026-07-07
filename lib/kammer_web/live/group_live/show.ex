@@ -51,6 +51,14 @@ defmodule KammerWeb.GroupLive.Show do
           </span>
         </:subtitle>
         <:actions>
+          <a
+            :if={@group.visibility in [:public_link, :public_listed]}
+            href={~p"/c/#{@active_community.slug}/g/#{@group.slug}/feed.rss"}
+            class="btn btn-ghost btn-sm"
+            title={gettext("RSS feed")}
+          >
+            <.icon name="hero-rss" class="size-4" /> RSS
+          </a>
           <.link
             :if={
               (@membership || @permissions.manage) &&
