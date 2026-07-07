@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Added
 
+- Instance-wide bans (SPEC §11): operators get a second, broader ban
+  list at `/instance/moderation` — ban an email instance-wide and it
+  can't rejoin *any* community on the instance, not just one. Same
+  choke-point as the existing community ban
+  (`Communities.add_member/3`), same email-keyed design (blocks a
+  future signup too, not just an existing account), same two-step
+  "demote before you ban" rule for other operators. Banning an
+  existing account strips its memberships everywhere at once; each
+  affected community's own admins see the removal in their audit log.
 - Activity-sort feed view (SPEC §5, ADR 0006): an opt-in "Activity"
   ordering next to the default "Newest" on every group feed and the
   Home feed — posts bump to the top on their newest comment,
