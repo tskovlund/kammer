@@ -31,10 +31,11 @@ merged, plus, from Phase 2 and the decided roadmap:
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
   erasure, the audit log, passkeys, event recurrence, the admin
-  update notice, RSS/Atom feeds, and content-minimized email mode**
-  (§5.6) — see that section for what shipped and what remains in each.
+  update notice, RSS/Atom feeds, content-minimized email mode, and
+  custom profile fields + the member roster** (§5.6) — see that
+  section for what shipped and what remains in each.
 
-Suite at handoff: **501 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **523 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -393,9 +394,29 @@ atom. Danish register: a slot is "en tjans".
   digests drop author names and excerpts for a per-group count + link
   ("N new posts in {group}"). Auth/RSVP emails are exempt by
   construction — they were never touched.
-- Then: custom profile fields + roster, activity-sort view (opt-in,
-  chronological stays default — values!), branding UI, Prometheus
-  (PromEx), ClamAV option, NixOS module.
+- ✅ **Custom profile fields + roster** — SHIPPED (ADR 0020):
+  community admins define fields (text/single-choice, members/admins
+  visibility, optional `required`) from `/c/:slug/settings`'s new
+  "Member profile fields" section. Required fields hard-block at
+  invite acceptance (both the in-place LiveView accept and the
+  sign-in-then-accept controller path redirect to a new
+  `CommunityLive.CompleteProfile` step first); making an existing
+  field required only nags already-joined members via a banner on
+  `CommunityLive.Home` linking to the same page — never a lockout,
+  driven by the one shared `missing_required_custom_fields/2` query.
+  The member directory (`CommunityLive.Members`) shows each member's
+  visible answers (one batched query, not N+1) and gains filter
+  dropdowns for single-choice fields. Also shipped: personal bio,
+  pronouns, and phone/email/other contact fields under Account
+  settings, each contact field independently
+  hidden/members/admins-only (default hidden). Visibility redaction
+  is deliberately two small predicates outside `Kammer.Authorization`
+  — see ADR 0020 for why. Remaining: `instance_name`/
+  `community_creation_policy`/`storage_policy` still have no
+  post-setup edit UI.
+- Then: activity-sort view (opt-in, chronological stays default —
+  values!), branding UI, Prometheus (PromEx), ClamAV option, NixOS
+  module.
 - **Security hardening, pre-1.0**: replace the CSP's
   `'unsafe-inline'` script allowance with LiveView nonce-based CSP
   (documented posture in the router; real work, tracked here so it

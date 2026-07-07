@@ -12,6 +12,7 @@ defmodule KammerWeb.CommunityLive.Home do
   import KammerWeb.KammerComponents
 
   alias Kammer.Authorization
+  alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Groups
   alias KammerWeb.FeedEventHandlers
@@ -34,6 +35,25 @@ defmodule KammerWeb.CommunityLive.Home do
       current_tab={:home}
     >
       <%= if member?(@community_relationship) do %>
+        <div
+          :if={@missing_required_fields != []}
+          class="alert alert-warning mb-4 text-sm"
+          role="status"
+        >
+          <.icon name="hero-exclamation-triangle" class="size-5" />
+          <span>
+            {gettext("%{community} needs a bit more from your profile.",
+              community: @active_community.name
+            )}
+          </span>
+          <.link
+            navigate={~p"/c/#{@active_community.slug}/complete-profile"}
+            class="btn btn-sm"
+          >
+            {gettext("Complete profile")}
+          </.link>
+        </div>
+
         <.header>
           {@active_community.name}
           <:subtitle :if={@active_community.description}>
@@ -128,6 +148,13 @@ defmodule KammerWeb.CommunityLive.Home do
         socket
         |> assign(:public_groups, [])
         |> assign(:acknowledgment_status, nil)
+        |> assign(
+          :missing_required_fields,
+          Communities.missing_required_custom_fields(
+            socket.assigns.active_community,
+            current_user
+          )
+        )
         |> load_home_feed(current_user)
       else
         socket

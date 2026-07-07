@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Added
 
+- Custom profile fields and the member roster (SPEC §4, ADR 0020):
+  community admins define fields (text or single-choice) from
+  `/c/:slug/settings` — "Instrument", "Section", "Dietary needs" —
+  each with members/admins-only visibility and an optional `required`
+  flag. Required fields hard-block at invite acceptance (a small
+  "before you continue" step collects them); making an existing field
+  required only nags already-joined members with a banner and a link,
+  never a lockout. The member directory shows each person's visible
+  answers and gains filter dropdowns for single-choice fields — the
+  roster. Also added personal profile fields (bio, pronouns, and
+  phone/email/other contact info, each independently
+  hidden/members/admins-only, hidden by default) under Account
+  settings.
 - Content-minimized email mode (SPEC §9, ADR 0011): an operator-only
   instance toggle at `/instance/settings` — new, linked from the
   instance home — that strips digest emails down to a per-group post

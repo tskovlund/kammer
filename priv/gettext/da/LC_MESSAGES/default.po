@@ -37,7 +37,7 @@ msgstr "Vi kan ikke finde internettet"
 msgid "close"
 msgstr "luk"
 
-#: lib/kammer_web/live/user_live/settings.ex:186
+#: lib/kammer_web/live/user_live/settings.ex:229
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Et link til at bekræfte din e-mailændring er sendt til den nye adresse."
@@ -62,12 +62,12 @@ msgstr "En e-mail er sendt til %{email} — åbn den for at bekræfte din konto.
 msgid "Browser"
 msgstr "Browser"
 
-#: lib/kammer_web/live/user_live/settings.ex:79
+#: lib/kammer_web/live/user_live/settings.ex:122
 #, elixir-autogen, elixir-format
 msgid "Change email"
 msgstr "Skift e-mail"
 
-#: lib/kammer_web/live/user_live/settings.ex:78
+#: lib/kammer_web/live/user_live/settings.ex:121
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr "Skifter..."
@@ -136,21 +136,22 @@ msgid "Display name"
 msgstr "Visningsnavn"
 
 #: lib/kammer_web/components/feed_components.ex:479
+#: lib/kammer_web/live/community_live/members.ex:273
 #: lib/kammer_web/live/event_live/show.ex:154
 #: lib/kammer_web/live/event_live/show.ex:248
 #: lib/kammer_web/live/user_live/login.ex:54
 #: lib/kammer_web/live/user_live/registration.ex:42
-#: lib/kammer_web/live/user_live/settings.ex:73
+#: lib/kammer_web/live/user_live/settings.ex:116
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr "E-mail"
 
-#: lib/kammer_web/live/user_live/settings.ex:140
+#: lib/kammer_web/live/user_live/settings.ex:183
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr "Linket til e-mailændring er ugyldigt eller udløbet."
 
-#: lib/kammer_web/live/user_live/settings.ex:137
+#: lib/kammer_web/live/user_live/settings.ex:180
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr "E-mail ændret."
@@ -224,7 +225,7 @@ msgstr "Du er logget ud."
 msgid "Magic link is invalid or it has expired."
 msgstr "Login-linket er ugyldigt eller udløbet."
 
-#: lib/kammer_web/live/user_live/settings.ex:87
+#: lib/kammer_web/live/user_live/settings.ex:130
 #, elixir-autogen, elixir-format
 msgid "Manage devices and sessions"
 msgstr "Administrér enheder og sessioner"
@@ -244,7 +245,7 @@ msgstr "Ny her?"
 msgid "No password needed — we email you a sign-in link."
 msgstr "Ingen adgangskode nødvendig — vi sender dig et login-link på e-mail."
 
-#: lib/kammer_web/live/user_live/settings.ex:223
+#: lib/kammer_web/live/user_live/settings.ex:266
 #, elixir-autogen, elixir-format
 msgid "Profile updated."
 msgstr "Profil opdateret."
@@ -256,14 +257,14 @@ msgstr "Profil opdateret."
 msgid "Revoke"
 msgstr "Log ud"
 
-#: lib/kammer_web/live/user_live/settings.ex:63
+#: lib/kammer_web/live/user_live/settings.ex:106
 #, elixir-autogen, elixir-format
 msgid "Save profile"
 msgstr "Gem profil"
 
 #: lib/kammer_web/live/community_live/settings.ex:58
 #: lib/kammer_web/live/group_live/settings.ex:102
-#: lib/kammer_web/live/user_live/settings.ex:62
+#: lib/kammer_web/live/user_live/settings.ex:105
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr "Gemmer..."
@@ -275,7 +276,7 @@ msgstr "Sessioner logget ind på din konto. Log dem ud, du ikke genkender."
 
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
-#: lib/kammer_web/live/community_live/home.ex:108
+#: lib/kammer_web/live/community_live/home.ex:128
 #: lib/kammer_web/live/instance_live/home.ex:169
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
@@ -403,7 +404,7 @@ msgstr "Dit login-link"
 msgid "the mailbox page"
 msgstr "postkassesiden"
 
-#: lib/kammer_web/live/community_live/members.ex:31
+#: lib/kammer_web/live/community_live/members.ex:33
 #: lib/kammer_web/live/group_live/show.ex:49
 #, elixir-autogen, elixir-format
 msgid "%{count} member"
@@ -448,7 +449,7 @@ msgstr "Et fællesskab er hjem for dets grupper, begivenheder, filer og medlemme
 msgid "Accent color"
 msgstr "Accentfarve"
 
-#: lib/kammer_web/live/invite_live/show.ex:44
+#: lib/kammer_web/live/invite_live/show.ex:45
 #, elixir-autogen, elixir-format
 msgid "Accept invitation"
 msgstr "Acceptér invitation"
@@ -468,7 +469,7 @@ msgstr "Tilføj server"
 msgid "Address"
 msgstr "Adresse"
 
-#: lib/kammer_web/live/community_live/members.ex:178
+#: lib/kammer_web/live/community_live/members.ex:277
 #: lib/kammer_web/live/group_live/show.ex:896
 #, elixir-autogen, elixir-format
 msgid "Admin"
@@ -480,13 +481,15 @@ msgstr "Administrator"
 msgid "Admins only (announcement group)"
 msgstr "Kun administratorer (opslagsgruppe)"
 
+#: lib/kammer_web/live/community_live/settings.ex:172
+#: lib/kammer_web/live/community_live/settings.ex:403
 #: lib/kammer_web/live/group_live/new.ex:65
 #: lib/kammer_web/live/group_live/settings.ex:68
 #, elixir-autogen, elixir-format
 msgid "All members"
 msgstr "Alle medlemmer"
 
-#: lib/kammer_web/live/community_live/home.ex:106
+#: lib/kammer_web/live/community_live/home.ex:126
 #, elixir-autogen, elixir-format
 msgid "Already a member?"
 msgstr "Allerede medlem?"
@@ -539,7 +542,7 @@ msgstr "Tilbage til gruppen"
 msgid "Bookmarks to other Kammer instances you belong to."
 msgstr "Bogmærker til andre Kammer-servere, du er med på."
 
-#: lib/kammer_web/live/community_live/home.ex:70
+#: lib/kammer_web/live/community_live/home.ex:90
 #, elixir-autogen, elixir-format
 msgid "Browse groups"
 msgstr "Gennemse grupper"
@@ -589,7 +592,7 @@ msgstr "Fællesskabets invitationslinks"
 msgid "Community settings"
 msgstr "Fællesskabsindstillinger"
 
-#: lib/kammer_web/live/community_live/settings.ex:190
+#: lib/kammer_web/live/community_live/settings.ex:284
 #, elixir-autogen, elixir-format
 msgid "Could not send that invitation."
 msgstr "Invitationen kunne ikke sendes."
@@ -673,7 +676,7 @@ msgstr "Beskrivelse"
 msgid "Events"
 msgstr "Begivenheder"
 
-#: lib/kammer_web/live/invite_live/show.ex:64
+#: lib/kammer_web/live/invite_live/show.ex:65
 #, elixir-autogen, elixir-format
 msgid "Go home"
 msgstr "Til forsiden"
@@ -715,7 +718,7 @@ msgstr "Gruppe genåbnet fra arkivet."
 msgid "Groups"
 msgstr "Grupper"
 
-#: lib/kammer_web/live/community_live/home.ex:66
+#: lib/kammer_web/live/community_live/home.ex:86
 #, elixir-autogen, elixir-format
 msgid "Groups are where posts, events, and files live."
 msgstr "Grupper er der, hvor opslag, begivenheder og filer bor."
@@ -741,7 +744,7 @@ msgstr "Hvis du er med i fællesskaber på andre Kammer-servere, kan du bogmærk
 msgid "If you weren't expecting this invitation, you can ignore this email."
 msgstr "Hvis du ikke ventede denne invitation, kan du se bort fra denne e-mail."
 
-#: lib/kammer_web/live/community_live/settings.ex:185
+#: lib/kammer_web/live/community_live/settings.ex:279
 #, elixir-autogen, elixir-format
 msgid "Invitation sent to %{email}."
 msgstr "Invitation sendt til %{email}."
@@ -751,7 +754,7 @@ msgstr "Invitation sendt til %{email}."
 msgid "Invite by email"
 msgstr "Invitér via e-mail"
 
-#: lib/kammer_web/live/community_live/settings.ex:167
+#: lib/kammer_web/live/community_live/settings.ex:261
 #: lib/kammer_web/live/group_live/settings.ex:313
 #, elixir-autogen, elixir-format
 msgid "Invite link created."
@@ -768,13 +771,13 @@ msgstr "Invitationslinks"
 msgid "Invite only"
 msgstr "Kun invitation"
 
-#: lib/kammer_web/live/community_live/settings.ex:203
+#: lib/kammer_web/live/community_live/settings.ex:297
 #: lib/kammer_web/live/group_live/settings.ex:331
 #, elixir-autogen, elixir-format
 msgid "Invite revoked."
 msgstr "Invitation tilbagekaldt."
 
-#: lib/kammer_web/live/invite_live/show.ex:61
+#: lib/kammer_web/live/invite_live/show.ex:62
 #, elixir-autogen, elixir-format
 msgid "It may have expired, been revoked, or already been used up."
 msgstr "Den kan være udløbet, tilbagekaldt eller allerede brugt op."
@@ -814,25 +817,25 @@ msgstr "Kun link"
 msgid "List this community on the instance landing page"
 msgstr "Vis dette fællesskab på serverens forside"
 
-#: lib/kammer_web/live/community_live/members.ex:54
+#: lib/kammer_web/live/community_live/members.ex:75
 #, elixir-autogen, elixir-format
 msgid "Make admin"
 msgstr "Gør til administrator"
 
-#: lib/kammer_web/live/community_live/members.ex:179
+#: lib/kammer_web/live/community_live/members.ex:278
 #: lib/kammer_web/live/event_live/series.ex:90
 #: lib/kammer_web/live/group_live/show.ex:897
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Medlem"
 
-#: lib/kammer_web/live/community_live/members.ex:122
+#: lib/kammer_web/live/community_live/members.ex:173
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Medlem fjernet."
 
 #: lib/kammer_web/components/layouts.ex:197
-#: lib/kammer_web/live/community_live/members.ex:29
+#: lib/kammer_web/live/community_live/members.ex:31
 #: lib/kammer_web/live/group_live/new.ex:74
 #: lib/kammer_web/live/group_live/settings.ex:77
 #: lib/kammer_web/live/group_live/show.ex:418
@@ -846,7 +849,7 @@ msgstr "Medlemmer"
 msgid "Members and guests"
 msgstr "Medlemmer og gæster"
 
-#: lib/kammer_web/live/community_live/home.ex:104
+#: lib/kammer_web/live/community_live/home.ex:124
 #, elixir-autogen, elixir-format
 msgid "Membership is by invitation — ask an organizer for an invite link."
 msgstr "Medlemskab er via invitation — bed en arrangør om et invitationslink."
@@ -857,7 +860,7 @@ msgid "Mentions, replies, and event reminders will land here."
 msgstr "Omtaler, svar og påmindelser om begivenheder lander her."
 
 #: lib/kammer_web/live/user_live/bookmarks.ex:20
-#: lib/kammer_web/live/user_live/settings.ex:90
+#: lib/kammer_web/live/user_live/settings.ex:133
 #, elixir-autogen, elixir-format
 msgid "My other servers"
 msgstr "Mine andre servere"
@@ -886,7 +889,7 @@ msgstr "Nyt fællesskab"
 msgid "New group"
 msgstr "Ny gruppe"
 
-#: lib/kammer_web/live/invite_live/show.ex:52
+#: lib/kammer_web/live/invite_live/show.ex:53
 #, elixir-autogen, elixir-format
 msgid "New here? You'll create an account with just your email."
 msgstr "Ny her? Du opretter en konto med kun din e-mail."
@@ -929,7 +932,7 @@ msgstr "Fra"
 msgid "Only instance operators may create communities on this instance."
 msgstr "Kun serveroperatører kan oprette fællesskaber på denne server."
 
-#: lib/kammer_web/live/community_live/members.ex:177
+#: lib/kammer_web/live/community_live/members.ex:276
 #: lib/kammer_web/live/group_live/show.ex:895
 #, elixir-autogen, elixir-format
 msgid "Owner"
@@ -966,7 +969,7 @@ msgstr "Privat"
 msgid "Public"
 msgstr "Offentlig"
 
-#: lib/kammer_web/live/community_live/home.ex:86
+#: lib/kammer_web/live/community_live/home.ex:106
 #, elixir-autogen, elixir-format
 msgid "Public groups"
 msgstr "Offentlige grupper"
@@ -978,14 +981,14 @@ msgstr "Prøver, møder, fester — de dukker op her."
 
 #: lib/kammer_web/components/feed_components.ex:110
 #: lib/kammer_web/components/feed_components.ex:638
-#: lib/kammer_web/live/community_live/members.ex:71
+#: lib/kammer_web/live/community_live/members.ex:92
 #: lib/kammer_web/live/user_live/bookmarks.ex:42
 #: lib/kammer_web/live/user_live/devices.ex:170
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Fjern"
 
-#: lib/kammer_web/live/community_live/members.ex:62
+#: lib/kammer_web/live/community_live/members.ex:83
 #, elixir-autogen, elixir-format
 msgid "Remove admin"
 msgstr "Fjern administrator"
@@ -995,7 +998,7 @@ msgstr "Fjern administrator"
 msgid "Remove this bookmark?"
 msgstr "Fjern dette bogmærke?"
 
-#: lib/kammer_web/live/community_live/members.ex:68
+#: lib/kammer_web/live/community_live/members.ex:89
 #, elixir-autogen, elixir-format
 msgid "Remove this member from the community and all its groups?"
 msgstr "Fjern dette medlem fra fællesskabet og alle dets grupper?"
@@ -1048,13 +1051,13 @@ msgstr "Send invitation"
 msgid "Settings"
 msgstr "Indstillinger"
 
-#: lib/kammer_web/live/community_live/settings.ex:148
+#: lib/kammer_web/live/community_live/settings.ex:242
 #: lib/kammer_web/live/group_live/settings.ex:263
 #, elixir-autogen, elixir-format
 msgid "Settings saved."
 msgstr "Indstillinger gemt."
 
-#: lib/kammer_web/live/invite_live/show.ex:49
+#: lib/kammer_web/live/invite_live/show.ex:50
 #, elixir-autogen, elixir-format
 msgid "Sign in to accept"
 msgstr "Log ind for at acceptere"
@@ -1070,7 +1073,7 @@ msgstr "Log ud"
 msgid "The real-names policy is shown when joining; it is a statement, not technically verified."
 msgstr "Politikken om rigtige navne vises ved tilmelding; den er en erklæring, ikke teknisk verificeret."
 
-#: lib/kammer_web/live/invite_live/show.ex:39
+#: lib/kammer_web/live/invite_live/show.ex:40
 #, elixir-autogen, elixir-format
 msgid "This community asks members to use their full, real name."
 msgstr "Dette fællesskab beder medlemmer om at bruge deres fulde, rigtige navn."
@@ -1085,19 +1088,19 @@ msgstr "Denne gruppe er arkiveret og skrivebeskyttet."
 msgid "This group is sealed. Sealing is permanent and cannot be changed."
 msgstr "Denne gruppe er forseglet. Forsegling er permanent og kan ikke ændres."
 
-#: lib/kammer_web/live/invite_live/show.ex:60
+#: lib/kammer_web/live/invite_live/show.ex:61
 #, elixir-autogen, elixir-format
 msgid "This invitation is no longer valid"
 msgstr "Denne invitation er ikke længere gyldig"
 
-#: lib/kammer_web/controllers/invite_controller.ex:40
-#: lib/kammer_web/live/invite_live/show.ex:107
+#: lib/kammer_web/controllers/invite_controller.ex:54
+#: lib/kammer_web/live/invite_live/show.ex:118
 #, elixir-autogen, elixir-format
 msgid "This invitation is no longer valid."
 msgstr "Denne invitation er ikke længere gyldig."
 
-#: lib/kammer_web/controllers/invite_controller.ex:34
-#: lib/kammer_web/live/invite_live/show.ex:103
+#: lib/kammer_web/controllers/invite_controller.ex:48
+#: lib/kammer_web/live/invite_live/show.ex:114
 #, elixir-autogen, elixir-format
 msgid "This invitation was sent to a different email address."
 msgstr "Denne invitation blev sendt til en anden e-mailadresse."
@@ -1120,8 +1123,8 @@ msgstr "Synlighed"
 msgid "Web address"
 msgstr "Webadresse"
 
-#: lib/kammer_web/controllers/invite_controller.ex:27
-#: lib/kammer_web/live/invite_live/show.ex:95
+#: lib/kammer_web/controllers/invite_controller.ex:34
+#: lib/kammer_web/live/invite_live/show.ex:106
 #, elixir-autogen, elixir-format
 msgid "Welcome to %{name}!"
 msgstr "Velkommen til %{name}!"
@@ -1158,14 +1161,17 @@ msgstr "Dig"
 #: lib/kammer_web/live/availability_live/show.ex:156
 #: lib/kammer_web/live/availability_live/show.ex:174
 #: lib/kammer_web/live/availability_live/show.ex:186
-#: lib/kammer_web/live/community_live/members.ex:126
-#: lib/kammer_web/live/community_live/members.ex:144
-#: lib/kammer_web/live/community_live/members.ex:159
+#: lib/kammer_web/live/community_live/members.ex:177
+#: lib/kammer_web/live/community_live/members.ex:195
+#: lib/kammer_web/live/community_live/members.ex:210
 #: lib/kammer_web/live/community_live/new.ex:94
-#: lib/kammer_web/live/community_live/settings.ex:119
-#: lib/kammer_web/live/community_live/settings.ex:156
-#: lib/kammer_web/live/community_live/settings.ex:171
-#: lib/kammer_web/live/community_live/settings.ex:207
+#: lib/kammer_web/live/community_live/settings.ex:213
+#: lib/kammer_web/live/community_live/settings.ex:250
+#: lib/kammer_web/live/community_live/settings.ex:265
+#: lib/kammer_web/live/community_live/settings.ex:301
+#: lib/kammer_web/live/community_live/settings.ex:330
+#: lib/kammer_web/live/community_live/settings.ex:347
+#: lib/kammer_web/live/community_live/settings.ex:368
 #: lib/kammer_web/live/decision_live/index.ex:200
 #: lib/kammer_web/live/decision_live/index.ex:220
 #: lib/kammer_web/live/event_live/new.ex:170
@@ -1213,7 +1219,7 @@ msgstr "Dig"
 msgid "You are not allowed to do that."
 msgstr "Det har du ikke tilladelse til."
 
-#: lib/kammer_web/live/community_live/home.ex:65
+#: lib/kammer_web/live/community_live/home.ex:85
 #, elixir-autogen, elixir-format
 msgid "You haven't joined any groups yet"
 msgstr "Du er ikke med i nogen grupper endnu"
@@ -1228,7 +1234,7 @@ msgstr "Du har forladt gruppen."
 msgid "You're all caught up"
 msgstr "Du er helt opdateret"
 
-#: lib/kammer_web/live/invite_live/show.ex:28
+#: lib/kammer_web/live/invite_live/show.ex:29
 #, elixir-autogen, elixir-format
 msgid "You're invited to %{name}"
 msgstr "Du er inviteret til %{name}"
@@ -1431,7 +1437,7 @@ msgstr "Nyt siden dit sidste besøg"
 msgid "Not yet"
 msgstr "Ikke endnu"
 
-#: lib/kammer_web/live/community_live/home.ex:58
+#: lib/kammer_web/live/community_live/home.ex:78
 #, elixir-autogen, elixir-format
 msgid "Nothing in your feed yet"
 msgstr "Intet i dit feed endnu"
@@ -1477,7 +1483,7 @@ msgstr "Slå op som %{group}"
 msgid "Posting..."
 msgstr "Slår op..."
 
-#: lib/kammer_web/live/community_live/home.ex:59
+#: lib/kammer_web/live/community_live/home.ex:79
 #, elixir-autogen, elixir-format
 msgid "Posts from your groups appear here, newest first."
 msgstr "Opslag fra dine grupper vises her, nyeste først."
@@ -1669,6 +1675,7 @@ msgid "Create event"
 msgstr "Opret begivenhed"
 
 #: lib/kammer_web/live/assignment_live/show.ex:55
+#: lib/kammer_web/live/community_live/settings.ex:135
 #: lib/kammer_web/live/event_live/show.ex:66
 #: lib/kammer_web/live/file_live/index.ex:228
 #, elixir-autogen, elixir-format
@@ -2092,6 +2099,7 @@ msgstr "Fællesskabets URL-navn"
 msgid "Content"
 msgstr "Indhold"
 
+#: lib/kammer_web/live/community_live/complete_profile.ex:47
 #: lib/kammer_web/live/setup_live/wizard.ex:57
 #: lib/kammer_web/live/setup_live/wizard.ex:101
 #, elixir-autogen, elixir-format
@@ -2271,6 +2279,7 @@ msgstr "Udgivet."
 msgid "Remove demo"
 msgstr "Fjern demo"
 
+#: lib/kammer_web/live/community_live/complete_profile.ex:46
 #: lib/kammer_web/live/instance_live/settings.ex:42
 #: lib/kammer_web/live/legal_live/edit.ex:33
 #, elixir-autogen, elixir-format
@@ -3274,12 +3283,12 @@ msgstr "En rolig kø er et sundt fællesskab."
 msgid "Active bans"
 msgstr "Aktive udelukkelser"
 
-#: lib/kammer_web/live/community_live/members.ex:85
+#: lib/kammer_web/live/community_live/members.ex:106
 #, elixir-autogen, elixir-format
 msgid "Ban"
 msgstr "Udeluk"
 
-#: lib/kammer_web/live/community_live/members.ex:79
+#: lib/kammer_web/live/community_live/members.ex:100
 #, elixir-autogen, elixir-format
 msgid "Ban this member? They are removed everywhere and their email cannot rejoin until the ban is lifted (Moderation page)."
 msgstr "Udeluk dette medlem? De fjernes overalt, og deres e-mail kan ikke komme ind igen, før udelukkelsen ophæves (Moderation-siden)."
@@ -3304,7 +3313,7 @@ msgstr "Ophæv udelukkelse"
 msgid "Lift this ban?"
 msgstr "Ophæv denne udelukkelse?"
 
-#: lib/kammer_web/live/community_live/members.ex:140
+#: lib/kammer_web/live/community_live/members.ex:191
 #, elixir-autogen, elixir-format
 msgid "Member banned — manage bans on the Moderation page."
 msgstr "Medlem udelukket — administrér udelukkelser på Moderation-siden."
@@ -3371,27 +3380,27 @@ msgstr "Hvad er der galt? Moderatorerne ser præcis, hvad du skriver."
 msgid "You already reported this — the moderators have it."
 msgstr "Du har allerede anmeldt dette — moderatorerne har det."
 
-#: lib/kammer_web/live/user_live/settings.ex:125
+#: lib/kammer_web/live/user_live/settings.ex:168
 #, elixir-autogen, elixir-format
 msgid "Delete my account"
 msgstr "Slet min konto"
 
-#: lib/kammer_web/live/user_live/settings.ex:119
+#: lib/kammer_web/live/user_live/settings.ex:162
 #, elixir-autogen, elixir-format
 msgid "Delete your account? This cannot be undone. Download your data first if you want it."
 msgstr "Slet din konto? Dette kan ikke fortrydes. Download først dine data, hvis du vil have dem."
 
-#: lib/kammer_web/live/user_live/settings.ex:111
+#: lib/kammer_web/live/user_live/settings.ex:154
 #, elixir-autogen, elixir-format
 msgid "Deleting your account removes your identity, sessions, RSVPs, signups, and votes immediately. Your posts and comments stay, shown as \"Deleted user\" — the shared history belongs to the groups. Files you uploaded to shared spaces also stay, without your name."
 msgstr "Sletning af din konto fjerner din identitet, dine sessioner, tilmeldinger, tjanser og stemmer med det samme. Dine opslag og kommentarer bliver stående som \"Slettet bruger\" — den fælles historik tilhører grupperne. Filer, du har lagt i fælles mapper, bliver også, uden dit navn."
 
-#: lib/kammer_web/live/user_live/settings.ex:102
+#: lib/kammer_web/live/user_live/settings.ex:145
 #, elixir-autogen, elixir-format
 msgid "Download everything this instance stores about you — profile, posts, comments, answers, and your uploaded files — as one zip."
 msgstr "Download alt, denne instans gemmer om dig — profil, opslag, kommentarer, svar og dine uploadede filer — som én zip."
 
-#: lib/kammer_web/live/user_live/settings.ex:107
+#: lib/kammer_web/live/user_live/settings.ex:150
 #, elixir-autogen, elixir-format
 msgid "Download my data"
 msgstr "Download mine data"
@@ -3401,12 +3410,12 @@ msgstr "Download mine data"
 msgid "The export failed — please try again."
 msgstr "Eksporten fejlede — prøv igen."
 
-#: lib/kammer_web/live/user_live/settings.ex:211
+#: lib/kammer_web/live/user_live/settings.ex:254
 #, elixir-autogen, elixir-format
 msgid "Your account has been deleted."
 msgstr "Din konto er slettet."
 
-#: lib/kammer_web/live/user_live/settings.ex:99
+#: lib/kammer_web/live/user_live/settings.ex:142
 #, elixir-autogen, elixir-format
 msgid "Your data"
 msgstr "Dine data"
@@ -3676,3 +3685,177 @@ msgstr "Kun for operatører. Gælder hele serveren."
 #, elixir-autogen, elixir-format
 msgid "Saved."
 msgstr "Gemt."
+
+#: lib/kammer_web/live/community_live/complete_profile.ex:22
+#, elixir-autogen, elixir-format
+msgid "%{community} asks for a few more details."
+msgstr "%{community} beder om et par flere oplysninger."
+
+#: lib/kammer_web/live/community_live/home.ex:45
+#, elixir-autogen, elixir-format
+msgid "%{community} needs a bit more from your profile."
+msgstr "%{community} mangler lidt mere fra din profil."
+
+#: lib/kammer_web/live/community_live/complete_profile.ex:90
+#, elixir-autogen, elixir-format
+msgid "A few required fields are still empty."
+msgstr "Et par påkrævede felter er stadig tomme."
+
+#: lib/kammer_web/live/community_live/settings.ex:182
+#, elixir-autogen, elixir-format
+msgid "Add field"
+msgstr "Tilføj felt"
+
+#: lib/kammer_web/live/community_live/settings.ex:181
+#, elixir-autogen, elixir-format
+msgid "Adding…"
+msgstr "Tilføjer…"
+
+#: lib/kammer_web/live/community_live/settings.ex:173
+#: lib/kammer_web/live/community_live/settings.ex:404
+#: lib/kammer_web/live/user_live/settings.ex:278
+#, elixir-autogen, elixir-format
+msgid "Admins only"
+msgstr "Kun administratorer"
+
+#: lib/kammer_web/live/community_live/members.ex:41
+#, elixir-autogen, elixir-format
+msgid "All"
+msgstr "Alle"
+
+#: lib/kammer_web/live/community_live/complete_profile.ex:20
+#, elixir-autogen, elixir-format
+msgid "Before you continue"
+msgstr "Før du fortsætter"
+
+#: lib/kammer_web/live/user_live/settings.ex:70
+#, elixir-autogen, elixir-format
+msgid "Bio"
+msgstr "Bio"
+
+#: lib/kammer_web/live/community_live/settings.ex:164
+#, elixir-autogen, elixir-format
+msgid "Choices (one per line, only used for single choice)"
+msgstr "Valgmuligheder (én pr. linje, kun brugt til enkeltvalg)"
+
+#: lib/kammer_web/live/community_live/complete_profile.ex:41
+#, elixir-autogen, elixir-format
+msgid "Choose one"
+msgstr "Vælg en"
+
+#: lib/kammer_web/live/user_live/settings.ex:277
+#, elixir-autogen, elixir-format
+msgid "Community members"
+msgstr "Medlemmer af fællesskabet"
+
+#: lib/kammer_web/live/community_live/home.ex:53
+#, elixir-autogen, elixir-format
+msgid "Complete profile"
+msgstr "Udfyld profil"
+
+#: lib/kammer_web/live/community_live/members.ex:274
+#, elixir-autogen, elixir-format
+msgid "Contact"
+msgstr "Kontakt"
+
+#: lib/kammer_web/live/community_live/settings.ex:105
+#, elixir-autogen, elixir-format
+msgid "Custom fields turn the member directory into a roster — \"Instrument\", \"Section\", \"Dietary needs\". Required fields block new members at join; making an existing field required only nags current members, it never locks them out."
+msgstr "Brugerdefinerede felter gør medlemsoversigten til en rulle — \"Instrument\", \"Stemme\", \"Kostbehov\". Påkrævede felter blokerer nye medlemmer ved optagelse; at gøre et eksisterende felt påkrævet minder blot nuværende medlemmer om det, det låser dem aldrig ude."
+
+#: lib/kammer_web/live/community_live/settings.ex:132
+#, elixir-autogen, elixir-format
+msgid "Delete this field and every member's answer to it?"
+msgstr "Slet dette felt og alle medlemmers svar på det?"
+
+#: lib/kammer_web/live/community_live/settings.ex:317
+#, elixir-autogen, elixir-format
+msgid "Field added."
+msgstr "Felt tilføjet."
+
+#: lib/kammer_web/live/community_live/settings.ex:364
+#, elixir-autogen, elixir-format
+msgid "Field deleted."
+msgstr "Felt slettet."
+
+#: lib/kammer_web/live/community_live/settings.ex:149
+#, elixir-autogen, elixir-format
+msgid "Field name"
+msgstr "Feltnavn"
+
+#: lib/kammer_web/live/community_live/settings.ex:127
+#, elixir-autogen, elixir-format
+msgid "Make optional"
+msgstr "Gør valgfrit"
+
+#: lib/kammer_web/live/community_live/settings.ex:127
+#, elixir-autogen, elixir-format
+msgid "Make required"
+msgstr "Gør påkrævet"
+
+#: lib/kammer_web/live/community_live/settings.ex:102
+#, elixir-autogen, elixir-format
+msgid "Member profile fields"
+msgstr "Medlemsprofilfelter"
+
+#: lib/kammer_web/live/user_live/settings.ex:276
+#, elixir-autogen, elixir-format
+msgid "Nobody (hidden)"
+msgstr "Ingen (skjult)"
+
+#: lib/kammer_web/live/user_live/settings.ex:66
+#, elixir-autogen, elixir-format
+msgid "Optional — shown to the communities you're in. Contact fields stay hidden unless you choose otherwise."
+msgstr "Valgfrit — vises til de fællesskaber, du er i. Kontaktfelter forbliver skjulte, medmindre du vælger andet."
+
+#: lib/kammer_web/live/user_live/settings.ex:96
+#, elixir-autogen, elixir-format
+msgid "Other contact"
+msgstr "Anden kontakt"
+
+#: lib/kammer_web/live/community_live/members.ex:272
+#: lib/kammer_web/live/user_live/settings.ex:74
+#, elixir-autogen, elixir-format
+msgid "Phone"
+msgstr "Telefon"
+
+#: lib/kammer_web/live/user_live/settings.ex:71
+#, elixir-autogen, elixir-format
+msgid "Pronouns"
+msgstr "Pronominer"
+
+#: lib/kammer_web/live/user_live/settings.ex:86
+#, elixir-autogen, elixir-format
+msgid "Public contact email"
+msgstr "Offentlig kontakt-e-mail"
+
+#: lib/kammer_web/live/community_live/settings.ex:119
+#: lib/kammer_web/live/community_live/settings.ex:179
+#, elixir-autogen, elixir-format
+msgid "Required"
+msgstr "Påkrævet"
+
+#: lib/kammer_web/live/community_live/settings.ex:158
+#: lib/kammer_web/live/community_live/settings.ex:401
+#, elixir-autogen, elixir-format
+msgid "Single choice"
+msgstr "Enkeltvalg"
+
+#: lib/kammer_web/live/community_live/settings.ex:157
+#: lib/kammer_web/live/community_live/settings.ex:400
+#, elixir-autogen, elixir-format
+msgid "Text"
+msgstr "Tekst"
+
+#: lib/kammer_web/live/community_live/settings.ex:155
+#, elixir-autogen, elixir-format
+msgid "Type"
+msgstr "Type"
+
+#: lib/kammer_web/live/community_live/settings.ex:170
+#: lib/kammer_web/live/user_live/settings.ex:78
+#: lib/kammer_web/live/user_live/settings.ex:91
+#: lib/kammer_web/live/user_live/settings.ex:100
+#, elixir-autogen, elixir-format
+msgid "Visible to"
+msgstr "Synlig for"

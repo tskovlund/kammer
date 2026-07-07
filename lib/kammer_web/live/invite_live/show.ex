@@ -9,6 +9,7 @@ defmodule KammerWeb.InviteLive.Show do
 
   import KammerWeb.KammerComponents
 
+  alias Kammer.Communities
   alias Kammer.Invitations
   alias Kammer.Invitations.Invite
 
@@ -90,10 +91,20 @@ defmodule KammerWeb.InviteLive.Show do
 
     case Invitations.redeem_invite(current_user, invite.token) do
       {:ok, redeemed} ->
+        community = redeemed.community
+        target_path = destination(redeemed)
+
+        next =
+          if Communities.missing_required_custom_fields(community, current_user) == [] do
+            target_path
+          else
+            ~p"/c/#{community.slug}/complete-profile?#{[return_to: target_path]}"
+          end
+
         {:noreply,
          socket
          |> put_flash(:info, gettext("Welcome to %{name}!", name: target_name(redeemed)))
-         |> push_navigate(to: destination(redeemed))}
+         |> push_navigate(to: next)}
 
       {:error, :email_mismatch} ->
         {:noreply,

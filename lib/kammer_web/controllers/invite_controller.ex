@@ -9,13 +9,18 @@ defmodule KammerWeb.InviteController do
 
   import KammerWeb.UserAuth, only: [require_authenticated_user: 2]
 
+  alias Kammer.Communities
   alias Kammer.Invitations
   alias Kammer.Invitations.Invite
 
   plug :require_authenticated_user
 
   @doc """
-  Redeems the invite for the signed-in user and redirects to the target.
+  Redeems the invite for the signed-in user and redirects to the target —
+  or, if the community has required custom profile fields (SPEC §4) the
+  member hasn't answered yet, to a page that collects them first. That
+  hard block applies only here, at join time; a field made required
+  after someone already joined never sends them back through this flow.
   """
   @spec accept(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def accept(conn, %{"token" => token}) do
@@ -23,9 +28,18 @@ defmodule KammerWeb.InviteController do
 
     case Invitations.redeem_invite(current_user, token) do
       {:ok, invite} ->
-        conn
-        |> put_flash(:info, gettext("Welcome to %{name}!", name: target_name(invite)))
-        |> redirect(to: destination(invite))
+        community = invite.community
+        target_path = destination(invite)
+
+        conn = put_flash(conn, :info, gettext("Welcome to %{name}!", name: target_name(invite)))
+
+        if Communities.missing_required_custom_fields(community, current_user) == [] do
+          redirect(conn, to: target_path)
+        else
+          conn
+          |> put_session(:profile_return_to, target_path)
+          |> redirect(to: ~p"/c/#{community.slug}/complete-profile")
+        end
 
       {:error, :email_mismatch} ->
         conn

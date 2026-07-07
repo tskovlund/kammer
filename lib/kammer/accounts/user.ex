@@ -15,6 +15,9 @@ defmodule Kammer.Accounts.User do
   alias Kammer.Accounts.User
 
   @type t() :: %__MODULE__{}
+  @type visibility() :: :hidden | :members | :admins
+
+  @visibilities [:hidden, :members, :admins]
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -29,6 +32,19 @@ defmodule Kammer.Accounts.User do
     field :ics_token, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+
+    # Optional base profile fields (SPEC §4). Contact fields each carry
+    # their own visibility since a phone number and a public email
+    # address warrant different exposure; bio/pronouns are simple
+    # opt-in text (blank means not shown — that's the whole control).
+    field :bio, :string
+    field :pronouns, :string
+    field :contact_phone, :string
+    field :contact_phone_visibility, Ecto.Enum, values: @visibilities, default: :hidden
+    field :contact_email, :string
+    field :contact_email_visibility, Ecto.Enum, values: @visibilities, default: :hidden
+    field :contact_note, :string
+    field :contact_note_visibility, Ecto.Enum, values: @visibilities, default: :hidden
 
     timestamps(type: :utc_datetime)
   end
@@ -70,18 +86,38 @@ defmodule Kammer.Accounts.User do
   end
 
   @doc """
-  A changeset for profile settings: display name, interface language, and
+  A changeset for profile settings: display name, interface language,
   timezone (SPEC §4 — language/timezone editable in settings, never demanded
-  at onboarding).
+  at onboarding), and the optional base profile fields (bio, pronouns,
+  contact info with per-field visibility).
   """
   @spec settings_changeset(t(), map()) :: Ecto.Changeset.t()
   def settings_changeset(user, attrs) do
     user
-    |> cast(attrs, [:display_name, :locale, :timezone, :digest_frequency])
+    |> cast(attrs, [
+      :display_name,
+      :locale,
+      :timezone,
+      :digest_frequency,
+      :bio,
+      :pronouns,
+      :contact_phone,
+      :contact_phone_visibility,
+      :contact_email,
+      :contact_email_visibility,
+      :contact_note,
+      :contact_note_visibility
+    ])
     |> validate_display_name()
     |> validate_inclusion(:locale, allowed_locales())
     |> validate_timezone()
+    |> validate_length(:bio, max: 500)
+    |> validate_length(:pronouns, max: 40)
   end
+
+  @doc "All valid contact-field visibility levels."
+  @spec visibilities() :: [visibility()]
+  def visibilities, do: @visibilities
 
   defp validate_email(changeset, opts) do
     changeset =
