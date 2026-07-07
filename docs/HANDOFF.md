@@ -313,15 +313,15 @@ atom. Danish register: a slot is "en tjans".
   Account settings (download + delete, with an honest pre-confirm
   explanation). Revisit async export if the query set grows (e.g.
   very large communities) — not needed yet.
-- ✅ **Audit log** — SHIPPED: `Kammer.Audit` (append-only `audit_events`,
-  `record/5` fire-and-forget from the caller's transaction, `summary`
-  precomputed in plain language at write time so entries stay readable
-  after the row they describe is gone). Instrumented at every SPEC §11
-  call site: `Communities.update_community/update_member_role/
-  remove_member`, `Groups.update_group/delete_group/
-  update_member_role` (community-admin overrides into groups carry an
-  `"override" => true` metadata flag), `Moderation.resolve_report/
-  ban_member/unban`. Read-gated to community admins
+- ✅ **Audit log** — SHIPPED: `Kammer.Audit` (append-only
+  `audit_events`, `record/5` fire-and-forget from the caller's
+  transaction, `summary` precomputed in plain language at write time
+  so entries stay readable after the row they describe is gone).
+  Instrumented at every SPEC §11 call site: `Communities` (settings
+  update, role change, member removal), `Groups` (settings update,
+  delete, role change — community-admin overrides into groups carry
+  an `"override" => true` metadata flag), `Moderation`
+  (resolve-report, ban, unban). Read-gated to community admins
   (`list_events/3`); UI is a third section on the moderation page
   (`/c/:slug/moderation`).
 - **Passkeys**: `webauthn_components` or `wax`; register after first
