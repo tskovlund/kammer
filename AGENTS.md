@@ -1,5 +1,50 @@
 This is a web application written using the Phoenix web framework.
 
+## Kammer: working autonomously on this repo
+
+Read order for picking this up cold: [SPEC.md](SPEC.md) (what the
+product is) → [CONVENTIONS.md](CONVENTIONS.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md) (how to work on it) →
+[docs/development.md](docs/development.md) (workflow reference,
+pitfalls) → open GitHub issues — especially anything labeled
+`decision` and the Phase 2 umbrella (issue #33) for what's left → then
+[`docs/decisions/`](docs/decisions/) (why past calls were made). Owner
+comments on issues override everything below.
+
+- Babysit every open PR to green CI; merge with a merge commit yourself
+  once green and unresolved review comments are addressed.
+- Work from open GitHub issues, not a separate backlog doc.
+  Implementation choices are yours to make; product-shaping choices
+  (pricing, naming, new scope) go to a GitHub issue assigned to the
+  owner with concrete options and a recommendation (label `decision`).
+- Issues that are explicitly the owner's own action (real-machine
+  testing, human review passes, infra deploys, final naming/business
+  calls) are read, never resolved unilaterally — comment status
+  deltas, don't close them yourself.
+- Renovate runs Mondays 07:00 CPH; non-major dependency PRs automerge
+  when checks pass, majors wait for the owner.
+- Message the owner only at milestones or when genuinely blocked.
+- One coherent PR at a time: unrelated concerns (a feature vs. a docs
+  reorg vs. a dependency bump) get separate branches/PRs, even
+  mid-session.
+
+## Kammer: remote container notes (Claude Code on the web)
+
+- `export PATH=/nix/var/nix/profiles/default/bin:$PATH` in every
+  shell; `pg_ctlcluster 16 main start` after container restarts (a
+  stale pid is normal — Postgres also drops mid-session sometimes,
+  same fix).
+- Commit and push inside `nix develop --command` (git hooks need `mix`
+  on `PATH`). Committer identity: `Claude <noreply@anthropic.com>`.
+- CSS cannot be built in this container (the network proxy blocks the
+  Tailwind standalone binary; the npm CLI chokes on the vendored
+  daisyUI bundle). CI builds assets; regenerate `docs/screenshots/` via
+  the manually-dispatched Screenshots workflow rather than locally —
+  see [docs/development.md](docs/development.md) for how.
+- If GitHub tool access shows as disconnected, it needs
+  re-authorization from the owner (`claude mcp` / `/mcp` — cannot be
+  done from an agent session); local git still works without it.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

@@ -6,9 +6,9 @@ owner's original build prompt and is edited in place as the product
 evolves — it does not stay frozen at "what we set out to build."
 `docs/decisions/` records the *why* behind a decision worth
 relitigating; this file records the *current* shape of the product.
-Shipped-vs-not is tracked in `docs/HANDOFF.md`'s backlog and
-CHANGELOG.md/git history, not here — this document describes intent
-regardless of build status.
+Shipped-vs-not is tracked in CHANGELOG.md/git history and open GitHub
+issues, not here — this document describes intent regardless of build
+status.
 
 You are building a production-quality, self-hostable, open-source community platform — a replacement for Facebook Groups/Pages/Events, group email threads, and the file-sharing half of Google Drive, for real-world communities (associations, bands, clubs). Founding use case: TÅGEKAMMERET, a Danish student association, and its 70-year anniversary revy band.
 
@@ -158,7 +158,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 Phase 1 (pilot slice) and the original Phase 2 list (SPEC v1 complete)
 are both fully shipped — see CHANGELOG.md/git history for what and
-when, `docs/HANDOFF.md` for what's still open. What follows are the
+when, open GitHub issues for what's still open. What follows are the
 standing architectural decisions that outlive any one build phase:
 
 **Explicit non-goals (design constraints, not a to-do list):**
@@ -193,8 +193,8 @@ major release; do not build on it yet.
 
 **Scope-trim transparency:** a PR may trim scope to ship something
 coherent, but every trim, stub, or deferral must be stated in the PR
-description and, if it outlives that PR, as a "remaining" note in
-`docs/HANDOFF.md`'s backlog. Silent stubs are forbidden.
+description and, if it outlives that PR, as a GitHub issue. Silent
+stubs are forbidden.
 
 ## 17. Engineering standards (non-negotiable; wire into the first commit)
 

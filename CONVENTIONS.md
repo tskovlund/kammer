@@ -10,10 +10,9 @@ tooling wherever possible; the rest is enforced in review.
   root cause, even when it costs more now.
 - If a workaround is genuinely unavoidable (an upstream bug, a platform
   limitation outside our control), it must be **(1) justified in a
-  comment stating the external cause, (2) tracked** (an issue, or a
-  note in `docs/HANDOFF.md`'s backlog, with a completion path), and
-  **(3) removed** when the external cause goes away. Untracked
-  workarounds are treated as bugs.
+  comment stating the external cause, (2) tracked** (a GitHub issue
+  with a completion path), and **(3) removed** when the external cause
+  goes away. Untracked workarounds are treated as bugs.
 - The bar for the whole codebase: lean, documented where a constraint
   can't be expressed in code (never narrating the obvious),
   industry-standard, portfolio-worthy. When a shortcut is tempting,
@@ -39,6 +38,31 @@ tooling wherever possible; the rest is enforced in review.
 - The file-visibility invariant (file/folder visibility can never exceed the
   owning scope's visibility preset) and sealed-group rules have dedicated
   test suites, property-based where practical (`StreamData`).
+- The transport-parity property (`test/kammer_web/api/resources_test.exs`)
+  asserts the JSON API enforces the identical authorization the UI does —
+  it must keep passing through any authorization change.
+
+## Reusable patterns (don't reinvent)
+
+- **Guest identities** (`Kammer.Guests`) are the substrate for any
+  account-less interaction: guest comments, signup slots, newsletter
+  subscriptions. Nullable FK + `num_nonnulls(...) = 1` check, cascade
+  erasure, claim on sign-in.
+- **Feature gate**: anything new that's per-group-toggleable adds a
+  feature atom in `Group @features` (ships OFF by default) and calls
+  `Authorization.feature_gate/2` at context entry points.
+- **API**: `KammerWeb.Api.Serializer` is the only wire-shaping layer;
+  `ApiError` the only error shape; `Pagination` the only cursor code.
+  New endpoints follow the existing controller pattern — thin, all
+  policy in contexts/authorization.
+- **Comments/reactions** are one engine (ADR 0007) — reuse for any new
+  commentable/reactable thing.
+- **Non-access-control visibility redaction** (e.g. which profile
+  fields a viewer sees) doesn't need to route through
+  `Kammer.Authorization` — a small local predicate fed by
+  `Authorization.relationship/2`'s role is fine (ADR 0020). Reserve
+  the central module for actual access control (can this person reach
+  this group/file/post at all).
 
 ## Formatting, linting, compilation
 
@@ -76,6 +100,13 @@ tooling wherever possible; the rest is enforced in review.
   version instead and say why in the PR.
 - `mix hex.audit` and `mix deps.audit` run in CI.
 
+## Database migrations
+
+- Migration churn is welcome pre-0.1.0: design schemas properly rather
+  than adding compatibility warts for data that doesn't exist in
+  production yet. Always `mix ecto.gen.migration migration_name` for
+  correct timestamps and conventions.
+
 ## Dev environment
 
 - The Nix flake (`flake.nix`) is canonical. `devbox.json` and `.envrc`
@@ -87,11 +118,12 @@ tooling wherever possible; the rest is enforced in review.
 - All user-facing strings go through Gettext from the first commit.
   English and Danish must be complete for every shipped surface, including
   emails. `mix gettext.extract --merge` before every UI commit.
+- API error messages are deliberately English-only — clients localize
+  them, not the server.
 
 ## Documentation
 
 - Architecture decisions live in `docs/decisions/` as short ADRs
   (context → decision → consequences, ≤ 1 page).
 - Scope trims, stubs, and deferrals go in the PR description and, if
-  they outlive it, into `docs/HANDOFF.md`'s backlog — silent stubs are
-  forbidden.
+  they outlive it, into a GitHub issue — silent stubs are forbidden.

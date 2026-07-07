@@ -75,6 +75,21 @@ floor. CI must be green; hooks keep you honest before you push.
   translations (`mix gettext.extract --merge`, then fill both locales).
 - Architecture-level decisions get a short ADR in `docs/decisions/`.
 
+## Decision-making
+
+Implementation choices are the maintainer's to make. Product-shaping
+choices — pricing, naming, UX philosophy, new scope — go to a GitHub
+issue labeled `decision`, assigned to the project owner, with concrete
+options and a recommendation. Owner comments on any issue override
+whatever's written elsewhere, including this document.
+
+## The backlog
+
+What's left to build lives as GitHub issues (labeled `enhancement`),
+not a separate roadmap document — issue #33 is the current umbrella
+tracking Phase 2 completion. Working on something not yet tracked?
+Open an issue first so the "what's left" view stays accurate.
+
 ## Reporting security issues
 
 Please see [SECURITY.md](SECURITY.md) — do not open public issues for
