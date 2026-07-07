@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- Audit log (SPEC §11): every role change, ban/unban, content removal
+  via moderation, settings update, and group deletion — plus
+  community-admin overrides into groups, flagged as such — writes a
+  plain-language entry to an append-only log, visible to community
+  admins from the moderation page. Entries stay readable even after
+  the row they describe is gone; the log is deliberately not itself
+  audited and never blocks the action it records.
 - GDPR data rights (SPEC §12): download everything the instance
   stores about you — profile, posts, comments, reactions, poll
   votes, RSVPs, signup and assignment claims, availability answers,

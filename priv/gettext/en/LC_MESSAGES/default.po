@@ -1201,9 +1201,9 @@ msgstr ""
 #: lib/kammer_web/live/group_live/show.ex:659
 #: lib/kammer_web/live/group_live/show.ex:672
 #: lib/kammer_web/live/group_live/show.ex:705
-#: lib/kammer_web/live/moderation_live/index.ex:130
-#: lib/kammer_web/live/moderation_live/index.ex:141
-#: lib/kammer_web/live/moderation_live/index.ex:152
+#: lib/kammer_web/live/moderation_live/index.ex:155
+#: lib/kammer_web/live/moderation_live/index.ex:166
+#: lib/kammer_web/live/moderation_live/index.ex:177
 #, elixir-autogen, elixir-format
 msgid "You are not allowed to do that."
 msgstr ""
@@ -1386,8 +1386,8 @@ msgstr ""
 #: lib/kammer_web/live/event_live/show.ex:345
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
-#: lib/kammer_web/live/moderation_live/index.ex:46
-#: lib/kammer_web/live/moderation_live/index.ex:179
+#: lib/kammer_web/live/moderation_live/index.ex:48
+#: lib/kammer_web/live/moderation_live/index.ex:206
 #: lib/kammer_web/live/search_live/index.ex:54
 #: lib/kammer_web/live/search_live/index.ex:72
 #, elixir-autogen, elixir-format
@@ -3217,19 +3217,19 @@ msgstr ""
 msgid "You get this because your digest setting is on — change it under Account settings."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:166
-#: lib/kammer_web/live/moderation_live/index.ex:170
-#: lib/kammer_web/live/moderation_live/index.ex:173
+#: lib/kammer_web/live/moderation_live/index.ex:193
+#: lib/kammer_web/live/moderation_live/index.ex:197
+#: lib/kammer_web/live/moderation_live/index.ex:200
 #, elixir-autogen, elixir-format
 msgid "(no text)"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:83
+#: lib/kammer_web/live/moderation_live/index.ex:85
 #, elixir-autogen, elixir-format
 msgid "A calm queue is a healthy community."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:89
+#: lib/kammer_web/live/moderation_live/index.ex:91
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Active bans"
 msgstr ""
@@ -3244,22 +3244,22 @@ msgstr ""
 msgid "Ban this member? They are removed everywhere and their email cannot rejoin until the ban is lifted (Moderation page)."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:139
+#: lib/kammer_web/live/moderation_live/index.ex:164
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Content removed."
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:65
+#: lib/kammer_web/live/moderation_live/index.ex:67
 #, elixir-autogen, elixir-format
 msgid "Dismiss"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:109
+#: lib/kammer_web/live/moderation_live/index.ex:111
 #, elixir-autogen, elixir-format
 msgid "Lift ban"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:106
+#: lib/kammer_web/live/moderation_live/index.ex:108
 #, elixir-autogen, elixir-format
 msgid "Lift this ban?"
 msgstr ""
@@ -3270,22 +3270,22 @@ msgid "Member banned — manage bans on the Moderation page."
 msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:212
-#: lib/kammer_web/live/moderation_live/index.ex:31
+#: lib/kammer_web/live/moderation_live/index.ex:33
 #, elixir-autogen, elixir-format
 msgid "Moderation"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:82
+#: lib/kammer_web/live/moderation_live/index.ex:84
 #, elixir-autogen, elixir-format
 msgid "No open reports"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:74
+#: lib/kammer_web/live/moderation_live/index.ex:76
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Remove content"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:71
+#: lib/kammer_web/live/moderation_live/index.ex:73
 #, elixir-autogen, elixir-format
 msgid "Remove the reported content? This cannot be undone."
 msgstr ""
@@ -3301,12 +3301,12 @@ msgstr ""
 msgid "Report to the moderators"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:44
+#: lib/kammer_web/live/moderation_live/index.ex:46
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Reported by %{name}"
 msgstr ""
 
-#: lib/kammer_web/live/moderation_live/index.ex:33
+#: lib/kammer_web/live/moderation_live/index.ex:35
 #, elixir-autogen, elixir-format
 msgid "Reports land here; only you and the other moderators see them."
 msgstr ""
@@ -3369,4 +3369,19 @@ msgstr ""
 #: lib/kammer_web/live/user_live/settings.ex:99
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Your data"
+msgstr ""
+
+#: lib/kammer_web/live/moderation_live/index.ex:135
+#, elixir-autogen, elixir-format
+msgid "Admin actions in this community will show up here."
+msgstr ""
+
+#: lib/kammer_web/live/moderation_live/index.ex:118
+#, elixir-autogen, elixir-format
+msgid "Audit log"
+msgstr ""
+
+#: lib/kammer_web/live/moderation_live/index.ex:134
+#, elixir-autogen, elixir-format
+msgid "No audit events yet"
 msgstr ""

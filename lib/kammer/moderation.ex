@@ -11,6 +11,7 @@ defmodule Kammer.Moderation do
   import Ecto.Query, warn: false
 
   alias Kammer.Accounts.User
+  alias Kammer.Audit
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Feed
@@ -116,9 +117,20 @@ defmodule Kammer.Moderation do
           {:ok, Report.t()} | {:error, :unauthorized | term()}
   def resolve_report(%User{} = actor, %Report{status: :open} = report) do
     with :ok <- authorize_on_report(actor, report),
+         community = Repo.get!(Community, report.community_id),
+         kind = if(report.post_id, do: "post", else: "comment"),
          :ok <- remove_subject(actor, report) do
-      # Removing the subject cascades the report row away; return the
-      # closed shape for the caller regardless.
+      # Removing the subject cascades the report row away; log before
+      # it's gone would need the same data, so this order is just as
+      # correct — the audit entry never depends on the deleted row.
+      Audit.record(
+        community,
+        actor,
+        "content.removed",
+        "#{actor.display_name} removed a reported #{kind}",
+        %{"report_id" => report.id}
+      )
+
       {:ok, %Report{report | status: :resolved, resolved_at: DateTime.utc_now(:second)}}
     end
   end
@@ -149,13 +161,24 @@ defmodule Kammer.Moderation do
         {:error, :unauthorized}
 
       true ->
-        Repo.transact(fn ->
-          remove_memberships(community, target)
+        with {:ok, ban} <-
+               Repo.transact(fn ->
+                 remove_memberships(community, target)
 
-          %CommunityBan{community_id: community.id, banned_by_user_id: actor.id}
-          |> CommunityBan.changeset(%{email: target.email, reason: reason})
-          |> Repo.insert()
-        end)
+                 %CommunityBan{community_id: community.id, banned_by_user_id: actor.id}
+                 |> CommunityBan.changeset(%{email: target.email, reason: reason})
+                 |> Repo.insert()
+               end) do
+          Audit.record(
+            community,
+            actor,
+            "member.banned",
+            "#{actor.display_name} banned #{target.display_name} (#{target.email})" <>
+              if(reason, do: " — #{reason}", else: "")
+          )
+
+          {:ok, ban}
+        end
     end
   end
 
@@ -168,7 +191,16 @@ defmodule Kammer.Moderation do
     community = Repo.get!(Community, ban.community_id)
 
     if Authorization.can?(actor, :manage_community, community) do
-      Repo.delete(ban)
+      with {:ok, lifted} <- Repo.delete(ban) do
+        Audit.record(
+          community,
+          actor,
+          "member.unbanned",
+          "#{actor.display_name} lifted the ban on #{ban.email}"
+        )
+
+        {:ok, lifted}
+      end
     else
       {:error, :unauthorized}
     end

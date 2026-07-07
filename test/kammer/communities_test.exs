@@ -4,6 +4,7 @@ defmodule Kammer.CommunitiesTest do
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
+  alias Kammer.Audit
   alias Kammer.Communities
 
   describe "instance settings" do
@@ -78,6 +79,8 @@ defmodule Kammer.CommunitiesTest do
 
       assert {:ok, updated} = Communities.update_community(owner, community, %{name: "Renamed"})
       assert updated.name == "Renamed"
+
+      assert [%{action: "community.settings_updated"}] = Audit.list_events(owner, community)
     end
   end
 
@@ -111,6 +114,14 @@ defmodule Kammer.CommunitiesTest do
       # ...but the owner can.
       assert {:ok, %{role: :owner}} =
                Communities.update_member_role(owner, community, promoted, :owner)
+
+      assert [
+               %{action: "member.role_changed", summary: owner_summary},
+               %{action: "member.role_changed", summary: admin_summary}
+             ] = Audit.list_events(owner, community)
+
+      assert admin_summary =~ "to admin"
+      assert owner_summary =~ "to owner"
     end
 
     test "remove_member/3: self-leave and admin removal; owners cannot be removed" do
@@ -119,10 +130,11 @@ defmodule Kammer.CommunitiesTest do
       member = member_fixture(community)
       other_member = member_fixture(community)
 
-      # Members can leave.
+      # Members can leave — that's not an admin action, so it's not audited.
       membership = Communities.get_membership(community, member)
       assert {:ok, _deleted} = Communities.remove_member(member, community, membership)
       assert Communities.get_membership(community, member) == nil
+      assert Audit.list_events(owner, community) == []
 
       # A plain member cannot remove someone else.
       other_membership = Communities.get_membership(community, other_member)
@@ -131,8 +143,9 @@ defmodule Kammer.CommunitiesTest do
       assert {:error, :unauthorized} =
                Communities.remove_member(third_member, community, other_membership)
 
-      # Admins can remove members.
+      # Admins can remove members — that IS an admin action, so it's audited.
       assert {:ok, _deleted} = Communities.remove_member(admin, community, other_membership)
+      assert [%{action: "member.removed"}] = Audit.list_events(owner, community)
 
       # Owners cannot be removed, even by themselves.
       owner_membership = Communities.get_membership(community, owner)

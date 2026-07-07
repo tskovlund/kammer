@@ -11,6 +11,7 @@ defmodule Kammer.Groups do
   import Ecto.Query, warn: false
 
   alias Kammer.Accounts.User
+  alias Kammer.Audit
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Groups.Group
@@ -147,10 +148,10 @@ defmodule Kammer.Groups do
   @spec update_group(User.t(), Group.t(), map()) ::
           {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def update_group(%User{} = actor, %Group{} = group, attrs) do
-    with :ok <- Authorization.authorize(actor, :manage_group, group) do
-      group
-      |> Group.update_changeset(attrs)
-      |> Repo.update()
+    with :ok <- Authorization.authorize(actor, :manage_group, group),
+         {:ok, updated} <- group |> Group.update_changeset(attrs) |> Repo.update() do
+      audit_group_action(actor, group, "group.settings_updated", "updated the settings of")
+      {:ok, updated}
     end
   end
 
@@ -232,6 +233,7 @@ defmodule Kammer.Groups do
           {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def delete_group(%User{} = actor, %Group{} = group) do
     with :ok <- Authorization.authorize(actor, :delete_group, group) do
+      audit_group_action(actor, group, "group.deleted", "deleted the group")
       Repo.delete(group)
     end
   end
@@ -343,9 +345,23 @@ defmodule Kammer.Groups do
         (not owner_transition? or owner_powers?)
 
     if authorized? do
-      membership
-      |> GroupMembership.changeset(%{role: new_role})
-      |> Repo.update()
+      previous_role = membership.role
+
+      with {:ok, updated} <-
+             membership |> GroupMembership.changeset(%{role: new_role}) |> Repo.update() do
+        target = Repo.get!(User, membership.user_id)
+        override? = is_nil(actor_relationship.group_role)
+
+        audit_group_action(
+          actor,
+          group,
+          "group_member.role_changed",
+          "changed #{target.display_name}'s role from #{previous_role} to #{new_role} in",
+          %{"override" => override?}
+        )
+
+        {:ok, updated}
+      end
     else
       {:error, :unauthorized}
     end
@@ -433,6 +449,21 @@ defmodule Kammer.Groups do
   end
 
   ## Internals
+
+  # Community_id is loaded fresh rather than trusting a possibly-stale
+  # preload — audit entries are cheap, correctness on the community FK
+  # is not optional.
+  defp audit_group_action(actor, %Group{} = group, action, verb_phrase, metadata \\ %{}) do
+    community_id = group.community_id || Repo.get!(Group, group.id).community_id
+
+    Audit.record(
+      community_id,
+      actor,
+      action,
+      "#{actor.display_name} #{verb_phrase} #{group.name}",
+      metadata
+    )
+  end
 
   defp get_or_insert_membership(%Group{} = group, %User{} = user, role) do
     case get_membership(group, user) do

@@ -29,8 +29,11 @@ merged, plus, from Phase 2 and the decided roadmap:
   groups/feeds/posts/comments/events/RSVP/Home endpoints, and the
   **transport-parity property test** (API hides exactly what the UI
   hides).
+- **Guest interactions, search, backups, moderation, GDPR export/
+  erasure, and the audit log** (§5.6) — see that section for what
+  shipped and what remains in each.
 
-Suite at handoff: **422 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **428 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -310,8 +313,17 @@ atom. Danish register: a slot is "en tjans".
   Account settings (download + delete, with an honest pre-confirm
   explanation). Revisit async export if the query set grows (e.g.
   very large communities) — not needed yet.
-- **Audit log**: append-only `audit_events` for admin/operator actions,
-  visible to community owners / instance operator.
+- ✅ **Audit log** — SHIPPED: `Kammer.Audit` (append-only `audit_events`,
+  `record/5` fire-and-forget from the caller's transaction, `summary`
+  precomputed in plain language at write time so entries stay readable
+  after the row they describe is gone). Instrumented at every SPEC §11
+  call site: `Communities.update_community/update_member_role/
+  remove_member`, `Groups.update_group/delete_group/
+  update_member_role` (community-admin overrides into groups carry an
+  `"override" => true` metadata flag), `Moderation.resolve_report/
+  ban_member/unban`. Read-gated to community admins
+  (`list_events/3`); UI is a third section on the moderation page
+  (`/c/:slug/moderation`).
 - **Passkeys**: `webauthn_components` or `wax`; register after first
   magic-link login; device page lists them.
 - **Recurrence + attendance matrix**: RRULE-lite (weekly/biweekly/
