@@ -296,6 +296,71 @@ defmodule Kammer.AccountsTest do
       assert {:error, changeset} = Accounts.update_user_settings(user, %{display_name: "  "})
       assert "can't be blank" in errors_on(changeset).display_name
     end
+
+    test "updates bio, pronouns, and contact fields with their visibility" do
+      user = user_fixture()
+
+      assert {:ok, updated} =
+               Accounts.update_user_settings(user, %{
+                 bio: "Plays the oboe.",
+                 pronouns: "she/her",
+                 contact_phone: "+45 12345678",
+                 contact_phone_visibility: "members"
+               })
+
+      assert updated.bio == "Plays the oboe."
+      assert updated.pronouns == "she/her"
+      assert updated.contact_phone == "+45 12345678"
+      assert updated.contact_phone_visibility == :members
+    end
+  end
+
+  describe "visible_contact_fields/2 (SPEC §4)" do
+    test "hidden fields never appear, regardless of role" do
+      user =
+        user_fixture()
+        |> Ecto.Changeset.change(contact_phone: "12345678", contact_phone_visibility: :hidden)
+        |> Kammer.Repo.update!()
+
+      assert Accounts.visible_contact_fields(user, :owner) == []
+      assert Accounts.visible_contact_fields(user, nil) == []
+    end
+
+    test "members-visibility fields show to any member but not outsiders" do
+      user =
+        user_fixture()
+        |> Ecto.Changeset.change(
+          contact_email: "oboe@example.com",
+          contact_email_visibility: :members
+        )
+        |> Kammer.Repo.update!()
+
+      assert Accounts.visible_contact_fields(user, :member) == [{:email, "oboe@example.com"}]
+      assert Accounts.visible_contact_fields(user, :admin) == [{:email, "oboe@example.com"}]
+      assert Accounts.visible_contact_fields(user, nil) == []
+    end
+
+    test "admins-visibility fields hide from plain members" do
+      user =
+        user_fixture()
+        |> Ecto.Changeset.change(
+          contact_note: "Allergic to peanuts",
+          contact_note_visibility: :admins
+        )
+        |> Kammer.Repo.update!()
+
+      assert Accounts.visible_contact_fields(user, :admin) == [{:note, "Allergic to peanuts"}]
+      assert Accounts.visible_contact_fields(user, :member) == []
+    end
+
+    test "blank values never appear even when visibility allows them" do
+      user =
+        user_fixture()
+        |> Ecto.Changeset.change(contact_phone_visibility: :members)
+        |> Kammer.Repo.update!()
+
+      assert Accounts.visible_contact_fields(user, :member) == []
+    end
   end
 
   describe "sessions and devices" do

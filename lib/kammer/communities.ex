@@ -13,6 +13,8 @@ defmodule Kammer.Communities do
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Communities.CommunityMembership
+  alias Kammer.Communities.CustomField
+  alias Kammer.Communities.CustomFieldValue
   alias Kammer.Communities.InstanceBookmark
   alias Kammer.Communities.InstanceSettings
   alias Kammer.Repo
@@ -301,6 +303,217 @@ defmodule Kammer.Communities do
     })
     |> Repo.insert()
   end
+
+  ## Custom profile fields (SPEC §4 — the roster)
+
+  @doc """
+  Lists a community's custom profile fields, in display order.
+  """
+  @spec list_custom_fields(Community.t()) :: [CustomField.t()]
+  def list_custom_fields(%Community{} = community) do
+    Repo.all(
+      from(field in CustomField,
+        where: field.community_id == ^community.id,
+        order_by: [asc: field.position, asc: field.inserted_at]
+      )
+    )
+  end
+
+  @doc """
+  Builds a changeset for a custom field, for form rendering.
+  """
+  @spec change_custom_field(CustomField.t(), map()) :: Ecto.Changeset.t()
+  def change_custom_field(%CustomField{} = custom_field, attrs \\ %{}) do
+    CustomField.changeset(custom_field, attrs)
+  end
+
+  @doc """
+  Creates a custom profile field. Requires `:manage_community`.
+  """
+  @spec create_custom_field(User.t(), Community.t(), map()) ::
+          {:ok, CustomField.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def create_custom_field(%User{} = actor, %Community{} = community, attrs) do
+    if Authorization.can?(actor, :manage_community, community) do
+      %CustomField{}
+      |> CustomField.changeset(Map.put(attrs, "community_id", community.id))
+      |> Repo.insert()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Updates a custom profile field — e.g. making it required after
+  members have already joined. That never locks anyone out: it just
+  starts surfacing them in `missing_required_custom_fields/2`, which
+  drives a nag banner, not a hard block (that only applies at join).
+  Requires `:manage_community`.
+  """
+  @spec update_custom_field(User.t(), Community.t(), CustomField.t(), map()) ::
+          {:ok, CustomField.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def update_custom_field(
+        %User{} = actor,
+        %Community{} = community,
+        %CustomField{} = custom_field,
+        attrs
+      ) do
+    if Authorization.can?(actor, :manage_community, community) do
+      custom_field
+      |> CustomField.changeset(Map.put(attrs, "community_id", community.id))
+      |> Repo.update()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Deletes a custom profile field (and every member's answer to it).
+  Requires `:manage_community`.
+  """
+  @spec delete_custom_field(User.t(), Community.t(), CustomField.t()) ::
+          {:ok, CustomField.t()} | {:error, :unauthorized}
+  def delete_custom_field(
+        %User{} = actor,
+        %Community{} = community,
+        %CustomField{} = custom_field
+      ) do
+    if Authorization.can?(actor, :manage_community, community) do
+      Repo.delete(custom_field)
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  A member's answers to a community's custom fields, keyed by field id.
+  """
+  @spec get_custom_field_values(Community.t(), User.t()) :: %{optional(binary()) => String.t()}
+  def get_custom_field_values(%Community{} = community, %User{} = user) do
+    Repo.all(
+      from(value in CustomFieldValue,
+        join: field in assoc(value, :custom_field),
+        where: field.community_id == ^community.id and value.user_id == ^user.id,
+        select: {value.custom_field_id, value.value}
+      )
+    )
+    |> Map.new()
+  end
+
+  @doc """
+  Sets a member's answers to a community's custom fields from a
+  `%{field_id => value}` map. A blank value clears that field's answer.
+  Values for fields outside this community are ignored.
+  """
+  @spec put_custom_field_values(User.t(), Community.t(), %{optional(String.t()) => String.t()}) ::
+          :ok
+  def put_custom_field_values(%User{} = user, %Community{} = community, params) do
+    field_ids = community |> list_custom_fields() |> MapSet.new(& &1.id)
+
+    Enum.each(params, fn {field_id, value} ->
+      if MapSet.member?(field_ids, field_id) do
+        set_custom_field_value(user, field_id, value)
+      end
+    end)
+
+    :ok
+  end
+
+  defp set_custom_field_value(%User{} = user, field_id, value) do
+    case value |> to_string() |> String.trim() do
+      "" ->
+        Repo.delete_all(
+          from(value in CustomFieldValue,
+            where: value.custom_field_id == ^field_id and value.user_id == ^user.id
+          )
+        )
+
+      trimmed ->
+        %CustomFieldValue{}
+        |> CustomFieldValue.changeset(%{
+          custom_field_id: field_id,
+          user_id: user.id,
+          value: String.slice(trimmed, 0, 200)
+        })
+        |> Repo.insert(
+          on_conflict: {:replace, [:value, :updated_at]},
+          conflict_target: [:custom_field_id, :user_id]
+        )
+    end
+  end
+
+  @doc """
+  Required custom fields a member hasn't answered yet: hard-blocks
+  joining (invite redemption) and nags already-joined members when a
+  field is made required after the fact — never a lockout.
+  """
+  @spec missing_required_custom_fields(Community.t(), User.t()) :: [CustomField.t()]
+  def missing_required_custom_fields(%Community{} = community, %User{} = user) do
+    answered_field_ids =
+      community |> get_custom_field_values(user) |> Map.keys() |> MapSet.new()
+
+    community
+    |> list_custom_fields()
+    |> Enum.filter(&(&1.required and not MapSet.member?(answered_field_ids, &1.id)))
+  end
+
+  @doc """
+  A community's custom fields the given viewer role is allowed to see
+  at all, in display order — used both to render the directory's
+  filter controls and to redact `visible_custom_field_values/3`.
+  """
+  @spec list_visible_custom_fields(Community.t(), CommunityMembership.role() | nil) ::
+          [CustomField.t()]
+  def list_visible_custom_fields(%Community{} = community, viewer_role) do
+    community
+    |> list_custom_fields()
+    |> Enum.filter(&custom_field_visible?(&1.visibility, viewer_role))
+  end
+
+  @doc """
+  A target member's custom field answers the given viewer role is
+  allowed to see, as `{field, value}` pairs in display order.
+  """
+  @spec visible_custom_field_values(Community.t(), User.t(), CommunityMembership.role() | nil) ::
+          [{CustomField.t(), String.t()}]
+  def visible_custom_field_values(%Community{} = community, %User{} = target, viewer_role) do
+    values = get_custom_field_values(community, target)
+
+    community
+    |> list_visible_custom_fields(viewer_role)
+    |> Enum.flat_map(fn field ->
+      case Map.fetch(values, field.id) do
+        {:ok, value} -> [{field, value}]
+        :error -> []
+      end
+    end)
+  end
+
+  @doc """
+  Batched form of `get_custom_field_values/2` for many members at
+  once (the member directory listing) — one query instead of one per
+  member. Keyed by user id, then by field id.
+  """
+  @spec custom_field_values_by_user(Community.t(), [User.t()]) ::
+          %{optional(binary()) => %{optional(binary()) => String.t()}}
+  def custom_field_values_by_user(%Community{} = community, users) do
+    user_ids = Enum.map(users, & &1.id)
+
+    Repo.all(
+      from(value in CustomFieldValue,
+        join: field in assoc(value, :custom_field),
+        where: field.community_id == ^community.id and value.user_id in ^user_ids,
+        select: {value.user_id, value.custom_field_id, value.value}
+      )
+    )
+    |> Enum.group_by(
+      fn {user_id, _field_id, _value} -> user_id end,
+      fn {_user_id, field_id, value} -> {field_id, value} end
+    )
+    |> Map.new(fn {user_id, pairs} -> {user_id, Map.new(pairs)} end)
+  end
+
+  defp custom_field_visible?(:members, role), do: role in [:owner, :admin, :member]
+  defp custom_field_visible?(:admins, role), do: role in [:owner, :admin]
 
   ## Cross-instance bookmarks ("My other servers", SPEC §3)
 

@@ -69,6 +69,63 @@ defmodule KammerWeb.CommunityAdminTest do
     end
   end
 
+  describe "member profile fields admin (SPEC §4)" do
+    setup %{conn: conn} do
+      {community, owner} = community_with_owner_fixture()
+      %{conn: log_in_user(conn, owner), community: community, owner: owner}
+    end
+
+    test "admin adds, toggles required, and deletes a custom field", %{
+      conn: conn,
+      community: community
+    } do
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/settings")
+
+      lv
+      |> form("#custom-field-form", %{
+        "custom_field" => %{"label" => "Instrument", "field_type" => "text"}
+      })
+      |> render_submit()
+
+      assert [field] = Communities.list_custom_fields(community)
+      assert field.label == "Instrument"
+      refute field.required
+
+      html =
+        lv
+        |> element(~s(button[phx-value-id="#{field.id}"]), "Make required")
+        |> render_click()
+
+      assert html =~ "Required"
+      assert hd(Communities.list_custom_fields(community)).required
+
+      lv
+      |> element(~s(button[phx-value-id="#{field.id}"]), "Delete")
+      |> render_click()
+
+      assert Communities.list_custom_fields(community) == []
+    end
+
+    test "adding a single-choice field without options fails validation", %{
+      conn: conn,
+      community: community
+    } do
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/settings")
+
+      lv
+      |> form("#custom-field-form", %{
+        "custom_field" => %{
+          "label" => "Section",
+          "field_type" => "single_select",
+          "options" => ""
+        }
+      })
+      |> render_submit()
+
+      assert Communities.list_custom_fields(community) == []
+    end
+  end
+
   describe "group settings admin actions" do
     setup %{conn: conn} do
       {community, _owner} = community_with_owner_fixture()
@@ -209,6 +266,40 @@ defmodule KammerWeb.CommunityAdminTest do
 
       assert html =~ group.name
       assert html =~ "Your groups"
+    end
+  end
+
+  describe "required custom field nag banner (SPEC §4)" do
+    test "nags a member once a field is made required after they joined, clears once answered",
+         %{conn: conn} do
+      {community, owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+
+      {:ok, field} =
+        Communities.create_custom_field(owner, community, %{
+          "label" => "Instrument",
+          "field_type" => "text"
+        })
+
+      conn = log_in_user(conn, member)
+      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}")
+      refute html =~ "Complete profile"
+
+      {:ok, _field} =
+        Communities.update_custom_field(owner, community, field, %{"required" => true})
+
+      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}")
+      assert html =~ "Complete profile"
+
+      {:ok, complete_lv, _html} =
+        lv |> element("a", "Complete profile") |> render_click() |> follow_redirect(conn)
+
+      complete_lv
+      |> form("#complete-profile-form", %{"custom_field" => %{field.id => "Tuba"}})
+      |> render_submit()
+
+      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}")
+      refute html =~ "Complete profile"
     end
   end
 end

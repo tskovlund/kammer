@@ -128,6 +128,31 @@ defmodule KammerWeb.UserLive.SettingsTest do
 
       assert result =~ "is not a known time zone"
     end
+
+    test "updates bio, pronouns, and contact fields with their visibility (SPEC §4)", %{
+      conn: conn,
+      user: user
+    } do
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      lv
+      |> form("#settings_form", %{
+        "user" => %{
+          "display_name" => user.display_name,
+          "bio" => "Plays the oboe.",
+          "pronouns" => "she/her",
+          "contact_phone" => "+45 12345678",
+          "contact_phone_visibility" => "members"
+        }
+      })
+      |> render_submit()
+
+      updated = Kammer.Accounts.get_user!(user.id)
+      assert updated.bio == "Plays the oboe."
+      assert updated.pronouns == "she/her"
+      assert updated.contact_phone == "+45 12345678"
+      assert updated.contact_phone_visibility == :members
+    end
   end
 
   describe "confirm email" do

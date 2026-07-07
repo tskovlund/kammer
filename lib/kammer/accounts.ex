@@ -89,7 +89,8 @@ defmodule Kammer.Accounts do
   end
 
   @doc """
-  Updates display name, language, and timezone.
+  Updates display name, language, timezone, and the optional base
+  profile fields (bio, pronouns, contact info).
   """
   @spec update_user_settings(User.t(), map()) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
   def update_user_settings(%User{} = user, attrs) do
@@ -97,6 +98,29 @@ defmodule Kammer.Accounts do
     |> User.settings_changeset(attrs)
     |> Repo.update()
   end
+
+  @doc """
+  A user's contact fields (phone, public email, other) the given
+  community-role viewer is allowed to see (SPEC §4), as `{key, value}`
+  pairs. `:hidden` fields never appear, regardless of role.
+  """
+  @spec visible_contact_fields(User.t(), Kammer.Communities.CommunityMembership.role() | nil) ::
+          [{:phone | :email | :note, String.t()}]
+  def visible_contact_fields(%User{} = user, viewer_role) do
+    [
+      {:phone, user.contact_phone, user.contact_phone_visibility},
+      {:email, user.contact_email, user.contact_email_visibility},
+      {:note, user.contact_note, user.contact_note_visibility}
+    ]
+    |> Enum.filter(fn {_key, value, visibility} ->
+      value not in [nil, ""] and contact_visible?(visibility, viewer_role)
+    end)
+    |> Enum.map(fn {key, value, _visibility} -> {key, value} end)
+  end
+
+  defp contact_visible?(:hidden, _role), do: false
+  defp contact_visible?(:members, role), do: role in [:owner, :admin, :member]
+  defp contact_visible?(:admins, role), do: role in [:owner, :admin]
 
   @doc """
   Updates the user email using the given token.

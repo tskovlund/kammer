@@ -59,6 +59,49 @@ defmodule KammerWeb.UserLive.Settings do
             {gettext("Weekly (Mondays)"), "weekly"}
           ]}
         />
+
+        <div class="divider" />
+
+        <p class="pb-2 text-sm text-base-content/60">
+          {gettext(
+            "Optional — shown to the communities you're in. Contact fields stay hidden unless you choose otherwise."
+          )}
+        </p>
+        <.input field={@settings_form[:bio]} type="textarea" label={gettext("Bio")} rows="3" />
+        <.input field={@settings_form[:pronouns]} type="text" label={gettext("Pronouns")} />
+
+        <div class="flex items-end gap-2">
+          <.input field={@settings_form[:contact_phone]} type="text" label={gettext("Phone")} />
+          <.input
+            field={@settings_form[:contact_phone_visibility]}
+            type="select"
+            label={gettext("Visible to")}
+            options={visibility_options()}
+          />
+        </div>
+        <div class="flex items-end gap-2">
+          <.input
+            field={@settings_form[:contact_email]}
+            type="email"
+            label={gettext("Public contact email")}
+          />
+          <.input
+            field={@settings_form[:contact_email_visibility]}
+            type="select"
+            label={gettext("Visible to")}
+            options={visibility_options()}
+          />
+        </div>
+        <div class="flex items-end gap-2">
+          <.input field={@settings_form[:contact_note]} type="text" label={gettext("Other contact")} />
+          <.input
+            field={@settings_form[:contact_note_visibility]}
+            type="select"
+            label={gettext("Visible to")}
+            options={visibility_options()}
+          />
+        </div>
+
         <.button variant="primary" phx-disable-with={gettext("Saving...")}>
           {gettext("Save profile")}
         </.button>
@@ -226,5 +269,13 @@ defmodule KammerWeb.UserLive.Settings do
       {:error, changeset} ->
         {:noreply, assign(socket, :settings_form, to_form(changeset, action: :insert))}
     end
+  end
+
+  defp visibility_options do
+    [
+      {gettext("Nobody (hidden)"), "hidden"},
+      {gettext("Community members"), "members"},
+      {gettext("Admins only"), "admins"}
+    ]
   end
 end

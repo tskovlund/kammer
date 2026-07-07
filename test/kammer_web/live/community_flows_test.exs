@@ -11,6 +11,7 @@ defmodule KammerWeb.CommunityFlowsTest do
   import Kammer.CommunitiesFixtures
   import Phoenix.LiveViewTest
 
+  alias Kammer.Communities
   alias Kammer.Groups
   alias Kammer.Invitations
 
@@ -174,6 +175,60 @@ defmodule KammerWeb.CommunityFlowsTest do
       {:ok, _lv, html} = live(conn, ~p"/invite/not-a-real-token")
       assert html =~ "no longer valid"
     end
+
+    test "a required custom field hard-blocks at join, from the in-place accept button",
+         %{conn: conn} do
+      {community, owner} = community_with_owner_fixture()
+
+      {:ok, field} =
+        Communities.create_custom_field(owner, community, %{
+          "label" => "Instrument",
+          "field_type" => "text",
+          "required" => true
+        })
+
+      {:ok, invite} = Invitations.create_community_invite(owner, community)
+      newcomer = user_fixture()
+      conn = log_in_user(conn, newcomer)
+
+      {:ok, lv, _html} = live(conn, ~p"/invite/#{invite.token}")
+
+      {:ok, complete_lv, html} =
+        lv
+        |> element("button", "Accept invitation")
+        |> render_click()
+        |> follow_redirect(conn)
+
+      assert Communities.get_membership(community, newcomer)
+      assert html =~ "Before you continue"
+
+      complete_lv
+      |> form("#complete-profile-form", %{"custom_field" => %{field.id => "Tuba"}})
+      |> render_submit()
+      |> follow_redirect(conn, "/c/#{community.slug}")
+
+      assert Communities.missing_required_custom_fields(community, newcomer) == []
+    end
+
+    test "a required custom field hard-blocks at join through the sign-in-then-accept path",
+         %{conn: _conn} do
+      {community, owner} = community_with_owner_fixture()
+
+      {:ok, _field} =
+        Communities.create_custom_field(owner, community, %{
+          "label" => "Instrument",
+          "field_type" => "text",
+          "required" => true
+        })
+
+      {:ok, invite} = Invitations.create_community_invite(owner, community)
+      newcomer = user_fixture()
+
+      conn = build_conn() |> log_in_user(newcomer) |> get(~p"/invite/#{invite.token}/accept")
+
+      assert redirected_to(conn) == "/c/#{community.slug}/complete-profile"
+      assert Communities.get_membership(community, newcomer)
+    end
   end
 
   describe "community public page" do
@@ -204,6 +259,53 @@ defmodule KammerWeb.CommunityFlowsTest do
         build_conn() |> log_in_user(owner) |> live(~p"/c/#{community.slug}/members")
 
       assert admin_html =~ "Make admin"
+    end
+
+    test "custom field answers respect visibility, and the filter narrows results", %{
+      conn: conn
+    } do
+      {community, owner} = community_with_owner_fixture()
+      viewer = member_fixture(community)
+      tuba_player = member_fixture(community)
+      oboe_player = member_fixture(community)
+
+      {:ok, section} =
+        Communities.create_custom_field(owner, community, %{
+          "label" => "Section",
+          "field_type" => "single_select",
+          "options" => ["Brass", "Woodwind"],
+          "visibility" => "members"
+        })
+
+      {:ok, dietary} =
+        Communities.create_custom_field(owner, community, %{
+          "label" => "Dietary needs",
+          "field_type" => "text",
+          "visibility" => "admins"
+        })
+
+      :ok =
+        Communities.put_custom_field_values(tuba_player, community, %{
+          section.id => "Brass",
+          dietary.id => "Vegan"
+        })
+
+      :ok =
+        Communities.put_custom_field_values(oboe_player, community, %{section.id => "Woodwind"})
+
+      {:ok, lv, html} = conn |> log_in_user(viewer) |> live(~p"/c/#{community.slug}/members")
+
+      assert html =~ "Section: Brass"
+      refute html =~ "Dietary needs"
+      refute html =~ "Vegan"
+
+      filtered =
+        lv
+        |> form("#filter-#{section.id}", %{"value" => "Brass"})
+        |> render_change()
+
+      assert filtered =~ tuba_player.display_name
+      refute filtered =~ oboe_player.display_name
     end
   end
 
