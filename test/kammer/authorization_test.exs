@@ -149,6 +149,20 @@ defmodule Kammer.AuthorizationTest do
     end
   end
 
+  describe "instance_operator?/1" do
+    test "true only for a user with the flag set, regardless of actor shape" do
+      operator = %User{id: Ecto.UUID.generate(), instance_operator: true}
+      plain_user = %User{id: Ecto.UUID.generate(), instance_operator: false}
+
+      assert Authorization.instance_operator?(operator)
+      assert Authorization.instance_operator?(%Kammer.Accounts.Scope{user: operator})
+      refute Authorization.instance_operator?(plain_user)
+      refute Authorization.instance_operator?(%Kammer.Accounts.Scope{user: plain_user})
+      refute Authorization.instance_operator?(%Kammer.Accounts.Scope{user: nil})
+      refute Authorization.instance_operator?(nil)
+    end
+  end
+
   describe "role monotonicity" do
     property "a group admin can do everything a plain group member can" do
       check all(group <- group_generator(), action <- StreamData.member_of(@group_actions)) do

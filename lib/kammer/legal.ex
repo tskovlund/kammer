@@ -9,6 +9,7 @@ defmodule Kammer.Legal do
   use Gettext, backend: KammerWeb.Gettext
 
   alias Kammer.Accounts.User
+  alias Kammer.Authorization
   alias Kammer.Legal.LegalPage
   alias Kammer.Repo
 
@@ -46,15 +47,17 @@ defmodule Kammer.Legal do
   """
   @spec upsert_page(User.t(), String.t(), map()) ::
           {:ok, LegalPage.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
-  def upsert_page(%User{instance_operator: true} = actor, key, attrs) when key in @keys do
-    page = Repo.get_by(LegalPage, key: key) || %LegalPage{key: key}
+  def upsert_page(%User{} = actor, key, attrs) when key in @keys do
+    if Authorization.instance_operator?(actor) do
+      page = Repo.get_by(LegalPage, key: key) || %LegalPage{key: key}
 
-    page
-    |> LegalPage.changeset(Map.put(attrs, "updated_by_user_id", actor.id))
-    |> Repo.insert_or_update()
+      page
+      |> LegalPage.changeset(Map.put(attrs, "updated_by_user_id", actor.id))
+      |> Repo.insert_or_update()
+    else
+      {:error, :unauthorized}
+    end
   end
-
-  def upsert_page(%User{}, key, _attrs) when key in @keys, do: {:error, :unauthorized}
 
   @doc """
   Returns a changeset for the legal page edit form.

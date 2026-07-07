@@ -6,6 +6,7 @@ defmodule KammerWeb.LegalLive.Edit do
 
   use KammerWeb, :live_view
 
+  alias Kammer.Authorization
   alias Kammer.Legal
 
   @impl Phoenix.LiveView
@@ -50,7 +51,7 @@ defmodule KammerWeb.LegalLive.Edit do
          |> put_flash(:error, gettext("Page not found"))
          |> push_navigate(to: ~p"/")}
 
-      not user.instance_operator ->
+      not Authorization.instance_operator?(user) ->
         {:ok,
          socket
          |> put_flash(:error, gettext("Only instance operators can edit legal pages."))

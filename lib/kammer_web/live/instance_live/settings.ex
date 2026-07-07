@@ -8,6 +8,7 @@ defmodule KammerWeb.InstanceLive.Settings do
 
   use KammerWeb, :live_view
 
+  alias Kammer.Authorization
   alias Kammer.Communities
 
   @impl Phoenix.LiveView
@@ -51,7 +52,7 @@ defmodule KammerWeb.InstanceLive.Settings do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
 
-    if user.instance_operator do
+    if Authorization.instance_operator?(user) do
       settings = Communities.get_instance_settings()
 
       {:ok,

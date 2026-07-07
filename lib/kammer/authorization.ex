@@ -113,6 +113,18 @@ defmodule Kammer.Authorization do
     end
   end
 
+  @doc """
+  Whether the actor is an instance operator — the sole instance-level
+  power (SPEC §3): legal pages, instance settings, instance-wide bans,
+  demo-data purge, and (above) community creation when the policy
+  requires it. The single choke-point for that flag so it's never
+  checked as a raw struct field outside this module.
+  """
+  @spec instance_operator?(actor()) :: boolean()
+  def instance_operator?(actor) do
+    match?(%User{instance_operator: true}, unwrap_user(actor))
+  end
+
   ## Pure decision core — property-tested; takes the relationship explicitly
 
   @doc """

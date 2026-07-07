@@ -10,6 +10,7 @@ defmodule KammerWeb.InstanceLive.Moderation do
 
   import KammerWeb.KammerComponents
 
+  alias Kammer.Authorization
   alias Kammer.Moderation
   alias Kammer.Moderation.InstanceBan
 
@@ -73,7 +74,7 @@ defmodule KammerWeb.InstanceLive.Moderation do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
 
-    if user.instance_operator do
+    if Authorization.instance_operator?(user) do
       {:ok,
        socket
        |> assign(:page_title, gettext("Instance moderation"))
