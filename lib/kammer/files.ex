@@ -271,24 +271,24 @@ defmodule Kammer.Files do
   @spec fetch_accessible_file(User.t() | nil, Ecto.UUID.t()) ::
           {:ok, StoredFile.t()} | {:error, :not_found | :unauthorized}
   def fetch_accessible_file(actor, file_id) do
-    case Repo.get(StoredFile, file_id) do
-      nil ->
-        {:error, :not_found}
-
-      %StoredFile{group_id: nil} = stored_file ->
-        community = Repo.get!(Community, stored_file.community_id)
-
-        with :ok <- Authorization.authorize(actor, :view_community, community) do
-          {:ok, stored_file}
-        end
-
-      %StoredFile{} = stored_file ->
-        group = Repo.get!(Group, stored_file.group_id)
-
-        with :ok <- Authorization.authorize(actor, :view_group, group) do
-          {:ok, stored_file}
-        end
+    with {:ok, _uuid} <- Ecto.UUID.cast(file_id),
+         %StoredFile{} = stored_file <- Repo.get(StoredFile, file_id),
+         :ok <- authorize_file_access(actor, stored_file) do
+      {:ok, stored_file}
+    else
+      {:error, :unauthorized} -> {:error, :unauthorized}
+      _missing_or_invalid -> {:error, :not_found}
     end
+  end
+
+  defp authorize_file_access(actor, %StoredFile{group_id: nil} = stored_file) do
+    community = Repo.get!(Community, stored_file.community_id)
+    Authorization.authorize(actor, :view_community, community)
+  end
+
+  defp authorize_file_access(actor, %StoredFile{} = stored_file) do
+    group = Repo.get!(Group, stored_file.group_id)
+    Authorization.authorize(actor, :view_group, group)
   end
 
   @doc """

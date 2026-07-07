@@ -10,6 +10,14 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Files.fetch_accessible_file/2` skipped the `Ecto.UUID.cast`
+  guard its sibling `fetch_viewable_*` functions use, so a malformed
+  file ID raised `Ecto.Query.CastError` instead of returning
+  `{:error, :not_found}`. This broke `FileController.serve/4`'s
+  deliberate 404 branch (the exception aborted the `with` before it
+  could run) and crashed the `FileLive.Index` delete handler's
+  LiveView process on a tampered `id` param. Found by the round-2
+  audit. Now guards the same way its siblings do.
 - `Kammer.Feed.create_engine_comment/5`'s reply-flattening
   (`normalize_parent/1`, now `/2`) accepted any `parent_comment_id`
   the client sent and looked it up globally, with no check that the
