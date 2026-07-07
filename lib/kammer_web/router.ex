@@ -12,13 +12,10 @@ defmodule KammerWeb.Router do
     plug :protect_from_forgery
 
     # SPEC §11: CSP. 'unsafe-inline' styles are required by the runtime
-    # accent-tinting (style attributes) and inline theme bootstrap.
-    plug :put_secure_browser_headers, %{
-      "content-security-policy" =>
-        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; " <>
-          "script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; " <>
-          "object-src 'none'; frame-ancestors 'self'; base-uri 'self'"
-    }
+    # accent-tinting (style attributes); scripts are nonce-gated instead
+    # of 'unsafe-inline' (pre-1.0 hardening) — see CspNonce.
+    plug :put_secure_browser_headers
+    plug KammerWeb.Plugs.CspNonce
 
     plug :fetch_current_scope_for_user
     plug KammerWeb.Plugs.RequireSetup

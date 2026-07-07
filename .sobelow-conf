@@ -20,13 +20,21 @@
   #   passkey's own public_key_cose column with the [:safe] option — data
   #   this same code wrote at registration, never request input, so there
   #   is no untrusted-deserialization boundary here.
+  # Config.CSP: a real, strict CSP is set on every request by
+  #   KammerWeb.Plugs.CspNonce (pre-1.0 hardening: nonce-based script-src,
+  #   no 'unsafe-inline') — Sobelow's static check only recognizes a
+  #   literal content-security-policy key in the put_secure_browser_headers
+  #   call, so it can't see a header set by a separate plug. Verified with
+  #   test/kammer_web/plugs/csp_nonce_test.exs and a real-browser check
+  #   (zero console CSP violations, inline theme script executes).
   ignore: [
     "Config.HTTPS",
     "Traversal.FileModule",
     "Traversal.SendFile",
     "Traversal.SendDownload",
     "XSS.ContentType",
-    "Misc.BinToTerm"
+    "Misc.BinToTerm",
+    "Config.CSP"
   ],
   ignore_files: []
 ]
