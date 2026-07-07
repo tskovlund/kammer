@@ -371,6 +371,38 @@ defmodule Kammer.Authorization do
     if Group.feature_enabled?(group, feature), do: :ok, else: {:error, :not_found}
   end
 
+  @doc """
+  Whether the actor may manage (edit, delete, cancel, close, or record
+  an outcome for) a resource — its creator, or a group moderator. The
+  shared rule behind events, event series, availability polls,
+  assignments, and decisions (whose "creator" is its linked post's
+  author, so callers resolve that id themselves before calling this).
+  Pure, like the rest of the decision core — callers load the
+  relationship first (see `can_manage_own_resource?/3` for the
+  convenience wrapper that does that).
+  """
+  @spec can_manage_own_resource?(actor(), Ecto.UUID.t() | nil, Group.t(), relationship()) ::
+          boolean()
+  def can_manage_own_resource?(actor, creator_id, %Group{} = group, relationship) do
+    creator?(actor, creator_id) or group_admin_powers?(group, relationship)
+  end
+
+  @doc """
+  Convenience wrapper for `can_manage_own_resource?/4` that loads the
+  actor's relationship to `group` first.
+  """
+  @spec can_manage_own_resource?(actor(), Ecto.UUID.t() | nil, Group.t()) :: boolean()
+  def can_manage_own_resource?(actor, creator_id, %Group{} = group) do
+    can_manage_own_resource?(actor, creator_id, group, relationship(actor, group))
+  end
+
+  defp creator?(actor, creator_id) do
+    case unwrap_user(actor) do
+      %User{id: user_id} -> user_id == creator_id
+      nil -> false
+    end
+  end
+
   defp author?(actor, %{author_user_id: author_user_id}) do
     case unwrap_user(actor) do
       %User{id: user_id} -> user_id == author_user_id

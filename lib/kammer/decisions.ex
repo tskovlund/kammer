@@ -92,9 +92,7 @@ defmodule Kammer.Decisions do
   a group moderator.
   """
   @spec can_record_outcome?(User.t() | nil, Decision.t(), Group.t()) :: boolean()
-  def can_record_outcome?(nil, %Decision{}, %Group{}), do: false
-
-  def can_record_outcome?(%User{} = actor, %Decision{} = decision, %Group{} = group) do
+  def can_record_outcome?(actor, %Decision{} = decision, %Group{} = group) do
     proposer_id =
       Repo.one(
         from(post in Kammer.Feed.Post,
@@ -103,7 +101,7 @@ defmodule Kammer.Decisions do
         )
       )
 
-    proposer_id == actor.id or Authorization.can?(actor, :moderate_group, group)
+    Authorization.can_manage_own_resource?(actor, proposer_id, group)
   end
 
   @doc """

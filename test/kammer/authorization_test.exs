@@ -240,4 +240,58 @@ defmodule Kammer.AuthorizationTest do
       assert Authorization.can?(actor_for(owner), :delete_community, community, owner)
     end
   end
+
+  describe "can_manage_own_resource?/4 (creator-or-moderator: events, polls, assignments, decisions)" do
+    property "the creator can always manage their own resource, on any relationship" do
+      check all(group <- group_generator(), relationship <- relationship_generator()) do
+        actor = actor_for(relationship)
+        assert Authorization.can_manage_own_resource?(actor, actor.id, group, relationship)
+      end
+    end
+
+    property "a group moderator can always manage any resource in their group" do
+      check all(group <- group_generator()) do
+        moderator_relationship = %{
+          instance_operator?: false,
+          community_role: :member,
+          group_role: :admin
+        }
+
+        moderator = actor_for(moderator_relationship)
+        someone_elses_resource = Ecto.UUID.generate()
+
+        assert Authorization.can_manage_own_resource?(
+                 moderator,
+                 someone_elses_resource,
+                 group,
+                 moderator_relationship
+               )
+      end
+    end
+
+    property "a plain member who isn't the creator can never manage the resource" do
+      check all(group <- group_generator()) do
+        member_relationship = %{
+          instance_operator?: false,
+          community_role: :member,
+          group_role: :member
+        }
+
+        member = actor_for(member_relationship)
+        someone_elses_resource = Ecto.UUID.generate()
+
+        refute Authorization.can_manage_own_resource?(
+                 member,
+                 someone_elses_resource,
+                 group,
+                 member_relationship
+               )
+      end
+    end
+
+    test "anonymous actors can never manage a resource, even one with no creator" do
+      group = %Group{sealed: false}
+      refute Authorization.can_manage_own_resource?(nil, nil, group, @anonymous_relationship)
+    end
+  end
 end

@@ -117,11 +117,8 @@ defmodule Kammer.Assignments do
   a group moderator.
   """
   @spec can_manage_assignment?(User.t() | nil, Assignment.t(), Group.t()) :: boolean()
-  def can_manage_assignment?(nil, %Assignment{}, %Group{}), do: false
-
-  def can_manage_assignment?(%User{} = actor, %Assignment{} = assignment, %Group{} = group) do
-    assignment.created_by_user_id == actor.id or
-      Authorization.can?(actor, :moderate_group, group)
+  def can_manage_assignment?(actor, %Assignment{} = assignment, %Group{} = group) do
+    Authorization.can_manage_own_resource?(actor, assignment.created_by_user_id, group)
   end
 
   @doc """
