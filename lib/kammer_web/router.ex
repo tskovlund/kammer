@@ -64,6 +64,10 @@ defmodule KammerWeb.Router do
     pipe_through :browser
 
     get "/events/:event_id/ics", CalendarController, :event
+    # RSS/Atom for public groups (SPEC §8) — no secret token, gated by
+    # the same anonymous-visibility check the group page itself uses.
+    get "/g/:group_slug/feed.rss", GroupFeedController, :rss
+    get "/g/:group_slug/feed.atom", GroupFeedController, :atom
 
     # Member-only pages. Defined BEFORE the public session so literal
     # segments win over the public wildcard (/events/new must not be

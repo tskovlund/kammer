@@ -30,11 +30,11 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
-  erasure, the audit log, passkeys, event recurrence, and the admin
-  update notice** (§5.6) — see that section for what shipped and what
-  remains in each.
+  erasure, the audit log, passkeys, event recurrence, the admin
+  update notice, and RSS/Atom feeds** (§5.6) — see that section for
+  what shipped and what remains in each.
 
-Suite at handoff: **481 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **496 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -369,10 +369,21 @@ atom. Danish register: a slot is "en tjans".
   instance home page (`InstanceLive.Home`), operators only, only when
   a newer version is actually recorded. Tested against a stubbed
   `Req.Test` transport, not a live GitHub call.
-- Then: RSS/Atom for public groups, content-minimized email mode,
-  custom profile fields + roster, activity-sort view (opt-in,
-  chronological stays default — values!), branding UI, Prometheus
-  (PromEx), ClamAV option, NixOS module.
+- ✅ **RSS/Atom for public groups** — SHIPPED: `Kammer.Feed.Syndication`
+  (hand-rolled, same pattern as `Kammer.Calendar.ICS` — no
+  feed-generation dependency) + `KammerWeb.GroupFeedController` at
+  `/c/:slug/g/:group_slug/feed.{rss,atom}`. No secret token — gated
+  by the exact same `Groups.fetch_viewable_group/3` anonymous-
+  visibility check the group page itself uses, so it's public for
+  `public_link`/`public_listed` groups and 404s otherwise. Reuses
+  `Feed.list_group_feed_page/4` (chronological, no pinned reordering)
+  capped at 20 posts; soft-deleted posts excluded. Linked from the
+  group page. Remaining: no per-post permalink exists yet in the UI,
+  so every item links to the group page rather than a specific post —
+  revisit once/if posts get individual URLs.
+- Then: content-minimized email mode, custom profile fields + roster,
+  activity-sort view (opt-in, chronological stays default — values!),
+  branding UI, Prometheus (PromEx), ClamAV option, NixOS module.
 - **Security hardening, pre-1.0**: replace the CSP's
   `'unsafe-inline'` script allowance with LiveView nonce-based CSP
   (documented posture in the router; real work, tracked here so it

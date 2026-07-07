@@ -231,4 +231,25 @@ defmodule KammerWeb.FeedFlowsTest do
       assert render(lv) =~ "Live arrival"
     end
   end
+
+  describe "RSS feed link (SPEC §8)" do
+    test "shown on a public group's page, even to an anonymous visitor" do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, visibility: :public_listed)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/c/#{community.slug}/g/#{group.slug}")
+
+      assert html =~ ~p"/c/#{community.slug}/g/#{group.slug}/feed.rss"
+    end
+
+    test "not shown on a community-visibility group's page", %{conn: conn} do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, visibility: :community)
+      member = member_fixture(community)
+
+      {:ok, _lv, html} = live(log_in_user(conn, member), ~p"/c/#{community.slug}/g/#{group.slug}")
+
+      refute html =~ "feed.rss"
+    end
+  end
 end
