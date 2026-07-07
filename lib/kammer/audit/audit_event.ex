@@ -21,6 +21,6 @@ defmodule Kammer.Audit.AuditEvent do
     belongs_to :community, Kammer.Communities.Community
     belongs_to :actor_user, Kammer.Accounts.User
 
-    timestamps(updated_at: false, type: :utc_datetime)
+    timestamps(updated_at: false, type: :utc_datetime_usec)
   end
 end

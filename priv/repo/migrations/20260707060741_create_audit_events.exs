@@ -17,8 +17,12 @@ defmodule Kammer.Repo.Migrations.CreateAuditEvents do
       add :summary, :text, null: false
       add :metadata, :map, null: false, default: %{}
 
-      # Append-only: insert only, no updated_at.
-      timestamps(updated_at: false, type: :utc_datetime)
+      # Append-only: insert only, no updated_at. Microsecond precision
+      # (unlike the rest of the schema) because several audit entries
+      # can legitimately land within the same second and "newest
+      # first" must stay a real order, not a tie Postgres breaks
+      # arbitrarily.
+      timestamps(updated_at: false, type: :utc_datetime_usec)
     end
 
     create index(:audit_events, [:community_id, :inserted_at])
