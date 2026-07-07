@@ -104,14 +104,6 @@ override everything below.
 Roughly descending priority; owner has said to use judgment on
 ordering within this list.
 
-### File search + text extraction
-
-Remaining half of global search (posts/comments/events already ship).
-Must ride the existing folder-permission invariant — a file's search
-visibility can never exceed its folder's. Extracted text (PDF,
-plaintext) via an Oban job, graceful skip on unsupported types, same
-FTS index pattern as `Kammer.Search`.
-
 ### Rotations
 
 Recurring duty rosters (SPEC §23): a roster of members + a rotation
@@ -201,6 +193,13 @@ shell, push (APNs/FCM), secure token storage.
   still wizard-only with no post-setup edit UI (branding UI above
   covers `instance_name`; the other two would need their own small
   settings additions).
+- #64: `Files.fetch_accessible_file/2` (the file-serving routes) checks
+  only coarse scope visibility, not folder `admins_only` read
+  overrides — unlike `list_files/3`. A file in a restricted folder is
+  hidden from listings but still directly downloadable by ID. Found
+  while shipping file search (which correctly never surfaces the ID);
+  fixing the file-serving path itself is separate, deliberately
+  out-of-scope work.
 
 ## 5. Standing operations
 

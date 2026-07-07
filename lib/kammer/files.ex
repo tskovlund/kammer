@@ -249,8 +249,18 @@ defmodule Kammer.Files do
           "kind" => "file"
         })
 
-      %StoredFile{} |> StoredFile.create_changeset(attrs) |> Repo.insert()
+      with {:ok, stored_file} <-
+             %StoredFile{} |> StoredFile.create_changeset(attrs) |> Repo.insert() do
+        enqueue_text_extraction(stored_file)
+        {:ok, stored_file}
+      end
     end
+  end
+
+  defp enqueue_text_extraction(%StoredFile{} = stored_file) do
+    %{"stored_file_id" => stored_file.id}
+    |> Kammer.Workers.FileTextExtractionWorker.new()
+    |> Oban.insert()
   end
 
   @doc """
@@ -406,14 +416,29 @@ defmodule Kammer.Files do
     |> current_versions_only()
   end
 
-  # Old versions never appear in listings — only an entry's current
-  # version (entry-less rows, e.g. feed uploads, list as before).
-  defp current_versions_only(query) do
+  @doc """
+  Restricts a `StoredFile` query to only current file-entry versions —
+  old versions never appear in listings or search (entry-less rows,
+  e.g. feed uploads, are unaffected).
+  """
+  @spec current_versions_only(Ecto.Query.t()) :: Ecto.Query.t()
+  def current_versions_only(query) do
     from(stored_file in query,
       left_join: entry in FileEntry,
       on: entry.id == stored_file.file_entry_id,
       where: is_nil(stored_file.file_entry_id) or entry.current_version_id == stored_file.id
     )
+  end
+
+  @doc """
+  Every folder in a community — both the community space and every
+  group's — for building an in-memory folder tree (`Kammer.Search`
+  uses this to check the read-override invariant against a batch of
+  candidate files without one query per file).
+  """
+  @spec list_all_folders(Community.t()) :: [Folder.t()]
+  def list_all_folders(%Community{} = community) do
+    Repo.all(from folder in Folder, where: folder.community_id == ^community.id)
   end
 
   defp file_folder_condition(nil), do: dynamic([stored_file], is_nil(stored_file.folder_id))

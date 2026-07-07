@@ -6,6 +6,7 @@
     "nodejs@22",
     "postgresql@16",
     "vips@latest",
+    "poppler-utils@latest",
     "pkg-config@latest",
     "lefthook@latest",
     "inotify-tools@latest"

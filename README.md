@@ -67,8 +67,9 @@ screen.
   events, a flat assignments list built on volunteering, and a decisions
   register for minutes-grade institutional memory. Each is a toggle,
   off by default.
-- **Search** — full-text across posts, comments, and events, guaranteed
-  (property-tested) never to surface anything you couldn't already see.
+- **Search** — full-text across posts, comments, events, and files (names
+  and extracted PDF/plaintext), guaranteed (property-tested) never to
+  surface anything you couldn't already see.
 - **Notifications** — in-app center, email, and Web Push with sane
   "highlights" defaults.
 - **Home** — one merged, strictly chronological view of everything you

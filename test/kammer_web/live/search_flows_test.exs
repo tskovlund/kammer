@@ -10,6 +10,8 @@ defmodule KammerWeb.SearchFlowsTest do
   import Phoenix.LiveViewTest
 
   alias Kammer.Feed
+  alias Kammer.Files.StoredFile
+  alias Kammer.Repo
 
   defp search_context(_context) do
     {community, _owner} = community_with_owner_fixture()
@@ -20,6 +22,21 @@ defmodule KammerWeb.SearchFlowsTest do
       Feed.create_post(member, group, %{"body_markdown" => "Sommerkoncerten er bekræftet"})
 
     %{community: community, group: group, member: member}
+  end
+
+  # No real bytes needed to render a search result — only a DB row that
+  # matches the same shape `Kammer.Files` produces.
+  defp stored_file_fixture(group, filename) do
+    %StoredFile{}
+    |> StoredFile.create_changeset(%{
+      "filename" => filename,
+      "content_type" => "text/plain",
+      "byte_size" => 42,
+      "storage_key" => "test/#{Ecto.UUID.generate()}.txt",
+      "community_id" => group.community_id,
+      "group_id" => group.id
+    })
+    |> Repo.insert!()
   end
 
   describe "searching" do
@@ -51,6 +68,19 @@ defmodule KammerWeb.SearchFlowsTest do
       html = render(lv)
       refute html =~ "Sommerkoncerten er bekræftet"
       assert html =~ "Nothing found"
+    end
+
+    test "a member finds a file by name", %{community: community, group: group, member: member} do
+      stored_file_fixture(group, "koncertplakat.pdf")
+
+      conn = log_in_user(build_conn(), member)
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/search")
+
+      lv |> form("#search-form", %{q: "koncertplakat"}) |> render_change()
+
+      html = render(lv)
+      assert html =~ "koncertplakat.pdf"
+      assert html =~ "/download"
     end
   end
 end
