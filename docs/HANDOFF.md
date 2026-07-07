@@ -31,10 +31,10 @@ merged, plus, from Phase 2 and the decided roadmap:
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
   erasure, the audit log, passkeys, event recurrence, the admin
-  update notice, and RSS/Atom feeds** (§5.6) — see that section for
-  what shipped and what remains in each.
+  update notice, RSS/Atom feeds, and content-minimized email mode**
+  (§5.6) — see that section for what shipped and what remains in each.
 
-Suite at handoff: **496 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **501 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -289,7 +289,7 @@ atom. Danish register: a slot is "en tjans".
   sends nothing; own posts excluded), `digest_frequency` on users
   (opt-in, `:off` default), setting under Account settings. Remaining:
   **newsletter subscriptions** (guest_identities subscribing to public
-  groups, ADR 0013 again) and the content-minimized email mode.
+  groups, ADR 0013 again).
 - ✅ **Backups** — SHIPPED: `Kammer.Backups` (pg_dump custom format +
   uploads tar, optional age encryption, per-kind pruning),
   `mix kammer.backup`, `Kammer.Release.backup/1`, nightly Oban cron
@@ -381,9 +381,21 @@ atom. Danish register: a slot is "en tjans".
   group page. Remaining: no per-post permalink exists yet in the UI,
   so every item links to the group page rather than a specific post —
   revisit once/if posts get individual URLs.
-- Then: content-minimized email mode, custom profile fields + roster,
-  activity-sort view (opt-in, chronological stays default — values!),
-  branding UI, Prometheus (PromEx), ClamAV option, NixOS module.
+- ✅ **Content-minimized email mode** — SHIPPED (ADR 0011):
+  `InstanceSettings.content_minimized_emails` (operator-only toggle,
+  default off) at `/instance/settings` (new, linked from the instance
+  home for operators — the first post-setup instance-settings edit
+  surface; `instance_name`/`community_creation_policy`/
+  `storage_policy` still have none). Per-event notification emails
+  (`Kammer.Notifications.NotificationEmail`) never carried post
+  content to begin with — activity-kind summaries only ("X mentioned
+  you") — so the toggle only changes `Kammer.Digests`: minimized
+  digests drop author names and excerpts for a per-group count + link
+  ("N new posts in {group}"). Auth/RSVP emails are exempt by
+  construction — they were never touched.
+- Then: custom profile fields + roster, activity-sort view (opt-in,
+  chronological stays default — values!), branding UI, Prometheus
+  (PromEx), ClamAV option, NixOS module.
 - **Security hardening, pre-1.0**: replace the CSP's
   `'unsafe-inline'` script allowance with LiveView nonce-based CSP
   (documented posture in the router; real work, tracked here so it

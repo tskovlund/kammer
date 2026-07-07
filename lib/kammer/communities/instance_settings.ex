@@ -27,6 +27,11 @@ defmodule Kammer.Communities.InstanceSettings do
     field :storage_policy, Ecto.Enum, values: [:unmetered, :quota], default: :unmetered
     field :setup_completed_at, :utc_datetime
 
+    # SPEC §9 / ADR 0011: strips post content from digest emails when on.
+    # Per-event notification emails never carried content to begin with,
+    # so this only changes what Kammer.Digests renders.
+    field :content_minimized_emails, :boolean, default: false
+
     # Written by Kammer.UpdateCheck, not by the settings form — never
     # cast here (see the Ecto guideline on programmatically-set fields).
     field :latest_known_version, :string
@@ -49,7 +54,8 @@ defmodule Kammer.Communities.InstanceSettings do
       :default_locale,
       :community_creation_policy,
       :storage_policy,
-      :setup_completed_at
+      :setup_completed_at,
+      :content_minimized_emails
     ])
     |> validate_inclusion(:default_locale, ["en", "da"])
     |> unique_constraint(:singleton_guard)

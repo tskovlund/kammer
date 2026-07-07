@@ -43,6 +43,14 @@ defmodule Kammer.Communities do
 
   def update_instance_settings(%User{}, _attrs), do: {:error, :unauthorized}
 
+  @doc """
+  Builds a changeset for editing instance settings, for form rendering.
+  """
+  @spec change_instance_settings(InstanceSettings.t(), map()) :: Ecto.Changeset.t()
+  def change_instance_settings(%InstanceSettings{} = settings, attrs \\ %{}) do
+    InstanceSettings.changeset(settings, attrs)
+  end
+
   ## Communities
 
   @doc """

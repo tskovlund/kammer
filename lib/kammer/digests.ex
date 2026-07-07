@@ -8,6 +8,10 @@ defmodule Kammer.Digests do
 
   Content reuses the Home lens's membership-is-visibility argument:
   every item summarized is one the user could already reach.
+
+  Respects the instance-wide content-minimized email toggle (SPEC §9 /
+  ADR 0011): when on, the posts section drops author names and
+  excerpts in favor of a per-group count and link.
   """
 
   use Gettext, backend: KammerWeb.Gettext
@@ -18,6 +22,7 @@ defmodule Kammer.Digests do
   import Swoosh.Email, except: [from: 2]
 
   alias Kammer.Accounts.User
+  alias Kammer.Communities
   alias Kammer.Events.Event
   alias Kammer.Feed.Post
   alias Kammer.Groups.GroupMembership
@@ -70,7 +75,8 @@ defmodule Kammer.Digests do
       if posts == [] and events == [] do
         :skipped
       else
-        user |> digest_email(posts, events, since) |> Mailer.deliver()
+        minimized? = Communities.get_instance_settings().content_minimized_emails
+        user |> digest_email(posts, events, since, minimized?) |> Mailer.deliver()
         :sent
       end
 
@@ -131,7 +137,7 @@ defmodule Kammer.Digests do
     )
   end
 
-  defp digest_email(user, posts, events, since) do
+  defp digest_email(user, posts, events, since, minimized?) do
     Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
       product_name = Application.get_env(:kammer, :product_name, "Kammer")
 
@@ -139,13 +145,13 @@ defmodule Kammer.Digests do
       |> to({user.display_name, user.email})
       |> Swoosh.Email.from(mail_from())
       |> subject(gettext("%{product} digest: what you missed", product: product_name))
-      |> text_body(digest_body(user, posts, events, since))
+      |> text_body(digest_body(user, posts, events, since, minimized?))
     end)
   end
 
-  defp digest_body(user, posts, events, _since) do
+  defp digest_body(user, posts, events, _since, minimized?) do
     sections =
-      [posts_section(posts), events_section(user, events)]
+      [posts_section(posts, minimized?), events_section(user, events)]
       |> Enum.reject(&is_nil/1)
       |> Enum.join("\n\n")
 
@@ -158,9 +164,30 @@ defmodule Kammer.Digests do
     """
   end
 
-  defp posts_section([]), do: nil
+  defp posts_section([], _minimized?), do: nil
 
-  defp posts_section(posts) do
+  defp posts_section(posts, true) do
+    lines =
+      posts
+      |> Enum.group_by(& &1.group_id)
+      |> Enum.map(fn {_group_id, group_posts} ->
+        {List.first(group_posts).group, length(group_posts)}
+      end)
+      |> Enum.sort_by(fn {group, _count} -> {group.community.name, group.name} end)
+      |> Enum.map_join("\n", fn {group, count} ->
+        "  - #{ngettext("%{count} new post", "%{count} new posts", count)} " <>
+          "in #{group.community.name} / #{group.name} — #{group_url(group)}"
+      end)
+
+    """
+    #{gettext("New posts")}
+
+    #{lines}
+    """
+    |> String.trim_trailing()
+  end
+
+  defp posts_section(posts, false) do
     lines =
       posts
       |> Enum.group_by(fn post -> post.group.community.name end)
@@ -180,6 +207,11 @@ defmodule Kammer.Digests do
     #{lines}
     """
     |> String.trim_trailing()
+  end
+
+  defp group_url(group) do
+    community = group.community
+    "#{KammerWeb.Endpoint.url()}/c/#{community.slug}/g/#{group.slug}"
   end
 
   defp events_section(_user, []), do: nil
