@@ -29,6 +29,8 @@ defmodule Kammer.Files.StoredFile do
     field :processed_at, :utc_datetime
     field :transient_expires_at, :utc_datetime
     field :version_seq, :integer, read_after_writes: true
+    field :extracted_text, :string
+    field :text_extracted_at, :utc_datetime
 
     belongs_to :community, Kammer.Communities.Community
     belongs_to :group, Kammer.Groups.Group

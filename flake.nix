@@ -29,6 +29,7 @@
             pkgs.nodejs_22
             pkgs.postgresql_16
             pkgs.vips
+            pkgs.poppler-utils
             pkgs.pkg-config
             pkgs.lefthook
             pkgs.git

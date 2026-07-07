@@ -53,12 +53,18 @@ defmodule Kammer.SearchTest do
       event_results = Search.search(member, community, "generalprøve")
       assert length(event_results.events) == 1
 
-      assert Search.search(member, community, "   ") == %{posts: [], comments: [], events: []}
+      assert Search.search(member, community, "   ") == %{
+               posts: [],
+               comments: [],
+               events: [],
+               files: []
+             }
 
       assert Search.search(member, community, "findesikke") == %{
                posts: [],
                comments: [],
-               events: []
+               events: [],
+               files: []
              }
     end
 

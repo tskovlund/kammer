@@ -1824,6 +1824,7 @@ msgid "Browse"
 msgstr "Gennemse"
 
 #: lib/kammer_web/components/layouts.ex:204
+#: lib/kammer_web/live/search_live/index.ex:106
 #, elixir-autogen, elixir-format
 msgid "Community files"
 msgstr "Fællesskabets filer"
@@ -1857,6 +1858,7 @@ msgstr "Download"
 #: lib/kammer_web/live/file_live/index.ex:34
 #: lib/kammer_web/live/group_live/settings.ex:443
 #: lib/kammer_web/live/group_live/show.ex:72
+#: lib/kammer_web/live/search_live/index.ex:97
 #, elixir-autogen, elixir-format
 msgid "Files"
 msgstr "Filer"
@@ -3216,7 +3218,7 @@ msgstr "forslag & afstemning"
 msgid "recorded by %{name}"
 msgstr "protokolleret af %{name}"
 
-#: lib/kammer_web/live/search_live/index.ex:98
+#: lib/kammer_web/live/search_live/index.ex:114
 #, elixir-autogen, elixir-format
 msgid "Nothing found"
 msgstr "Intet fundet"
@@ -3231,16 +3233,6 @@ msgstr "Opslag"
 #, elixir-autogen, elixir-format
 msgid "Search"
 msgstr "Søg"
-
-#: lib/kammer_web/live/search_live/index.ex:36
-#, elixir-autogen, elixir-format
-msgid "Search posts, comments, and events…"
-msgstr "Søg i opslag, kommentarer og begivenheder…"
-
-#: lib/kammer_web/live/search_live/index.ex:99
-#, elixir-autogen, elixir-format
-msgid "Try different words — search looks at posts, comments, and events."
-msgstr "Prøv andre ord — søgningen kigger i opslag, kommentarer og begivenheder."
 
 #: lib/kammer/digests.ex:178
 #: lib/kammer/digests.ex:205
@@ -4092,3 +4084,13 @@ msgstr "en ny e-mail for hvert opslag"
 #, elixir-autogen, elixir-format
 msgid "a weekly digest"
 msgstr "en ugentlig opsummering"
+
+#: lib/kammer_web/live/search_live/index.ex:36
+#, elixir-autogen, elixir-format
+msgid "Search posts, comments, events, and files…"
+msgstr "Søg i opslag, kommentarer, begivenheder og filer…"
+
+#: lib/kammer_web/live/search_live/index.ex:116
+#, elixir-autogen, elixir-format
+msgid "Try different words — search looks at posts, comments, events, and files."
+msgstr "Prøv andre ord — søgningen kigger i opslag, kommentarer, begivenheder og filer."

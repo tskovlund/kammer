@@ -10,6 +10,17 @@ and this project adheres to
 
 ### Added
 
+- File search + text extraction (SPEC §10/§16): the last piece of
+  global search — files now surface by filename and by extracted text
+  (PDF via `pdftotext`, plaintext read directly), alongside posts,
+  comments, and events. Text extraction runs off the request path in
+  an Oban job after upload, with a graceful skip for unsupported
+  content types. File search rides the folder-permission invariant
+  (ADR 0009) exactly: a loose SQL/full-text candidate query is
+  narrowed in Elixir with the same `Authorization.can_read_folder?/4`
+  decision `Kammer.Files.list_files/3` uses, so a file in an
+  `admins_only` folder never surfaces regardless of its group's
+  visibility.
 - Newsletter subscriptions (SPEC §8, ADR 0013 extended): anonymous
   visitors on a public group's page can subscribe by email — no
   account, double opt-in through a signed confirm link, choice of

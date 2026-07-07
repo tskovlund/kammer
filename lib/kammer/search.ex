@@ -1,16 +1,20 @@
 defmodule Kammer.Search do
   @moduledoc """
   Global search within a community (SPEC §16): Postgres full-text
-  search over posts, comments, and events, filtered through
+  search over posts, comments, events, and files, filtered through
   `Authorization.listable_groups_query/2` — search results are a form
   of *surfacing*, so they follow listing visibility, not link
   reachability (a `public_link` group's content never surfaces to
   non-members). The invariant — search never returns what the viewer
   couldn't already see — is property-tested.
 
-  File search is deliberately absent until it can ride the
-  folder-permission invariant properly (tracked in #33, together with
-  file text extraction).
+  Files additionally ride the folder-permission invariant (SPEC §7,
+  ADR 0009): SQL does the loose group/community and full-text
+  filtering, then each candidate is checked in Elixir against
+  `Authorization.can_read_folder?/4` — the same decision function
+  `Kammer.Files.list_files/3` uses — over an in-memory folder chain, so
+  a file in an `admins_only` folder never surfaces to a non-admin
+  regardless of its group's visibility.
 
   The 'simple' text-search configuration matches the GIN indexes:
   no language stemming, because instances mix Danish and English.
@@ -25,11 +29,21 @@ defmodule Kammer.Search do
   alias Kammer.Events.Event
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
+  alias Kammer.Files
+  alias Kammer.Files.Folder
+  alias Kammer.Files.StoredFile
+  alias Kammer.Groups.Group
   alias Kammer.Repo
 
   @per_section 10
+  @file_candidate_limit 50
 
-  @type results() :: %{posts: [Post.t()], comments: [Comment.t()], events: [Event.t()]}
+  @type results() :: %{
+          posts: [Post.t()],
+          comments: [Comment.t()],
+          events: [Event.t()],
+          files: [StoredFile.t()]
+        }
 
   @doc """
   Searches the community for the viewer. Returns up to #{@per_section}
@@ -41,7 +55,7 @@ defmodule Kammer.Search do
     trimmed = String.trim(query_string || "")
 
     if trimmed == "" do
-      %{posts: [], comments: [], events: []}
+      empty_results()
     else
       group_ids_query =
         actor
@@ -51,10 +65,13 @@ defmodule Kammer.Search do
       %{
         posts: search_posts(group_ids_query, trimmed),
         comments: search_comments(group_ids_query, trimmed),
-        events: search_events(group_ids_query, trimmed)
+        events: search_events(group_ids_query, trimmed),
+        files: search_files(actor, community, group_ids_query, trimmed)
       }
     end
   end
+
+  defp empty_results, do: %{posts: [], comments: [], events: [], files: []}
 
   # Only published, approved, undeleted posts — the same rules the feed
   # applies for a non-author viewer.
@@ -169,5 +186,97 @@ defmodule Kammer.Search do
         preload: [:group]
       )
     )
+  end
+
+  # Loose SQL filter (community/group membership of the candidate's
+  # scope, plus full-text match) over-selects a candidate set; the
+  # folder-permission invariant is then checked precisely in Elixir
+  # below, since it depends on per-folder overrides SQL can't express
+  # without a recursive CTE per row.
+  defp search_files(actor, community, group_ids_query, query_string) do
+    candidates =
+      Repo.all(
+        from(stored_file in StoredFile,
+          where: stored_file.community_id == ^community.id,
+          where: is_nil(stored_file.transient_expires_at),
+          where:
+            is_nil(stored_file.group_id) or stored_file.group_id in subquery(group_ids_query),
+          where:
+            fragment(
+              "to_tsvector('simple', regexp_replace(coalesce(?, ''), '[._-]', ' ', 'g') || ' ' || coalesce(?, '')) @@ websearch_to_tsquery('simple', ?)",
+              stored_file.filename,
+              stored_file.extracted_text,
+              ^query_string
+            ),
+          order_by: [
+            desc:
+              fragment(
+                "ts_rank(to_tsvector('simple', regexp_replace(coalesce(?, ''), '[._-]', ' ', 'g') || ' ' || coalesce(?, '')), websearch_to_tsquery('simple', ?))",
+                stored_file.filename,
+                stored_file.extracted_text,
+                ^query_string
+              ),
+            desc: stored_file.inserted_at
+          ],
+          limit: @file_candidate_limit,
+          preload: [:group]
+        )
+        |> Files.current_versions_only()
+      )
+
+    if candidates == [] do
+      []
+    else
+      folders_by_id = community |> Files.list_all_folders() |> Map.new(&{&1.id, &1})
+      relationships = scope_relationships(actor, community, candidates)
+
+      candidates
+      |> Enum.filter(&file_readable?(actor, &1, folders_by_id, relationships))
+      |> Enum.take(@per_section)
+    end
+  end
+
+  # One relationship lookup per distinct scope among the candidates
+  # (not per file) — cheap even though `Authorization.relationship/2`
+  # hits the database.
+  defp scope_relationships(actor, community, candidates) do
+    groups = candidates |> Enum.map(& &1.group) |> Enum.reject(&is_nil/1) |> Enum.uniq_by(& &1.id)
+
+    community_entry = {nil, {community, Authorization.relationship(actor, community)}}
+
+    group_entries =
+      Enum.map(groups, fn %Group{} = group ->
+        {group.id, {group, Authorization.relationship(actor, group)}}
+      end)
+
+    Map.new([community_entry | group_entries])
+  end
+
+  defp file_readable?(actor, %StoredFile{} = stored_file, folders_by_id, relationships) do
+    {scope, relationship} = Map.fetch!(relationships, stored_file.group_id)
+    chain = folder_chain_from_map(stored_file.folder_id, folders_by_id)
+
+    Authorization.can_read_folder?(actor, scope, chain, relationship)
+  end
+
+  defp folder_chain_from_map(nil, _folders_by_id), do: []
+
+  defp folder_chain_from_map(folder_id, folders_by_id) do
+    build_chain_from_map(Map.get(folders_by_id, folder_id), folders_by_id, Folder.maximum_depth())
+  end
+
+  defp build_chain_from_map(nil, _folders_by_id, _remaining), do: []
+  defp build_chain_from_map(%Folder{} = folder, _folders_by_id, 0), do: [folder]
+
+  defp build_chain_from_map(%Folder{parent_folder_id: nil} = folder, _folders_by_id, _remaining),
+    do: [folder]
+
+  defp build_chain_from_map(%Folder{} = folder, folders_by_id, remaining) do
+    build_chain_from_map(
+      Map.get(folders_by_id, folder.parent_folder_id),
+      folders_by_id,
+      remaining - 1
+    ) ++
+      [folder]
   end
 end

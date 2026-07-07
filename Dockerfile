@@ -55,7 +55,7 @@ ENV VIX_COMPILATION_MODE=PLATFORM_PROVIDED_LIBVIPS
 
 RUN apt-get update -y && \
     apt-get install -y libstdc++6 openssl libncurses6 locales ca-certificates \
-      libvips42 && \
+      libvips42 poppler-utils && \
     apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # Set the locale

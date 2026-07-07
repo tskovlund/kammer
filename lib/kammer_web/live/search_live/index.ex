@@ -1,9 +1,9 @@
 defmodule KammerWeb.SearchLive.Index do
   @moduledoc """
-  Community search (SPEC §16): one box, three sections — posts,
-  comments, events — everything filtered through the same listing
-  visibility the rest of the product uses. Anonymous visitors search
-  exactly the public face.
+  Community search (SPEC §16): one box, four sections — posts,
+  comments, events, files — everything filtered through the same
+  listing visibility the rest of the product uses. Anonymous visitors
+  search exactly the public face.
   """
 
   use KammerWeb, :live_view
@@ -33,7 +33,7 @@ defmodule KammerWeb.SearchLive.Index do
           type="search"
           name="q"
           value={@query}
-          placeholder={gettext("Search posts, comments, and events…")}
+          placeholder={gettext("Search posts, comments, events, and files…")}
           phx-debounce="300"
           autofocus
           class="input w-full"
@@ -92,11 +92,29 @@ defmodule KammerWeb.SearchLive.Index do
         </.link>
       </section>
 
+      <section :if={@results.files != []} class="space-y-2">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-base-content/50">
+          {gettext("Files")}
+        </h2>
+        <.link
+          :for={file <- @results.files}
+          href={file_href(file)}
+          class="block rounded-box border border-base-200 p-4 hover:bg-base-200"
+        >
+          <p class="text-sm font-medium">{file.filename}</p>
+          <p class="pt-1 text-xs text-base-content/60">
+            {(file.group && file.group.name) || gettext("Community files")}
+          </p>
+        </.link>
+      </section>
+
       <.empty_state
-        :if={@query != "" and @results == %{posts: [], comments: [], events: []}}
+        :if={@query != "" and @results == %{posts: [], comments: [], events: [], files: []}}
         icon="hero-magnifying-glass"
         headline={gettext("Nothing found")}
-        description={gettext("Try different words — search looks at posts, comments, and events.")}
+        description={
+          gettext("Try different words — search looks at posts, comments, events, and files.")
+        }
       />
     </Layouts.app>
     """
@@ -107,7 +125,7 @@ defmodule KammerWeb.SearchLive.Index do
     {:ok,
      socket
      |> assign(:query, "")
-     |> assign(:results, %{posts: [], comments: [], events: []})}
+     |> assign(:results, %{posts: [], comments: [], events: [], files: []})}
   end
 
   @impl Phoenix.LiveView
@@ -143,6 +161,14 @@ defmodule KammerWeb.SearchLive.Index do
     |> String.replace(~r/[#*_`>\[\]()!-]/, " ")
     |> String.replace(~r/\s+/, " ")
     |> String.slice(0, 240)
+  end
+
+  defp file_href(file) do
+    if file.kind == :image do
+      ~p"/files/#{file.id}"
+    else
+      ~p"/files/#{file.id}/download"
+    end
   end
 
   defp comment_path(comment, community) do
