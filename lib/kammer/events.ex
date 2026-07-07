@@ -331,10 +331,8 @@ defmodule Kammer.Events do
   moderator.
   """
   @spec can_manage_event?(User.t() | nil, Event.t(), Group.t()) :: boolean()
-  def can_manage_event?(nil, %Event{}, %Group{}), do: false
-
-  def can_manage_event?(%User{} = actor, %Event{} = event, %Group{} = group) do
-    event.created_by_user_id == actor.id or Authorization.can?(actor, :moderate_group, group)
+  def can_manage_event?(actor, %Event{} = event, %Group{} = group) do
+    Authorization.can_manage_own_resource?(actor, event.created_by_user_id, group)
   end
 
   @doc """
@@ -385,10 +383,8 @@ defmodule Kammer.Events do
   same rule as a single event: its creator or a group moderator.
   """
   @spec can_manage_series?(User.t() | nil, EventSeries.t(), Group.t()) :: boolean()
-  def can_manage_series?(nil, %EventSeries{}, %Group{}), do: false
-
-  def can_manage_series?(%User{} = actor, %EventSeries{} = series, %Group{} = group) do
-    series.created_by_user_id == actor.id or Authorization.can?(actor, :moderate_group, group)
+  def can_manage_series?(actor, %EventSeries{} = series, %Group{} = group) do
+    Authorization.can_manage_own_resource?(actor, series.created_by_user_id, group)
   end
 
   @doc """

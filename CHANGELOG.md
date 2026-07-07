@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Consolidated the "creator or group moderator" access-control rule
+  (who may edit/cancel/close/record-an-outcome-for a resource) into
+  `Kammer.Authorization.can_manage_own_resource?/3,4`, replacing five
+  independent copies of the identical logic across `Kammer.Events`,
+  `Kammer.Availability`, `Kammer.Assignments`, and `Kammer.Decisions`
+  — a direct violation of CONVENTIONS.md's "one authorization module"
+  rule found by a full-codebase audit. Now property-tested alongside
+  the rest of the authorization decision core instead of five separate
+  unit tests that never covered the rule as a shared invariant.
+
 ### Added
 
 - File search + text extraction (SPEC §10/§16): the last piece of

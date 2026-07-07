@@ -143,10 +143,8 @@ defmodule Kammer.Availability do
   group moderator.
   """
   @spec can_manage_poll?(User.t() | nil, AvailabilityPoll.t(), Group.t()) :: boolean()
-  def can_manage_poll?(nil, %AvailabilityPoll{}, %Group{}), do: false
-
-  def can_manage_poll?(%User{} = actor, %AvailabilityPoll{} = poll, %Group{} = group) do
-    poll.created_by_user_id == actor.id or Authorization.can?(actor, :moderate_group, group)
+  def can_manage_poll?(actor, %AvailabilityPoll{} = poll, %Group{} = group) do
+    Authorization.can_manage_own_resource?(actor, poll.created_by_user_id, group)
   end
 
   @doc """
