@@ -201,3 +201,12 @@ and this project adheres to
   single-letter-variable ban), Dialyzer, Sobelow, ExCoveralls with coverage
   floor, mix_audit/hex.audit, lefthook hooks, commitlint, GitHub Actions CI,
   warnings-as-errors.
+
+### Security
+
+- Nonce-based CSP (SPEC §11, ADR 0021): `script-src` drops
+  `'unsafe-inline'` for a fresh per-request nonce, closing the one
+  remaining gap that would have let a successful XSS run arbitrary
+  inline script. The app's one inline script (the light/dark theme
+  bootstrap) carries the nonce; colocated LiveView hooks were never
+  affected — they compile into the external `app.js` bundle.

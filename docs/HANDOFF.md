@@ -36,7 +36,7 @@ merged, plus, from Phase 2 and the decided roadmap:
   view** (§5.6) — see that section for what shipped and what remains
   in each.
 
-Suite at handoff: **528 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **531 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -427,10 +427,17 @@ atom. Danish register: a slot is "en tjans".
   always reserved, nothing more.
 - Then: branding UI, Prometheus (PromEx), ClamAV option, NixOS
   module.
-- **Security hardening, pre-1.0**: replace the CSP's
-  `'unsafe-inline'` script allowance with LiveView nonce-based CSP
-  (documented posture in the router; real work, tracked here so it
-  cannot be forgotten).
+- ✅ **Security hardening, pre-1.0: nonce-based CSP** — SHIPPED
+  (ADR 0021): `KammerWeb.Plugs.CspNonce` replaces `script-src
+'unsafe-inline'` with a fresh per-request nonce; the root layout's
+  one inline script (theme bootstrap) carries it. Colocated LiveView
+  hooks were never affected — they compile into `app.js`, not inline
+  `<script>` tags. Verified with a unit + real-request integration
+  test and a live-browser Playwright check (zero CSP console
+  violations). `Config.CSP` added to `.sobelow-conf` — Sobelow's
+  static check only recognizes a literal `content-security-policy`
+  key in `put_secure_browser_headers`, so it can't see a header a
+  separate plug sets; documented false positive.
 - **Far-future path already decided** (SPEC v1 non-goals): group type
   templates ("Announcement channel", "Discussion forum", …) are the
   sanctioned route to configurable comment mechanics — never raw
