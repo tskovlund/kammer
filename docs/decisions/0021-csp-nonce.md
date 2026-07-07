@@ -2,7 +2,7 @@
 
 ## Context
 
-SPEC §11 and HANDOFF §5.6 tracked a pre-1.0 hardening item: the router's
+SPEC §11 tracked a pre-1.0 hardening item: the router's
 Content-Security-Policy allowed `script-src 'self' 'unsafe-inline'`,
 because the root layout ships exactly one inline `<script>` — the
 light/dark theme bootstrap, which has to run before first paint to avoid a

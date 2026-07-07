@@ -1,6 +1,6 @@
 defmodule KammerWeb.InstanceHomeTest do
   @moduledoc """
-  The admin update notice on the instance landing page (HANDOFF §5.6):
+  The admin update notice on the instance landing page (SPEC §13):
   visible to operators only, and only once a check has actually found
   something newer.
   """

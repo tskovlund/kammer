@@ -13,6 +13,6 @@
 - [ ] Tests added/updated (permission logic → context tests required)
 - [ ] User-facing strings via Gettext, EN + DA complete
 - [ ] Permission/visibility decisions go through `Kammer.Authorization` only
-- [ ] BUILDLOG.md / ADR updated if scope or architecture decisions changed
+- [ ] ADR added if an architecture-shaping decision changed; SPEC.md updated if a product decision changed
 - [ ] Docs still true (README, docs/, `.env.example`) — updated here if not
 - [ ] UI changed visibly? Regenerate `docs/screenshots/` (`scripts/screenshots.sh`)

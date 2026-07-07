@@ -1,12 +1,14 @@
-# Build Prompt: Self-Hosted Community Platform (v1, spec revision 2)
+# Kammer: Self-Hosted Community Platform — Product Spec
 
-> **Status note (2026-07-06):** this document is the owner's original
-> build prompt and remains the product's source of truth for intent.
-> It is deliberately not rewritten as work completes — live state is
-> CHANGELOG.md, the roadmap is docs/HANDOFF.md, decisions are
-> docs/decisions/. Phase 1 is fully shipped; Phase 2 is in progress
-> (guest RSVP done; the JSON API arrived ahead of the original v2
-> staging by owner decision, ADR 0014).
+This is the living definition of what Kammer is: the product's source
+of truth, kept current as decisions change it. It started as the
+owner's original build prompt and is edited in place as the product
+evolves — it does not stay frozen at "what we set out to build."
+`docs/decisions/` records the *why* behind a decision worth
+relitigating; this file records the *current* shape of the product.
+Shipped-vs-not is tracked in `docs/HANDOFF.md`'s backlog and
+CHANGELOG.md/git history, not here — this document describes intent
+regardless of build status.
 
 You are building a production-quality, self-hostable, open-source community platform — a replacement for Facebook Groups/Pages/Events, group email threads, and the file-sharing half of Google Drive, for real-world communities (associations, bands, clubs). Founding use case: TÅGEKAMMERET, a Danish student association, and its 70-year anniversary revy band.
 
@@ -51,6 +53,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Post as group**: admins may publish under the group identity (`author_type: user | group`).
 - **Sealed flag** (creation-time only, irreversible): no community-admin access of any kind; their sole power is whole-group deletion. UI states honestly: "Sealed: hidden from community admins. The server operator can still technically access all data."
 - **Archive state**: read-only, hidden from active lists, browsable under "Archived", files remain accessible, feeds and notifications stop. Unarchivable by admins. (Bands and committees are seasonal; institutional memory is the product.)
+- **Per-group feature toggles** (ADR 0016): group admins choose which optional tools a group shows (events, files, availability polls, assignments, decisions register — the feed is always on). A disabled feature is fully hidden, not just unlinked: its routes, ICS feeds, and guest surfaces all behave as not-found. Toggling back on restores everything; nothing is deleted.
 
 ### Invitations
 - Invite links with optional expiry and max-use count, revocable, per group and community. Admin email invites supported.
@@ -96,6 +99,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Two scopes**: community space and per-group spaces. **Shallow folder tree + search + auto-collections** ("Images", "Posted in feed", "Attached to event X").
 - **Permissions — presets only, no per-user ACLs**: baseline inherits owning-scope membership; per-folder overrides: read = `inherit` | `admins_only`; write = `inherit(members)` | `admins_only`; subfolders inherit from parents.
 - **Invariant (enforce centrally, test heavily)**: file/folder visibility can never exceed the owning scope's visibility preset.
+- **Versioning** (ADR 0017): uploading a file with the same name into the same folder appends a version rather than duplicating; listings show the current version, with a full history (uploader, time, size) browsable and individually downloadable/deletable (never the last version). Retention (versions to keep) is admin-configurable per space, unlimited by default.
 - **Storage policy, instance-level**: `unmetered` (default; usage still visible) or `quota` mode (admin sets per-space quotas; members see usage bars; uploads blocked at cap with clear messaging). Per-user contribution stats shown in either mode. Paid storage/billing is roadmap (hosted-offering era), not v1.
 - Upload size limit configurable (default 100 MB). FTS over filenames + extracted text (PDF/plaintext, Oban job, graceful skip).
 - No video upload v1 (embeds render). No doc editing v1 (roadmap: collaborative Markdown notes → Collabora/OnlyOffice; files are first-class DB entities so a `document` type can slot in).
@@ -144,33 +148,53 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 - **Primary**: `docker-compose.yml` (app + Postgres + optional MinIO + optional ClamAV), `.env.example`, Caddy TLS example, multi-stage Dockerfile → small Elixir release image.
 - **Also**: Nix flake as the **canonical dev environment** (dev shell with Elixir/OTP, Node for tooling, Postgres client, libvips, lefthook; plus package + NixOS module). Ship `.envrc` (`use flake`) for **direnv** auto-activation and a **devbox.json** wrapping the same toolset for contributors who don't speak Nix. Every dev task (setup, test, lint, format, run) must work identically inside the flake shell, devbox shell, and CI — document the three entry paths in CONTRIBUTING ("`direnv allow`, or `devbox shell`, or `nix develop` — then `mix setup && mix phx.server`").
-- Repo: README that *sells* (ethos, screenshots, 10-minute quickstart), CONTRIBUTING, LICENSE, CHANGELOG (Keep a Changelog format; semver from 0.1.0), CONVENTIONS.md, CODE_OF_CONDUCT.md (Contributor Covenant), SECURITY.md (disclosure policy), GitHub issue templates (bug/feature) + PR template, `.editorconfig`, `docs/`, `docs/decisions/` (ADRs), seeds, `BUILDLOG.md` (see §16).
+- Repo: README that *sells* (ethos, screenshots, 10-minute quickstart), CONTRIBUTING, LICENSE, CHANGELOG (Keep a Changelog format; semver from 0.1.0), CONVENTIONS.md, CODE_OF_CONDUCT.md (Contributor Covenant), SECURITY.md (disclosure policy), GitHub issue templates (bug/feature) + PR template, `.editorconfig`, `docs/`, `docs/decisions/` (ADRs), seeds, `BUILDLOG.md` (frozen Phase 1 record — later scope trims live in PR descriptions and CHANGELOG.md instead).
 
 ## 15. Naming
 
 **Working title: Kammer** — scaffold under module namespace `Kammer`; keep the display name a single config constant so renaming is one commit. (Origin homage: TÅGEKAMMERET; resonances: kammermusik — small ensembles, no conductor; *kammerat*, etymologically "chamber-mate.") Final name pending owner verification (domains, GitHub, Hex, existing products, trademark skim). Shortlist: Kammer, Kammerat, Stemme, Grapevine, Ekko; alternates: Knyt, Felles, Langbord, Torvet, Havn, Tutti, Husting.
 
-## 16. Build order — pilot slice first
+## 16. Architecture strategy (standing decisions)
 
-**Phase 1 — Pilot slice (fully working; target of the initial build):**
-1. Scaffold, dev environment (Nix flake + `.envrc` for direnv + devbox.json — see §14), Docker/compose, CI, env config, Postgres, mailer, gettext (EN+DA), engineering-standards tooling (§17) wired from the first commit.
-2. Magic-link auth, sessions, devices. (Passkeys may sit behind a feature flag, completed in Phase 2.)
-3. Communities (multi-tenant) + community switcher + groups: four visibility presets, join/posting/comment policies, roles, invite links, post-as-group, sealed flag, archive state. Cross-instance bookmark list.
-4. Feed: Markdown posts, images (thumbnails, EXIF strip, HEIC conversion), polls (with anonymity toggle), file attachments incl. transient, reactions, comments (one reply level, collapse, per-post lock), mentions, pins, scheduled posts, acknowledgment posts, edited-marker + admin history, soft-delete stubs, live updates.
-5. Events: single events, all-day/multi-day, RSVP, comments, email reminders, ICS attachment + group/user ICS feeds.
-6. Files: both scopes, tree, permission presets + central visibility invariant, uploads with hardening, auto-collections, storage-policy modes.
-7. Notifications: in-app center, email, Web Push, "highlights" defaults with broadcast-group escalation.
-8. Hybrid first-run setup + demo data. Legal page templates.
+Phase 1 (pilot slice) and the original Phase 2 list (SPEC v1 complete)
+are both fully shipped — see CHANGELOG.md/git history for what and
+when, `docs/HANDOFF.md` for what's still open. What follows are the
+standing architectural decisions that outlive any one build phase:
 
-**Phase 2 — v1 complete:** passkeys; recurrence + attendance matrix; guest RSVP; RSS/Atom; newsletter subscriptions + digests; content-minimized email mode; global search incl. file text extraction; moderation queues + bans + full rate limiting; GDPR export/erasure; backups (+ age encryption); Prometheus; branding UI; audit log; admin update notice; custom profile fields + roster directory; activity-sort feed view; ClamAV option; Nix flake + NixOS module.
+**Explicit non-goals (design constraints, not a to-do list):**
+chat/DMs, E2EE, ticketing/capacity/waitlists, native apps, ActivityPub,
+document editing, video upload, offline support, storage billing,
+**group type templates** (presets such as "Announcement channel",
+"Discussion forum", "Standard group" that bundle posting/comment
+policies and — explicitly — reply-style options like deeper forum
+threading; template presets are the sanctioned future path to
+configurable comment mechanics, keeping raw per-group threading
+switches out of the product).
 
-**Explicit v1 non-goals (design constraints only):** chat/DMs, E2EE, ticketing/capacity/waitlists, native apps, ActivityPub, document editing, video upload, offline support, storage billing, **group type templates** (presets such as "Announcement channel", "Discussion forum", "Standard group" that bundle posting/comment policies and — explicitly — reply-style options like deeper forum threading; template presets are the sanctioned future path to configurable comment mechanics, keeping raw per-group threading switches out of the product).
+**UI architecture strategy:** LiveView is the v1 *vehicle*, not the
+end state. v2 = JSON API over the same Phoenix contexts (already
+shipped, ADR 0014), then a **Svelte PWA as the primary client — built
+multi-instance-capable from day one** (holds sessions on N instances,
+merges views client-side: merged calendar first, merged feed second;
+foreign items resolve naturally since the client is a session-holder,
+not a proxy). LiveView is then frozen and retired — no permanent
+dual-UI maintenance. This client-side model replaces any server-side
+"home instance" aggregation scheme; no inter-instance sync protocol is
+required. Native apps become API siblings of the Svelte client. Note:
+ICS and RSS already provide standards-based cross-instance merging.
 
-**UI architecture strategy (decided):** LiveView is the v1 *vehicle*, not the end state. v2 = JSON API over the same Phoenix contexts, then a **Svelte PWA as the primary client — built multi-instance-capable from day one** (holds sessions on N instances, merges views client-side: merged calendar first, merged feed second; foreign items resolve naturally since the client is a session-holder, not a proxy). LiveView is then frozen and retired — no permanent dual-UI maintenance. This client-side model replaces any server-side "home instance" aggregation scheme; no inter-instance sync protocol is required. Native apps become API siblings of the Svelte client. Note: ICS and RSS already provide standards-based cross-instance merging in v1.
+**Identity strategy:** email + synced passkeys is the identity layer
+for v1–v2 (email is the existing federated identifier; the
+multi-instance client supplies the felt "one identity"). v3 candidate:
+**instance-as-OIDC-provider** ("sign in with your home instance") for
+true single-account linking across instances. **AT Protocol / DIDs:
+explicit watchlist item** — re-evaluate adoption maturity at each
+major release; do not build on it yet.
 
-**Identity strategy (decided):** email + synced passkeys is the identity layer for v1–v2 (email is the existing federated identifier; the multi-instance client supplies the felt "one identity"). v3 candidate: **instance-as-OIDC-provider** ("sign in with your home instance") for true single-account linking across instances. **AT Protocol / DIDs: explicit watchlist item** — re-evaluate adoption maturity at each major release; do not build on it yet.
-
-**One-shot build rule:** the builder may self-trim scope to guarantee a coherent, running, deployable product — but every trim, stub, or deferral MUST be documented in `BUILDLOG.md` (what was cut, why, and how to complete it). Silent stubs are forbidden.
+**Scope-trim transparency:** a PR may trim scope to ship something
+coherent, but every trim, stub, or deferral must be stated in the PR
+description and, if it outlives that PR, as a "remaining" note in
+`docs/HANDOFF.md`'s backlog. Silent stubs are forbidden.
 
 ## 17. Engineering standards (non-negotiable; wire into the first commit)
 
@@ -186,7 +210,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 - **Diátaxis structure, reader-first pragmatism** (deviate from the framework whenever reader value says so): Tutorial ("zero to invited community in 10 minutes"), How-tos (backup/restore, email incl. self-hosted, reverse proxy, upgrades, quotas), Reference (config, permissions model, storage policy), Explanation (architecture, the visibility invariant, why LiveView, threat model incl. what "sealed" does and doesn't guarantee).
 - **Tooling**: Astro **Starlight** docs site (i18n-ready EN/DA, deployed via GitHub Pages) + **ExDoc** for API reference generated from module docs.
-- **ADRs**: ~12 minimal records (context → decision → consequences, ≤1 page) in `docs/decisions/`, covering only decisions a contributor would relitigate: LiveView-for-v1-Svelte-on-API-for-v2, AGPL, magic-link identity primitive, four visibility presets, sealed groups, no-algorithmic-feed, one-comment-model, storage scoping, presets-not-ACLs, hybrid first-run, email privacy mode, PWA-before-native.
+- **ADRs**: minimal records (context → decision → consequences, ≤1 page) in `docs/decisions/`, one per decision a contributor would relitigate — architecture, not routine feature work.
 - README sells the product: ethos up top, screenshots, quickstart, honest limitations section.
 - Product/marketing site: separate static site, milestone after pilot and before public launch (not part of this build).
 
@@ -213,15 +237,43 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Navigation**: mobile bottom tab bar — **Home · Events · Groups · Notifications · You** — stable within the active community; **community switcher** as an avatar-stack control in the top bar. Files, members, and settings live inside each group/community, not top-level. Desktop: left sidebar (communities + groups), same IA.
 - The overall impression to aim for: calm, honest, durable — closer to a well-set book or an FDB catalogue than to a social app.
 
-## 22. Prescribed dependencies (verify current versions before use; do not substitute without BUILDLOG justification)
+## 22. Prescribed dependencies (verify current versions before use; do not substitute without a CHANGELOG/PR note explaining why)
 
 - Phoenix (latest stable) + Phoenix LiveView + Ecto/postgrex.
 - **Oban** — background jobs. **Swoosh** — email. **Gettext** — i18n.
-- **Wax** — WebAuthn/passkeys. **web push**: use the currently maintained Elixir web-push library (verify on Hex; implement VAPID payload encryption per RFC 8291 if library support is thin, and note the choice in BUILDLOG).
+- **Wax** — WebAuthn/passkeys. **web push**: use the currently maintained Elixir web-push library (verify on Hex; implement VAPID payload encryption per RFC 8291 if library support is thin).
 - **Vix (libvips)** — image processing (thumbnails, EXIF strip, HEIC→WebP/JPEG).
 - **Earmark or MDEx** — Markdown rendering (sanitized output; verify current best choice).
 - **Hammer** (or equivalent) — rate limiting.
 - **icalendar** library for ICS generation (verify maintenance status; ICS is simple enough to generate directly if libraries are stale).
 - Tailwind via Phoenix's standard esbuild/tailwind pipeline; **no** custom npm build chain in the application's runtime or asset build. (npm is permitted for dev tooling — commitlint — and the separate Starlight docs site.)
 - Dev/quality: Credo, Dialyxir, Sobelow, ExCoveralls (coverage), lefthook, commitlint.
-- Rule: prefer boring, maintained, well-documented libraries; when a needed library is stale or missing, implement the minimal internal version rather than adopting an abandoned dependency, and document it in BUILDLOG.md.
+- Rule: prefer boring, maintained, well-documented libraries; when a needed library is stale or missing, implement the minimal internal version rather than adopting an abandoned dependency, and say why in the PR.
+
+## 23. Collaborative tools (per-group, opt-in — issue #17)
+
+Kammer serves two paths on the same group primitive: the **public
+community face** (open groups, public events) and **private
+collaboration** (Basecamp territory, but self-hostable and honest,
+with sealed groups). Each tool below is its own feature toggle (§3),
+off by default, sharing the existing comment/reaction/RSVP-style
+primitives rather than inventing new ones.
+
+- **Signup slots** on events: capacity-bounded slots ("bring cake ×2,
+  drive ×4"); members and guests both claim (guests via the same
+  email-confirm flow as guest RSVP), never overbooked (row-locked).
+- **Availability polls** ("date finding"): candidate dates, members
+  answer yes/if-needed/no on a shared grid; closing the poll converts
+  the winning date into a real event with one click.
+- **Assignments**: a flat open/claimed/done task list, never a board —
+  volunteer orgs run on lists, not sprints. Multiple people can claim
+  the same assignment; anyone can mark it done (the record shows who);
+  each assignment carries a discussion thread through the same comment
+  engine as posts.
+- **Decisions register**: raise a motion (lands in the feed as a post
+  with a For/Against/Abstain vote), then record the outcome (adopted,
+  rejected, noted, with a note for the record). The register lists
+  every motion and outcome chronologically — minutes-grade
+  institutional memory, built for board groups.
+- **Rotations** (not yet built): recurring duty rosters (coffee duty
+  auto-rotates; you're notified when it's your week).
