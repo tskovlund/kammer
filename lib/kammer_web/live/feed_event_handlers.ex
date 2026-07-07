@@ -61,6 +61,10 @@ defmodule KammerWeb.FeedEventHandlers do
       {:error, :comments_locked} ->
         {:noreply, put_flash(socket, :error, gettext("Comments are locked on this post."))}
 
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts. Please try again later."))}
+
       _error ->
         {:noreply, refuse(socket)}
     end

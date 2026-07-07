@@ -138,6 +138,15 @@ defmodule Kammer.FeedTest do
                Feed.create_post(group_owner, group, %{"body_markdown" => "Hey @everyone :3"})
     end
 
+    test "posting is rate limited per author", %{group: group, member: member} do
+      for i <- 1..10 do
+        assert {:ok, _post} = Feed.create_post(member, group, %{"body_markdown" => "Post #{i}"})
+      end
+
+      assert {:error, :rate_limited} =
+               Feed.create_post(member, group, %{"body_markdown" => "One too many"})
+    end
+
     test "creates a poll with options", %{group: group, member: member} do
       assert {:ok, post} =
                Feed.create_post(member, group, %{
@@ -368,6 +377,35 @@ defmodule Kammer.FeedTest do
       {:ok, second_comment} = Feed.create_comment(member, post, %{"body_markdown" => "again"})
       assert {:ok, _removed} = Feed.delete_comment(group_owner, second_comment)
       assert Kammer.Repo.get(Kammer.Feed.Comment, second_comment.id) == nil
+    end
+
+    test "@everyone in a comment is gated to broadcast rights and rate limited — fanout_comment/1 escalates it to a full-group broadcast, so this is a real authorization gate, not polish",
+         %{group: group, member: member, group_owner: group_owner} do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+
+      assert {:error, :unauthorized} =
+               Feed.create_comment(member, post, %{"body_markdown" => "Hey @everyone!"})
+
+      assert {:ok, _comment} =
+               Feed.create_comment(group_owner, post, %{"body_markdown" => "Hey @everyone :1"})
+
+      assert {:ok, _comment} =
+               Feed.create_comment(group_owner, post, %{"body_markdown" => "Hey @everyone :2"})
+
+      assert {:error, :rate_limited} =
+               Feed.create_comment(group_owner, post, %{"body_markdown" => "Hey @everyone :3"})
+    end
+
+    test "commenting is rate limited per author", %{group: group, member: member} do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+
+      for i <- 1..20 do
+        assert {:ok, _comment} =
+                 Feed.create_comment(member, post, %{"body_markdown" => "Comment #{i}"})
+      end
+
+      assert {:error, :rate_limited} =
+               Feed.create_comment(member, post, %{"body_markdown" => "One too many"})
     end
   end
 

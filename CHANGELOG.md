@@ -213,6 +213,16 @@ and this project adheres to
 
 ### Security
 
+- Full rate-limit coverage (SPEC §11): every item on the spec's
+  rate-limit list now has a real `Kammer.RateLimit` bucket — account
+  creation (per IP), posting, commenting, and file uploads (per
+  author/uploader), on top of the magic-link and guest-endpoint limits
+  that already existed. While auditing coverage, `@everyone` inside a
+  **comment** turned out to bypass the broadcast-rights gate
+  entirely — `Notifications.fanout_comment/1` already escalated it to
+  a full-group broadcast for any commenter, since only post creation
+  ran the gate. Comments now get the same gate and rate limit posts
+  already had.
 - Nonce-based CSP (SPEC §11, ADR 0021): `script-src` drops
   `'unsafe-inline'` for a fresh per-request nonce, closing the one
   remaining gap that would have let a successful XSS run arbitrary

@@ -20,6 +20,7 @@ defmodule Kammer.Assignments do
   alias Kammer.Authorization
   alias Kammer.Feed.Comment
   alias Kammer.Groups.Group
+  alias Kammer.RateLimit
   alias Kammer.Repo
 
   @doc """
@@ -214,21 +215,26 @@ defmodule Kammer.Assignments do
   Follows the group's comment policy like posts and events do.
   """
   @spec create_comment(User.t(), Assignment.t(), map()) ::
-          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_comment(%User{} = author, %Assignment{} = assignment, attrs) do
     group = Repo.get!(Group, assignment.group_id)
 
-    if Authorization.can?(author, :comment_in_group, group) do
-      parent_id = normalize_parent(attrs["parent_comment_id"])
+    cond do
+      not Authorization.can?(author, :comment_in_group, group) ->
+        {:error, :unauthorized}
 
-      %Comment{assignment_id: assignment.id, author_user_id: author.id}
-      |> Comment.create_changeset(%{
-        "body_markdown" => attrs["body_markdown"],
-        "parent_comment_id" => parent_id
-      })
-      |> Repo.insert()
-    else
-      {:error, :unauthorized}
+      match?({:deny, _retry}, RateLimit.hit_comment_create(author.id)) ->
+        {:error, :rate_limited}
+
+      true ->
+        parent_id = normalize_parent(attrs["parent_comment_id"])
+
+        %Comment{assignment_id: assignment.id, author_user_id: author.id}
+        |> Comment.create_changeset(%{
+          "body_markdown" => attrs["body_markdown"],
+          "parent_comment_id" => parent_id
+        })
+        |> Repo.insert()
     end
   end
 

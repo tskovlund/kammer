@@ -470,14 +470,19 @@ defmodule KammerWeb.FileLive.Index do
       end)
 
     socket =
-      if Enum.any?(results, &match?({:error, :quota_exceeded}, &1)) do
-        put_flash(
-          socket,
-          :error,
-          gettext("Storage quota reached — ask an admin to raise it or free some space.")
-        )
-      else
-        socket
+      cond do
+        Enum.any?(results, &match?({:error, :quota_exceeded}, &1)) ->
+          put_flash(
+            socket,
+            :error,
+            gettext("Storage quota reached — ask an admin to raise it or free some space.")
+          )
+
+        Enum.any?(results, &match?({:error, :rate_limited}, &1)) ->
+          put_flash(socket, :error, gettext("Too many uploads — please try again later."))
+
+        true ->
+          socket
       end
 
     {:noreply, reload(socket)}

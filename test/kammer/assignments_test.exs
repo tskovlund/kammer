@@ -158,5 +158,22 @@ defmodule Kammer.AssignmentsTest do
       assert {:ok, _assignment} = Assignments.delete_assignment(creator, assignment)
       assert Repo.aggregate(Comment, :count) == 0
     end
+
+    test "commenting is rate limited per author" do
+      %{group: group, creator: creator} = assignments_group_context()
+      {:ok, assignment} = Assignments.create_assignment(creator, group, %{"title" => "Kaffe"})
+
+      for i <- 1..20 do
+        assert {:ok, _comment} =
+                 Assignments.create_comment(creator, assignment, %{
+                   "body_markdown" => "Comment #{i}"
+                 })
+      end
+
+      assert {:error, :rate_limited} =
+               Assignments.create_comment(creator, assignment, %{
+                 "body_markdown" => "One too many"
+               })
+    end
   end
 end

@@ -66,6 +66,46 @@ defmodule Kammer.RateLimit do
     hit("everyone_mention:group:#{group_id}", 60 * 60 * 1000, 2)
   end
 
+  @doc """
+  Rate limit for account creation, keyed by client IP: 10 per hour —
+  looser than the magic-link IP limit since it's a one-time action per
+  person, but still caps mass-account creation from one address.
+  """
+  @spec hit_signup_ip(:inet.ip_address() | String.t() | nil) ::
+          {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_signup_ip(nil), do: {:allow, 0}
+
+  def hit_signup_ip(ip_address) do
+    hit("signup:ip:#{format_ip(ip_address)}", 60 * 60 * 1000, 10)
+  end
+
+  @doc """
+  Rate limit for creating a post, keyed by author: 10 per 5 minutes.
+  """
+  @spec hit_post_create(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_post_create(user_id) do
+    hit("post_create:user:#{user_id}", 5 * 60 * 1000, 10)
+  end
+
+  @doc """
+  Rate limit for creating a comment, keyed by author: 20 per 5 minutes.
+  Shared across post/event/assignment comments — one "commenting"
+  budget per person, not per subject type.
+  """
+  @spec hit_comment_create(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_comment_create(user_id) do
+    hit("comment_create:user:#{user_id}", 5 * 60 * 1000, 20)
+  end
+
+  @doc """
+  Rate limit for uploading a file, keyed by uploader: 40 per 10 minutes
+  — generous enough to attach a batch of images to one post.
+  """
+  @spec hit_upload(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_upload(user_id) do
+    hit("upload:user:#{user_id}", 10 * 60 * 1000, 40)
+  end
+
   defp format_ip(ip_address) when is_binary(ip_address), do: ip_address
 
   defp format_ip(ip_address) when is_tuple(ip_address),

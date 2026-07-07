@@ -433,6 +433,10 @@ defmodule KammerWeb.EventLive.Show do
       {:ok, _comment} ->
         {:noreply, reload(socket)}
 
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts. Please try again later."))}
+
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
     end

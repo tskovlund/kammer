@@ -282,7 +282,8 @@ defmodule Kammer.Feed do
 
     with true <-
            Authorization.can?(author, required_action, group, relationship) || :unauthorized,
-         :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]) do
+         :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]),
+         :ok <- check_post_rate_limit(author.id) do
       moderator? = Authorization.can?(author, :moderate_group, group, relationship)
 
       post_attrs =
@@ -339,6 +340,20 @@ defmodule Kammer.Feed do
           {:allow, _count} -> :ok
           {:deny, _retry} -> {:error, :rate_limited}
         end
+    end
+  end
+
+  defp check_post_rate_limit(user_id) do
+    case RateLimit.hit_post_create(user_id) do
+      {:allow, _count} -> :ok
+      {:deny, _retry} -> {:error, :rate_limited}
+    end
+  end
+
+  defp check_comment_rate_limit(user_id) do
+    case RateLimit.hit_comment_create(user_id) do
+      {:allow, _count} -> :ok
+      {:deny, _retry} -> {:error, :rate_limited}
     end
   end
 
@@ -584,9 +599,10 @@ defmodule Kammer.Feed do
           {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :comments_locked}
   def create_comment(%User{} = author, %Post{} = post, attrs) do
     group = get_group(post)
+    relationship = Authorization.relationship(author, group)
 
     cond do
-      not Authorization.can?(author, :comment_in_group, group) ->
+      not Authorization.can?(author, :comment_in_group, group, relationship) ->
         {:error, :unauthorized}
 
       Post.comments_locked?(post) ->
@@ -596,18 +612,26 @@ defmodule Kammer.Feed do
         {:error, :unauthorized}
 
       true ->
-        parent_id = normalize_parent(attrs["parent_comment_id"])
+        # `@everyone` in a comment gets the same gate + rate limit as a
+        # post — fanout_comment/1 already escalates it to a full-group
+        # broadcast (Kammer.Notifications), so leaving it ungated here
+        # would let any commenter reach broadcast rights they don't
+        # have.
+        with :ok <- check_everyone_mention(author, group, relationship, attrs["body_markdown"]),
+             :ok <- check_comment_rate_limit(author.id) do
+          parent_id = normalize_parent(attrs["parent_comment_id"])
 
-        %Comment{}
-        |> Comment.create_changeset(%{
-          "body_markdown" => attrs["body_markdown"],
-          "post_id" => post.id,
-          "parent_comment_id" => parent_id,
-          "author_user_id" => author.id
-        })
-        |> Repo.insert()
-        |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
-        |> tap_fanout_comment()
+          %Comment{}
+          |> Comment.create_changeset(%{
+            "body_markdown" => attrs["body_markdown"],
+            "post_id" => post.id,
+            "parent_comment_id" => parent_id,
+            "author_user_id" => author.id
+          })
+          |> Repo.insert()
+          |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+          |> tap_fanout_comment()
+        end
     end
   end
 
