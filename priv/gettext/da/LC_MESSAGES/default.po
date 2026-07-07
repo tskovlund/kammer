@@ -57,7 +57,7 @@ msgstr "Allerede registreret?"
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr "En e-mail er sendt til %{email} — åbn den for at bekræfte din konto."
 
-#: lib/kammer_web/live/user_live/devices.ex:104
+#: lib/kammer_web/live/user_live/devices.ex:290
 #, elixir-autogen, elixir-format
 msgid "Browser"
 msgstr "Browser"
@@ -99,7 +99,7 @@ msgid "Confirming..."
 msgstr "Bekræfter..."
 
 #: lib/kammer_web/live/instance_live/home.ex:154
-#: lib/kammer_web/live/user_live/login.ex:68
+#: lib/kammer_web/live/user_live/login.ex:141
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
 #, elixir-autogen, elixir-format
@@ -119,7 +119,7 @@ msgstr "Opretter konto..."
 msgid "Danish"
 msgstr "Dansk"
 
-#: lib/kammer_web/live/user_live/devices.ex:73
+#: lib/kammer_web/live/user_live/devices.ex:207
 #, elixir-autogen, elixir-format
 msgid "Device signed out."
 msgstr "Enheden er logget ud."
@@ -199,7 +199,7 @@ msgstr "Hvis du ikke har anmodet om denne ændring, kan du se bort fra denne e-m
 msgid "If you didn't request this email, please ignore it."
 msgstr "Hvis du ikke har anmodet om denne e-mail, kan du se bort fra den."
 
-#: lib/kammer_web/live/user_live/login.ex:104
+#: lib/kammer_web/live/user_live/login.ex:190
 #, elixir-autogen, elixir-format
 msgid "If your email is in our system, you will receive instructions for logging in shortly."
 msgstr "Hvis din e-mail findes i vores system, modtager du snart instruktioner til at logge ind."
@@ -214,7 +214,7 @@ msgstr "Hold mig logget ind på denne enhed"
 msgid "Language"
 msgstr "Sprog"
 
-#: lib/kammer_web/controllers/user_session_controller.ex:47
+#: lib/kammer_web/controllers/user_session_controller.ex:68
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr "Du er logget ud."
@@ -234,7 +234,7 @@ msgstr "Administrér enheder og sessioner"
 msgid "Manage your profile, email address, language, and devices"
 msgstr "Administrér din profil, e-mailadresse, sprog og enheder"
 
-#: lib/kammer_web/live/user_live/login.ex:66
+#: lib/kammer_web/live/user_live/login.ex:139
 #, elixir-autogen, elixir-format
 msgid "New here?"
 msgstr "Ny her?"
@@ -336,7 +336,7 @@ msgstr "For at se afsendte e-mails, besøg"
 msgid "To sign out this device, use the sign-out button in the menu."
 msgstr "For at logge denne enhed ud skal du bruge log ud-knappen i menuen."
 
-#: lib/kammer_web/live/user_live/devices.ex:95
+#: lib/kammer_web/live/user_live/devices.ex:281
 #, elixir-autogen, elixir-format
 msgid "Unknown device"
 msgstr "Ukendt enhed"
@@ -347,6 +347,7 @@ msgid "Welcome %{email}"
 msgstr "Velkommen %{email}"
 
 #: lib/kammer_web/controllers/user_session_controller.ex:22
+#: lib/kammer_web/controllers/user_session_controller.ex:52
 #, elixir-autogen, elixir-format
 msgid "Welcome back!"
 msgstr "Velkommen tilbage!"
@@ -978,6 +979,7 @@ msgstr "Prøver, møder, fester — de dukker op her."
 #: lib/kammer_web/components/feed_components.ex:638
 #: lib/kammer_web/live/community_live/members.ex:71
 #: lib/kammer_web/live/user_live/bookmarks.ex:42
+#: lib/kammer_web/live/user_live/devices.ex:170
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Fjern"
@@ -1387,7 +1389,7 @@ msgstr "Slet permanent"
 #: lib/kammer_web/live/event_live/show.ex:638
 #: lib/kammer_web/live/file_live/index.ex:295
 #: lib/kammer_web/live/moderation_live/index.ex:48
-#: lib/kammer_web/live/moderation_live/index.ex:206
+#: lib/kammer_web/live/moderation_live/index.ex:209
 #: lib/kammer_web/live/search_live/index.ex:54
 #: lib/kammer_web/live/search_live/index.ex:72
 #, elixir-autogen, elixir-format
@@ -3248,9 +3250,9 @@ msgstr "Ugentligt (mandage)"
 msgid "You get this because your digest setting is on — change it under Account settings."
 msgstr "Du får denne mail, fordi din opsummering er slået til — ændr det under Kontoindstillinger."
 
-#: lib/kammer_web/live/moderation_live/index.ex:193
-#: lib/kammer_web/live/moderation_live/index.ex:197
+#: lib/kammer_web/live/moderation_live/index.ex:196
 #: lib/kammer_web/live/moderation_live/index.ex:200
+#: lib/kammer_web/live/moderation_live/index.ex:203
 #, elixir-autogen, elixir-format
 msgid "(no text)"
 msgstr "(ingen tekst)"
@@ -3416,3 +3418,84 @@ msgstr "Handlingslog"
 #, elixir-autogen, elixir-format
 msgid "No audit events yet"
 msgstr "Ingen handlinger endnu"
+
+#: lib/kammer_web/live/user_live/devices.ex:82
+#, elixir-autogen, elixir-format
+msgid "Add a passkey"
+msgstr "Tilføj en adgangsnøgle"
+
+#: lib/kammer_web/live/user_live/devices.ex:156
+#, elixir-autogen, elixir-format
+msgid "Added %{timestamp}"
+msgstr "Tilføjet %{timestamp}"
+
+#: lib/kammer_web/live/user_live/devices.ex:229
+#, elixir-autogen, elixir-format
+msgid "Couldn't add that passkey. Please try again."
+msgstr "Kunne ikke tilføje adgangsnøglen. Prøv igen."
+
+#: lib/kammer_web/live/user_live/devices.ex:176
+#, elixir-autogen, elixir-format
+msgid "No passkeys yet."
+msgstr "Ingen adgangsnøgler endnu."
+
+#: lib/kammer_web/live/user_live/devices.ex:154
+#, elixir-autogen, elixir-format
+msgid "Passkey"
+msgstr "Adgangsnøgle"
+
+#: lib/kammer_web/live/user_live/devices.ex:223
+#, elixir-autogen, elixir-format
+msgid "Passkey added."
+msgstr "Adgangsnøgle tilføjet."
+
+#: lib/kammer_web/live/user_live/devices.ex:238
+#, elixir-autogen, elixir-format
+msgid "Passkey removed."
+msgstr "Adgangsnøgle fjernet."
+
+#: lib/kammer_web/live/user_live/devices.ex:58
+#, elixir-autogen, elixir-format
+msgid "Passkeys"
+msgstr "Adgangsnøgler"
+
+#: lib/kammer_web/live/user_live/devices.ex:167
+#, elixir-autogen, elixir-format
+msgid "Remove this passkey?"
+msgstr "Fjern denne adgangsnøgle?"
+
+#: lib/kammer_web/live/user_live/login.ex:77
+#, elixir-autogen, elixir-format
+msgid "Sign in with a passkey"
+msgstr "Log ind med en adgangsnøgle"
+
+#: lib/kammer_web/live/user_live/devices.ex:60
+#, elixir-autogen, elixir-format
+msgid "Sign in with your device's fingerprint, face, or screen lock — no email hop."
+msgstr "Log ind med enhedens fingeraftryk, ansigt eller skærmlås — ingen e-mail nødvendig."
+
+#: lib/kammer_web/live/user_live/login.ex:223
+#, elixir-autogen, elixir-format
+msgid "That passkey didn't work. Please try again."
+msgstr "Den adgangsnøgle virkede ikke. Prøv igen."
+
+#: lib/kammer_web/controllers/user_session_controller.ex:57
+#, elixir-autogen, elixir-format
+msgid "The passkey sign-in expired. Please try again."
+msgstr "Login med adgangsnøgle udløb. Prøv igen."
+
+#: lib/kammer_web/live/user_live/devices.ex:243
+#: lib/kammer_web/live/user_live/login.ex:229
+#, elixir-autogen, elixir-format
+msgid "This browser doesn't support passkeys."
+msgstr "Denne browser understøtter ikke adgangsnøgler."
+
+#: lib/kammer_web/live/user_live/devices.ex:158
+#, elixir-autogen, elixir-format
+msgid "last used %{timestamp}"
+msgstr "sidst brugt %{timestamp}"
+
+#: lib/kammer_web/live/user_live/login.ex:66
+#, elixir-autogen, elixir-format
+msgid "or"
+msgstr "eller"

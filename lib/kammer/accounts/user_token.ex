@@ -24,6 +24,11 @@ defmodule Kammer.Accounts.UserToken do
   # API device tokens (ADR 0014) live long — they are the API sibling
   # of browser sessions, revocable any time from the devices page.
   @device_validity_in_days 365
+  # Passkey exchange tokens (ADR 0018) only bridge a WebAuthn assertion
+  # verified inside a LiveView process to the controller action that
+  # sets the session cookie (LiveView has no `conn` to do that itself)
+  # — minutes, not the login-link's 15, since there is no email hop.
+  @passkey_exchange_validity_in_minutes 2
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -212,6 +217,40 @@ defmodule Kammer.Accounts.UserToken do
         query =
           from token in by_token_and_context_query(hashed_token, context),
             where: token.inserted_at > ago(@change_email_validity_in_days, "day")
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc """
+  Builds a short-lived, single-use token handing a passkey login off
+  from the LiveView process that verified it (no `conn`, so no way to
+  set the session cookie) to the controller action that finalizes it.
+  """
+  @spec build_passkey_exchange_token(Kammer.Accounts.User.t()) :: {String.t(), t()}
+  def build_passkey_exchange_token(user) do
+    build_hashed_token(user, "passkey-exchange", nil)
+  end
+
+  @doc """
+  Checks if a passkey exchange token is valid and returns its
+  underlying lookup query. Valid if the hash matches and it is younger
+  than #{@passkey_exchange_validity_in_minutes} minutes.
+  """
+  @spec verify_passkey_exchange_token_query(String.t()) :: {:ok, Ecto.Query.t()} | :error
+  def verify_passkey_exchange_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "passkey-exchange"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(^@passkey_exchange_validity_in_minutes, "minute"),
+            select: {user, token}
 
         {:ok, query}
 

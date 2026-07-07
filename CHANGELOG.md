@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- Passkeys (SPEC §16, ADR 0018): register a WebAuthn credential from
+  the Devices page after your first magic-link login, then sign in
+  usernameless — your device's fingerprint, face, or screen lock, no
+  email hop. Built on Wax; registration and sign-in verify entirely
+  server-side, with a hand-crafted-ceremony test suite exercising the
+  real cryptographic path (no browser required). Losing every passkey
+  still leaves magic-link sign-in as the fallback.
 - Audit log (SPEC §11): every role change, ban/unban, content removal
   via moderation, settings update, and group deletion — plus
   community-admin overrides into groups, flagged as such — writes a

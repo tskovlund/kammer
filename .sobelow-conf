@@ -16,12 +16,17 @@
   # XSS.ContentType: stored content types pass a sanitizing allowlist and
   #   non-image files are served with Content-Disposition: attachment and
   #   X-Content-Type-Options: nosniff (KammerWeb.FileController).
+  # Misc.BinToTerm: Kammer.Accounts.login_user_by_passkey/5 decodes a
+  #   passkey's own public_key_cose column with the [:safe] option — data
+  #   this same code wrote at registration, never request input, so there
+  #   is no untrusted-deserialization boundary here.
   ignore: [
     "Config.HTTPS",
     "Traversal.FileModule",
     "Traversal.SendFile",
     "Traversal.SendDownload",
-    "XSS.ContentType"
+    "XSS.ContentType",
+    "Misc.BinToTerm"
   ],
   ignore_files: []
 ]

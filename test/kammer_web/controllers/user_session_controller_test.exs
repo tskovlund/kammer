@@ -77,6 +77,36 @@ defmodule KammerWeb.UserSessionControllerTest do
     end
   end
 
+  describe "POST /users/log-in/passkey" do
+    test "logs the user in via a single-use exchange token", %{conn: conn, user: user} do
+      token = Accounts.build_passkey_login_exchange(user)
+
+      conn = post(conn, ~p"/users/log-in/passkey", %{"user" => %{"token" => token}})
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/"
+    end
+
+    test "the exchange token cannot be reused", %{user: user} do
+      token = Accounts.build_passkey_login_exchange(user)
+
+      conn = post(build_conn(), ~p"/users/log-in/passkey", %{"user" => %{"token" => token}})
+      assert redirected_to(conn) == ~p"/"
+
+      replay_conn =
+        post(build_conn(), ~p"/users/log-in/passkey", %{"user" => %{"token" => token}})
+
+      assert redirected_to(replay_conn) == ~p"/users/log-in"
+    end
+
+    test "redirects to login page when the token is invalid", %{conn: conn} do
+      conn = post(conn, ~p"/users/log-in/passkey", %{"user" => %{"token" => "invalid"}})
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "expired"
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
+  end
+
   describe "DELETE /users/log-out" do
     test "logs the user out", %{conn: conn, user: user} do
       conn = conn |> log_in_user(user) |> delete(~p"/users/log-out")

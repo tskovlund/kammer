@@ -62,6 +62,79 @@ defmodule KammerWeb.UserLive.Login do
           </.button>
         </.form>
 
+        <div :if={@passkey_challenge} class="space-y-2">
+          <div class="divider text-xs uppercase text-base-content/40">{gettext("or")}</div>
+
+          <button
+            type="button"
+            id="passkey-login-button"
+            phx-hook=".PasskeyLogin"
+            data-challenge={Base.url_encode64(@passkey_challenge.bytes, padding: false)}
+            data-rp-id={@passkey_challenge.rp_id}
+            class="btn btn-outline w-full"
+          >
+            <.icon name="hero-finger-print" class="size-5" />
+            {gettext("Sign in with a passkey")}
+          </button>
+
+          <script :type={Phoenix.LiveView.ColocatedHook} name=".PasskeyLogin">
+            export default {
+              mounted() {
+                this.el.addEventListener("click", () => this.signIn())
+              },
+              async signIn() {
+                if (!window.PublicKeyCredential) {
+                  this.pushEvent("passkey_unsupported", {})
+                  return
+                }
+
+                try {
+                  const credential = await navigator.credentials.get({
+                    publicKey: {
+                      challenge: b64urlToBytes(this.el.dataset.challenge),
+                      rpId: this.el.dataset.rpId,
+                      userVerification: "preferred",
+                      timeout: 60000,
+                    },
+                  })
+
+                  this.pushEvent("passkey_assertion", {
+                    credential_id: bytesToB64url(credential.rawId),
+                    authenticator_data: bytesToB64url(credential.response.authenticatorData),
+                    signature: bytesToB64url(credential.response.signature),
+                    client_data_json: bytesToB64url(credential.response.clientDataJSON),
+                  })
+                } catch (_error) {
+                  // The user cancelled, or the browser refused — the
+                  // browser's own UI already explained why.
+                }
+              },
+            }
+
+            function b64urlToBytes(b64url) {
+              const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/")
+              const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4)
+              return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0))
+            }
+
+            function bytesToB64url(buffer) {
+              let binary = ""
+              new Uint8Array(buffer).forEach((byte) => (binary += String.fromCharCode(byte)))
+              return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+            }
+          </script>
+        </div>
+
+        <.form
+          :if={@passkey_challenge}
+          for={@passkey_form}
+          id="login_form_passkey"
+          action={~p"/users/log-in/passkey"}
+          phx-trigger-action={@passkey_trigger_submit}
+        >
+          <input type="hidden" name={@passkey_form[:token].name} value={@passkey_form[:token].value} />
+        </.form>
+
         <p :if={!@current_scope} class="text-center text-sm">
           {gettext("New here?")}
           <.link navigate={~p"/users/register"} class="font-semibold text-brand hover:underline">
@@ -87,7 +160,20 @@ defmodule KammerWeb.UserLive.Login do
         _other -> nil
       end
 
-    {:ok, assign(socket, form: form, client_ip: client_ip)}
+    socket =
+      socket
+      |> assign(form: form, client_ip: client_ip)
+      |> assign(
+        passkey_form: to_form(%{"token" => nil}, as: "user"),
+        passkey_trigger_submit: false
+      )
+
+    socket =
+      if connected?(socket),
+        do: assign_passkey_challenge(socket),
+        else: assign(socket, passkey_challenge: nil)
+
+    {:ok, socket}
   end
 
   @impl Phoenix.LiveView
@@ -110,6 +196,46 @@ defmodule KammerWeb.UserLive.Login do
      |> put_flash(:info, info)
      |> push_navigate(to: ~p"/users/log-in")}
   end
+
+  def handle_event("passkey_assertion", params, socket) do
+    with {:ok, credential_id} <- decode_b64url(params["credential_id"]),
+         {:ok, auth_data} <- decode_b64url(params["authenticator_data"]),
+         {:ok, sig} <- decode_b64url(params["signature"]),
+         {:ok, client_data_json} <- decode_b64url(params["client_data_json"]),
+         {:ok, user} <-
+           Accounts.login_user_by_passkey(
+             credential_id,
+             auth_data,
+             sig,
+             client_data_json,
+             socket.assigns.passkey_challenge
+           ) do
+      token = Accounts.build_passkey_login_exchange(user)
+
+      {:noreply,
+       socket
+       |> assign(:passkey_form, to_form(%{"token" => token}, as: "user"))
+       |> assign(:passkey_trigger_submit, true)}
+    else
+      _error ->
+        {:noreply,
+         socket
+         |> put_flash(:error, gettext("That passkey didn't work. Please try again."))
+         |> assign_passkey_challenge()}
+    end
+  end
+
+  def handle_event("passkey_unsupported", _params, socket) do
+    {:noreply, put_flash(socket, :error, gettext("This browser doesn't support passkeys."))}
+  end
+
+  defp assign_passkey_challenge(socket) do
+    challenge = Accounts.new_passkey_authentication_challenge(KammerWeb.Endpoint.url())
+    assign(socket, :passkey_challenge, challenge)
+  end
+
+  defp decode_b64url(nil), do: :error
+  defp decode_b64url(value), do: Base.url_decode64(value, padding: false)
 
   defp local_mail_adapter? do
     Application.get_env(:kammer, Kammer.Mailer)[:adapter] == Swoosh.Adapters.Local
