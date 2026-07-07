@@ -316,6 +316,23 @@ defmodule KammerWeb.GroupLive.Show do
       </section>
 
       <%!-- Feed --%>
+      <form
+        :if={current_user(assigns)}
+        id="feed-sort-form"
+        phx-change="set_feed_sort"
+        class="flex items-center justify-end gap-1.5 pt-2 text-sm text-base-content/60"
+      >
+        <.icon name="hero-arrows-up-down" class="size-4" />
+        <select name="sort" class="select select-xs">
+          <option value="chronological" selected={feed_sort(current_user(assigns)) == :chronological}>
+            {gettext("Newest")}
+          </option>
+          <option value="activity" selected={feed_sort(current_user(assigns)) == :activity}>
+            {gettext("Activity")}
+          </option>
+        </select>
+      </form>
+
       <section class="space-y-3 pt-2" id="group-feed">
         <div :for={post <- @posts}>
           <div
@@ -695,6 +712,17 @@ defmodule KammerWeb.GroupLive.Show do
     {:noreply, refresh(socket, current_user)}
   end
 
+  def handle_event("set_feed_sort", %{"sort" => sort}, socket)
+      when sort in ~w(chronological activity) do
+    current_user = current_user(socket.assigns)
+    {:ok, updated_user} = Kammer.Accounts.update_user_settings(current_user, %{feed_sort: sort})
+
+    socket =
+      assign(socket, :current_scope, %{socket.assigns.current_scope | user: updated_user})
+
+    {:noreply, refresh(socket, updated_user)}
+  end
+
   def handle_event("leave", _params, socket) do
     current_user = current_user(socket.assigns)
 
@@ -801,7 +829,7 @@ defmodule KammerWeb.GroupLive.Show do
         {:error, :unauthorized} -> []
       end
 
-    posts = Feed.list_group_feed(current_user, group)
+    posts = Feed.list_group_feed(current_user, group, feed_sort(current_user))
 
     permissions = %{
       join: Authorization.can?(current_user, :join_group, group, relationship),
@@ -831,6 +859,9 @@ defmodule KammerWeb.GroupLive.Show do
     |> assign(:posts, posts)
     |> assign(:first_new_post_id, first_new_post_id(posts, socket.assigns.previous_visit))
   end
+
+  defp feed_sort(%Kammer.Accounts.User{feed_sort: sort}), do: sort
+  defp feed_sort(nil), do: :chronological
 
   defp first_new_post_id(_posts, nil), do: nil
 

@@ -79,12 +79,14 @@ defmodule Kammer.Feed do
   ## Reading
 
   @doc """
-  The group feed: pinned posts first, then strictly chronological
-  (newest first). Scheduled posts appear only to their author; pending-
-  approval posts only to their author and moderators.
+  The group feed: pinned posts first, then either strictly chronological
+  (newest first, the default) or the opt-in `:activity` order — bumped by
+  latest comment, forum-style (ADR 0006; the only alternate ordering this
+  product will ever have). Scheduled posts appear only to their author;
+  pending-approval posts only to their author and moderators.
   """
-  @spec list_group_feed(User.t() | nil, Group.t()) :: [Post.t()]
-  def list_group_feed(actor, %Group{} = group) do
+  @spec list_group_feed(User.t() | nil, Group.t(), User.feed_sort()) :: [Post.t()]
+  def list_group_feed(actor, %Group{} = group, sort \\ :chronological) do
     now = DateTime.utc_now(:second)
     relationship = Authorization.relationship(actor, group)
     moderator? = Authorization.can?(actor, :moderate_group, group, relationship)
@@ -92,11 +94,41 @@ defmodule Kammer.Feed do
 
     from(post in Post,
       where: post.group_id == ^group.id,
-      order_by: [desc_nulls_last: post.pinned_at, desc: post.published_at, desc: post.id],
+      order_by: ^feed_order_by(sort),
       preload: ^preloads(moderator?)
     )
     |> visible_posts(actor_id, moderator?, now)
     |> Repo.all()
+  end
+
+  defp feed_order_by(:chronological) do
+    [
+      desc_nulls_last: dynamic([post], post.pinned_at),
+      desc: dynamic([post], post.published_at),
+      desc: dynamic([post], post.id)
+    ]
+  end
+
+  defp feed_order_by(:activity) do
+    [
+      desc_nulls_last: dynamic([post], post.pinned_at),
+      desc:
+        dynamic(
+          [post],
+          fragment(
+            """
+            COALESCE(
+              (SELECT MAX(c.inserted_at) FROM comments c
+               WHERE c.post_id = ? AND c.deleted_at IS NULL AND c.pending_approval = false),
+              ?
+            )
+            """,
+            post.id,
+            post.published_at
+          )
+        ),
+      desc: dynamic([post], post.id)
+    ]
   end
 
   @doc """
@@ -149,10 +181,12 @@ defmodule Kammer.Feed do
 
   @doc """
   The aggregated home feed for the active community (SPEC §5): posts
-  from the groups the user is a member of, strictly chronological.
+  from the groups the user is a member of, either strictly chronological
+  (the default) or the same opt-in `:activity` order as the group feed
+  (ADR 0006).
   """
-  @spec list_home_feed(User.t(), Community.t()) :: [Post.t()]
-  def list_home_feed(%User{} = user, %Community{} = community) do
+  @spec list_home_feed(User.t(), Community.t(), User.feed_sort()) :: [Post.t()]
+  def list_home_feed(%User{} = user, %Community{} = community, sort \\ :chronological) do
     now = DateTime.utc_now(:second)
     member_group_ids = user |> Groups.list_member_groups(community) |> Enum.map(& &1.id)
 
@@ -161,7 +195,7 @@ defmodule Kammer.Feed do
         where: post.group_id in ^member_group_ids,
         where: post.published_at <= ^now,
         where: post.pending_approval == false,
-        order_by: [desc: post.published_at, desc: post.id],
+        order_by: ^feed_order_by(sort),
         limit: 50,
         preload: ^[:group | preloads(false)]
       )

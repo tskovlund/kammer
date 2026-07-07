@@ -182,6 +182,55 @@ defmodule Kammer.FeedTest do
     end
   end
 
+  describe "activity sort (ADR 0006 — the only alternate ordering)" do
+    setup do
+      group_with_members()
+    end
+
+    test "activity mode bumps the post with the newest comment; chronological ignores it", %{
+      group: group,
+      member: member
+    } do
+      now = DateTime.utc_now(:second)
+
+      {:ok, older} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "older",
+          "published_at" => DateTime.add(now, -2, :hour)
+        })
+
+      {:ok, newer} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "newer",
+          "published_at" => DateTime.add(now, -1, :hour)
+        })
+
+      {:ok, _comment} = Feed.create_comment(member, older, %{"body_markdown" => "bumping this"})
+
+      older_id = older.id
+      newer_id = newer.id
+
+      assert [%{id: ^newer_id}, %{id: ^older_id}] =
+               Feed.list_group_feed(member, group, :chronological)
+
+      assert [%{id: ^older_id}, %{id: ^newer_id}] = Feed.list_group_feed(member, group, :activity)
+    end
+
+    test "a pinned post still sorts first in activity mode", %{
+      group: group,
+      member: member,
+      group_owner: group_owner
+    } do
+      {:ok, quiet} = Feed.create_post(member, group, %{"body_markdown" => "quiet"})
+      {:ok, busy} = Feed.create_post(member, group, %{"body_markdown" => "busy"})
+      {:ok, _pinned} = Feed.set_pinned(group_owner, quiet, true)
+      {:ok, _comment} = Feed.create_comment(member, busy, %{"body_markdown" => "reply"})
+
+      assert [%{body_markdown: "quiet"}, %{body_markdown: "busy"}] =
+               Feed.list_group_feed(member, group, :activity)
+    end
+  end
+
   describe "editing" do
     setup do
       group_with_members()

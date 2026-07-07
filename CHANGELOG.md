@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- Activity-sort feed view (SPEC §5, ADR 0006): an opt-in "Activity"
+  ordering next to the default "Newest" on every group feed and the
+  Home feed — posts bump to the top on their newest comment,
+  forum-style, while pins still sort first. Chronological stays the
+  default everywhere; no ranking, no algorithm, exactly the one
+  alternate ordering ADR 0006 always reserved. Persists per user,
+  toggled from a small dropdown right on the feed.
 - Custom profile fields and the member roster (SPEC §4, ADR 0020):
   community admins define fields (text or single-choice) from
   `/c/:slug/settings` — "Instrument", "Section", "Dietary needs" —
