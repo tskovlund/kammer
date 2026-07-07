@@ -48,8 +48,14 @@ defmodule KammerWeb.CommunityScope do
 
       community ->
         socket = assign_community_context(socket, community)
+        current_user = current_user(socket)
 
-        if socket.assigns.community_relationship.community_role do
+        if Authorization.can?(
+             current_user,
+             :view_community,
+             community,
+             socket.assigns.community_relationship
+           ) do
           {:cont, socket}
         else
           {:halt,

@@ -10,6 +10,16 @@ and this project adheres to
 
 ### Fixed
 
+- `KammerWeb.CommunityScope`'s `:require_member` `on_mount` hook — the
+  route-level gate for most of the app's community-scoped LiveViews
+  (groups, files, members, moderation, settings, events, assignments,
+  decisions, availability) — checked community membership with an
+  inline `if socket.assigns.community_relationship.community_role`
+  instead of going through `Kammer.Authorization`, another violation
+  found by the same audit. Now calls `Authorization.can?/4` with
+  `:view_community` (the same predicate, `community_role != nil`),
+  with a dedicated test for the gate itself rather than only the
+  indirect coverage every other community-scoped test already gave it.
 - Consolidated the "creator or group moderator" access-control rule
   (who may edit/cancel/close/record-an-outcome-for a resource) into
   `Kammer.Authorization.can_manage_own_resource?/3,4`, replacing five
