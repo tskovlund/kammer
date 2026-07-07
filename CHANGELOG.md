@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Fixed
 
+- Added direct test coverage for two previously-untested
+  security-relevant boundaries flagged by the full-codebase audit:
+  `Kammer.Storage.Local`'s path-traversal guard (every key reaching
+  disk goes through it — uploads, thumbnails, extracted text) and
+  `Kammer.Markdown.to_html/1` (the sanitization boundary for every
+  post, comment, and event body in the product). No production code
+  changed; both were already correct, just unverified by the suite.
 - Consolidated comment creation for posts, events, and assignments
   into one `Kammer.Feed.create_engine_comment/5` (ADR 0007's "one
   comment engine," which had drifted into three near-identical
