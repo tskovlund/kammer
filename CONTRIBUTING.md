@@ -87,8 +87,46 @@ whatever's written elsewhere, including this document.
 
 What's left to build lives as GitHub issues (labeled `enhancement`),
 not a separate roadmap document — issue #33 is the current umbrella
-tracking Phase 2 completion. Working on something not yet tracked?
-Open an issue first so the "what's left" view stays accurate.
+tracking Phase 2 completion, with each remaining item wired in as a
+real **sub-issue** (not a hand-written checklist link), so its progress
+bar and checkbox state track automatically when a sub-issue closes.
+Working on something not yet tracked? Open an issue first — and add it
+as a sub-issue of the relevant umbrella — so the "what's left" view
+stays accurate without anyone having to remember to edit it.
+
+## How this stays fresh, not just written down
+
+Every doc above has exactly one reason to exist, and each one's
+freshness is enforced at a different point rather than left to
+memory:
+
+- **What's left (Issues)** stays accurate because closing the PR that
+  resolves an issue closes the issue itself — there's no separate
+  edit step to forget. Sub-issue linking (above) extends that to
+  umbrella tracking issues too.
+- **What shipped (`CHANGELOG.md`)** and **what changed architecturally
+  (`docs/decisions/`)** are enforced by the PR template checklist —
+  the same checklist item exists for Gettext completeness, and CI
+  additionally gates on it (below).
+- **Whether a doc reference still points somewhere real** is a CI gate
+  (#72 tracks adding this — it doesn't exist yet, filed rather than
+  silently assumed), because "the PR template asked and someone
+  checked the box" has already failed once (`docs/HANDOFF.md` went
+  stale mid-project before being retired).
+- **Whether Danish translations are actually complete** is likewise
+  slated to become a CI gate (#71), not just a checklist line, for the
+  same reason.
+- **Whether the code itself is well-structured, not just
+  lint-clean** — the one thing genuinely not machine-checkable — gets
+  a self-review pass (the `code-review` skill against the diff) before
+  a PR opens, not just the automated gate after.
+
+The rule underneath all of it: if keeping something current requires a
+human (or an AI) to remember to do it by hand, on every single change,
+forever, that's a bug in the process, not a discipline problem to
+solve by trying harder. Prefer a mechanism (auto-closing issues,
+CI gates, native GitHub linking) over a reminder every time one is
+available.
 
 ## Reporting security issues
 
