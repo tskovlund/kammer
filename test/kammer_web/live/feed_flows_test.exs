@@ -85,6 +85,51 @@ defmodule KammerWeb.FeedFlowsTest do
     end
   end
 
+  describe "group feed sort (ADR 0006)" do
+    setup :feed_context
+
+    test "activity mode bumps the commented-on post; chronological stays the default", %{
+      conn: conn,
+      community: community,
+      group: group,
+      member: member
+    } do
+      now = DateTime.utc_now(:second)
+
+      {:ok, older} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "older",
+          "published_at" => DateTime.add(now, -2, :hour)
+        })
+
+      {:ok, _newer} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "newer",
+          "published_at" => DateTime.add(now, -1, :hour)
+        })
+
+      {:ok, _comment} = Feed.create_comment(member, older, %{"body_markdown" => "bump"})
+
+      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}/g/#{group.slug}")
+      assert html =~ ~r/newer.*older/s
+
+      html =
+        lv
+        |> form("#feed-sort-form", %{"sort" => "activity"})
+        |> render_change()
+
+      assert html =~ ~r/older.*newer/s
+      assert Kammer.Accounts.get_user!(member.id).feed_sort == :activity
+    end
+
+    test "anonymous visitors to a public group see no sort toggle", %{community: community} do
+      group = group_fixture(community, visibility: :public_listed)
+
+      {:ok, _lv, html} = live(build_conn(), ~p"/c/#{community.slug}/g/#{group.slug}")
+      refute html =~ "feed-sort-form"
+    end
+  end
+
   describe "interactions" do
     setup :feed_context
 
@@ -211,6 +256,40 @@ defmodule KammerWeb.FeedFlowsTest do
 
       assert html =~ "Home feed post"
       assert html =~ group.name
+    end
+
+    test "the activity toggle persists and reorders (ADR 0006)", %{
+      conn: conn,
+      community: community,
+      group: group,
+      member: member
+    } do
+      now = DateTime.utc_now(:second)
+
+      {:ok, older} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "older",
+          "published_at" => DateTime.add(now, -2, :hour)
+        })
+
+      {:ok, _newer} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "newer",
+          "published_at" => DateTime.add(now, -1, :hour)
+        })
+
+      {:ok, _comment} = Feed.create_comment(member, older, %{"body_markdown" => "bump"})
+
+      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}")
+      assert html =~ ~r/newer.*older/s
+
+      html =
+        lv
+        |> form("#feed-sort-form", %{"sort" => "activity"})
+        |> render_change()
+
+      assert html =~ ~r/older.*newer/s
+      assert Kammer.Accounts.get_user!(member.id).feed_sort == :activity
     end
   end
 

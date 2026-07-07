@@ -276,7 +276,7 @@ msgstr ""
 
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
-#: lib/kammer_web/live/community_live/home.ex:128
+#: lib/kammer_web/live/community_live/home.ex:148
 #: lib/kammer_web/live/instance_live/home.ex:169
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
@@ -470,7 +470,7 @@ msgid "Address"
 msgstr ""
 
 #: lib/kammer_web/live/community_live/members.ex:277
-#: lib/kammer_web/live/group_live/show.ex:896
+#: lib/kammer_web/live/group_live/show.ex:927
 #, elixir-autogen, elixir-format
 msgid "Admin"
 msgstr ""
@@ -489,7 +489,7 @@ msgstr ""
 msgid "All members"
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:126
+#: lib/kammer_web/live/community_live/home.ex:146
 #, elixir-autogen, elixir-format
 msgid "Already a member?"
 msgstr ""
@@ -542,7 +542,7 @@ msgstr ""
 msgid "Bookmarks to other Kammer instances you belong to."
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:90
+#: lib/kammer_web/live/community_live/home.ex:110
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Browse groups"
 msgstr ""
@@ -696,7 +696,7 @@ msgstr ""
 msgid "Group deleted."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:464
+#: lib/kammer_web/live/group_live/show.ex:481
 #, elixir-autogen, elixir-format
 msgid "Group not found."
 msgstr ""
@@ -718,7 +718,7 @@ msgstr ""
 msgid "Groups"
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:86
+#: lib/kammer_web/live/community_live/home.ex:106
 #, elixir-autogen, elixir-format
 msgid "Groups are where posts, events, and files live."
 msgstr ""
@@ -824,7 +824,7 @@ msgstr ""
 
 #: lib/kammer_web/live/community_live/members.ex:278
 #: lib/kammer_web/live/event_live/series.ex:90
-#: lib/kammer_web/live/group_live/show.ex:897
+#: lib/kammer_web/live/group_live/show.ex:928
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
@@ -838,7 +838,7 @@ msgstr ""
 #: lib/kammer_web/live/community_live/members.ex:31
 #: lib/kammer_web/live/group_live/new.ex:74
 #: lib/kammer_web/live/group_live/settings.ex:77
-#: lib/kammer_web/live/group_live/show.ex:418
+#: lib/kammer_web/live/group_live/show.ex:435
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr ""
@@ -849,7 +849,7 @@ msgstr ""
 msgid "Members and guests"
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:124
+#: lib/kammer_web/live/community_live/home.ex:144
 #, elixir-autogen, elixir-format
 msgid "Membership is by invitation — ask an organizer for an invite link."
 msgstr ""
@@ -904,7 +904,7 @@ msgstr ""
 msgid "No other servers yet"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:354
+#: lib/kammer_web/live/group_live/show.ex:371
 #, elixir-autogen, elixir-format
 msgid "No posts yet"
 msgstr ""
@@ -933,12 +933,12 @@ msgid "Only instance operators may create communities on this instance."
 msgstr ""
 
 #: lib/kammer_web/live/community_live/members.ex:276
-#: lib/kammer_web/live/group_live/show.ex:895
+#: lib/kammer_web/live/group_live/show.ex:926
 #, elixir-autogen, elixir-format
 msgid "Owner"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:710
+#: lib/kammer_web/live/group_live/show.ex:738
 #, elixir-autogen, elixir-format
 msgid "Owners must transfer ownership before leaving."
 msgstr ""
@@ -969,7 +969,7 @@ msgstr ""
 msgid "Public"
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:106
+#: lib/kammer_web/live/community_live/home.ex:126
 #, elixir-autogen, elixir-format
 msgid "Public groups"
 msgstr ""
@@ -1003,7 +1003,7 @@ msgstr ""
 msgid "Remove this member from the community and all its groups?"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:663
+#: lib/kammer_web/live/group_live/show.ex:680
 #, elixir-autogen, elixir-format
 msgid "Request sent — an admin will review it."
 msgstr ""
@@ -1078,7 +1078,7 @@ msgstr ""
 msgid "This community asks members to use their full, real name."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:357
+#: lib/kammer_web/live/group_live/show.ex:374
 #, elixir-autogen, elixir-format
 msgid "This group is archived and read-only."
 msgstr ""
@@ -1129,7 +1129,7 @@ msgstr ""
 msgid "Welcome to %{name}!"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:649
+#: lib/kammer_web/live/group_live/show.ex:666
 #, elixir-autogen, elixir-format
 msgid "Welcome to the group!"
 msgstr ""
@@ -1204,14 +1204,14 @@ msgstr ""
 #: lib/kammer_web/live/group_live/settings.ex:368
 #: lib/kammer_web/live/group_live/settings.ex:384
 #: lib/kammer_web/live/group_live/settings.ex:400
-#: lib/kammer_web/live/group_live/show.ex:518
-#: lib/kammer_web/live/group_live/show.ex:569
-#: lib/kammer_web/live/group_live/show.ex:615
-#: lib/kammer_web/live/group_live/show.ex:635
+#: lib/kammer_web/live/group_live/show.ex:535
+#: lib/kammer_web/live/group_live/show.ex:586
+#: lib/kammer_web/live/group_live/show.ex:632
 #: lib/kammer_web/live/group_live/show.ex:652
-#: lib/kammer_web/live/group_live/show.ex:667
-#: lib/kammer_web/live/group_live/show.ex:680
-#: lib/kammer_web/live/group_live/show.ex:713
+#: lib/kammer_web/live/group_live/show.ex:669
+#: lib/kammer_web/live/group_live/show.ex:684
+#: lib/kammer_web/live/group_live/show.ex:697
+#: lib/kammer_web/live/group_live/show.ex:741
 #: lib/kammer_web/live/moderation_live/index.ex:155
 #: lib/kammer_web/live/moderation_live/index.ex:166
 #: lib/kammer_web/live/moderation_live/index.ex:177
@@ -1219,12 +1219,12 @@ msgstr ""
 msgid "You are not allowed to do that."
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:85
+#: lib/kammer_web/live/community_live/home.ex:105
 #, elixir-autogen, elixir-format
 msgid "You haven't joined any groups yet"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:705
+#: lib/kammer_web/live/group_live/show.ex:733
 #, elixir-autogen, elixir-format
 msgid "You left the group."
 msgstr ""
@@ -1288,7 +1288,7 @@ msgstr ""
 msgid "%{count}m ago"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:608
+#: lib/kammer_web/live/group_live/show.ex:625
 #, elixir-autogen, elixir-format
 msgid "@everyone was used too recently in this group."
 msgstr ""
@@ -1299,7 +1299,7 @@ msgid "Acknowledge"
 msgstr ""
 
 #: lib/kammer_web/components/feed_components.ex:299
-#: lib/kammer_web/live/group_live/show.ex:374
+#: lib/kammer_web/live/group_live/show.ex:391
 #, elixir-autogen, elixir-format
 msgid "Acknowledged"
 msgstr ""
@@ -1309,7 +1309,7 @@ msgstr ""
 msgid "Acknowledgment required"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:371
+#: lib/kammer_web/live/group_live/show.ex:388
 #, elixir-autogen, elixir-format
 msgid "Acknowledgments"
 msgstr ""
@@ -1346,21 +1346,21 @@ msgstr ""
 msgid "Awaiting approval"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:358
+#: lib/kammer_web/live/group_live/show.ex:375
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Be the first to write something."
 msgstr ""
 
 #: lib/kammer_web/live/availability_live/new.ex:66
 #: lib/kammer_web/live/event_live/series.ex:64
-#: lib/kammer_web/live/group_live/show.ex:336
-#: lib/kammer_web/live/group_live/show.ex:408
+#: lib/kammer_web/live/group_live/show.ex:353
+#: lib/kammer_web/live/group_live/show.ex:425
 #: lib/kammer_web/live/legal_live/edit.ex:31
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:388
+#: lib/kammer_web/live/group_live/show.ex:405
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Close"
 msgstr ""
@@ -1380,7 +1380,7 @@ msgstr ""
 msgid "Comments are locked."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:875
+#: lib/kammer_web/live/group_live/show.ex:906
 #, elixir-autogen, elixir-format
 msgid "Could not create the post."
 msgstr ""
@@ -1412,7 +1412,7 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:866
+#: lib/kammer_web/live/group_live/show.ex:897
 #, elixir-autogen, elixir-format
 msgid "File is too large."
 msgstr ""
@@ -1427,17 +1427,17 @@ msgstr ""
 msgid "Multiple choice"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:326
+#: lib/kammer_web/live/group_live/show.ex:343
 #, elixir-autogen, elixir-format
 msgid "New since your last visit"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:380
+#: lib/kammer_web/live/group_live/show.ex:397
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Not yet"
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:78
+#: lib/kammer_web/live/community_live/home.ex:98
 #, elixir-autogen, elixir-format
 msgid "Nothing in your feed yet"
 msgstr ""
@@ -1483,7 +1483,7 @@ msgstr ""
 msgid "Posting..."
 msgstr ""
 
-#: lib/kammer_web/live/community_live/home.ex:79
+#: lib/kammer_web/live/community_live/home.ex:99
 #, elixir-autogen, elixir-format
 msgid "Posts from your groups appear here, newest first."
 msgstr ""
@@ -1522,7 +1522,7 @@ msgstr ""
 msgid "Requires acknowledgment"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:334
+#: lib/kammer_web/live/group_live/show.ex:351
 #: lib/kammer_web/live/instance_live/settings.ex:43
 #, elixir-autogen, elixir-format
 msgid "Save"
@@ -1568,7 +1568,7 @@ msgstr ""
 msgid "This post was removed."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:867
+#: lib/kammer_web/live/group_live/show.ex:898
 #, elixir-autogen, elixir-format
 msgid "Too many files."
 msgstr ""
@@ -1588,7 +1588,7 @@ msgstr ""
 msgid "Unpin"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:868
+#: lib/kammer_web/live/group_live/show.ex:899
 #, elixir-autogen, elixir-format
 msgid "Upload failed."
 msgstr ""
@@ -1982,7 +1982,7 @@ msgstr ""
 msgid "Event reminder"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:888
+#: lib/kammer_web/live/group_live/show.ex:919
 #, elixir-autogen, elixir-format
 msgid "Everything"
 msgstr ""
@@ -1992,7 +1992,7 @@ msgstr ""
 msgid "Get push notifications on this device for mentions and replies."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:889
+#: lib/kammer_web/live/group_live/show.ex:920
 #, elixir-autogen, elixir-format
 msgid "Highlights"
 msgstr ""
@@ -2002,12 +2002,12 @@ msgstr ""
 msgid "Mark all read"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:890
+#: lib/kammer_web/live/group_live/show.ex:921
 #, elixir-autogen, elixir-format
 msgid "Mentions only"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:891
+#: lib/kammer_web/live/group_live/show.ex:922
 #, elixir-autogen, elixir-format
 msgid "Muted"
 msgstr ""
@@ -2611,7 +2611,7 @@ msgstr ""
 msgid "A moderator reviews guest comments before they appear."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:506
+#: lib/kammer_web/live/group_live/show.ex:523
 #, elixir-autogen, elixir-format
 msgid "Check your email — follow the link there to submit your comment."
 msgstr ""
@@ -2641,7 +2641,7 @@ msgstr ""
 msgid "Guest"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:515
+#: lib/kammer_web/live/group_live/show.ex:532
 #, elixir-autogen, elixir-format
 msgid "Please fill in a valid name, email, and comment."
 msgstr ""
@@ -2676,7 +2676,7 @@ msgstr ""
 msgid "Thanks %{name} — your comment is submitted and will appear once a moderator approves it."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:511
+#: lib/kammer_web/live/group_live/show.ex:528
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Too many attempts — please try again later."
 msgstr ""
@@ -3314,7 +3314,7 @@ msgstr ""
 msgid "Report"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:397
+#: lib/kammer_web/live/group_live/show.ex:414
 #, elixir-autogen, elixir-format
 msgid "Report to the moderators"
 msgstr ""
@@ -3329,22 +3329,22 @@ msgstr ""
 msgid "Reports land here; only you and the other moderators see them."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:410
+#: lib/kammer_web/live/group_live/show.ex:427
 #, elixir-autogen, elixir-format
 msgid "Send report"
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:557
+#: lib/kammer_web/live/group_live/show.ex:574
 #, elixir-autogen, elixir-format
 msgid "Thanks — the moderators will take a look."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:403
+#: lib/kammer_web/live/group_live/show.ex:420
 #, elixir-autogen, elixir-format
 msgid "What's wrong? The moderators see exactly what you write."
 msgstr ""
 
-#: lib/kammer_web/live/group_live/show.ex:563
+#: lib/kammer_web/live/group_live/show.ex:580
 #, elixir-autogen, elixir-format
 msgid "You already reported this — the moderators have it."
 msgstr ""
@@ -3827,4 +3827,16 @@ msgstr ""
 #: lib/kammer_web/live/user_live/settings.ex:100
 #, elixir-autogen, elixir-format
 msgid "Visible to"
+msgstr ""
+
+#: lib/kammer_web/live/community_live/home.ex:79
+#: lib/kammer_web/live/group_live/show.ex:331
+#, elixir-autogen, elixir-format
+msgid "Activity"
+msgstr ""
+
+#: lib/kammer_web/live/community_live/home.ex:76
+#: lib/kammer_web/live/group_live/show.ex:328
+#, elixir-autogen, elixir-format
+msgid "Newest"
 msgstr ""

@@ -61,6 +61,26 @@ defmodule KammerWeb.CommunityLive.Home do
           </:subtitle>
         </.header>
 
+        <form
+          :if={@home_posts != []}
+          id="feed-sort-form"
+          phx-change="set_feed_sort"
+          class="flex items-center justify-end gap-1.5 pb-1 text-sm text-base-content/60"
+        >
+          <.icon name="hero-arrows-up-down" class="size-4" />
+          <select name="sort" class="select select-xs">
+            <option
+              value="chronological"
+              selected={@current_scope.user.feed_sort == :chronological}
+            >
+              {gettext("Newest")}
+            </option>
+            <option value="activity" selected={@current_scope.user.feed_sort == :activity}>
+              {gettext("Activity")}
+            </option>
+          </select>
+        </form>
+
         <section :if={@home_posts != []} class="space-y-3">
           <div :for={post <- @home_posts}>
             <.post_card
@@ -177,11 +197,22 @@ defmodule KammerWeb.CommunityLive.Home do
     end)
   end
 
+  def handle_event("set_feed_sort", %{"sort" => sort}, socket)
+      when sort in ~w(chronological activity) do
+    current_user = socket.assigns.current_scope.user
+    {:ok, updated_user} = Kammer.Accounts.update_user_settings(current_user, %{feed_sort: sort})
+
+    socket =
+      assign(socket, :current_scope, %{socket.assigns.current_scope | user: updated_user})
+
+    {:noreply, load_home_feed(socket, updated_user)}
+  end
+
   defp load_home_feed(socket, current_user) do
     assign(
       socket,
       :home_posts,
-      Feed.list_home_feed(current_user, socket.assigns.active_community)
+      Feed.list_home_feed(current_user, socket.assigns.active_community, current_user.feed_sort)
     )
   end
 

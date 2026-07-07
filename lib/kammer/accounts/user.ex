@@ -16,6 +16,7 @@ defmodule Kammer.Accounts.User do
 
   @type t() :: %__MODULE__{}
   @type visibility() :: :hidden | :members | :admins
+  @type feed_sort() :: :chronological | :activity
 
   @visibilities [:hidden, :members, :admins]
 
@@ -45,6 +46,10 @@ defmodule Kammer.Accounts.User do
     field :contact_email_visibility, Ecto.Enum, values: @visibilities, default: :hidden
     field :contact_note, :string
     field :contact_note_visibility, Ecto.Enum, values: @visibilities, default: :hidden
+
+    # ADR 0006: the only alternate feed ordering, opt-in, chronological
+    # stays the default everywhere.
+    field :feed_sort, Ecto.Enum, values: [:chronological, :activity], default: :chronological
 
     timestamps(type: :utc_datetime)
   end
@@ -106,7 +111,8 @@ defmodule Kammer.Accounts.User do
       :contact_email,
       :contact_email_visibility,
       :contact_note,
-      :contact_note_visibility
+      :contact_note_visibility,
+      :feed_sort
     ])
     |> validate_display_name()
     |> validate_inclusion(:locale, allowed_locales())

@@ -31,11 +31,12 @@ merged, plus, from Phase 2 and the decided roadmap:
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
   erasure, the audit log, passkeys, event recurrence, the admin
-  update notice, RSS/Atom feeds, content-minimized email mode, and
-  custom profile fields + the member roster** (§5.6) — see that
-  section for what shipped and what remains in each.
+  update notice, RSS/Atom feeds, content-minimized email mode, custom
+  profile fields + the member roster, and the activity-sort feed
+  view** (§5.6) — see that section for what shipped and what remains
+  in each.
 
-Suite at handoff: **523 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **528 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -414,8 +415,17 @@ atom. Danish register: a slot is "en tjans".
   — see ADR 0020 for why. Remaining: `instance_name`/
   `community_creation_policy`/`storage_policy` still have no
   post-setup edit UI.
-- Then: activity-sort view (opt-in, chronological stays default —
-  values!), branding UI, Prometheus (PromEx), ClamAV option, NixOS
+- ✅ **Activity-sort feed view** — SHIPPED (ADR 0006, already
+  anticipated it): `User.feed_sort` (`:chronological | :activity`,
+  default chronological), toggled from a small dropdown on both
+  `GroupLive.Show` and `CommunityLive.Home`. `Kammer.Feed`'s
+  `list_group_feed/3` and `list_home_feed/3` share one `order_by`
+  builder — chronological is unchanged; activity orders by a
+  correlated-subquery "last comment time, else published_at",
+  pinned posts still sorting first in either mode. No ranking, no
+  engagement metrics — exactly the one alternate ordering ADR 0006
+  always reserved, nothing more.
+- Then: branding UI, Prometheus (PromEx), ClamAV option, NixOS
   module.
 - **Security hardening, pre-1.0**: replace the CSP's
   `'unsafe-inline'` script allowance with LiveView nonce-based CSP
