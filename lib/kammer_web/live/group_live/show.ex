@@ -622,7 +622,7 @@ defmodule KammerWeb.GroupLive.Show do
 
       {:error, :rate_limited} ->
         {:noreply,
-         put_flash(socket, :error, gettext("@everyone was used too recently in this group."))}
+         put_flash(socket, :error, gettext("Too many attempts — please try again later."))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         message = changeset_error_message(changeset)

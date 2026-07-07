@@ -179,4 +179,32 @@ defmodule Kammer.FilesTest do
       assert {:error, :not_found} = Files.fetch_accessible_file(member, stored_file.id)
     end
   end
+
+  describe "upload rate limiting (SPEC §11)" do
+    test "create_from_upload is rate limited per uploader", %{
+      group: group,
+      member: member,
+      tmp_dir: tmp_dir
+    } do
+      for i <- 1..40 do
+        file_path = Path.join(tmp_dir, "note-#{i}.txt")
+        File.write!(file_path, "note #{i}")
+
+        assert {:ok, _stored_file} =
+                 Files.create_from_upload(member, group, file_path, %{
+                   filename: "note-#{i}.txt",
+                   content_type: "text/plain"
+                 })
+      end
+
+      file_path = Path.join(tmp_dir, "one-too-many.txt")
+      File.write!(file_path, "one too many")
+
+      assert {:error, :rate_limited} =
+               Files.create_from_upload(member, group, file_path, %{
+                 filename: "one-too-many.txt",
+                 content_type: "text/plain"
+               })
+    end
+  end
 end

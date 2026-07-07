@@ -834,24 +834,29 @@ defmodule Kammer.Events do
   one-reply-level rule.
   """
   @spec create_comment(User.t(), Event.t(), map()) ::
-          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_comment(%User{} = author, %Event{} = event, attrs) do
     group = Repo.get!(Group, event.group_id)
 
-    if Authorization.can?(author, :comment_in_group, group) and
-         is_nil(event.comment_locked_at) do
-      parent_id = normalize_parent(attrs["parent_comment_id"])
+    cond do
+      not Authorization.can?(author, :comment_in_group, group) or
+          not is_nil(event.comment_locked_at) ->
+        {:error, :unauthorized}
 
-      %Comment{}
-      |> Comment.create_changeset(%{
-        "body_markdown" => attrs["body_markdown"],
-        "parent_comment_id" => parent_id,
-        "author_user_id" => author.id
-      })
-      |> Ecto.Changeset.put_change(:event_id, event.id)
-      |> Repo.insert()
-    else
-      {:error, :unauthorized}
+      match?({:deny, _retry}, RateLimit.hit_comment_create(author.id)) ->
+        {:error, :rate_limited}
+
+      true ->
+        parent_id = normalize_parent(attrs["parent_comment_id"])
+
+        %Comment{}
+        |> Comment.create_changeset(%{
+          "body_markdown" => attrs["body_markdown"],
+          "parent_comment_id" => parent_id,
+          "author_user_id" => author.id
+        })
+        |> Ecto.Changeset.put_change(:event_id, event.id)
+        |> Repo.insert()
     end
   end
 

@@ -75,7 +75,7 @@ defmodule KammerWeb.UserLive.Registration do
 
   @impl Phoenix.LiveView
   def handle_event("save", %{"user" => user_params}, socket) do
-    case Accounts.register_user(user_params) do
+    case Accounts.register_user(user_params, ip: socket.assigns.client_ip) do
       {:ok, user} ->
         Accounts.deliver_login_instructions(
           user,
@@ -95,6 +95,10 @@ defmodule KammerWeb.UserLive.Registration do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many attempts. Please try again later."))}
     end
   end
 

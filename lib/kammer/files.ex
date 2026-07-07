@@ -19,6 +19,7 @@ defmodule Kammer.Files do
   alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
   alias Kammer.Media
+  alias Kammer.RateLimit
   alias Kammer.Repo
   alias Kammer.Storage
 
@@ -71,7 +72,8 @@ defmodule Kammer.Files do
       "transient_expires_at" => transient_expires_at
     }
 
-    with :ok <- check_quota(group, source_path) do
+    with :ok <- check_upload_rate_limit(uploader.id),
+         :ok <- check_quota(group, source_path) do
       if Media.image_content_type?(declared_content_type) do
         store_image(source_path, base_attrs)
       else
@@ -90,7 +92,8 @@ defmodule Kammer.Files do
     relationship = Authorization.relationship(uploader, scope)
     folder_chain = folder_chain(folder)
 
-    with :ok <- files_feature_gate(scope),
+    with :ok <- check_upload_rate_limit(uploader.id),
+         :ok <- files_feature_gate(scope),
          true <-
            Authorization.can_write_folder?(uploader, scope, folder_chain, relationship) ||
              :unauthorized,
@@ -755,6 +758,13 @@ defmodule Kammer.Files do
   # working — the feed is not toggleable.
   defp files_feature_gate(%Group{} = group), do: Authorization.feature_gate(group, :files)
   defp files_feature_gate(%Community{}), do: :ok
+
+  defp check_upload_rate_limit(uploader_id) do
+    case RateLimit.hit_upload(uploader_id) do
+      {:allow, _count} -> :ok
+      {:deny, _retry} -> {:error, :rate_limited}
+    end
+  end
 
   defp check_quota(scope, source_path) do
     case effective_quota_bytes(scope) do

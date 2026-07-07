@@ -108,9 +108,6 @@ ordering within this list.
 
 Report surfaces beyond the group feed (event pages, assignment pages —
 reuse the existing `Kammer.Moderation.report_post/comment` shape).
-Full rate-limit coverage of posting/commenting/uploads (today's
-`Hammer` usage covers magic-link issuance and a few guest endpoints;
-audit `Kammer.RateLimit` call sites against SPEC §11's full list).
 
 ### Newsletter subscriptions
 

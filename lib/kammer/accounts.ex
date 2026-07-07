@@ -34,13 +34,22 @@ defmodule Kammer.Accounts do
 
   @doc """
   Registers a user from an email and display name — the only required base
-  profile field (SPEC §4).
+  profile field (SPEC §4). Rate-limited by client IP (SPEC §11) when
+  `:ip` is given — mass-account creation from one address, not a single
+  legitimate signup, is what this guards against.
   """
-  @spec register_user(map()) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  def register_user(attrs) do
-    %User{}
-    |> User.registration_changeset(attrs)
-    |> Repo.insert()
+  @spec register_user(map(), keyword()) ::
+          {:ok, User.t()} | {:error, Ecto.Changeset.t() | :rate_limited}
+  def register_user(attrs, opts \\ []) do
+    case RateLimit.hit_signup_ip(Keyword.get(opts, :ip)) do
+      {:allow, _count} ->
+        %User{}
+        |> User.registration_changeset(attrs)
+        |> Repo.insert()
+
+      {:deny, _retry_after} ->
+        {:error, :rate_limited}
+    end
   end
 
   @doc """

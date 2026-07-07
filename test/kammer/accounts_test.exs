@@ -68,6 +68,17 @@ defmodule Kammer.AccountsTest do
       assert user.email == email
       assert is_nil(user.confirmed_at)
     end
+
+    test "is rate limited per IP across different emails" do
+      shared_ip = {203, 0, 113, 8}
+
+      results =
+        for _attempt <- 1..11 do
+          Accounts.register_user(valid_user_attributes(), ip: shared_ip)
+        end
+
+      assert {:error, :rate_limited} = List.last(results)
+    end
   end
 
   describe "sudo_mode?/2" do

@@ -195,6 +195,16 @@ defmodule Kammer.EventsTest do
       assert {:error, :unauthorized} =
                Events.create_comment(quiet_member, event, %{"body_markdown" => "hi"})
     end
+
+    test "commenting is rate limited per author", %{event: event, member: member} do
+      for i <- 1..20 do
+        assert {:ok, _comment} =
+                 Events.create_comment(member, event, %{"body_markdown" => "Comment #{i}"})
+      end
+
+      assert {:error, :rate_limited} =
+               Events.create_comment(member, event, %{"body_markdown" => "One too many"})
+    end
   end
 
   describe "management" do
