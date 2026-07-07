@@ -11,6 +11,18 @@ release is bad, ship a fix-forward patch release, never re-tag.
    entries in `CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD`
    heading ([Keep a Changelog](https://keepachangelog.com) format —
    the release notes are extracted from exactly this section).
+
+   **v0.1.0 is the exception.** Nothing has ever shipped before it, so
+   its accumulated `## [Unreleased]` — an Added/Fixed diff against a
+   prior version nobody ran — isn't the release notes; it's scratch
+   material. Curating means writing one narrative `## [0.1.0]` entry
+   from scratch: what Kammer is, and the main features it packs.
+   Drop the bug-fix bullets entirely (nothing shipped, so nothing was
+   ever "fixed" from a user's perspective) and fold the feature list
+   into prose rather than pasting it as a chronological build log.
+   Every release after 0.1.0 follows the literal move-the-entries
+   process above.
+
 2. **Bump the version** in `mix.exs` (`version: "X.Y.Z"`). The release
    workflow refuses tags that don't match it.
 3. **PR and merge** those two changes to `main` (required checks
