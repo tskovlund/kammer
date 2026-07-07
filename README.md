@@ -53,8 +53,10 @@ screen.
   comment threads, mentions, pinned + scheduled + acknowledgment-required
   posts, live updates.
 - **Guest interactions** — on public groups that opt in, people without
-  accounts can RSVP, sign up for slots, and comment (moderator-approved),
-  all through signed email links with one-click full erasure.
+  accounts can RSVP, sign up for slots, comment (moderator-approved), and
+  subscribe to a group's feed by email (every post or a daily/weekly
+  digest, one-click unsubscribe), all through signed email links with
+  one-click full erasure.
 - **Events** — timezone-aware, all-day/multi-day, RSVP, comments, email
   reminders, ICS calendar feeds, and **signup slots** ("bring cake ×2,
   drive ×4") that members and guests claim with one tap.

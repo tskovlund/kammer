@@ -7,6 +7,7 @@ defmodule Kammer.Workers.NotificationFanoutWorker do
 
   use Oban.Worker, queue: :mailers, max_attempts: 3
 
+  alias Kammer.Newsletters
   alias Kammer.Notifications
   alias Kammer.Repo
 
@@ -14,8 +15,16 @@ defmodule Kammer.Workers.NotificationFanoutWorker do
   @spec perform(Oban.Job.t()) :: :ok
   def perform(%Oban.Job{args: %{"type" => "post", "id" => post_id}}) do
     case Repo.get(Kammer.Feed.Post, post_id) do
-      nil -> :ok
-      post -> if post.pending_approval, do: :ok, else: Notifications.fanout_post(post)
+      nil ->
+        :ok
+
+      post ->
+        if not post.pending_approval do
+          Notifications.fanout_post(post)
+          Newsletters.notify_subscribers(post)
+        end
+
+        :ok
     end
   end
 

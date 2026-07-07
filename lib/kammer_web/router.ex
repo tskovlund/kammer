@@ -34,6 +34,15 @@ defmodule KammerWeb.Router do
     plug :require_api_user
   end
 
+  # RFC 8058 one-click unsubscribe: a mail client POSTs this with no
+  # session and no CSRF token — the signed, expiring token in the URL
+  # is the whole credential, same as every other guest link. No
+  # session, no CSP, no forgery protection to skip around.
+  pipeline :newsletter_one_click do
+    plug :accepts, ["html"]
+    plug :put_secure_browser_headers
+  end
+
   scope "/", KammerWeb do
     pipe_through :browser
 
@@ -178,11 +187,21 @@ defmodule KammerWeb.Router do
     get "/guest/rsvp/confirm/:token", GuestRsvpController, :confirm
     get "/guest/comment/confirm/:token", GuestCommentController, :confirm
     get "/guest/claim/confirm/:token", GuestClaimController, :confirm
+    get "/newsletter/confirm/:token", NewsletterController, :confirm
+    get "/newsletter/unsubscribe/:token/:subscription_id", NewsletterController, :unsubscribe
 
     live_session :guest_links,
       on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
       live "/guest/manage/:token", GuestLive.Manage, :manage
     end
+  end
+
+  scope "/", KammerWeb do
+    pipe_through [:newsletter_one_click]
+
+    post "/newsletter/unsubscribe/:token/:subscription_id",
+         NewsletterController,
+         :unsubscribe_one_click
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

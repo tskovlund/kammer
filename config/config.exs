@@ -49,6 +49,8 @@ config :kammer, Oban,
        {"15 4 * * *", Kammer.Workers.BackupWorker},
        # Delivers only to users who opted in (digest_frequency).
        {"0 6 * * *", Kammer.Workers.DigestWorker},
+       # Guest newsletter digests — offset from the member digest tick.
+       {"15 6 * * *", Kammer.Workers.NewsletterDigestWorker},
        # No-op if DISABLE_UPDATE_CHECK is set (SPEC §13).
        {"0 5 * * *", Kammer.Workers.UpdateCheckWorker}
      ]}

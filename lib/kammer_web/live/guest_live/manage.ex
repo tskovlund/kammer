@@ -1,10 +1,11 @@
 defmodule KammerWeb.GuestLive.Manage do
   @moduledoc """
-  A guest's management page (SPEC §6/§12), reached only through the
+  A guest's management page (SPEC §6/§8/§12), reached only through the
   signed link in their confirmation emails: every RSVP they gave (with
   the answer changeable), every comment they wrote (with its moderation
-  state), and one button that erases all of it. The token in the URL is
-  the entire credential.
+  state), every newsletter subscription (cadence changeable,
+  unsubscribable), and one button that erases all of it. The token in
+  the URL is the entire credential.
   """
 
   use KammerWeb, :live_view
@@ -12,6 +13,8 @@ defmodule KammerWeb.GuestLive.Manage do
   alias Kammer.Events
   alias Kammer.Feed.Comment
   alias Kammer.Guests
+  alias Kammer.Newsletters
+  alias Kammer.Newsletters.NewsletterSubscription
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -93,6 +96,43 @@ defmodule KammerWeb.GuestLive.Manage do
           </div>
         </section>
 
+        <section :if={@subscriptions != []} class="rounded-box border border-base-200 p-4">
+          <h2 class="pb-3 text-sm font-medium uppercase tracking-wide text-base-content/50">
+            {gettext("Your newsletter subscriptions")}
+          </h2>
+          <div
+            :for={subscription <- @subscriptions}
+            class="flex flex-wrap items-center gap-2 border-t border-base-200 py-3 first:border-t-0"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">
+                {subscription.group.community.name} / {subscription.group.name}
+              </p>
+            </div>
+            <form id={"cadence-#{subscription.id}"} phx-change="change_cadence">
+              <input type="hidden" name="subscription_id" value={subscription.id} />
+              <select name="cadence" class="select select-sm">
+                <option
+                  :for={{value, label} <- cadence_options()}
+                  value={value}
+                  selected={to_string(subscription.cadence) == value}
+                >
+                  {label}
+                </option>
+              </select>
+            </form>
+            <.button
+              id={"unsubscribe-#{subscription.id}"}
+              phx-click="unsubscribe"
+              phx-value-subscription-id={subscription.id}
+              data-confirm={gettext("Unsubscribe from this group?")}
+              class="btn btn-sm btn-outline"
+            >
+              {gettext("Unsubscribe")}
+            </.button>
+          </div>
+        </section>
+
         <section class="rounded-box border border-base-200 p-4">
           <p class="pb-3 text-sm text-base-content/70">
             {gettext(
@@ -123,7 +163,8 @@ defmodule KammerWeb.GuestLive.Manage do
          |> assign(:identity, state.identity)
          |> assign(:rsvps, state.rsvps)
          |> assign(:claims, state.claims)
-         |> assign(:comments, state.comments)}
+         |> assign(:comments, state.comments)
+         |> assign(:subscriptions, state.subscriptions)}
 
       {:error, :invalid} ->
         {:ok,
@@ -162,6 +203,38 @@ defmodule KammerWeb.GuestLive.Manage do
     end
   end
 
+  def handle_event(
+        "change_cadence",
+        %{"subscription_id" => subscription_id, "cadence" => cadence},
+        socket
+      ) do
+    cadence_atom = String.to_existing_atom(cadence)
+
+    case Newsletters.update_cadence(socket.assigns.token, subscription_id, cadence_atom) do
+      {:ok, _subscription} ->
+        {:noreply,
+         socket
+         |> reload_state()
+         |> put_flash(:info, gettext("Updated."))}
+
+      {:error, :invalid} ->
+        {:noreply, put_flash(socket, :error, gettext("That link is invalid or has expired."))}
+    end
+  end
+
+  def handle_event("unsubscribe", %{"subscription-id" => subscription_id}, socket) do
+    case Newsletters.unsubscribe_by_token(socket.assigns.token, subscription_id) do
+      :ok ->
+        {:noreply,
+         socket
+         |> reload_state()
+         |> put_flash(:info, gettext("You're unsubscribed."))}
+
+      {:error, :invalid} ->
+        {:noreply, put_flash(socket, :error, gettext("That link is invalid or has expired."))}
+    end
+  end
+
   def handle_event("erase", _params, socket) do
     case Guests.erase_by_token(socket.assigns.token) do
       :ok ->
@@ -182,6 +255,7 @@ defmodule KammerWeb.GuestLive.Manage do
         |> assign(:rsvps, state.rsvps)
         |> assign(:claims, state.claims)
         |> assign(:comments, state.comments)
+        |> assign(:subscriptions, state.subscriptions)
 
       {:error, :invalid} ->
         socket
@@ -195,4 +269,14 @@ defmodule KammerWeb.GuestLive.Manage do
       {"no", gettext("Can't make it")}
     ]
   end
+
+  defp cadence_options do
+    Enum.map(NewsletterSubscription.cadences(), fn cadence ->
+      {Atom.to_string(cadence), cadence_label(cadence)}
+    end)
+  end
+
+  defp cadence_label(:per_post), do: gettext("Every new post")
+  defp cadence_label(:daily), do: gettext("Daily digest")
+  defp cadence_label(:weekly), do: gettext("Weekly digest")
 end
