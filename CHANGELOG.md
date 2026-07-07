@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Added
 
+- Admin update notice (HANDOFF §5.6): a daily, privacy-respecting
+  check against this project's GitHub releases surfaces "a newer
+  Kammer exists" to instance operators on the home page — no payload
+  beyond the version fetch, and `DISABLE_UPDATE_CHECK` turns it off
+  entirely.
 - Recurring events (SPEC §6, ADR 0019): weekly, biweekly, or monthly
   series bounded by an end date, up to 52 occurrences. Each occurrence
   is a real, independent event — RSVP, comment, and add it to your

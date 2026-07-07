@@ -98,7 +98,7 @@ msgstr ""
 msgid "Confirming..."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:154
+#: lib/kammer_web/live/instance_live/home.ex:166
 #: lib/kammer_web/live/user_live/login.ex:141
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
@@ -276,7 +276,7 @@ msgstr ""
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
 #: lib/kammer_web/live/community_live/home.ex:108
-#: lib/kammer_web/live/instance_live/home.ex:151
+#: lib/kammer_web/live/instance_live/home.ex:163
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
 #: lib/kammer_web/live/user_live/registration.ex:23
@@ -431,7 +431,7 @@ msgstr ""
 msgid "A band, a committee, a project — a room of its own."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:145
+#: lib/kammer_web/live/instance_live/home.ex:157
 #, elixir-autogen, elixir-format
 msgid "A calm, self-hosted home for real-world communities. No ads, no algorithm — just your people."
 msgstr ""
@@ -557,12 +557,12 @@ msgstr ""
 msgid "Communities"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:128
+#: lib/kammer_web/live/instance_live/home.ex:140
 #, elixir-autogen, elixir-format
 msgid "Communities are joined by invitation. Ask an organizer for an invite link — or create your own community."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:161
+#: lib/kammer_web/live/instance_live/home.ex:173
 #, elixir-autogen, elixir-format
 msgid "Communities on this instance"
 msgstr ""
@@ -594,7 +594,7 @@ msgstr ""
 msgid "Could not send that invitation."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:135
+#: lib/kammer_web/live/instance_live/home.ex:147
 #, elixir-autogen, elixir-format
 msgid "Create a community"
 msgstr ""
@@ -940,7 +940,7 @@ msgstr ""
 msgid "Owners must transfer ownership before leaving."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:38
+#: lib/kammer_web/live/instance_live/home.ex:50
 #, elixir-autogen, elixir-format
 msgid "Pick a community to continue."
 msgstr ""
@@ -1233,12 +1233,12 @@ msgstr ""
 msgid "You're invited to %{name}"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:126
+#: lib/kammer_web/live/instance_live/home.ex:138
 #, elixir-autogen, elixir-format
 msgid "You're not in any community yet"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:36
+#: lib/kammer_web/live/instance_live/home.ex:48
 #, elixir-autogen, elixir-format
 msgid "Your communities"
 msgstr ""
@@ -2087,7 +2087,7 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:197
+#: lib/kammer_web/live/instance_live/home.ex:209
 #, elixir-autogen, elixir-format
 msgid "Could not remove the demo community."
 msgstr ""
@@ -2102,7 +2102,7 @@ msgstr ""
 msgid "Create your first community and group."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:116
+#: lib/kammer_web/live/instance_live/home.ex:128
 #, elixir-autogen, elixir-format
 msgid "Delete the demo community and everything in it?"
 msgstr ""
@@ -2112,7 +2112,7 @@ msgstr ""
 msgid "Demo community"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:193
+#: lib/kammer_web/live/instance_live/home.ex:205
 #, elixir-autogen, elixir-format
 msgid "Demo community removed."
 msgstr ""
@@ -2255,7 +2255,7 @@ msgstr ""
 msgid "Published."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:119
+#: lib/kammer_web/live/instance_live/home.ex:131
 #, elixir-autogen, elixir-format
 msgid "Remove demo"
 msgstr ""
@@ -2305,7 +2305,7 @@ msgstr ""
 msgid "The common room"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:111
+#: lib/kammer_web/live/instance_live/home.ex:123
 #, elixir-autogen, elixir-format
 msgid "The demo community “%{name}” is still around."
 msgstr ""
@@ -2534,17 +2534,17 @@ msgstr ""
 msgid "always on"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:63
+#: lib/kammer_web/live/instance_live/home.ex:75
 #, elixir-autogen, elixir-format
 msgid "Coming up"
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:100
+#: lib/kammer_web/live/instance_live/home.ex:112
 #, elixir-autogen, elixir-format
 msgid "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
 msgstr ""
 
-#: lib/kammer_web/live/instance_live/home.ex:84
+#: lib/kammer_web/live/instance_live/home.ex:96
 #, elixir-autogen, elixir-format
 msgid "Recent activity"
 msgstr ""
@@ -3584,4 +3584,14 @@ msgstr ""
 #: lib/kammer_web/live/event_live/series.ex:176
 #, elixir-autogen, elixir-format
 msgid "Weekly"
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/home.ex:37
+#, elixir-autogen, elixir-format
+msgid "A newer version of Kammer is available (%{version})."
+msgstr ""
+
+#: lib/kammer_web/live/instance_live/home.ex:42
+#, elixir-autogen, elixir-format
+msgid "View release"
 msgstr ""

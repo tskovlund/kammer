@@ -31,6 +31,18 @@ defmodule KammerWeb.InstanceLive.Home do
         </.link>
       </div>
 
+      <div :if={@operator? and @update_available?} class="alert alert-info mb-4 text-sm" role="status">
+        <.icon name="hero-arrow-up-circle" class="size-5" />
+        <span>
+          {gettext("A newer version of Kammer is available (%{version}).",
+            version: @latest_known_version
+          )}
+        </span>
+        <a href={@latest_known_release_url} class="btn btn-sm" target="_blank" rel="noopener">
+          {gettext("View release")}
+        </a>
+      </div>
+
       <%= if @current_scope && @current_scope.user do %>
         <.header>
           {gettext("Your communities")}
@@ -207,10 +219,11 @@ defmodule KammerWeb.InstanceLive.Home do
 
     my_communities = if user, do: Communities.list_user_communities(user), else: []
     operator? = user != nil and user.instance_operator
+    instance_settings = if operator?, do: Communities.get_instance_settings()
 
     demo_community =
       if operator? do
-        case Communities.get_instance_settings().demo_community_id do
+        case instance_settings.demo_community_id do
           nil -> nil
           community_id -> Kammer.Repo.get(Kammer.Communities.Community, community_id)
         end
@@ -223,6 +236,15 @@ defmodule KammerWeb.InstanceLive.Home do
     |> assign(:listed_communities, Communities.list_public_communities())
     |> assign(:operator?, operator?)
     |> assign(:imprint_published?, not operator? or Kammer.Legal.published?("imprint"))
+    |> assign(
+      :update_available?,
+      operator? and Kammer.UpdateCheck.update_available?(instance_settings)
+    )
+    |> assign(:latest_known_version, operator? && instance_settings.latest_known_version)
+    |> assign(
+      :latest_known_release_url,
+      operator? && instance_settings.latest_known_release_url
+    )
     |> assign(:demo_community, demo_community)
   end
 

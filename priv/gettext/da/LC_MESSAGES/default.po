@@ -98,7 +98,7 @@ msgstr "Bekræft din nye e-mailadresse"
 msgid "Confirming..."
 msgstr "Bekræfter..."
 
-#: lib/kammer_web/live/instance_live/home.ex:154
+#: lib/kammer_web/live/instance_live/home.ex:166
 #: lib/kammer_web/live/user_live/login.ex:141
 #: lib/kammer_web/live/user_live/registration.ex:19
 #: lib/kammer_web/live/user_live/registration.ex:49
@@ -276,7 +276,7 @@ msgstr "Sessioner logget ind på din konto. Log dem ud, du ikke genkender."
 #: lib/kammer_web/components/layouts.ex:104
 #: lib/kammer_web/components/layouts.ex:270
 #: lib/kammer_web/live/community_live/home.ex:108
-#: lib/kammer_web/live/instance_live/home.ex:151
+#: lib/kammer_web/live/instance_live/home.ex:163
 #: lib/kammer_web/live/user_live/confirmation.ex:59
 #: lib/kammer_web/live/user_live/login.ex:21
 #: lib/kammer_web/live/user_live/registration.ex:23
@@ -431,7 +431,7 @@ msgstr "%{inviter} har inviteret dig til %{target}"
 msgid "A band, a committee, a project — a room of its own."
 msgstr "Et band, et udvalg, et projekt — et rum for sig selv."
 
-#: lib/kammer_web/live/instance_live/home.ex:145
+#: lib/kammer_web/live/instance_live/home.ex:157
 #, elixir-autogen, elixir-format
 msgid "A calm, self-hosted home for real-world communities. No ads, no algorithm — just your people."
 msgstr "Et roligt, selvhostet hjem for virkelige fællesskaber. Ingen reklamer, ingen algoritme — kun jeres folk."
@@ -557,12 +557,12 @@ msgstr "Kommentarer"
 msgid "Communities"
 msgstr "Fællesskaber"
 
-#: lib/kammer_web/live/instance_live/home.ex:128
+#: lib/kammer_web/live/instance_live/home.ex:140
 #, elixir-autogen, elixir-format
 msgid "Communities are joined by invitation. Ask an organizer for an invite link — or create your own community."
 msgstr "Man bliver medlem af et fællesskab via invitation. Bed en arrangør om et invitationslink — eller opret dit eget fællesskab."
 
-#: lib/kammer_web/live/instance_live/home.ex:161
+#: lib/kammer_web/live/instance_live/home.ex:173
 #, elixir-autogen, elixir-format
 msgid "Communities on this instance"
 msgstr "Fællesskaber på denne server"
@@ -594,7 +594,7 @@ msgstr "Fællesskabsindstillinger"
 msgid "Could not send that invitation."
 msgstr "Invitationen kunne ikke sendes."
 
-#: lib/kammer_web/live/instance_live/home.ex:135
+#: lib/kammer_web/live/instance_live/home.ex:147
 #, elixir-autogen, elixir-format
 msgid "Create a community"
 msgstr "Opret et fællesskab"
@@ -940,7 +940,7 @@ msgstr "Ejer"
 msgid "Owners must transfer ownership before leaving."
 msgstr "Ejere skal overdrage ejerskabet, før de kan forlade gruppen."
 
-#: lib/kammer_web/live/instance_live/home.ex:38
+#: lib/kammer_web/live/instance_live/home.ex:50
 #, elixir-autogen, elixir-format
 msgid "Pick a community to continue."
 msgstr "Vælg et fællesskab for at fortsætte."
@@ -1233,12 +1233,12 @@ msgstr "Du er helt opdateret"
 msgid "You're invited to %{name}"
 msgstr "Du er inviteret til %{name}"
 
-#: lib/kammer_web/live/instance_live/home.ex:126
+#: lib/kammer_web/live/instance_live/home.ex:138
 #, elixir-autogen, elixir-format
 msgid "You're not in any community yet"
 msgstr "Du er ikke med i noget fællesskab endnu"
 
-#: lib/kammer_web/live/instance_live/home.ex:36
+#: lib/kammer_web/live/instance_live/home.ex:48
 #, elixir-autogen, elixir-format
 msgid "Your communities"
 msgstr "Dine fællesskaber"
@@ -2097,7 +2097,7 @@ msgstr "Indhold"
 msgid "Continue"
 msgstr "Fortsæt"
 
-#: lib/kammer_web/live/instance_live/home.ex:197
+#: lib/kammer_web/live/instance_live/home.ex:209
 #, elixir-autogen, elixir-format
 msgid "Could not remove the demo community."
 msgstr "Demofællesskabet kunne ikke fjernes."
@@ -2112,7 +2112,7 @@ msgstr "Opret et demofællesskab"
 msgid "Create your first community and group."
 msgstr "Opret dit første fællesskab og din første gruppe."
 
-#: lib/kammer_web/live/instance_live/home.ex:116
+#: lib/kammer_web/live/instance_live/home.ex:128
 #, elixir-autogen, elixir-format
 msgid "Delete the demo community and everything in it?"
 msgstr "Slet demofællesskabet og alt i det?"
@@ -2122,7 +2122,7 @@ msgstr "Slet demofællesskabet og alt i det?"
 msgid "Demo community"
 msgstr "Demofællesskab"
 
-#: lib/kammer_web/live/instance_live/home.ex:193
+#: lib/kammer_web/live/instance_live/home.ex:205
 #, elixir-autogen, elixir-format
 msgid "Demo community removed."
 msgstr "Demofællesskabet er fjernet."
@@ -2265,7 +2265,7 @@ msgstr "Udgives på /legal/%{key} — Markdown understøttes."
 msgid "Published."
 msgstr "Udgivet."
 
-#: lib/kammer_web/live/instance_live/home.ex:119
+#: lib/kammer_web/live/instance_live/home.ex:131
 #, elixir-autogen, elixir-format
 msgid "Remove demo"
 msgstr "Fjern demo"
@@ -2315,7 +2315,7 @@ msgstr "Nøglen passer ikke. Find den aktuelle i serverens log."
 msgid "The common room"
 msgstr "Fællesrummet"
 
-#: lib/kammer_web/live/instance_live/home.ex:111
+#: lib/kammer_web/live/instance_live/home.ex:123
 #, elixir-autogen, elixir-format
 msgid "The demo community “%{name}” is still around."
 msgstr "Demofællesskabet “%{name}” findes stadig."
@@ -2565,17 +2565,17 @@ msgstr "Feed"
 msgid "always on"
 msgstr "altid til"
 
-#: lib/kammer_web/live/instance_live/home.ex:63
+#: lib/kammer_web/live/instance_live/home.ex:75
 #, elixir-autogen, elixir-format
 msgid "Coming up"
 msgstr "Kommende"
 
-#: lib/kammer_web/live/instance_live/home.ex:100
+#: lib/kammer_web/live/instance_live/home.ex:112
 #, elixir-autogen, elixir-format
 msgid "Home shows the groups you belong to, newest first. Each group page has a \"Show in Home\" switch if you want one out of here."
 msgstr "Hjem viser de grupper, du er med i, nyeste først. Hver gruppeside har en \"Vis på Hjem\"-knap, hvis du vil have en ud herfra."
 
-#: lib/kammer_web/live/instance_live/home.ex:84
+#: lib/kammer_web/live/instance_live/home.ex:96
 #, elixir-autogen, elixir-format
 msgid "Recent activity"
 msgstr "Seneste aktivitet"
@@ -3616,3 +3616,13 @@ msgstr "Se serie"
 #, elixir-autogen, elixir-format
 msgid "Weekly"
 msgstr "Ugentligt"
+
+#: lib/kammer_web/live/instance_live/home.ex:37
+#, elixir-autogen, elixir-format
+msgid "A newer version of Kammer is available (%{version})."
+msgstr "En nyere version af Kammer er tilgængelig (%{version})."
+
+#: lib/kammer_web/live/instance_live/home.ex:42
+#, elixir-autogen, elixir-format
+msgid "View release"
+msgstr "Se udgivelse"

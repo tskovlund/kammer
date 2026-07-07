@@ -193,4 +193,8 @@ if config_env() == :prod do
       keep: String.to_integer(System.get_env("BACKUP_KEEP", "14")),
       age_recipient: System.get_env("BACKUP_AGE_RECIPIENT")
   end
+
+  # ## Admin update notice (HANDOFF §5.6). Opt-out, so this is set
+  # unconditionally — the default without DISABLE_UPDATE_CHECK is on.
+  config :kammer, :update_check, enabled: System.get_env("DISABLE_UPDATE_CHECK") not in ~w(true 1)
 end
