@@ -87,6 +87,7 @@ defmodule KammerWeb.Router do
       live "/settings", CommunityLive.Settings, :edit
       live "/events", EventLive.Index, :index
       live "/events/new", EventLive.New, :new
+      live "/events/series/:series_id", EventLive.Series, :show
       live "/notifications", NotificationLive.Index, :index
     end
 

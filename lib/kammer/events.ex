@@ -18,9 +18,12 @@ defmodule Kammer.Events do
   alias Kammer.Communities.Community
   alias Kammer.Events.Event
   alias Kammer.Events.EventRsvp
+  alias Kammer.Events.EventSeries
   alias Kammer.Events.EventSlot
+  alias Kammer.Events.Recurrence
   alias Kammer.Events.SlotClaim
   alias Kammer.Feed.Comment
+  alias Kammer.Groups
   alias Kammer.Groups.Group
   alias Kammer.Guests
   alias Kammer.Guests.GuestIdentity
@@ -45,6 +48,39 @@ defmodule Kammer.Events do
       {:ok, %Event{event | group: group}}
     else
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Fetches a series the actor may manage, for the series/attendance
+  page — its creator or a group moderator (SPEC §6: "organizer
+  attendance matrix").
+  """
+  @spec fetch_manageable_series(User.t() | nil, Community.t(), Ecto.UUID.t()) ::
+          {:ok, EventSeries.t()} | {:error, :not_found | :unauthorized}
+  def fetch_manageable_series(actor, %Community{} = community, series_id) do
+    with %EventSeries{} = series <- get_series_in_community(community, series_id),
+         group = Repo.get!(Group, series.group_id),
+         :ok <- Authorization.feature_gate(group, :events),
+         true <- can_manage_series?(actor, series, group) || {:error, :unauthorized} do
+      {:ok, series}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp get_series_in_community(community, series_id) do
+    case Ecto.UUID.cast(series_id) do
+      {:ok, _uuid} ->
+        Repo.one(
+          from(series in EventSeries,
+            where: series.id == ^series_id and series.community_id == ^community.id
+          )
+        )
+
+      :error ->
+        nil
     end
   end
 
@@ -102,7 +138,7 @@ defmodule Kammer.Events do
 
     base_query =
       from(event in Event,
-        where: event.group_id in ^visible_group_ids,
+        where: event.group_id in ^visible_group_ids and is_nil(event.cancelled_at),
         preload: [:group, rsvps: []]
       )
 
@@ -152,6 +188,107 @@ defmodule Kammer.Events do
         {:ok, %Event{event | group: group}}
       end
     end
+  end
+
+  @doc """
+  Creates a recurring series (SPEC §6, "constrained RRULE" — weekly,
+  biweekly, or monthly, bounded by `recurrence_attrs["until"]`): one
+  `EventSeries` row plus one materialized `Event` per occurrence
+  (capped at `Kammer.Events.Recurrence.max_occurrences/0`), each
+  scheduling its own reminder exactly like a standalone event.
+  """
+  @spec create_recurring_event(User.t(), Group.t(), map(), map()) ::
+          {:ok, [Event.t()]} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def create_recurring_event(%User{} = creator, %Group{} = group, attrs, recurrence_attrs) do
+    with :ok <- Authorization.feature_gate(group, :events),
+         :ok <- Authorization.authorize(creator, :post_in_group, group) do
+      attrs =
+        attrs
+        |> Map.put("community_id", group.community_id)
+        |> Map.put("group_id", group.id)
+        |> Map.put("created_by_user_id", creator.id)
+
+      base_changeset = Event.changeset(%Event{}, attrs)
+
+      series_changeset =
+        EventSeries.changeset(%EventSeries{}, %{
+          "frequency" => recurrence_attrs["frequency"],
+          "until" => recurrence_attrs["until"],
+          "community_id" => group.community_id,
+          "group_id" => group.id,
+          "created_by_user_id" => creator.id
+        })
+
+      validate_and_create_series(base_changeset, series_changeset)
+    end
+  end
+
+  defp validate_and_create_series(base_changeset, series_changeset) do
+    cond do
+      not base_changeset.valid? ->
+        {:error, base_changeset}
+
+      not series_changeset.valid? ->
+        {:error, series_changeset}
+
+      empty_series?(base_changeset, series_changeset) ->
+        {:error,
+         Ecto.Changeset.add_error(series_changeset, :until, "must be on or after the start date")}
+
+      true ->
+        do_create_recurring_event(base_changeset, series_changeset)
+    end
+  end
+
+  defp empty_series?(base_changeset, series_changeset) do
+    occurrence_starts(base_changeset, series_changeset) == []
+  end
+
+  defp occurrence_starts(base_changeset, series_changeset) do
+    starts_at = Ecto.Changeset.get_field(base_changeset, :starts_at)
+    timezone = Ecto.Changeset.get_field(base_changeset, :timezone)
+    frequency = Ecto.Changeset.get_field(series_changeset, :frequency)
+    until = Ecto.Changeset.get_field(series_changeset, :until)
+
+    Recurrence.occurrence_starts(starts_at, frequency, until, timezone)
+  end
+
+  # Each occurrence is a struct-literal insert, not a changeset re-cast
+  # of user input: `base_changeset` already validated the shared shape
+  # once (title, location, and so on), so re-validating it N times over
+  # would only re-check things that cannot differ between occurrences.
+  defp do_create_recurring_event(base_changeset, series_changeset) do
+    base_event = Ecto.Changeset.apply_changes(base_changeset)
+    duration = base_event.ends_at && DateTime.diff(base_event.ends_at, base_event.starts_at)
+    occurrence_starts = occurrence_starts(base_changeset, series_changeset)
+
+    Repo.transact(fn ->
+      with {:ok, series} <- Repo.insert(series_changeset) do
+        events =
+          Enum.map(occurrence_starts, fn occurrence_start ->
+            event =
+              Repo.insert!(%Event{
+                title: base_event.title,
+                description_markdown: base_event.description_markdown,
+                starts_at: occurrence_start,
+                ends_at: duration && DateTime.add(occurrence_start, duration, :second),
+                all_day: base_event.all_day,
+                timezone: base_event.timezone,
+                location_name: base_event.location_name,
+                location_url: base_event.location_url,
+                community_id: base_event.community_id,
+                group_id: base_event.group_id,
+                created_by_user_id: base_event.created_by_user_id,
+                series_id: series.id
+              })
+
+            schedule_reminder(event)
+            event
+          end)
+
+        {:ok, events}
+      end
+    end)
   end
 
   @doc """
@@ -206,6 +343,127 @@ defmodule Kammer.Events do
   @spec change_event(Event.t(), map()) :: Ecto.Changeset.t()
   def change_event(%Event{} = event, attrs \\ %{}) do
     Event.changeset(event, attrs)
+  end
+
+  ## Recurrence (SPEC §6): "cancel/move one date" per-instance
+  ## overrides. Moving is just `update_event/3` on that occurrence's
+  ## row — nothing series-specific about changing a date. Cancelling
+  ## keeps the row (and its RSVPs/comments) but excludes it from
+  ## listings, reminders, and ICS feeds.
+
+  @doc """
+  Cancels a single occurrence (creator or moderators). The occurrence
+  stays visible directly, with its RSVP and comment history intact.
+  """
+  @spec cancel_occurrence(User.t(), Event.t()) :: {:ok, Event.t()} | {:error, :unauthorized}
+  def cancel_occurrence(%User{} = actor, %Event{} = event) do
+    group = Repo.get!(Group, event.group_id)
+
+    if can_manage_event?(actor, event, group) do
+      event |> Ecto.Changeset.change(cancelled_at: DateTime.utc_now(:second)) |> Repo.update()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Reinstates a cancelled occurrence.
+  """
+  @spec uncancel_occurrence(User.t(), Event.t()) :: {:ok, Event.t()} | {:error, :unauthorized}
+  def uncancel_occurrence(%User{} = actor, %Event{} = event) do
+    group = Repo.get!(Group, event.group_id)
+
+    if can_manage_event?(actor, event, group) do
+      event |> Ecto.Changeset.change(cancelled_at: nil) |> Repo.update()
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  @doc """
+  Whether the actor may manage the series an occurrence belongs to —
+  same rule as a single event: its creator or a group moderator.
+  """
+  @spec can_manage_series?(User.t() | nil, EventSeries.t(), Group.t()) :: boolean()
+  def can_manage_series?(nil, %EventSeries{}, %Group{}), do: false
+
+  def can_manage_series?(%User{} = actor, %EventSeries{} = series, %Group{} = group) do
+    series.created_by_user_id == actor.id or Authorization.can?(actor, :moderate_group, group)
+  end
+
+  @doc """
+  The series an occurrence belongs to, or `nil` for a standalone event.
+  """
+  @spec get_series(Event.t()) :: EventSeries.t() | nil
+  def get_series(%Event{series_id: nil}), do: nil
+  def get_series(%Event{series_id: series_id}), do: Repo.get(EventSeries, series_id)
+
+  @doc """
+  Every occurrence in a series, soonest first, with RSVPs preloaded.
+  """
+  @spec list_series_occurrences(EventSeries.t()) :: [Event.t()]
+  def list_series_occurrences(%EventSeries{} = series) do
+    Repo.all(
+      from(event in Event,
+        where: event.series_id == ^series.id,
+        order_by: [asc: event.starts_at],
+        preload: [rsvps: [:user, :guest_identity]]
+      )
+    )
+  end
+
+  @doc """
+  The organizer attendance matrix for a series (SPEC §6): every group
+  member as a row, every upcoming (not cancelled) occurrence as a
+  column, each cell the member's RSVP status for that occurrence (or
+  `nil` if they haven't answered). Restricted to whoever manages the
+  series.
+  """
+  @spec attendance_matrix(User.t(), EventSeries.t()) ::
+          {:ok,
+           %{
+             series: EventSeries.t(),
+             occurrences: [Event.t()],
+             rows: [%{member: User.t(), statuses: %{Ecto.UUID.t() => EventRsvp.status() | nil}}]
+           }}
+          | {:error, :unauthorized}
+  def attendance_matrix(%User{} = actor, %EventSeries{} = series) do
+    group = Repo.get!(Group, series.group_id)
+
+    if can_manage_series?(actor, series, group) do
+      now = DateTime.utc_now(:second)
+
+      occurrences =
+        series
+        |> list_series_occurrences()
+        |> Enum.reject(& &1.cancelled_at)
+        |> Enum.filter(&(DateTime.compare(&1.starts_at, now) != :lt))
+
+      occurrence_ids = Enum.map(occurrences, & &1.id)
+
+      rsvp_by_user_and_occurrence =
+        occurrences
+        |> Enum.flat_map(& &1.rsvps)
+        |> Enum.filter(& &1.user_id)
+        |> Map.new(&{{&1.user_id, &1.event_id}, &1.status})
+
+      {:ok, memberships} = Groups.list_members(actor, group)
+
+      rows =
+        Enum.map(memberships, fn membership ->
+          statuses =
+            Map.new(occurrence_ids, fn occurrence_id ->
+              status = Map.get(rsvp_by_user_and_occurrence, {membership.user_id, occurrence_id})
+              {occurrence_id, status}
+            end)
+
+          %{member: membership.user, statuses: statuses}
+        end)
+
+      {:ok, %{series: series, occurrences: occurrences, rows: rows}}
+    else
+      {:error, :unauthorized}
+    end
   end
 
   ## RSVPs
@@ -647,7 +905,10 @@ defmodule Kammer.Events do
         if Group.feature_enabled?(group, :events) do
           {group,
            Repo.all(
-             from(event in Event, where: event.group_id == ^group.id, order_by: event.starts_at)
+             from(event in Event,
+               where: event.group_id == ^group.id and is_nil(event.cancelled_at),
+               order_by: event.starts_at
+             )
            )}
         else
           # Feature off ⇒ the feed reads as unknown (ADR 0016: same
@@ -677,6 +938,7 @@ defmodule Kammer.Events do
              on: group.id == event.group_id,
              where: membership.user_id == ^user.id,
              where: fragment("'events' = ANY(?)", group.features),
+             where: is_nil(event.cancelled_at),
              order_by: event.starts_at
            )
          )}

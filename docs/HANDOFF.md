@@ -30,10 +30,10 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
-  erasure, the audit log, and passkeys** (§5.6) — see that section
-  for what shipped and what remains in each.
+  erasure, the audit log, passkeys, and event recurrence** (§5.6) —
+  see that section for what shipped and what remains in each.
 
-Suite at handoff: **445 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **469 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -341,8 +341,25 @@ atom. Danish register: a slot is "en tjans".
   attestations/assertions (real P-256 keys, real CBOR, real ECDSA)
   so the test suite exercises actual Wax verification without a
   browser. Devices page lists passkeys alongside sessions.
-- **Recurrence + attendance matrix**: RRULE-lite (weekly/biweekly/
-  monthly), materialized occurrences, per-occurrence RSVP grid.
+- ✅ **Recurrence + attendance matrix** — SHIPPED (ADR 0019):
+  `Kammer.Events.Recurrence` (pure date math, not an RRULE
+  parser/library — weekly/biweekly/monthly, day-of-month preserved
+  and clamped for short months, computed from the original date each
+  time so it never permanently drifts, DST-safe, capped at 52
+  occurrences) plus `EventSeries` (just the rule). Occurrences
+  materialize as ordinary `Event` rows sharing a `series_id` — RSVPs,
+  slots, comments, ICS, and reminders all run unmodified through the
+  existing single-event code. "Cancel one date" is a nullable
+  `cancelled_at` (row stays, excluded from listings/reminders/feeds);
+  "move one date" is just `update_event/3` on that row — no new code.
+  New `EventLive.Series` page (`/events/series/:id`, organizer-only):
+  every occurrence with cancel/restore, and the attendance matrix
+  (members × upcoming instances) computed from existing RSVP data.
+  `EventLive.New` gained a "Repeats" section; `EventLive.Show` shows
+  series/cancellation banners. Remaining: ICS feeds emit one `VEVENT`
+  per occurrence rather than a native RFC 5545 `RRULE` block — a
+  deliberate "lite" simplification (ADR 0019), revisit only if users
+  ask for real recurring-event grouping in their calendar app.
 - **Admin update notice** (SPEC Phase 2): the instance surfaces
   "a newer Kammer exists" to operators — version check against GitHub
   releases, privacy-respecting (opt-out env flag, no phone-home

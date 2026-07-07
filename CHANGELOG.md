@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- Recurring events (SPEC §6, ADR 0019): weekly, biweekly, or monthly
+  series bounded by an end date, up to 52 occurrences. Each occurrence
+  is a real, independent event — RSVP, comment, and add it to your
+  calendar exactly like a one-off — so cancelling or moving a single
+  date needs no special handling. A new series page lists every
+  occurrence with cancel/restore and shows the organizer attendance
+  matrix (members × upcoming instances).
 - Passkeys (SPEC §16, ADR 0018): register a WebAuthn credential from
   the Devices page after your first magic-link login, then sign in
   usernameless — your device's fingerprint, face, or screen lock, no

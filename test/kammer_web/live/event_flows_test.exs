@@ -115,6 +115,96 @@ defmodule KammerWeb.EventFlowsTest do
       assert path =~ "/events/"
       assert result
     end
+
+    test "member creates a recurring series through the form", %{conn: conn, community: community} do
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/events/new")
+
+      html =
+        lv
+        |> element(~s(select[name="event[repeats]"]))
+        |> render_change(%{"event" => %{"repeats" => "weekly"}})
+
+      assert html =~ "Repeats until"
+
+      lv
+      |> form("#event_form", %{
+        "event" => %{
+          "title" => "Kor",
+          "starts_on" => "2026-08-01",
+          "starts_time" => "19:00",
+          "all_day" => "false",
+          "repeats" => "weekly",
+          "repeat_until" => "2026-08-22"
+        }
+      })
+      |> render_submit()
+
+      {path, _flash} = assert_redirect(lv)
+      assert path =~ "/events/series/"
+    end
+  end
+
+  describe "recurring series page" do
+    setup :event_context
+
+    setup %{group: group, member: member} do
+      starts_at = DateTime.new!(~D[2026-08-01], ~T[19:00:00], "Etc/UTC")
+
+      {:ok, occurrences} =
+        Events.create_recurring_event(
+          member,
+          group,
+          %{"title" => "Kor", "starts_at" => starts_at},
+          %{"frequency" => "weekly", "until" => "2026-08-22"}
+        )
+
+      series = Events.get_series(hd(occurrences))
+      %{occurrences: occurrences, series: series}
+    end
+
+    test "lists occurrences and lets an organizer cancel one", %{
+      conn: conn,
+      community: community,
+      series: series,
+      occurrences: [first | _rest]
+    } do
+      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}/events/series/#{series.id}")
+      assert html =~ "Weekly"
+      assert html =~ "Attendance matrix"
+
+      html =
+        lv
+        |> element(~s(button[phx-value-id="#{first.id}"]), "Cancel")
+        |> render_click()
+
+      assert html =~ "Cancelled"
+      assert Kammer.Repo.get!(Kammer.Events.Event, first.id).cancelled_at
+    end
+
+    test "outsiders cannot open the series page", %{community: community, series: series} do
+      outsider = member_fixture(community)
+
+      assert {:error, {:live_redirect, %{to: destination}}} =
+               build_conn()
+               |> log_in_user(outsider)
+               |> live(~p"/c/#{community.slug}/events/series/#{series.id}")
+
+      assert destination == "/c/#{community.slug}/events"
+    end
+
+    test "an occurrence's own page links back to the series and shows cancellation", %{
+      conn: conn,
+      community: community,
+      member: member,
+      occurrences: [first | _rest]
+    } do
+      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/events/#{first.id}")
+      assert html =~ "Part of a recurring series"
+
+      {:ok, _cancelled} = Events.cancel_occurrence(member, first)
+      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/events/#{first.id}")
+      assert html =~ "This occurrence was cancelled"
+    end
   end
 
   describe "ICS endpoints" do

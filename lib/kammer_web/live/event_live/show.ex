@@ -44,6 +44,13 @@ defmodule KammerWeb.EventLive.Show do
           </span>
         </:subtitle>
         <:actions>
+          <.link
+            :if={@can_manage? && @event.series_id}
+            navigate={~p"/c/#{@active_community.slug}/events/series/#{@event.series_id}"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-arrow-path" class="size-4" /> {gettext("View series")}
+          </.link>
           <a
             href={~p"/c/#{@active_community.slug}/events/#{@event.id}/ics"}
             class="btn btn-ghost btn-sm"
@@ -60,6 +67,16 @@ defmodule KammerWeb.EventLive.Show do
           </.button>
         </:actions>
       </.header>
+
+      <div :if={@event.cancelled_at} class="alert alert-warning">
+        <.icon name="hero-exclamation-triangle" class="size-5" />
+        {gettext("This occurrence was cancelled.")}
+      </div>
+
+      <div :if={@event.series_id && !@event.cancelled_at} class="text-sm text-base-content/60">
+        <.icon name="hero-arrow-path" class="size-4" />
+        {gettext("Part of a recurring series.")}
+      </div>
 
       <div class="rounded-box border border-base-200 p-4">
         <p class="flex items-center gap-2 font-medium">
