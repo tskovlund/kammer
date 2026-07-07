@@ -48,7 +48,9 @@ config :kammer, Oban,
        # No-op unless BACKUP_DIR is configured (SPEC §14).
        {"15 4 * * *", Kammer.Workers.BackupWorker},
        # Delivers only to users who opted in (digest_frequency).
-       {"0 6 * * *", Kammer.Workers.DigestWorker}
+       {"0 6 * * *", Kammer.Workers.DigestWorker},
+       # No-op if DISABLE_UPDATE_CHECK is set (HANDOFF §5.6).
+       {"0 5 * * *", Kammer.Workers.UpdateCheckWorker}
      ]}
   ]
 

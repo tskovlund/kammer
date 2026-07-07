@@ -30,10 +30,11 @@ merged, plus, from Phase 2 and the decided roadmap:
   **transport-parity property test** (API hides exactly what the UI
   hides).
 - **Guest interactions, search, backups, moderation, GDPR export/
-  erasure, the audit log, passkeys, and event recurrence** (§5.6) —
-  see that section for what shipped and what remains in each.
+  erasure, the audit log, passkeys, event recurrence, and the admin
+  update notice** (§5.6) — see that section for what shipped and what
+  remains in each.
 
-Suite at handoff: **469 tests + 18 properties, zero failures**, ~83%
+Suite at handoff: **481 tests + 18 properties, zero failures**, ~83%
 coverage with an 80% one-way tripwire (never ratchet it — BUILDLOG
 explains). All CI required checks green on `main`.
 
@@ -360,10 +361,14 @@ atom. Danish register: a slot is "en tjans".
   per occurrence rather than a native RFC 5545 `RRULE` block — a
   deliberate "lite" simplification (ADR 0019), revisit only if users
   ask for real recurring-event grouping in their calendar app.
-- **Admin update notice** (SPEC Phase 2): the instance surfaces
-  "a newer Kammer exists" to operators — version check against GitHub
-  releases, privacy-respecting (opt-out env flag, no phone-home
-  payload beyond the version fetch).
+- ✅ **Admin update notice** — SHIPPED: `Kammer.UpdateCheck` +
+  `Kammer.Workers.UpdateCheckWorker` (daily cron, 05:00 UTC) hit
+  GitHub's releases API once and record the result on the singleton
+  `InstanceSettings` row — no live fetch per page load. Opt-out via
+  `DISABLE_UPDATE_CHECK` (default on); the banner shows on the
+  instance home page (`InstanceLive.Home`), operators only, only when
+  a newer version is actually recorded. Tested against a stubbed
+  `Req.Test` transport, not a live GitHub call.
 - Then: RSS/Atom for public groups, content-minimized email mode,
   custom profile fields + roster, activity-sort view (opt-in,
   chronological stays default — values!), branding UI, Prometheus

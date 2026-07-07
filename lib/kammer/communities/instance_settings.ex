@@ -27,6 +27,12 @@ defmodule Kammer.Communities.InstanceSettings do
     field :storage_policy, Ecto.Enum, values: [:unmetered, :quota], default: :unmetered
     field :setup_completed_at, :utc_datetime
 
+    # Written by Kammer.UpdateCheck, not by the settings form — never
+    # cast here (see the Ecto guideline on programmatically-set fields).
+    field :latest_known_version, :string
+    field :latest_known_release_url, :string
+    field :update_checked_at, :utc_datetime
+
     belongs_to :demo_community, Kammer.Communities.Community
 
     timestamps(type: :utc_datetime)
