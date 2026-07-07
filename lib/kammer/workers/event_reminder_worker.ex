@@ -24,6 +24,11 @@ defmodule Kammer.Workers.EventReminderWorker do
         group = Repo.get!(Kammer.Groups.Group, event.group_id)
 
         cond do
+          event.cancelled_at ->
+            # Cancelled since scheduling (a series occurrence, SPEC
+            # §6's "cancel one date") — nothing to remind about.
+            :ok
+
           not Kammer.Groups.Group.feature_enabled?(group, :events) ->
             # Feature toggled off since scheduling (ADR 0016): a hidden
             # feature must not keep emailing people.

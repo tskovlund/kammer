@@ -4,6 +4,12 @@ defmodule Kammer.Events.Event do
   multi-day supported, Markdown description, free-text location with
   optional URL (map links derived client-side — no embedded trackers),
   hosted by a group. Uses the same comment engine as posts (ADR 0007).
+
+  A recurring series materializes as one `Event` row per occurrence,
+  linked by `series_id` (`Kammer.Events.EventSeries`); `cancelled_at`
+  is the per-instance "cancel one date" override — the row (and its
+  RSVPs/comments) stays, just excluded from listings, reminders, and
+  ICS feeds.
   """
 
   use Ecto.Schema
@@ -24,10 +30,12 @@ defmodule Kammer.Events.Event do
     field :location_name, :string
     field :location_url, :string
     field :comment_locked_at, :utc_datetime
+    field :cancelled_at, :utc_datetime
 
     belongs_to :community, Kammer.Communities.Community
     belongs_to :group, Kammer.Groups.Group
     belongs_to :created_by_user, Kammer.Accounts.User
+    belongs_to :series, Kammer.Events.EventSeries
 
     has_many :rsvps, Kammer.Events.EventRsvp
     has_many :comments, Kammer.Feed.Comment

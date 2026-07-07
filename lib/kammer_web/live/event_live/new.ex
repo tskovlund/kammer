@@ -77,8 +77,32 @@ defmodule KammerWeb.EventLive.New do
           )}
         </p>
 
+        <div class="rounded-box border border-base-200 p-3">
+          <.input
+            name="event[repeats]"
+            type="select"
+            label={gettext("Repeats")}
+            options={repeat_options()}
+            value="none"
+            errors={[]}
+            phx-change="toggle_repeats"
+          />
+          <.input
+            :if={@recurring?}
+            name="event[repeat_until]"
+            type="date"
+            label={gettext("Repeats until")}
+            value=""
+            errors={[]}
+            required
+          />
+          <p :if={@recurring?} class="text-sm text-base-content/60">
+            {gettext("Up to %{count} occurrences.", count: Events.Recurrence.max_occurrences())}
+          </p>
+        </div>
+
         <.button variant="primary" phx-disable-with={gettext("Creating...")}>
-          {gettext("Create event")}
+          {if @recurring?, do: gettext("Create series"), else: gettext("Create event")}
         </.button>
       </.form>
     </Layouts.app>
@@ -108,11 +132,16 @@ defmodule KammerWeb.EventLive.New do
        socket
        |> assign(:postable_groups, postable_groups)
        |> assign(:selected_group_id, hd(postable_groups).id)
+       |> assign(:recurring?, false)
        |> assign(:form, to_form(Events.change_event(%Event{})))}
     end
   end
 
   @impl Phoenix.LiveView
+  def handle_event("toggle_repeats", %{"event" => %{"repeats" => repeats}}, socket) do
+    {:noreply, assign(socket, :recurring?, repeats != "none")}
+  end
+
   def handle_event("save", %{"event" => event_params}, socket) do
     current_user = socket.assigns.current_scope.user
     community = socket.assigns.active_community
@@ -125,11 +154,11 @@ defmodule KammerWeb.EventLive.New do
     attrs = build_attrs(event_params, current_user)
 
     with %{} = group <- group || :no_group,
-         {:ok, event} <- Events.create_event(current_user, group, attrs) do
+         {:ok, result} <- save_event(current_user, group, attrs, event_params) do
       {:noreply,
        socket
-       |> put_flash(:info, gettext("Event created."))
-       |> push_navigate(to: ~p"/c/#{community.slug}/events/#{event.id}")}
+       |> put_flash(:info, save_flash(result))
+       |> push_navigate(to: redirect_path(community, result))}
     else
       :no_group ->
         {:noreply, put_flash(socket, :error, gettext("Pick a host group."))}
@@ -140,6 +169,40 @@ defmodule KammerWeb.EventLive.New do
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
     end
+  end
+
+  defp save_event(current_user, group, attrs, %{"repeats" => repeats} = event_params)
+       when repeats != "none" do
+    recurrence_attrs = %{"frequency" => repeats, "until" => event_params["repeat_until"]}
+
+    with {:ok, events} <-
+           Events.create_recurring_event(current_user, group, attrs, recurrence_attrs) do
+      {:ok, {:series, Events.get_series(hd(events))}}
+    end
+  end
+
+  defp save_event(current_user, group, attrs, _event_params) do
+    with {:ok, event} <- Events.create_event(current_user, group, attrs) do
+      {:ok, {:event, event}}
+    end
+  end
+
+  defp save_flash({:series, _series}), do: gettext("Series created.")
+  defp save_flash({:event, _event}), do: gettext("Event created.")
+
+  defp redirect_path(community, {:series, series}),
+    do: ~p"/c/#{community.slug}/events/series/#{series.id}"
+
+  defp redirect_path(community, {:event, event}),
+    do: ~p"/c/#{community.slug}/events/#{event.id}"
+
+  defp repeat_options do
+    [
+      {gettext("Doesn't repeat"), "none"},
+      {gettext("Weekly"), "weekly"},
+      {gettext("Every two weeks"), "biweekly"},
+      {gettext("Monthly"), "monthly"}
+    ]
   end
 
   defp build_attrs(event_params, current_user) do
