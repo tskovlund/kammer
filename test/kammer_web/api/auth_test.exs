@@ -31,7 +31,42 @@ defmodule KammerWeb.Api.AuthTest do
         |> json_response(200)
 
       assert body["api_versions"] == ["v1"]
-      assert body["features"]["registration"] == "web_only"
+      assert body["features"]["registration"] == "open"
+    end
+  end
+
+  describe "POST /api/v1/auth/register" do
+    test "creates an account and sends a confirmation magic link", %{conn: conn} do
+      body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/register", %{
+          "email" => "new-signup@example.org",
+          "display_name" => "New Signup"
+        })
+        |> json_response(201)
+
+      assert body["status"] == "confirmation_sent"
+      assert body["user"]["email"] == "new-signup@example.org"
+      assert Accounts.get_user_by_email("new-signup@example.org")
+
+      assert_email_sent(fn email -> email.to == [{"", "new-signup@example.org"}] end)
+    end
+
+    test "rejects a duplicate email with the standard validation envelope", %{conn: conn} do
+      user = user_fixture()
+
+      body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/register", %{
+          "email" => user.email,
+          "display_name" => "Someone Else"
+        })
+        |> json_response(422)
+
+      assert body["error"]["code"] == "invalid_params"
+      assert body["error"]["details"]["email"]
     end
   end
 

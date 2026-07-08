@@ -48,6 +48,21 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Instance metadata and feature discovery", object())
           )
       },
+      "/api/v1/auth/register" => %PathItem{
+        post:
+          operation("Register an account", :auth_register, [],
+            security: [],
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  email: %Schema{type: :string, format: :email},
+                  display_name: %Schema{type: :string}
+                })
+              ),
+            response: json_response("Registered — confirmation email sent", object())
+          )
+      },
       "/api/v1/auth/request-link" => %PathItem{
         post:
           operation("Request a sign-in link", :auth_request_link, [],
@@ -112,6 +127,7 @@ defmodule KammerWeb.ApiSpec do
             "Create a post",
             :posts_create,
             [path_param(:community_slug), path_param(:group_slug)],
+            status: 201,
             request_body:
               body(
                 object(%{
@@ -130,6 +146,7 @@ defmodule KammerWeb.ApiSpec do
               "Comment on a post",
               :comments_create,
               [path_param(:community_slug), path_param(:group_slug), path_param(:post_id)],
+              status: 201,
               request_body:
                 body(
                   object(%{
@@ -177,6 +194,8 @@ defmodule KammerWeb.ApiSpec do
   end
 
   defp operation(summary, operation_id, parameters, opts) do
+    status = Keyword.get(opts, :status, 200)
+
     %Operation{
       summary: summary,
       operationId: to_string(operation_id),
@@ -184,7 +203,7 @@ defmodule KammerWeb.ApiSpec do
       security: Keyword.get(opts, :security),
       requestBody: Keyword.get(opts, :request_body),
       responses: %{
-        200 => Keyword.fetch!(opts, :response),
+        status => Keyword.fetch!(opts, :response),
         401 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response(),
         404 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response()
       }

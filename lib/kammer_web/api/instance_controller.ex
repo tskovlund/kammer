@@ -21,7 +21,7 @@ defmodule KammerWeb.Api.InstanceController do
       features: %{
         guest_rsvp: true,
         web_push: true,
-        registration: "web_only"
+        registration: "open"
       }
     })
   end

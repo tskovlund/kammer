@@ -145,6 +145,7 @@ defmodule KammerWeb.Router do
     pipe_through :api
 
     get "/instance", InstanceController, :show
+    post "/auth/register", AuthController, :register
     post "/auth/request-link", AuthController, :request_link
     post "/auth/exchange", AuthController, :exchange
   end
