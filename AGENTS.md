@@ -121,6 +121,17 @@ decided is written down somewhere durable (this file, an ADR, a
 CHANGELOG entry) or only lives in the conversation. Give opinions and
 concrete optimization proposals as they come up, not only when asked.
 
+**Persist process changes automatically, without being asked.** The
+moment a standing decision or convention is made — whether the owner
+states it directly, or you determine it yourself while critiquing the
+process per the paragraph above — write it into this file (or a
+CHANGELOG entry, ADR, or GitHub issue, whichever fits) in the same
+session, before moving on. Don't wait for an explicit "write this
+down" — a decision that only lives in one conversation is not
+persisted, and the next session has no way to know it was made. This
+instruction is itself an example: it exists here because it was
+asked for once and must never need to be asked for again.
+
 ## Kammer: remote container notes (Claude Code on the web)
 
 - `export PATH=/nix/var/nix/profiles/default/bin:$PATH` in every
