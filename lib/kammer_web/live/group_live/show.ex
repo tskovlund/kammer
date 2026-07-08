@@ -19,6 +19,7 @@ defmodule KammerWeb.GroupLive.Show do
   alias Kammer.Groups.Group
   alias Kammer.Newsletters
   alias KammerWeb.FeedEventHandlers
+  alias KammerWeb.PostPermissions
   alias KammerWeb.ReportHandlers
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
@@ -402,7 +403,9 @@ defmodule KammerWeb.GroupLive.Show do
             <.post_card
               post={post}
               current_user={current_user(assigns)}
-              permissions={post_permissions(post, @group, @relationship, current_user(assigns))}
+              permissions={
+                PostPermissions.for_post(post, @group, @relationship, current_user(assigns))
+              }
               new_since_last_visit={false}
               guest_comment_allowed={@guest_comment_allowed?}
             />
@@ -882,23 +885,6 @@ defmodule KammerWeb.GroupLive.Show do
       nil -> nil
       post -> post.id
     end
-  end
-
-  defp post_permissions(post, group, relationship, current_user) do
-    %{
-      edit: Authorization.can_edit_post?(current_user, post, group, relationship),
-      soft_delete: Authorization.can_soft_delete_post?(current_user, post, group, relationship),
-      hard_delete: Authorization.can_hard_delete_post?(current_user, post, group, relationship),
-      pin: Authorization.can_pin_post?(current_user, post, group, relationship),
-      lock_comments:
-        Authorization.can_lock_post_comments?(current_user, post, group, relationship),
-      view_acknowledgments:
-        current_user != nil and
-          Authorization.can_view_acknowledgments?(current_user, post, group, relationship),
-      approve: Authorization.can?(current_user, :moderate_group, group, relationship),
-      comment: Authorization.can?(current_user, :comment_in_group, group, relationship),
-      react: Authorization.can_react?(current_user, group, relationship)
-    }
   end
 
   defp upload_error_message(:too_large), do: gettext("File is too large.")
