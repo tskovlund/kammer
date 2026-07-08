@@ -148,6 +148,10 @@ defmodule Kammer.FilesTest do
       assert {:error, :unauthorized} =
                Files.fetch_accessible_file(community_member, stored_file.id)
     end
+
+    test "a malformed id returns :not_found instead of raising", %{member: member} do
+      assert {:error, :not_found} = Files.fetch_accessible_file(member, "not-a-uuid")
+    end
   end
 
   describe "transient expiry (SPEC §5)" do
