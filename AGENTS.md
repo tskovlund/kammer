@@ -125,6 +125,34 @@ the conversation.
   work, including sequencing already-approved backlog items, is never
   a reason to keep the owner assigned.
 
+#### Issue hygiene (continuous, not a one-off pass)
+
+If issues are the async communication channel — and per the section
+below, during owner-away stretches they're the _only_ one — a messy
+issue tracker isn't cosmetic, it's a broken channel. Treat hygiene as
+standing maintenance, not a task to schedule once:
+
+- **Stale/superseded issues get closed, not left open.** If a
+  reprioritization, a merged PR, or new scope makes an issue's ask
+  moot, close it with a comment explaining why (`state_reason:
+not_planned` or `completed` as fits) — don't let it linger as noise
+  future sessions have to re-triage.
+- **Labels are load-bearing, keep them accurate**: `decision`/`action`
+  only while genuinely blocking (see above); `roadmap` on confirmed
+  future-scope items so they're filterable as a group instead of
+  drowning in the general backlog; `enhancement` as the default.
+  Re-check labels when an issue's status changes, not just at creation.
+- **Consistent structure**: a one-line "What" summary, then context/
+  reasoning, then a checklist or "Files touched" if implementation-
+  relevant. Match the shape of nearby issues rather than improvising
+  a new format per issue — a reader skimming the tracker shouldn't
+  have to re-parse a new structure every time.
+- **Prioritization shifts get reflected in the tracker itself**, not
+  just remembered — if a class of issues (e.g. LiveView-template-only
+  cosmetic findings) drops in priority because of a bigger strategic
+  shift (e.g. the LiveView→Svelte transition), say so on those issues
+  rather than leaving them looking equally urgent as everything else.
+
 ### Product scope changes
 
 SPEC.md §16's "explicit non-goals" list is the canonical, durable
@@ -157,6 +185,33 @@ much higher.
   this file or the linked docs, rather than picking one silently —
   and once answered, write the answer down here so it isn't asked
   twice.
+- **Always check `issue_read`'s `get_comments` before asking the
+  owner something in chat that might already be answered on the
+  issue itself** — GitHub comments are a real channel the owner uses
+  independently of chat, and re-asking something already answered
+  there wastes their attention and looks like the process isn't
+  paying attention.
+
+#### Async-only stretches (owner watching GitHub, not chat)
+
+The owner periodically goes fully async — explicitly says so, and
+means it literally: no chat replies coming, GitHub (issues, PRs,
+labels, comments) is the only channel they're checking, for a defined
+stretch (e.g. a week away). During one of these stretches:
+
+- Keep working autonomously. Do not pause a task waiting on a chat
+  reply that will not come — that's a stall, not caution.
+- All status, findings, and decisions get written to GitHub (PR
+  descriptions, issue comments, CHANGELOG), never left only in chat —
+  chat may not be read again for the whole stretch.
+- For a `decision`-labeled issue that would normally block on the
+  owner: if truly blocking, pick the most reasonable option, say so
+  explicitly in an issue comment with the reasoning (so it's a
+  visible, overridable call, not a silent one), and keep moving —
+  don't stall the way sync mode would tolerate.
+- Resume normal "surface and wait" behavior the moment the owner
+  posts anything in chat again — async-only is a temporary mode the
+  owner opts into, not a permanent default.
 
 ### Continuous process critique
 

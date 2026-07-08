@@ -35,8 +35,7 @@ and this project adheres to
   account, double opt-in through a signed confirm link, choice of
   every-post or a daily/weekly digest. Delivery reuses
   `Kammer.Digests`' cadence math (own Oban worker, offset cron tick)
-  and every email carries a one-click `List-Unsubscribe` header (RFC
-  8058) alongside a signed management link that reuses the existing
+  and every email carries a one-click `List-Unsubscribe` header (RFC 8058) alongside a signed management link that reuses the existing
   guest-manage page — change cadence or unsubscribe, same as changing
   a guest RSVP.
 - Report surfaces on event and assignment pages (SPEC §11): the
@@ -51,7 +50,7 @@ and this project adheres to
   Moderation gaps backlog.
 - Instance-wide bans (SPEC §11): operators get a second, broader ban
   list at `/instance/moderation` — ban an email instance-wide and it
-  can't rejoin *any* community on the instance, not just one. Same
+  can't rejoin _any_ community on the instance, not just one. Same
   choke-point as the existing community ban
   (`Communities.add_member/3`), same email-keyed design (blocks a
   future signup too, not just an existing account), same two-step
@@ -283,6 +282,17 @@ and this project adheres to
 
 ### Fixed
 
+- `.prettierignore` excluded `SPEC.md`, `BUILDLOG.md`, and
+  `CHANGELOG.md` from formatting with no real reason — they're
+  ordinary markdown, not legal text like `LICENSE` (the one entry
+  that's actually justified). Reformatted all three; only `LICENSE`
+  stays ignored now.
+- `priv/gettext/da/LC_MESSAGES/default.po` had an empty `msgstr` for
+  the setup wizard's SMTP-failure message (issue #101) — the only
+  untranslated string in an otherwise fully-translated file. A
+  Danish-locale operator hitting an SMTP failure during first-run
+  setup saw a blank error instead of the guidance to check SMTP
+  settings and request a new sign-in link. Filled in the translation.
 - The OpenAPI document's `operation/4` helper hardcoded every
   operation's success response to `200`, wrongly documenting
   `posts_create`, `comments_create`, and the new `auth_register`

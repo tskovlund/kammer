@@ -72,7 +72,7 @@ confirm. Risk is low (same nixpkgs underneath). To complete: run
 
 **Dependency verification (Hex, 2026-07-06)** — all §22 picks current:
 credo 1.7.19, dialyxir 1.4.7, sobelow 0.14.1, excoveralls 0.18.5,
-mix_audit 2.1.5, oban 2.23.0, swoosh 1.26.3 (scaffolded), wax_ 0.7.0
+mix*audit 2.1.5, oban 2.23.0, swoosh 1.26.3 (scaffolded), wax* 0.7.0
 (Phase 2), vix 0.40.0, hammer 7.4.0, icalendar 1.1.3, stream_data 1.3.0.
 **Markdown: chose MDEx 0.13.3 over Earmark** — Earmark's latest is a 1.5
 pre-release and it has no built-in sanitization; MDEx is actively maintained
@@ -105,17 +105,18 @@ battle-tested — then stripped to passwordless-only per SPEC §2:
   gen_smtp's idna 7; `tz` is maintained, pure-Elixir, embeds IANA data.
 
 **Deferred (how to complete)**:
-- *Passkeys/WebAuthn*: Phase 2 per SPEC §16.2. Add `wax_ 0.7`, a
+
+- _Passkeys/WebAuthn_: Phase 2 per SPEC §16.2. Add `wax_ 0.7`, a
   `user_credentials` table, registration in settings (behind sudo mode), and
   a discoverable-credential login button on the sign-in page.
-- *Guest identity upgrade* (claiming RSVP/subscriber history on first login,
+- _Guest identity upgrade_ (claiming RSVP/subscriber history on first login,
   SPEC §2): implemented when guest artifacts exist (events step): on magic-
   link confirmation, look up guest records by email and re-own them.
-- *Locale/timezone auto-detection* (SPEC §4): currently defaults en/UTC,
+- _Locale/timezone auto-detection_ (SPEC §4): currently defaults en/UTC,
   editable in settings. Complete by reading Accept-Language in a plug and a
   JS hook posting `Intl.DateTimeFormat().resolvedOptions().timeZone` once
   after login.
-- *Session IP recording*: user_agent is stored per session; adding the
+- _Session IP recording_: user_agent is stored per session; adding the
   client IP column is trivial if wanted, but was left out deliberately
   (privacy-first: don't store more than needed).
 
@@ -129,7 +130,7 @@ surfaces. Property suites (StreamData) cover: anonymous actors, archived
 read-only, operator-flag inertness, role monotonicity, and a dedicated
 sealed-group suite. The property tests sharpened ADR 0005's wording:
 sealing reduces community admins to plain-member rights (a sealed
-`community`-visibility group is still visible to them *as members*), plus
+`community`-visibility group is still visible to them _as members_), plus
 whole-group deletion.
 
 **Domain**: communities (slug-namespaced, accent color, per-community
@@ -157,6 +158,7 @@ notifications tabs with designed empty states (filled by their build
 steps), "My other servers" bookmarks page.
 
 **Decisions where SPEC is silent** (boring defaults):
+
 - Any community member may create a group (becomes Owner). Rationale:
   communities are invite-gated trusted spaces; sealed groups exist for
   private circles. Revisit if pilot feedback demands an admin gate.
@@ -210,27 +212,28 @@ image grids/file rows/live polls/reaction picker/collapsible replies/
 ack modal; CSP added (Sobelow caught the §11 requirement).
 
 **Decisions / trims (with completion paths)**:
-- *S3 storage adapter*: deferred to the files step — behaviour is in
+
+- _S3 storage adapter_: deferred to the files step — behaviour is in
   place; implement `Kammer.Storage.S3` (req-based, SigV4 or a small
   S3 lib) reading `S3_*` env, register in runtime.exs.
-- *Rich-text toolbar*: composer is a Markdown textarea (placeholder says
+- _Rich-text toolbar_: composer is a Markdown textarea (placeholder says
   so). Complete: small JS hook wrapping selection in Markdown markers +
   toolbar buttons; no editor dependency planned.
-- *User @mentions*: `@everyone`/`@admins` extracted (`Feed.Mentions`);
+- _User @mentions_: `@everyone`/`@admins` extracted (`Feed.Mentions`);
   per-user `@Display Name` mentions resolve at notification time
   (step 7) — no stable usernames exist by design.
-- *Lightbox*: images open the re-encoded display file in a new tab;
+- _Lightbox_: images open the re-encoded display file in a new tab;
   a JS lightbox is cosmetic follow-up.
-- *Home feed*: aggregates the groups the user is a member of (SPEC says
+- _Home feed_: aggregates the groups the user is a member of (SPEC says
   "aggregated home feed scoped to the active community" — membership is
   the boring reading; community-visible non-member groups are browsable
   via the directory instead).
-- *MDEx NIF in restricted build environments*: precompiled NIF downloads
+- _MDEx NIF in restricted build environments_: precompiled NIF downloads
   from GitHub releases; this container's proxy blocks that, so the NIF
   was built from source (optional `rustler` dep added; set
   `MDEX_NATIVE_BUILD=1` + Rust toolchain). Normal contributors and CI
   fetch the precompiled binary; nothing to complete.
-- *Oban in tests*: `testing: :manual` — the scheduled-post worker is unit-
+- _Oban in tests_: `testing: :manual` — the scheduled-post worker is unit-
   invisible; its behavior (hidden until published_at) is tested via the
   feed query.
 
@@ -250,18 +253,19 @@ event page. Event visibility strictly follows the host group through
 Kammer.Authorization; creating events follows the posting policy.
 
 **Decisions / trims (with completion paths)**:
-- *ICS generated directly instead of the `icalendar` hex package*: the
+
+- _ICS generated directly instead of the `icalendar` hex package_: the
   lib is maintained (2026-02) but our VEVENT needs are ~150 lines with
   full control of TZ semantics; SPEC §22 explicitly sanctions direct
   generation. No dependency risk.
-- *Reminder timing fixed at 24h before start* for RSVP'd yes/maybe.
+- _Reminder timing fixed at 24h before start_ for RSVP'd yes/maybe.
   Per-user configurability lands with notification preferences (step 7):
   add a `reminder_offset` preference consulted by EventReminderWorker.
-- *Cover image* (SPEC §6): deferred — wire-up is trivial once the files
+- _Cover image_ (SPEC §6): deferred — wire-up is trivial once the files
   step's picker exists (add `cover_stored_file_id` to events, upload in
   the event form via the existing upload pipeline, render in header).
-- *Guest RSVP, recurrence, attendance matrix*: Phase 2 per SPEC §16.
-- *Event editing UI*: context supports update_event (tested); the UI
+- _Guest RSVP, recurrence, attendance matrix_: Phase 2 per SPEC §16.
+- _Event editing UI_: context supports update_event (tested); the UI
   exposes delete only — add an edit form mirroring EventLive.New bound
   to change_event. Recorded as a small gap to close in polish.
 
@@ -284,22 +288,23 @@ uploads, folder admin menu, quota bar, and an S3-compatible adapter
 selected via `STORAGE_ADAPTER=s3` at runtime.
 
 **Decisions / trims (with completion paths)**:
-- *File read baseline = scope visibility, not membership*: a public
+
+- _File read baseline = scope visibility, not membership_: a public
   group's feed images must render for signed-out readers, so read access
   equals `:view_group` (which for private/community groups is
   membership). This is the only reading under which public feeds work;
   the invariant (never exceeds scope visibility) holds by construction.
-- *req_s3 not used*: it pins req ~> 0.5.6 against our req 0.6; Req's
+- _req_s3 not used_: it pins req ~> 0.5.6 against our req 0.6; Req's
   built-in `aws_sigv4` option covers put/get/delete directly. S3 adapter
   is unit-level code without an integration test in this container (no
   MinIO); verify against MinIO via docker compose `--profile minio` when
-  network-unrestricted: set STORAGE_ADAPTER=s3 + S3_* and upload a file.
-- *No file move/rename UI*: files land where uploaded; deleting a folder
+  network-unrestricted: set STORAGE*ADAPTER=s3 + S3*\* and upload a file.
+- _No file move/rename UI_: files land where uploaded; deleting a folder
   reparents files to the root. Complete: add `move_file(actor, file,
-  folder)` (write check at target) + a move menu in FileLive.
-- *FTS over filenames/extracted text*: Phase 2 per SPEC §16 (global
+folder)` (write check at target) + a move menu in FileLive.
+- _FTS over filenames/extracted text_: Phase 2 per SPEC §16 (global
   search step).
-- *Attached-to-event collection*: events have no attachments in v1
+- _Attached-to-event collection_: events have no attachments in v1
   (cover image deferred); collection added when they do.
 
 ## 2026-07-06 — Step 7: notifications (SPEC §9, §16.7)
@@ -329,22 +334,23 @@ degrades gracefully without keys). PWA: manifest.json + service worker
 LiveView hook.
 
 **Decisions / trims (with completion paths)**:
-- *Digest frequency (instant/daily/weekly/off)*: Phase 2 per SPEC §16
+
+- _Digest frequency (instant/daily/weekly/off)_: Phase 2 per SPEC §16
   ("newsletter subscriptions + digests"). Schema-ready: add a
   digest_frequency column to notification_preferences and an Oban cron
   assembling unsent in-app rows.
-- *Display-name mentions use containment matching* ("@Name" in body) —
+- _Display-name mentions use containment matching_ ("@Name" in body) —
   no stable usernames exist by design; false positives are possible for
   prefix-named members. Complete: composer autocomplete inserting
   `@[Name](user:UUID)` and parsing that form.
-- *Live badge updates*: the unread dot refreshes on navigation, not via
+- _Live badge updates_: the unread dot refreshes on navigation, not via
   PubSub push. Complete: subscribe layouts to a per-user topic and
   broadcast from deliver/4.
-- *Push not end-to-end testable here* (no browser): subscription CRUD,
+- _Push not end-to-end testable here_ (no browser): subscription CRUD,
   matrix, and payloads are unit-tested; WebPushEx handles RFC 8291.
   Verify manually: set VAPID keys, open /c/:slug/notifications, Enable,
   post a mention from another account.
-- *iOS PWA icon*: manifest uses the scaffold SVG logo; real raster icons
+- _iOS PWA icon_: manifest uses the scaffold SVG logo; real raster icons
   (192/512 PNG) should replace it before launch (cosmetic).
 
 ## 2026-07-06 — Step 8: first-run setup, demo data, legal pages (SPEC §13, §16.8)
@@ -390,19 +396,20 @@ test (`@tag :setup_pending` opts out). 314 tests + 15 properties, 0
 failures; coverage 82.7%.
 
 **Decisions / trims (with completion paths)**:
-- *Gate queries instance_settings per request* (single-row indexed
+
+- _Gate queries instance_settings per request_ (single-row indexed
   lookup) instead of caching completion in :persistent_term — caching
   would leak across async tests and self-hosted scale doesn't need it.
-- *Wizard validates per-step only lightly* (email presence); everything
+- _Wizard validates per-step only lightly_ (email presence); everything
   else surfaces as changeset errors on the final submit via flash.
   Complete: per-field inline errors by threading changesets per step.
-- *Setup boot task is fire-and-forget* (restart: :temporary): on an
+- _Setup boot task is fire-and-forget_ (restart: :temporary): on an
   unmigrated database it logs a crash and the app still boots; the first
   request fails visibly anyway. Releases run migrations before boot
   (rel/overlays/bin/server).
-- *Legal templates are content, not law*: EN+DA fill-in scaffolds with
+- _Legal templates are content, not law_: EN+DA fill-in scaffolds with
   explicit "[Operator: …]" placeholders.
-- *Danish PO hygiene*: this merge surfaced 39 stale fuzzy entries from
+- _Danish PO hygiene_: this merge surfaced 39 stale fuzzy entries from
   earlier merges (wrong auto-guesses like "Remove"→"Log ud") — all
   reviewed and fixed; 0 fuzzy, 0 empty remain.
 
@@ -446,7 +453,7 @@ docs/github/repo-settings.md with an importable ruleset.
   PR — the sandbox building this repo cannot run the full docker build
   (github.com egress is blocked, which is where tailwind/esbuild/MDEx
   precompiled artifacts live), so CI is where the Dockerfile is
-  continuously verified; pushes to ghcr.io/<repo> on main and v* tags
+  continuously verified; pushes to ghcr.io/<repo> on main and v\* tags
   with GHA layer caching.
 - **CODEOWNERS**: @tskovlund owns everything → automatic review routing.
 - **Least privilege**: top-level `permissions: contents: read` on all
@@ -475,17 +482,18 @@ honest in-sandbox equivalent was executed end to end:
    screen with invite link → /setup locked (bounces home) → landing
    renders. Demo community, 2 posts, poll, and event verified in the
    database; magic-link email delivered without error.
-4. /healthz 200 with DB round-trip; /legal/* reachable pre-setup;
+4. /healthz 200 with DB round-trip; /legal/\* reachable pre-setup;
    `docker compose config` (with and without --profile minio) validates.
 
 Real defects found and fixed by this exercise:
+
 - **Prod release could not boot without IPv6**: the generated
   runtime.exs bound `::` and died with :eafnosupport on IPv6-less
   hosts/containers. Now binds IPv4-any by default; PHX_LISTEN_IPV6=true
   restores the dual-stack listener.
 - **MAILER_ADAPTER=local crashed in releases**: prod.exs sets
   `config :swoosh, local: false`, so Swoosh's in-memory mailbox process
-  was never started and the first delivery crashed the wizard *after*
+  was never started and the first delivery crashed the wizard _after_
   the setup transaction had committed. runtime.exs now re-enables
   swoosh-local for that adapter.
 - **A failing mailer took the wizard down post-commit**: magic-link
@@ -550,7 +558,7 @@ probe; put TLS in front (docs/deploy/Caddyfile.example).
 
 1. **lib/kammer/authorization.ex** — every permission decision flows
    through it. Read it against SPEC §3/§7/§11; the property suites
-   (test/kammer/authorization*_test.exs) encode the intended semantics,
+   (test/kammer/authorization\*\_test.exs) encode the intended semantics,
    so review those assumptions too, especially sealed-group reduction
    and the file-visibility invariant.
 2. **priv/repo/migrations/** — schema/index/on_delete choices are load-
@@ -584,6 +592,7 @@ Phase 2 (do not launch real data without your own pg_dump cron).
 ## 2026-07-06 — Merge policy, Renovate, and first live-CI findings (owner requests)
 
 Owner decisions applied:
+
 - **Merge commits only** (honest history, no rewriting): ruleset now
   allows only the merge method; squash/rebase should be disabled in
   Settings → General; the required-linear-history rule was dropped —
@@ -597,6 +606,7 @@ Owner decisions applied:
   fallback.
 
 Repo management performed (owner asked me to manage dependency PRs):
+
 - Dependabot had already opened PRs #1 (commitlint group) and #2
   (13 GitHub-Actions bumps) against the default branch. On both, the
   full quality gate and Gitleaks were GREEN on real GitHub runners —
@@ -604,7 +614,7 @@ Repo management performed (owner asked me to manage dependency PRs):
   red checks were all pre-existing/ours, not the PRs' fault:
   1. **Docker image**: real Dockerfile bug — `mix assets.deploy` ran
      before `mix compile`, but app.css imports the colocated CSS that
-     compilation extracts into _build. Order swapped; this also means
+     compilation extracts into \_build. Order swapped; this also means
      the standalone tailwind binary got PAST plugin loading on GitHub,
      so the daisyUI-options concern is still unproven either way — next
      Docker CI run after this fix will settle it.
@@ -613,7 +623,7 @@ Repo management performed (owner asked me to manage dependency PRs):
   3. **Conventional Commits**: Dependabot capitalizes "Bump…", which
      violates commitlint subject-case. Moot after the Renovate switch
      (Renovate writes lowercase conventional subjects).
-  Both PRs merged with merge commits after that analysis.
+     Both PRs merged with merge commits after that analysis.
 
 ## 2026-07-06 — Post-merge operations notes
 
@@ -640,17 +650,17 @@ Two choices the owner rightly flagged as under-documented:
 **Coverage floor = 80%.** SPEC §17 prescribed "tests with coverage
 floor" but no number; 80 was my pick and — honestly — it entered the
 config as a convention, not a reasoned decision. The BUILDLOG recorded
-coverage *readings* per step but never justified the floor. Recording
+coverage _readings_ per step but never justified the floor. Recording
 the deliberate position now:
 
-- Line coverage measures *execution*, not *verification* — a test that
+- Line coverage measures _execution_, not _verification_ — a test that
   runs code without meaningful assertions counts the same as one that
   nails the contract. As a target it invites Goodharting (junk tests
   written to move a number).
-- It is, however, a useful **one-way tripwire**: a *drop* reliably
+- It is, however, a useful **one-way tripwire**: a _drop_ reliably
   means new code shipped with no tests at all, which is exactly the
   regression a solo/AI-assisted project wants to catch mechanically.
-- Therefore: the floor exists to fail CI on coverage *drops*, not to
+- Therefore: the floor exists to fail CI on coverage _drops_, not to
   be climbed. 80 keeps ~2 points of slack under the current 82.6% so
   refactors don't fail CI spuriously, while any untested feature-sized
   addition trips it. We do NOT ratchet the floor upward — ratchets

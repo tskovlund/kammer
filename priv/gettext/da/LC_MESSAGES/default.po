@@ -2563,7 +2563,7 @@ msgstr "Dine data er slettet."
 #: lib/kammer_web/live/setup_live/wizard.ex:176
 #, elixir-autogen, elixir-format
 msgid "Your sign-in email could not be sent — check the SMTP settings and request a new link on the sign-in page. Setup itself succeeded."
-msgstr ""
+msgstr "Din login-e-mail kunne ikke sendes — tjek SMTP-indstillingerne, og anmod om et nyt link på login-siden. Selve opsætningen lykkedes."
 
 #: lib/kammer_web/live/group_live/settings.ex:112
 #, elixir-autogen, elixir-format
