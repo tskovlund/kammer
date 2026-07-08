@@ -145,7 +145,7 @@ defmodule KammerWeb.AvailabilityLive.Show do
     answer_atom = String.to_existing_atom(answer)
 
     with %Kammer.Availability.AvailabilityOption{} = option <-
-           Kammer.Repo.get(Kammer.Availability.AvailabilityOption, option_id),
+           Availability.get_option(option_id),
          {:ok, _response} <- Availability.respond(current_user, option, answer_atom) do
       {:noreply, reload(socket)}
     else
@@ -162,7 +162,7 @@ defmodule KammerWeb.AvailabilityLive.Show do
     community = socket.assigns.active_community
 
     with %Kammer.Availability.AvailabilityOption{} = option <-
-           Kammer.Repo.get(Kammer.Availability.AvailabilityOption, option_id),
+           Availability.get_option(option_id),
          {:ok, _poll, event} <-
            Availability.convert_to_event(current_user, socket.assigns.poll, option) do
       {:noreply,

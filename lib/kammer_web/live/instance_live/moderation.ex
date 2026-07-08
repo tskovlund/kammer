@@ -12,7 +12,6 @@ defmodule KammerWeb.InstanceLive.Moderation do
 
   alias Kammer.Authorization
   alias Kammer.Moderation
-  alias Kammer.Moderation.InstanceBan
   alias KammerWeb.BanEventHandlers
 
   @impl Phoenix.LiveView
@@ -98,7 +97,7 @@ defmodule KammerWeb.InstanceLive.Moderation do
   def handle_event("unban", %{"id" => ban_id}, socket) do
     BanEventHandlers.handle_unban(
       socket,
-      Kammer.Repo.get(InstanceBan, ban_id),
+      Moderation.get_instance_ban(ban_id),
       &Moderation.unban_instance/2,
       fn socket ->
         assign(socket, :bans, Moderation.list_instance_bans(socket.assigns.current_scope.user))

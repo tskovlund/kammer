@@ -82,6 +82,14 @@ defmodule Kammer.Availability do
   end
 
   @doc """
+  Fetches an availability option by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator below.
+  """
+  @spec get_option(Ecto.UUID.t()) :: AvailabilityOption.t() | nil
+  def get_option(option_id), do: Repo.get(AvailabilityOption, option_id)
+
+  @doc """
   Open polls across the groups the actor can see in the community
   (feature-gated per group), oldest first — the ones waiting for
   answers, listed on the events page.

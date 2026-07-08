@@ -197,7 +197,7 @@ defmodule KammerWeb.AssignmentLive.Index do
   def handle_event("claim", %{"id" => assignment_id}, socket) do
     AssignmentEventHandlers.handle_claim(
       socket,
-      Kammer.Repo.get(Assignment, assignment_id),
+      Assignments.get_assignment(assignment_id),
       &reload/1
     )
   end
@@ -209,7 +209,7 @@ defmodule KammerWeb.AssignmentLive.Index do
   def handle_event("complete", %{"id" => assignment_id}, socket) do
     AssignmentEventHandlers.handle_complete(
       socket,
-      Kammer.Repo.get(Assignment, assignment_id),
+      Assignments.get_assignment(assignment_id),
       &reload/1
     )
   end
@@ -217,7 +217,7 @@ defmodule KammerWeb.AssignmentLive.Index do
   def handle_event("reopen", %{"id" => assignment_id}, socket) do
     AssignmentEventHandlers.handle_reopen(
       socket,
-      Kammer.Repo.get(Assignment, assignment_id),
+      Assignments.get_assignment(assignment_id),
       &reload/1
     )
   end

@@ -649,6 +649,23 @@ defmodule Kammer.Events do
   end
 
   @doc """
+  Fetches an event slot by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator below.
+  """
+  @spec get_slot(Ecto.UUID.t()) :: EventSlot.t() | nil
+  def get_slot(slot_id), do: Repo.get(EventSlot, slot_id)
+
+  @doc """
+  Fetches a user's claim on a slot, or `nil` if they haven't claimed
+  it. Unauthenticated — callers pass the result to an
+  authorization-checked mutator below.
+  """
+  @spec get_slot_claim(Ecto.UUID.t(), Ecto.UUID.t()) :: SlotClaim.t() | nil
+  def get_slot_claim(slot_id, user_id),
+    do: Repo.get_by(SlotClaim, slot_id: slot_id, user_id: user_id)
+
+  @doc """
   Deletes a slot and every claim on it (event managers only).
   """
   @spec delete_slot(User.t(), EventSlot.t()) ::

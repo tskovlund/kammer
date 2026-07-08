@@ -24,6 +24,15 @@ and this project adheres to
 
 ### Fixed
 
+- The web layer fetched Assignment/AvailabilityOption/EventSlot/
+  SlotClaim/Report/CommunityBan/InstanceBan entities directly via
+  `Kammer.Repo` and their schema modules instead of through the owning
+  context. Found by the round-2 audit (#91). Added bare-id accessors
+  (`Assignments.get_assignment/1`, `Availability.get_option/1`,
+  `Events.get_slot/1`, `Events.get_slot_claim/2`,
+  `Moderation.get_report/1`, `Moderation.get_community_ban/1`,
+  `Moderation.get_instance_ban/1`); the affected LiveViews call them
+  instead of naming `Kammer.Repo` or a schema module directly.
 - The web layer fetched `Feed` entities (posts, comments, polls)
   directly via `Kammer.Repo` and the schema modules instead of through
   `Kammer.Feed`, and hand-rolled the poll-vote-toggle selection logic
