@@ -53,10 +53,6 @@ defmodule Kammer.Files.Folder do
     |> validate_length(:name, min: 1, max: 100)
   end
 
-  @doc "Valid preset overrides."
-  @spec overrides() :: [override()]
-  def overrides, do: @overrides
-
   @doc "Maximum folder nesting depth — the tree stays shallow (SPEC §7)."
   @spec maximum_depth() :: pos_integer()
   def maximum_depth, do: @maximum_depth

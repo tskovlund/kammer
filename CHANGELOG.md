@@ -8,6 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Removed
+
+- 10 unused "valid values" accessor functions with zero call sites
+  anywhere in the codebase (`Folder.overrides/0`,
+  `Notification.kinds/0`, `NotificationPreference.levels/0`,
+  `EventSeries.frequencies/0`, `CustomField.field_types/0`,
+  `CustomField.visibilities/0`,
+  `InstanceSettings.community_creation_policies/0`,
+  `Decision.outcomes/0`, `AvailabilityResponse.answers/0`,
+  `User.visibilities/0`), and trimmed two `phx.new`/`phx.gen.auth`
+  generator boilerplate example comments (`user_auth.ex`,
+  `error_json.ex`) down to their essential guidance. Found by the
+  full-codebase audit (#78).
+
 ### Fixed
 
 - `Kammer.Files.fetch_accessible_file/2` only checked coarse

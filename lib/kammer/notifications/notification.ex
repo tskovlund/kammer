@@ -33,8 +33,4 @@ defmodule Kammer.Notifications.Notification do
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
-
-  @doc "All notification kinds."
-  @spec kinds() :: [atom()]
-  def kinds, do: @kinds
 end

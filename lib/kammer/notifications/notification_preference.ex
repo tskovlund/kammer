@@ -34,8 +34,4 @@ defmodule Kammer.Notifications.NotificationPreference do
     |> validate_required([:level, :user_id, :group_id])
     |> unique_constraint([:user_id, :group_id])
   end
-
-  @doc "All valid levels."
-  @spec levels() :: [level()]
-  def levels, do: @levels
 end

@@ -42,8 +42,4 @@ defmodule Kammer.Events.EventSeries do
     |> cast(attrs, [:frequency, :until, :community_id, :group_id, :created_by_user_id])
     |> validate_required([:frequency, :until, :community_id, :group_id, :created_by_user_id])
   end
-
-  @doc "All valid recurrence frequencies."
-  @spec frequencies() :: [frequency()]
-  def frequencies, do: @frequencies
 end

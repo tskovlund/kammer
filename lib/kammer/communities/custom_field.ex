@@ -63,12 +63,4 @@ defmodule Kammer.Communities.CustomField do
       changeset
     end
   end
-
-  @doc "All valid field types."
-  @spec field_types() :: [field_type()]
-  def field_types, do: @field_types
-
-  @doc "All valid visibility levels for a community-defined field."
-  @spec visibilities() :: [visibility()]
-  def visibilities, do: @visibilities
 end

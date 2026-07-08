@@ -32,8 +32,4 @@ defmodule Kammer.Availability.AvailabilityResponse do
     |> validate_required([:answer, :option_id, :user_id])
     |> unique_constraint([:option_id, :user_id])
   end
-
-  @doc "All valid answers."
-  @spec answers() :: [answer()]
-  def answers, do: @answers
 end

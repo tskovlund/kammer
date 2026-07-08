@@ -60,8 +60,4 @@ defmodule Kammer.Communities.InstanceSettings do
     |> validate_inclusion(:default_locale, ["en", "da"])
     |> unique_constraint(:singleton_guard)
   end
-
-  @doc "All valid community-creation policies."
-  @spec community_creation_policies() :: [atom()]
-  def community_creation_policies, do: @community_creation_policies
 end

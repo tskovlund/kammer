@@ -53,10 +53,6 @@ defmodule Kammer.Decisions.Decision do
     |> validate_length(:outcome_note, max: 2_000)
   end
 
-  @doc "All valid outcomes."
-  @spec outcomes() :: [outcome()]
-  def outcomes, do: @outcomes
-
   @doc "Whether an outcome has been recorded."
   @spec decided?(t()) :: boolean()
   def decided?(%__MODULE__{outcome: outcome}), do: not is_nil(outcome)
