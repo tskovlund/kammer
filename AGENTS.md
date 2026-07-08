@@ -161,10 +161,10 @@ not_planned` or `completed` as fits) — don't let it linger as noise
     enough that per-context labels (`area:feed`, `area:events`, …)
     would fragment the tracker for no payoff; revisit only if the
     open-issue count grows past roughly 100.
-  Re-check labels when an issue's status changes, not just at
-  creation — a `decision` issue whose question got answered in a
-  comment should lose the label promptly, not linger looking like it's
-  still blocking.
+    Re-check labels when an issue's status changes, not just at
+    creation — a `decision` issue whose question got answered in a
+    comment should lose the label promptly, not linger looking like it's
+    still blocking.
 - **Titles carry no hand-rolled label echoes.** Never prefix a title
   with `[decision]`, `[bug]`, or similar — the label already says
   that; a manual prefix duplicates it inconsistently (some issues get
