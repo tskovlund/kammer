@@ -20,7 +20,7 @@ Kammer's actual want, per SPEC.md §3, is different in kind: a
 community lives on exactly one instance (the Discord model — no
 cross-instance community concept exists or is planned), and a single
 member's aggregated view across the several communities/instances
-*they* belong to is a personal client-side concern, not a
+_they_ belong to is a personal client-side concern, not a
 content-distribution one.
 
 ## Decision
