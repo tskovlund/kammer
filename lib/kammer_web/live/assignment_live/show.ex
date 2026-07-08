@@ -13,6 +13,7 @@ defmodule KammerWeb.AssignmentLive.Show do
   alias Kammer.Assignments
   alias Kammer.Assignments.Assignment
   alias Kammer.Feed
+  alias KammerWeb.AssignmentEventHandlers
   alias KammerWeb.ReportHandlers
 
   @impl Phoenix.LiveView
@@ -260,41 +261,19 @@ defmodule KammerWeb.AssignmentLive.Show do
 
   @impl Phoenix.LiveView
   def handle_event("claim", _params, socket) do
-    case Assignments.claim(socket.assigns.current_scope.user, socket.assigns.assignment) do
-      {:ok, _claim} -> {:noreply, reload(socket)}
-      {:error, _reason} -> {:noreply, refuse(socket)}
-    end
+    AssignmentEventHandlers.handle_claim(socket, socket.assigns.assignment, &reload/1)
   end
 
   def handle_event("unclaim", _params, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    claim =
-      Kammer.Repo.get_by(Kammer.Assignments.AssignmentClaim,
-        assignment_id: socket.assigns.assignment.id,
-        user_id: current_user.id
-      )
-
-    with %Kammer.Assignments.AssignmentClaim{} <- claim,
-         {:ok, _claim} <- Assignments.unclaim(current_user, claim) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, refuse(socket)}
-    end
+    AssignmentEventHandlers.handle_unclaim(socket, socket.assigns.assignment.id, &reload/1)
   end
 
   def handle_event("complete", _params, socket) do
-    case Assignments.complete(socket.assigns.current_scope.user, socket.assigns.assignment) do
-      {:ok, _assignment} -> {:noreply, reload(socket)}
-      {:error, _reason} -> {:noreply, refuse(socket)}
-    end
+    AssignmentEventHandlers.handle_complete(socket, socket.assigns.assignment, &reload/1)
   end
 
   def handle_event("reopen", _params, socket) do
-    case Assignments.reopen(socket.assigns.current_scope.user, socket.assigns.assignment) do
-      {:ok, _assignment} -> {:noreply, reload(socket)}
-      {:error, _reason} -> {:noreply, refuse(socket)}
-    end
+    AssignmentEventHandlers.handle_reopen(socket, socket.assigns.assignment, &reload/1)
   end
 
   def handle_event("delete", _params, socket) do

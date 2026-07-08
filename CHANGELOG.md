@@ -24,6 +24,15 @@ and this project adheres to
 
 ### Fixed
 
+- The group assignment list and the single-assignment page each
+  hand-rolled their own `claim`/`unclaim`/`complete`/`reopen`
+  `handle_event` bodies, including a byte-for-byte identical manual
+  `AssignmentClaim` lookup before calling `Assignments.unclaim/2` in
+  both places. Found by the full-codebase audit (#77). Now both call
+  the shared `KammerWeb.AssignmentEventHandlers`, so the two can no
+  longer drift. Added a regression test for the single-assignment
+  page's full claim/unclaim/complete/reopen cycle, which had no prior
+  test coverage.
 - The community home feed hardcoded a post's `edit`, `pin`,
   `lock_comments`, and `approve` permissions to `false`, unlike the
   group feed's `post_permissions` which computed all of them via

@@ -13,6 +13,7 @@ defmodule KammerWeb.AssignmentLive.Index do
   alias Kammer.Assignments.Assignment
   alias Kammer.Authorization
   alias Kammer.Groups
+  alias KammerWeb.AssignmentEventHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -194,47 +195,31 @@ defmodule KammerWeb.AssignmentLive.Index do
   end
 
   def handle_event("claim", %{"id" => assignment_id}, socket) do
-    with %Assignment{} = assignment <- Kammer.Repo.get(Assignment, assignment_id),
-         {:ok, _claim} <- Assignments.claim(socket.assigns.current_scope.user, assignment) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    AssignmentEventHandlers.handle_claim(
+      socket,
+      Kammer.Repo.get(Assignment, assignment_id),
+      &reload/1
+    )
   end
 
   def handle_event("unclaim", %{"id" => assignment_id}, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    claim =
-      Kammer.Repo.get_by(Kammer.Assignments.AssignmentClaim,
-        assignment_id: assignment_id,
-        user_id: current_user.id
-      )
-
-    with %Kammer.Assignments.AssignmentClaim{} <- claim,
-         {:ok, _claim} <- Assignments.unclaim(current_user, claim) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    AssignmentEventHandlers.handle_unclaim(socket, assignment_id, &reload/1)
   end
 
   def handle_event("complete", %{"id" => assignment_id}, socket) do
-    with %Assignment{} = assignment <- Kammer.Repo.get(Assignment, assignment_id),
-         {:ok, _assignment} <- Assignments.complete(socket.assigns.current_scope.user, assignment) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    AssignmentEventHandlers.handle_complete(
+      socket,
+      Kammer.Repo.get(Assignment, assignment_id),
+      &reload/1
+    )
   end
 
   def handle_event("reopen", %{"id" => assignment_id}, socket) do
-    with %Assignment{} = assignment <- Kammer.Repo.get(Assignment, assignment_id),
-         {:ok, _assignment} <- Assignments.reopen(socket.assigns.current_scope.user, assignment) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    AssignmentEventHandlers.handle_reopen(
+      socket,
+      Kammer.Repo.get(Assignment, assignment_id),
+      &reload/1
+    )
   end
 
   defp reload(socket) do
