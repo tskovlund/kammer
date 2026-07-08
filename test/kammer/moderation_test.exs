@@ -208,6 +208,18 @@ defmodule Kammer.ModerationTest do
                Moderation.ban_instance(operator, other_operator.email, nil)
     end
 
+    test "refuses to ban a community owner — no single community to ask for a transfer", %{
+      community: community,
+      owner: owner
+    } do
+      operator = instance_operator_fixture()
+
+      assert {:error, :unauthorized} = Moderation.ban_instance(operator, owner.email, nil)
+
+      refute Moderation.instance_banned?(owner.email)
+      assert Communities.get_membership(community, owner)
+    end
+
     test "list_instance_bans is operator-only", %{author: author} do
       operator = instance_operator_fixture()
       {:ok, _ban} = Moderation.ban_instance(operator, author.email, nil)
