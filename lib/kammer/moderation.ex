@@ -263,8 +263,11 @@ defmodule Kammer.Moderation do
   Bans an email instance-wide: if an account with that email exists,
   removes its memberships across every community on the instance (not
   just one, unlike `ban_member/4`) before recording the block. Instance
-  operators only; forbids self-ban and banning another operator without
-  demoting them first — same two-step rule as community bans.
+  operators only; forbids self-ban, banning another operator, and
+  banning anyone who owns a community — same demote/transfer-first
+  rule `Communities.remove_member/3` enforces for ordinary removal,
+  extended here since a bulk purge has no single community to ask
+  "who's the new owner?" of.
   """
   @spec ban_instance(User.t(), String.t(), String.t() | nil) ::
           {:ok, InstanceBan.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
@@ -280,6 +283,9 @@ defmodule Kammer.Moderation do
         {:error, :unauthorized}
 
       Authorization.instance_operator?(target) ->
+        {:error, :unauthorized}
+
+      target && owns_any_community?(target) ->
         {:error, :unauthorized}
 
       true ->
@@ -423,6 +429,14 @@ defmodule Kammer.Moderation do
     Repo.delete_all(
       from(membership in Kammer.Communities.CommunityMembership,
         where: membership.user_id == ^target.id
+      )
+    )
+  end
+
+  defp owns_any_community?(target) do
+    Repo.exists?(
+      from(membership in Kammer.Communities.CommunityMembership,
+        where: membership.user_id == ^target.id and membership.role == :owner
       )
     )
   end

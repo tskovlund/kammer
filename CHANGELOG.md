@@ -24,6 +24,16 @@ and this project adheres to
 
 ### Fixed
 
+- `Moderation.ban_instance/3` (instance-wide bans) could silently strip
+  a community owner's ownership membership, with none of the
+  protections the normal removal path enforces — no ownership
+  transfer, not even a block. Found by the architecture audit (#121,
+  closes #122). `ban_member/4` (single-community bans) already refuses
+  to ban an admin/owner, and `Communities.remove_member/3` already
+  refuses to remove an owner's membership at all; `ban_instance/3` now
+  gets the same guard, refusing the ban outright when the target owns
+  any community (a bulk instance-wide purge has no single community to
+  ask "who's the new owner?" of, unlike the single-community path).
 - `test/kammer_web/live/decision_flows_test.exs`, `legal_live_test.exs`,
   and `search_flows_test.exs` asserted exclusively via raw HTML
   substring matching (`html =~ "..."`), contrary to
