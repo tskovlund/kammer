@@ -547,7 +547,9 @@ defmodule Kammer.Events do
   @doc """
   Second step, from the emailed confirm link: records the verified
   identity and the RSVP, and sends the confirmation email (ICS +
-  management link built by `manage_url_fun`).
+  management link built by `manage_url_fun`). Returns the event with
+  `:community` preloaded, so callers can build a redirect path
+  without their own `Repo` access.
   """
   @spec confirm_guest_rsvp(String.t(), (String.t() -> String.t())) ::
           {:ok, Event.t(), GuestIdentity.t()} | {:error, :invalid}
@@ -561,7 +563,7 @@ defmodule Kammer.Events do
          {:ok, _rsvp} <- upsert_guest_rsvp(event, identity, status) do
       manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
       GuestNotifier.deliver_confirmed(identity, event, manage_url_fun.(manage_token))
-      {:ok, event, identity}
+      {:ok, Repo.preload(event, :community), identity}
     else
       _invalid_or_gone -> {:error, :invalid}
     end
@@ -762,7 +764,9 @@ defmodule Kammer.Events do
   @doc """
   Second step, from the emailed confirm link: records the verified
   identity and the claim (capacity re-checked under the lock), and
-  sends the confirmation with the guest's management link.
+  sends the confirmation with the guest's management link. Returns
+  the event with `:community` preloaded, so callers can build a
+  redirect path without their own `Repo` access.
   """
   @spec confirm_guest_claim(String.t(), (String.t() -> String.t())) ::
           {:ok, Event.t(), GuestIdentity.t()} | {:error, :invalid | :slot_full}
@@ -783,7 +787,7 @@ defmodule Kammer.Events do
            end) do
       manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
       GuestNotifier.deliver_claim_confirmed(identity, slot, event, manage_url_fun.(manage_token))
-      {:ok, event, identity}
+      {:ok, Repo.preload(event, :community), identity}
     else
       {:error, :slot_full} -> {:error, :slot_full}
       _invalid_or_gone -> {:error, :invalid}

@@ -67,7 +67,8 @@ defmodule Kammer.Newsletters do
   Second step, from the emailed confirm link: verifies the guest
   identity, upserts the subscription (re-confirming an existing one
   just updates the cadence), and emails the confirmation with the
-  management link.
+  management link. Returns the group with `:community` preloaded, so
+  callers can build a redirect path without their own `Repo` access.
   """
   @spec confirm_subscription(String.t(), (String.t() -> String.t())) ::
           {:ok, Group.t(), NewsletterSubscription.t()} | {:error, :invalid}
@@ -87,7 +88,7 @@ defmodule Kammer.Newsletters do
         manage_url_fun.(manage_token)
       )
 
-      {:ok, group, subscription}
+      {:ok, Repo.preload(group, :community), subscription}
     else
       _invalid_or_gone -> {:error, :invalid}
     end
