@@ -51,7 +51,7 @@ defmodule Kammer.Moderation do
   @spec report_comment(User.t(), Comment.t(), String.t()) ::
           {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def report_comment(%User{} = reporter, %Comment{} = comment, reason) do
-    group = comment_group(comment)
+    {group, _subject_id} = Feed.comment_context(comment)
 
     with :ok <- Authorization.authorize(reporter, :view_group, group) do
       %Report{
@@ -414,21 +414,6 @@ defmodule Kammer.Moderation do
     )
   end
 
-  defp comment_group(%Comment{post_id: post_id}) when is_binary(post_id) do
-    post = Repo.get!(Post, post_id)
-    Repo.get!(Group, post.group_id)
-  end
-
-  defp comment_group(%Comment{event_id: event_id}) when is_binary(event_id) do
-    event = Repo.get!(Kammer.Events.Event, event_id)
-    Repo.get!(Group, event.group_id)
-  end
-
-  defp comment_group(%Comment{assignment_id: assignment_id}) do
-    assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
-    Repo.get!(Group, assignment.group_id)
-  end
-
   defp report_group(%Report{post: %Post{} = post}) do
     case post.group do
       %Group{} = group -> group
@@ -436,6 +421,10 @@ defmodule Kammer.Moderation do
     end
   end
 
-  defp report_group(%Report{comment: %Comment{} = comment}), do: comment_group(comment)
+  defp report_group(%Report{comment: %Comment{} = comment}) do
+    {group, _subject_id} = Feed.comment_context(comment)
+    group
+  end
+
   defp report_group(_report), do: nil
 end
