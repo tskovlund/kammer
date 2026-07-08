@@ -5,6 +5,24 @@ import type { Instance } from './types.js';
 export class InstanceApiError extends Error {}
 
 /**
+ * openapi-fetch's `{ data, error }` only distinguishes success from an
+ * HTTP-level error response — a DNS failure, an unreachable host, or a
+ * blocked cross-origin request makes the underlying `fetch()` reject
+ * instead, and that rejection would otherwise propagate as a raw
+ * `TypeError` rather than the `InstanceApiError` every caller expects
+ * (this is the single most likely failure mode of "add instance": the
+ * user mistypes a URL). Wrap network-level exceptions the same way.
+ */
+async function guardNetworkError<T>(request: () => Promise<T>, message: string): Promise<T> {
+	try {
+		return await request();
+	} catch (cause) {
+		if (cause instanceof InstanceApiError) throw cause;
+		throw new InstanceApiError(message, { cause });
+	}
+}
+
+/**
  * Capability discovery (RFC 0001) before sign-in: confirms `baseUrl` is a
  * real Kammer instance and surfaces its display name for the add-instance
  * screen, without needing credentials yet.
@@ -12,23 +30,27 @@ export class InstanceApiError extends Error {}
 export async function probeInstance(
 	baseUrl: string
 ): Promise<{ instanceName: string; registrationOpen: boolean }> {
-	const client = createApiClient(baseUrl);
-	const { data, error } = await client.GET('/api/v1/instance');
-	if (error || !data) {
-		throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
-	}
-	return {
-		instanceName: data.instance_name,
-		registrationOpen: data.features.registration === 'open'
-	};
+	return guardNetworkError(async () => {
+		const client = createApiClient(baseUrl);
+		const { data, error } = await client.GET('/api/v1/instance');
+		if (error || !data) {
+			throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
+		}
+		return {
+			instanceName: data.instance_name,
+			registrationOpen: data.features.registration === 'open'
+		};
+	}, `${baseUrl} doesn't look like a Kammer instance.`);
 }
 
 export async function requestLink(baseUrl: string, email: string): Promise<void> {
-	const client = createApiClient(baseUrl);
-	const { error } = await client.POST('/api/v1/auth/request-link', {
-		body: { email }
-	});
-	if (error) throw new InstanceApiError('Could not request a sign-in link.');
+	return guardNetworkError(async () => {
+		const client = createApiClient(baseUrl);
+		const { error } = await client.POST('/api/v1/auth/request-link', {
+			body: { email }
+		});
+		if (error) throw new InstanceApiError('Could not request a sign-in link.');
+	}, 'Could not request a sign-in link.');
 }
 
 /**
@@ -49,29 +71,31 @@ export async function exchangeAndAddInstance(
 	instanceName: string,
 	deviceName?: string
 ): Promise<Instance> {
-	const client = createApiClient(baseUrl);
-	const { data, error } = await client.POST('/api/v1/auth/exchange', {
-		body: { magic_token: magicToken, device_name: deviceName }
-	});
-	if (error || !data) {
-		throw new InstanceApiError('That sign-in link is invalid or has expired.');
-	}
+	return guardNetworkError(async () => {
+		const client = createApiClient(baseUrl);
+		const { data, error } = await client.POST('/api/v1/auth/exchange', {
+			body: { magic_token: magicToken, device_name: deviceName }
+		});
+		if (error || !data) {
+			throw new InstanceApiError('That sign-in link is invalid or has expired.');
+		}
 
-	const instance: Instance = {
-		id: crypto.randomUUID(),
-		baseUrl,
-		instanceName,
-		deviceToken: data.device_token,
-		user: {
-			id: data.user.id,
-			email: data.user.email,
-			displayName: data.user.display_name
-		},
-		addedAt: new Date().toISOString()
-	};
+		const instance: Instance = {
+			id: crypto.randomUUID(),
+			baseUrl,
+			instanceName,
+			deviceToken: data.device_token,
+			user: {
+				id: data.user.id,
+				email: data.user.email,
+				displayName: data.user.display_name
+			},
+			addedAt: new Date().toISOString()
+		};
 
-	instanceStore.add(instance);
-	return instance;
+		instanceStore.add(instance);
+		return instance;
+	}, 'That sign-in link is invalid or has expired.');
 }
 
 /**

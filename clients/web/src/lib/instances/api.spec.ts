@@ -41,6 +41,13 @@ describe('probeInstance', () => {
 		vi.mocked(fetch).mockResolvedValueOnce(new Response('not found', { status: 404 }));
 		await expect(probeInstance('https://not-kammer.example.com')).rejects.toThrow(InstanceApiError);
 	});
+
+	it('throws InstanceApiError, not a raw TypeError, when the network request itself fails', async () => {
+		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		await expect(probeInstance('https://unreachable.example.com')).rejects.toThrow(
+			InstanceApiError
+		);
+	});
 });
 
 describe('requestLink', () => {
@@ -89,6 +96,14 @@ describe('exchangeAndAddInstance', () => {
 		vi.mocked(fetch).mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
 		await expect(
 			exchangeAndAddInstance('https://kammer.example.com', 'bad-token', 'Example Club')
+		).rejects.toThrow(InstanceApiError);
+		expect(instanceStore.list()).toEqual([]);
+	});
+
+	it('throws InstanceApiError, not a raw TypeError, on a network-level failure', async () => {
+		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		await expect(
+			exchangeAndAddInstance('https://kammer.example.com', 'magic-token', 'Example Club')
 		).rejects.toThrow(InstanceApiError);
 		expect(instanceStore.list()).toEqual([]);
 	});
