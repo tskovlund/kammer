@@ -525,7 +525,7 @@ defmodule KammerWeb.EventLive.Show do
   def handle_event("delete_slot", %{"slot-id" => slot_id}, socket) do
     current_user = socket.assigns.current_scope.user
 
-    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+    with %Kammer.Events.EventSlot{} = slot <- Events.get_slot(slot_id),
          {:ok, _slot} <- Events.delete_slot(current_user, slot) do
       {:noreply, reload(socket)}
     else
@@ -536,7 +536,7 @@ defmodule KammerWeb.EventLive.Show do
   def handle_event("claim_slot", %{"slot-id" => slot_id}, socket) do
     current_user = socket.assigns.current_scope.user
 
-    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+    with %Kammer.Events.EventSlot{} = slot <- Events.get_slot(slot_id),
          {:ok, _claim} <- Events.claim_slot(current_user, slot) do
       {:noreply, reload(socket)}
     else
@@ -552,7 +552,7 @@ defmodule KammerWeb.EventLive.Show do
     current_user = socket.assigns.current_scope.user
 
     claim =
-      Kammer.Repo.get_by(Kammer.Events.SlotClaim, slot_id: slot_id, user_id: current_user.id)
+      Events.get_slot_claim(slot_id, current_user.id)
 
     with %Kammer.Events.SlotClaim{} <- claim,
          {:ok, _claim} <- Events.unclaim_slot(current_user, claim) do
@@ -565,7 +565,7 @@ defmodule KammerWeb.EventLive.Show do
   def handle_event("guest_claim", %{"slot_id" => slot_id, "guest" => guest_params}, socket) do
     event = socket.assigns.event
 
-    with %Kammer.Events.EventSlot{} = slot <- Kammer.Repo.get(Kammer.Events.EventSlot, slot_id),
+    with %Kammer.Events.EventSlot{} = slot <- Events.get_slot(slot_id),
          :ok <-
            Events.request_guest_claim(slot, event, event.group, guest_params,
              client_ip: socket.assigns.client_ip,

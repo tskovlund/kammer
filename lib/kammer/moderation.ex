@@ -97,6 +97,13 @@ defmodule Kammer.Moderation do
   end
 
   @doc """
+  Fetches a report by id, or `nil` if it doesn't exist. Unauthenticated
+  — callers pass the result to an authorization-checked mutator below.
+  """
+  @spec get_report(Ecto.UUID.t()) :: Report.t() | nil
+  def get_report(report_id), do: Repo.get(Report, report_id)
+
+  @doc """
   Dismisses a report — the content stays.
   """
   @spec dismiss_report(User.t(), Report.t()) ::
@@ -182,6 +189,14 @@ defmodule Kammer.Moderation do
         end
     end
   end
+
+  @doc """
+  Fetches a community ban by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator below.
+  """
+  @spec get_community_ban(Ecto.UUID.t()) :: CommunityBan.t() | nil
+  def get_community_ban(ban_id), do: Repo.get(CommunityBan, ban_id)
 
   @doc """
   Lifts a ban (community admins).
@@ -292,6 +307,14 @@ defmodule Kammer.Moderation do
         end
     end
   end
+
+  @doc """
+  Fetches an instance ban by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator below.
+  """
+  @spec get_instance_ban(Ecto.UUID.t()) :: InstanceBan.t() | nil
+  def get_instance_ban(ban_id), do: Repo.get(InstanceBan, ban_id)
 
   @doc """
   Lifts an instance ban (instance operators). Unlike lifting a

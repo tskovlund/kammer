@@ -80,6 +80,14 @@ defmodule Kammer.Assignments do
   end
 
   @doc """
+  Fetches an assignment by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator below.
+  """
+  @spec get_assignment(Ecto.UUID.t()) :: Assignment.t() | nil
+  def get_assignment(assignment_id), do: Repo.get(Assignment, assignment_id)
+
+  @doc """
   Updates an assignment (creator or moderators).
   """
   @spec update_assignment(User.t(), Assignment.t(), map()) ::

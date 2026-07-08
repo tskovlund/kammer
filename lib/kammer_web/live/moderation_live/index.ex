@@ -134,7 +134,7 @@ defmodule KammerWeb.ModerationLive.Index do
   def handle_event("dismiss", %{"id" => report_id}, socket) do
     current_user = socket.assigns.current_scope.user
 
-    with %Report{} = report <- Kammer.Repo.get(Report, report_id),
+    with %Report{} = report <- Moderation.get_report(report_id),
          {:ok, _report} <- Moderation.dismiss_report(current_user, report) do
       {:noreply, reload(socket)}
     else
@@ -145,7 +145,7 @@ defmodule KammerWeb.ModerationLive.Index do
   def handle_event("resolve", %{"id" => report_id}, socket) do
     current_user = socket.assigns.current_scope.user
 
-    with %Report{} = report <- Kammer.Repo.get(Report, report_id),
+    with %Report{} = report <- Moderation.get_report(report_id),
          {:ok, _report} <- Moderation.resolve_report(current_user, report) do
       {:noreply, socket |> put_flash(:info, gettext("Content removed.")) |> reload()}
     else
@@ -156,7 +156,7 @@ defmodule KammerWeb.ModerationLive.Index do
   def handle_event("unban", %{"id" => ban_id}, socket) do
     BanEventHandlers.handle_unban(
       socket,
-      Kammer.Repo.get(Moderation.CommunityBan, ban_id),
+      Moderation.get_community_ban(ban_id),
       &Moderation.unban/2,
       &reload/1
     )
