@@ -23,10 +23,12 @@ everything else open and unassigned is fair game.
 
 ### PR lifecycle
 
-Full policy (Conventional Commits, Gettext EN/DA, ADR triggers,
-CHANGELOG scope) lives in [docs/development.md](docs/development.md)
-and [CONVENTIONS.md](CONVENTIONS.md) — this is the agent-specific
-operational sequence layered on top, not a restatement of it.
+Full policy for Conventional Commits, Gettext EN/DA, and ADR triggers
+lives in [docs/development.md](docs/development.md) and
+[CONVENTIONS.md](CONVENTIONS.md) — this is the agent-specific
+operational sequence layered on top, not a restatement of it. (The
+CHANGELOG scope in step 4 below is the actual policy, not a pointer
+to one defined elsewhere — neither of those docs states one.)
 
 One coherent PR at a time: unrelated concerns (a feature vs. a docs
 reorg vs. a dependency bump) get separate branches/PRs, even
@@ -89,10 +91,14 @@ way line-level audits do, and file the audit itself as a GitHub issue
 labeled `architecture-audit` so the cadence is checkable without
 relying on memory.
 
-**Trigger**: run one now if no `architecture-audit`-labeled issue
-exists yet. After that, re-run whenever either is true: 90 days have
-passed since the last one was opened, or a full round of line-level
-audit fixes has just been completed — whichever comes first.
+**Trigger**: search issues **including closed ones**
+(`label:architecture-audit` with `state:all`, sorted by creation
+date — a completed audit's tracking issue gets closed, so an
+open-only search always reads as "none has ever run"). Run one now
+if that search returns nothing. After that, re-run whenever either
+is true: 90 days have passed since the most recent one (by that same
+search) was opened, or a full round of line-level audit fixes has
+just been completed — whichever comes first.
 
 ### Task & state tracking
 
