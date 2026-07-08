@@ -58,6 +58,14 @@ defmodule Kammer.Communities do
   ## Communities
 
   @doc """
+  Fetches a community by id, or `nil` if it doesn't exist.
+  Unauthenticated — callers pass the result to an authorization-checked
+  mutator, or use it for display only.
+  """
+  @spec get_community(Ecto.UUID.t()) :: Community.t() | nil
+  def get_community(community_id), do: Repo.get(Community, community_id)
+
+  @doc """
   Gets a community by slug, or `nil`.
   """
   @spec get_community_by_slug(String.t()) :: Community.t() | nil

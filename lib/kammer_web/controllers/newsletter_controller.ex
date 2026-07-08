@@ -10,6 +10,8 @@ defmodule KammerWeb.NewsletterController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Communities.Community
+  alias Kammer.Groups.Group
   alias Kammer.Newsletters
 
   @spec confirm(Plug.Conn.t(), map()) :: Plug.Conn.t()
@@ -50,10 +52,7 @@ defmodule KammerWeb.NewsletterController do
     |> send_resp(200, "Unsubscribed.")
   end
 
-  defp group_path(group) do
-    case Kammer.Repo.get(Kammer.Communities.Community, group.community_id) do
-      nil -> ~p"/"
-      community -> ~p"/c/#{community.slug}/g/#{group.slug}"
-    end
+  defp group_path(%Group{community: %Community{} = community} = group) do
+    ~p"/c/#{community.slug}/g/#{group.slug}"
   end
 end

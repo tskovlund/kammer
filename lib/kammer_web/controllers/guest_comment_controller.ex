@@ -8,7 +8,10 @@ defmodule KammerWeb.GuestCommentController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Communities.Community
   alias Kammer.Feed
+  alias Kammer.Feed.Post
+  alias Kammer.Groups.Group
 
   @spec confirm(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def confirm(conn, %{"token" => token}) do
@@ -33,16 +36,9 @@ defmodule KammerWeb.GuestCommentController do
     end
   end
 
-  defp confirmed_path(post) do
-    group = Kammer.Repo.get(Kammer.Groups.Group, post.group_id)
-
-    community =
-      group && Kammer.Repo.get(Kammer.Communities.Community, group.community_id)
-
-    if community && group do
-      ~p"/c/#{community.slug}/g/#{group.slug}"
-    else
-      ~p"/"
-    end
+  defp confirmed_path(%Post{group: %Group{}, community: %Community{}} = post) do
+    ~p"/c/#{post.community.slug}/g/#{post.group.slug}"
   end
+
+  defp confirmed_path(_post), do: ~p"/"
 end

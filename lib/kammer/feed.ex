@@ -742,7 +742,9 @@ defmodule Kammer.Feed do
   management link (built by `manage_url_fun`).
 
   No notification fan-out here: subscribers hear about the comment when
-  it's approved, never before.
+  it's approved, never before. Returns the post with `:group` and
+  `:community` preloaded, so callers can build a redirect path without
+  their own `Repo` access.
   """
   @spec confirm_guest_comment(String.t(), (String.t() -> String.t())) ::
           {:ok, Post.t(), Guests.GuestIdentity.t()} | {:error, :invalid}
@@ -765,7 +767,7 @@ defmodule Kammer.Feed do
            |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end) do
       manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
       GuestNotifier.deliver_comment_confirmed(identity, group, manage_url_fun.(manage_token))
-      {:ok, post, identity}
+      {:ok, Repo.preload(post, [:group, :community]), identity}
     else
       _invalid_or_gone -> {:error, :invalid}
     end

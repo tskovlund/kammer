@@ -238,7 +238,7 @@ defmodule KammerWeb.InstanceLive.Home do
       if operator? do
         case instance_settings.demo_community_id do
           nil -> nil
-          community_id -> Kammer.Repo.get(Kammer.Communities.Community, community_id)
+          community_id -> Communities.get_community(community_id)
         end
       end
 

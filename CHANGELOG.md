@@ -24,6 +24,18 @@ and this project adheres to
 
 ### Fixed
 
+- The guest-confirm controllers resolved a post/event/group's
+  community by walking `Kammer.Repo.get(Community, ...)` chains
+  themselves instead of asking the owning context for it. Found by
+  the round-2 audit (#91), closing it. `Feed.confirm_guest_comment/2`,
+  `Events.confirm_guest_rsvp/2`, `Events.confirm_guest_claim/2`, and
+  `Newsletters.confirm_subscription/2` now return the post/event/group
+  with `:group`/`:community` preloaded, so `GuestCommentController`,
+  `GuestPaths.event_path/1`, and `NewsletterController` build their
+  redirect paths from the preloaded association instead of a second
+  `Repo` lookup. Added `Communities.get_community/1` for
+  `InstanceLive.Home`'s demo-community lookup, the one remaining
+  direct `Repo`/schema reference in the web layer this issue covered.
 - The web layer fetched Assignment/AvailabilityOption/EventSlot/
   SlotClaim/Report/CommunityBan/InstanceBan entities directly via
   `Kammer.Repo` and their schema modules instead of through the owning
