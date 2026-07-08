@@ -264,9 +264,12 @@ defmodule Kammer.Files do
   end
 
   @doc """
-  Fetches a file the actor may access, or an error. The rule is the
-  visibility baseline (SPEC §7): group files inherit the group's
-  visibility; community files require community membership.
+  Fetches a file the actor may access, or an error. Applies the same
+  folder-permission invariant as `list_files/3` (ADR 0009): group files
+  inherit the group's visibility, community files require community
+  membership, and an `admins_only` read override anywhere in the
+  file's folder chain restricts it to scope admins regardless of the
+  scope's own visibility.
   """
   @spec fetch_accessible_file(User.t() | nil, Ecto.UUID.t()) ::
           {:ok, StoredFile.t()} | {:error, :not_found | :unauthorized}
@@ -281,15 +284,25 @@ defmodule Kammer.Files do
     end
   end
 
-  defp authorize_file_access(actor, %StoredFile{group_id: nil} = stored_file) do
-    community = Repo.get!(Community, stored_file.community_id)
-    Authorization.authorize(actor, :view_community, community)
+  defp authorize_file_access(actor, %StoredFile{} = stored_file) do
+    scope = file_scope(stored_file)
+    relationship = Authorization.relationship(actor, scope)
+    chain = stored_file.folder_id |> load_folder() |> folder_chain()
+
+    if Authorization.can_read_folder?(actor, scope, chain, relationship) do
+      :ok
+    else
+      {:error, :unauthorized}
+    end
   end
 
-  defp authorize_file_access(actor, %StoredFile{} = stored_file) do
-    group = Repo.get!(Group, stored_file.group_id)
-    Authorization.authorize(actor, :view_group, group)
-  end
+  defp file_scope(%StoredFile{group_id: nil} = stored_file),
+    do: Repo.get!(Community, stored_file.community_id)
+
+  defp file_scope(%StoredFile{} = stored_file), do: Repo.get!(Group, stored_file.group_id)
+
+  defp load_folder(nil), do: nil
+  defp load_folder(folder_id), do: Repo.get(Folder, folder_id)
 
   @doc """
   Deletes transient files past their expiry (SPEC §5). Returns the purge
