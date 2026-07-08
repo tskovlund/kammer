@@ -118,8 +118,10 @@ memory:
   same reason.
 - **Whether the code itself is well-structured, not just
   lint-clean** — the one thing genuinely not machine-checkable — gets
-  a self-review pass (the `code-review` skill against the diff) before
-  a PR opens, not just the automated gate after.
+  a structured self-review pass before a PR opens, not just the
+  automated gate after. The maintainer's specific review tooling is
+  documented in [AGENTS.md](AGENTS.md), not repeated here — this file
+  is for people filing prompt requests, not writing code.
 
 The rule underneath all of it: if keeping something current requires a
 human (or an AI) to remember to do it by hand, on every single change,
