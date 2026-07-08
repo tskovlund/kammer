@@ -205,7 +205,12 @@ not_planned` or `completed` as fits) — don't let it linger as noise
   tracking issue if none fits) asking the owner to approve the named
   batch. One new/existing issue commented on is a single, clearly-
   scoped write and won't trip the same block; many pre-existing issues
-  silently rewritten in a script-like sequence will.
+  silently rewritten in a script-like sequence will. An explicit
+  "go ahead" from the owner is consent for that batch, not standing
+  permission for whatever comes later — if unrelated work happens in
+  between (a branch/PR fix, in the case that prompted this note) and
+  you're not sure the original sign-off still applies, ask again
+  rather than assume it does.
 
 ### Product scope changes
 
