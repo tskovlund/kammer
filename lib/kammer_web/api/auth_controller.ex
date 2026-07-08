@@ -1,10 +1,11 @@
 defmodule KammerWeb.Api.AuthController do
   @moduledoc """
   API sign-in (ADR 0014): the same passwordless flow as the web, over
-  JSON. `request_link` emails a magic link (neutral response — no
-  account enumeration); `exchange` trades the single-use magic token
-  for a long-lived device token; `revoke` signs the device out.
-  Registration stays a web flow in v1 — additive to add later.
+  JSON. `register` creates an account (mirrors `UserLive.Registration`
+  exactly — same changeset, same IP rate limit); `request_link` emails
+  a magic link (neutral response — no account enumeration);
+  `exchange` trades the single-use magic token for a long-lived
+  device token; `revoke` signs the device out.
   """
 
   use KammerWeb, :controller
@@ -12,6 +13,30 @@ defmodule KammerWeb.Api.AuthController do
   alias Kammer.Accounts
   alias KammerWeb.ApiAuth
   alias KammerWeb.ApiError
+
+  @spec register(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def register(conn, params) do
+    attrs = Map.take(params, ["email", "display_name"])
+
+    case Accounts.register_user(attrs, ip: conn.remote_ip) do
+      {:ok, user} ->
+        Accounts.deliver_login_instructions(
+          user,
+          fn token -> unverified_url(conn, "/users/log-in/#{token}") end,
+          ip: conn.remote_ip
+        )
+
+        conn
+        |> put_status(201)
+        |> json(%{
+          status: "confirmation_sent",
+          user: %{id: user.id, email: user.email, display_name: user.display_name}
+        })
+
+      error ->
+        ApiError.from_result(conn, error)
+    end
+  end
 
   @spec request_link(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def request_link(conn, %{"email" => email}) when is_binary(email) do

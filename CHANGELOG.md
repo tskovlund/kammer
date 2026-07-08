@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `POST /api/v1/auth/register` (issue #30): the API can now create
+  accounts, not just authenticate existing ones — mirrors
+  `UserLive.Registration` exactly (same changeset, same per-IP rate
+  limit, same confirmation-email step). Registration decision
+  resolved: open, not web-only — the Svelte PWA and native apps need
+  full sign-up parity with the web UI. `/api/v1/instance`'s
+  `features.registration` flag flipped from `"web_only"` to `"open"`
+  accordingly.
+
 ### Fixed
 
 - Closed the last 3 of 7 Repo-bypass gaps found by the architecture

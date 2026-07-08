@@ -48,6 +48,20 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Instance metadata and feature discovery", object())
           )
       },
+      "/api/v1/auth/register" => %PathItem{
+        post:
+          operation("Register an account", :auth_register, [],
+            security: [],
+            request_body:
+              body(
+                object(%{
+                  email: %Schema{type: :string, format: :email},
+                  display_name: %Schema{type: :string}
+                })
+              ),
+            response: json_response("Registered — confirmation email sent", object())
+          )
+      },
       "/api/v1/auth/request-link" => %PathItem{
         post:
           operation("Request a sign-in link", :auth_request_link, [],
