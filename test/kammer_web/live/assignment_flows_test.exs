@@ -96,6 +96,33 @@ defmodule KammerWeb.AssignmentFlowsTest do
       assert comment.author_user_id == member.id
     end
 
+    test "claim → unclaim → claim → complete → reopen from the detail page", %{
+      community: community,
+      group: group,
+      creator: creator,
+      member: member
+    } do
+      {:ok, assignment} = Assignments.create_assignment(creator, group, %{"title" => "Kaffe"})
+
+      member_conn = log_in_user(build_conn(), member)
+
+      {:ok, lv, _html} =
+        live(member_conn, ~p"/c/#{community.slug}/g/#{group.slug}/assignments/#{assignment.id}")
+
+      lv |> element("#claim-button") |> render_click()
+      assert Repo.get_by!(Kammer.Assignments.AssignmentClaim, assignment_id: assignment.id)
+
+      lv |> element("#unclaim-button") |> render_click()
+      refute Repo.get_by(Kammer.Assignments.AssignmentClaim, assignment_id: assignment.id)
+
+      lv |> element("#claim-button") |> render_click()
+      lv |> element("#complete-button") |> render_click()
+      assert Repo.get!(Assignment, assignment.id).completed_at
+
+      lv |> element("#reopen-button") |> render_click()
+      refute Repo.get!(Assignment, assignment.id).completed_at
+    end
+
     test "member reports a comment on an assignment (SPEC §11)", %{
       community: community,
       group: group,
