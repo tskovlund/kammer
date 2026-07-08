@@ -24,6 +24,17 @@ and this project adheres to
 
 ### Fixed
 
+- `Layouts.community_shell/1`, `CommunityLive.Home`, and
+  `GroupLive.Show` each re-derived community membership/admin status
+  with a private `member?/1`/`admin?/1`/`member_of_community?/1`
+  helper that pattern-matched `community_relationship.community_role`
+  directly, duplicating logic that already lives in
+  `Kammer.Authorization` — the codebase's sole authorization
+  choke-point. Harmless today since the helpers matched
+  `Authorization.can?/4`'s `:view_community`/`:manage_community`
+  clauses exactly, but a future change to either without noticing the
+  other would have silently diverged. Found by the full-codebase
+  audit (#75). Now all three call `Authorization.can?/4` directly.
 - `Kammer.Files.fetch_accessible_file/2` only checked coarse
   group/community visibility — it never loaded the file's folder
   chain or checked an `admins_only` read override, unlike

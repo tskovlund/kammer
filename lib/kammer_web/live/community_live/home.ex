@@ -27,14 +27,21 @@ defmodule KammerWeb.CommunityLive.Home do
     <Layouts.app
       flash={@flash}
       current_scope={@current_scope}
-      active_community={member?(@community_relationship) && @active_community}
+      active_community={
+        Authorization.can?(
+          @current_scope,
+          :view_community,
+          @active_community,
+          @community_relationship
+        ) && @active_community
+      }
       member_communities={@member_communities}
       member_groups={@member_groups}
       community_relationship={@community_relationship}
       unread_notifications={@unread_notifications}
       current_tab={:home}
     >
-      <%= if member?(@community_relationship) do %>
+      <%= if Authorization.can?(@current_scope, :view_community, @active_community, @community_relationship) do %>
         <div
           :if={@missing_required_fields != []}
           class="alert alert-warning mb-4 text-sm"
@@ -158,7 +165,12 @@ defmodule KammerWeb.CommunityLive.Home do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
-      if member?(socket.assigns.community_relationship) do
+      if Authorization.can?(
+           socket.assigns.current_scope,
+           :view_community,
+           socket.assigns.active_community,
+           socket.assigns.community_relationship
+         ) do
         current_user = socket.assigns.current_scope.user
 
         if connected?(socket) do
@@ -233,7 +245,4 @@ defmodule KammerWeb.CommunityLive.Home do
       react: Authorization.can_react?(current_user, group, relationship)
     }
   end
-
-  defp member?(%{community_role: role}), do: role != nil
-  defp member?(_relationship), do: false
 end

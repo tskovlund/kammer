@@ -11,6 +11,7 @@ defmodule KammerWeb.Layouts do
 
   import KammerWeb.KammerComponents
 
+  alias Kammer.Authorization
   alias Kammer.Design.AccentColor
 
   # Embed all files in layouts/* within this module.
@@ -204,7 +205,7 @@ defmodule KammerWeb.Layouts do
                 {gettext("Community files")}
               </.sidebar_link>
               <.sidebar_link
-                :if={admin?(@community_relationship)}
+                :if={community_admin?(@current_scope, @active_community, @community_relationship)}
                 navigate={~p"/c/#{@active_community.slug}/moderation"}
                 icon="hero-shield-exclamation"
                 active={@current_tab == :moderation}
@@ -212,7 +213,7 @@ defmodule KammerWeb.Layouts do
                 {gettext("Moderation")}
               </.sidebar_link>
               <.sidebar_link
-                :if={admin?(@community_relationship)}
+                :if={community_admin?(@current_scope, @active_community, @community_relationship)}
                 navigate={~p"/c/#{@active_community.slug}/settings"}
                 icon="hero-cog-6-tooth"
                 active={@current_tab == :settings}
@@ -404,8 +405,10 @@ defmodule KammerWeb.Layouts do
     """
   end
 
-  defp admin?(%{community_role: role}), do: role in [:owner, :admin]
-  defp admin?(_relationship), do: false
+  defp community_admin?(_current_scope, _community, nil), do: false
+
+  defp community_admin?(current_scope, community, relationship),
+    do: Authorization.can?(current_scope, :manage_community, community, relationship)
 
   @doc """
   Shows the flash group with standard titles and content.
