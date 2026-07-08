@@ -14,6 +14,7 @@ defmodule Kammer.Files do
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Feed
   alias Kammer.Files.FileEntry
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
@@ -686,13 +687,10 @@ defmodule Kammer.Files do
   """
   @spec list_feed_collection(User.t() | nil, Community.t() | Group.t()) :: [StoredFile.t()]
   def list_feed_collection(actor, scope) do
-    attached_ids =
-      from(attachment in Kammer.Feed.PostAttachment, select: attachment.stored_file_id)
-
     list_collection(
       actor,
       scope,
-      dynamic([stored_file], stored_file.id in subquery(attached_ids))
+      dynamic([stored_file], stored_file.id in subquery(Feed.attached_stored_file_ids_query()))
     )
   end
 

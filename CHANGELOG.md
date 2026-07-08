@@ -8,6 +8,29 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Closed the last 3 of 7 Repo-bypass gaps found by the architecture
+  audit (#121, closes #123): `Files.list_feed_collection/2` queried
+  `Kammer.Feed.PostAttachment` directly instead of asking `Feed` for
+  it (new composable `Feed.attached_stored_file_ids_query/0`);
+  `DecisionLive.Index`'s "record outcome" handler bypassed
+  `Decisions.fetch_viewable_decision/2` for a raw `Repo.get/2` (also
+  picks up its UUID-cast guard for free); `AssignmentEventHandlers`'
+  unclaim handler queried `AssignmentClaim` directly instead of
+  through `Assignments` (new `Assignments.get_claim/2`, matching the
+  existing bare-accessor convention).
+- `Feed.comment_context/1`'s assignment branch raised `MatchError`
+  (generic 500) instead of `Ecto.NoResultsError` (proper 404) for a
+  comment on a since-deleted assignment — reachable via
+  `Moderation.report_comment/3`. Introduced by the #123 fix above,
+  caught by independent review before merge. Renamed the existing
+  private `Assignments.get_assignment!/1` (heavy preloads, one
+  internal caller) to `get_assignment_with_details!/1` and added a
+  proper bare `get_assignment!/1` (matching `Events.get_event!/1`'s
+  pattern) so `comment_context/1`'s assignment and event branches now
+  raise identically. Added regression tests for both branches.
+
 ### Changed
 
 - SPEC.md §16's "explicit non-goals" list corrected: native apps,

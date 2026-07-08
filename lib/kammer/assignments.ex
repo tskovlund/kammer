@@ -72,7 +72,7 @@ defmodule Kammer.Assignments do
          %Group{} = group <- Repo.get(Group, assignment.group_id),
          :ok <- Authorization.feature_gate(group, :assignments),
          :ok <- Authorization.authorize(actor, :view_group, group) do
-      {:ok, get_assignment!(assignment.id), group}
+      {:ok, get_assignment_with_details!(assignment.id), group}
     else
       {:error, :unauthorized} -> {:error, :unauthorized}
       _missing_or_invalid -> {:error, :not_found}
@@ -86,6 +86,16 @@ defmodule Kammer.Assignments do
   """
   @spec get_assignment(Ecto.UUID.t()) :: Assignment.t() | nil
   def get_assignment(assignment_id), do: Repo.get(Assignment, assignment_id)
+
+  @doc """
+  Fetches a user's claim on an assignment, or `nil` if they haven't
+  claimed it. Unauthenticated — callers pass the result to an
+  authorization-checked mutator below.
+  """
+  @spec get_claim(Ecto.UUID.t(), Ecto.UUID.t()) :: AssignmentClaim.t() | nil
+  def get_claim(assignment_id, user_id) do
+    Repo.get_by(AssignmentClaim, assignment_id: assignment_id, user_id: user_id)
+  end
 
   @doc """
   Updates an assignment (creator or moderators).
@@ -238,7 +248,7 @@ defmodule Kammer.Assignments do
     end
   end
 
-  defp get_assignment!(assignment_id) do
+  defp get_assignment_with_details!(assignment_id) do
     Repo.one!(
       from(assignment in Assignment,
         where: assignment.id == ^assignment_id,
@@ -251,4 +261,13 @@ defmodule Kammer.Assignments do
       )
     )
   end
+
+  @doc """
+  Fetches an assignment by id, raising if it doesn't exist. Unauthenticated
+  — for callers that already know the id is valid (e.g. resolving a
+  comment's `assignment_id`) and want the record or a loud failure, not a
+  `nil` to handle.
+  """
+  @spec get_assignment!(Ecto.UUID.t()) :: Assignment.t()
+  def get_assignment!(assignment_id), do: Repo.get!(Assignment, assignment_id)
 end
