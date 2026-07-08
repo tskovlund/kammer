@@ -247,6 +247,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
 	schemas: {
+		/** AuthExchangeResponse */
+		AuthExchangeResponse: {
+			device_token: string;
+			user: components['schemas']['AuthUser'];
+		};
+		/** AuthRegisterResponse */
+		AuthRegisterResponse: {
+			/** @enum {string} */
+			status: 'confirmation_sent';
+			user: components['schemas']['AuthUser'];
+		};
+		/** AuthUser */
+		AuthUser: {
+			display_name: string | null;
+			/** Format: email */
+			email: string;
+			/** Format: uuid */
+			id: string;
+		};
 		/** Author */
 		Author: {
 			display_name: string;
@@ -335,6 +354,40 @@ export interface components {
 			/** @enum {string} */
 			visibility: 'private' | 'community' | 'public_link' | 'public_listed';
 		};
+		/** HomeGroupSummary */
+		HomeGroupSummary: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			slug: string;
+		};
+		/**
+		 * HomeResponse
+		 * @description Upcoming events and recent activity across all the device owner's communities
+		 */
+		HomeResponse: {
+			recent_activity: (components['schemas']['Post'] & {
+				community: components['schemas']['Community'];
+				group: components['schemas']['HomeGroupSummary'];
+			})[];
+			upcoming_events: (components['schemas']['Event'] & {
+				community: components['schemas']['Community'];
+				group: components['schemas']['HomeGroupSummary'];
+			})[];
+		};
+		/** Instance */
+		Instance: {
+			api_versions: string[];
+			default_locale: string;
+			features: {
+				guest_rsvp: boolean;
+				/** @enum {string} */
+				registration: 'open' | 'web_only';
+				web_push: boolean;
+			};
+			instance_name: string;
+			version: string;
+		};
 		/** Poll */
 		Poll: {
 			anonymous: boolean;
@@ -373,6 +426,10 @@ export interface components {
 				[key: string]: number;
 			};
 		};
+		/** StatusResponse */
+		StatusResponse: {
+			status: string;
+		};
 	};
 	responses: never;
 	parameters: never;
@@ -397,7 +454,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -442,7 +499,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['AuthExchangeResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -488,7 +545,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['AuthRegisterResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -533,7 +590,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -943,7 +1000,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['HomeResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -981,7 +1038,7 @@ export interface operations {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': components['schemas']['Instance'];
 				};
 			};
 			/** @description Error envelope */

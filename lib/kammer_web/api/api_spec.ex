@@ -45,7 +45,7 @@ defmodule KammerWeb.ApiSpec do
         get:
           operation("Instance capabilities", :instance_show, [],
             security: [],
-            response: json_response("Instance metadata and feature discovery", object())
+            response: json_response("Instance metadata and feature discovery", Schemas.Instance)
           )
       },
       "/api/v1/auth/register" => %PathItem{
@@ -60,7 +60,11 @@ defmodule KammerWeb.ApiSpec do
                   display_name: %Schema{type: :string}
                 })
               ),
-            response: json_response("Registered — confirmation email sent", object())
+            response:
+              json_response(
+                "Registered — confirmation email sent",
+                Schemas.AuthRegisterResponse
+              )
           )
       },
       "/api/v1/auth/request-link" => %PathItem{
@@ -68,7 +72,11 @@ defmodule KammerWeb.ApiSpec do
           operation("Request a sign-in link", :auth_request_link, [],
             security: [],
             request_body: body(object(%{email: %Schema{type: :string, format: :email}})),
-            response: json_response("Always {status: sent} — no account enumeration", object())
+            response:
+              json_response(
+                "Always {status: sent} — no account enumeration",
+                Schemas.StatusResponse
+              )
           )
       },
       "/api/v1/auth/exchange" => %PathItem{
@@ -82,19 +90,20 @@ defmodule KammerWeb.ApiSpec do
                   device_name: %Schema{type: :string, nullable: true}
                 })
               ),
-            response: json_response("Device token and user", object())
+            response: json_response("Device token and user", Schemas.AuthExchangeResponse)
           )
       },
       "/api/v1/auth/device-token" => %PathItem{
         delete:
           operation("Revoke this device token", :auth_revoke, [],
-            response: json_response("Revoked", object())
+            response: json_response("Revoked", Schemas.StatusResponse)
           )
       },
       "/api/v1/home" => %PathItem{
         get:
           operation("Merged Home across communities", :home_show, [],
-            response: json_response("Upcoming events and recent activity, labeled", object())
+            response:
+              json_response("Upcoming events and recent activity, labeled", Schemas.HomeResponse)
           )
       },
       "/api/v1/communities" => %PathItem{

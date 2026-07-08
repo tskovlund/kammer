@@ -219,4 +219,145 @@ defmodule KammerWeb.Api.Schemas do
       required: [:id, :group_id, :title, :starts_at, :all_day, :timezone, :rsvp_counts]
     })
   end
+
+  defmodule Instance do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Instance",
+      type: :object,
+      properties: %{
+        instance_name: %Schema{type: :string},
+        version: %Schema{type: :string},
+        api_versions: %Schema{type: :array, items: %Schema{type: :string}},
+        default_locale: %Schema{type: :string},
+        features: %Schema{
+          type: :object,
+          properties: %{
+            guest_rsvp: %Schema{type: :boolean},
+            web_push: %Schema{type: :boolean},
+            registration: %Schema{type: :string, enum: ["open", "web_only"]}
+          },
+          required: [:guest_rsvp, :web_push, :registration]
+        }
+      },
+      required: [:instance_name, :version, :api_versions, :default_locale, :features]
+    })
+  end
+
+  defmodule AuthUser do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AuthUser",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        email: %Schema{type: :string, format: :email},
+        display_name: %Schema{type: :string, nullable: true}
+      },
+      required: [:id, :email, :display_name]
+    })
+  end
+
+  defmodule AuthRegisterResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AuthRegisterResponse",
+      type: :object,
+      properties: %{
+        status: %Schema{type: :string, enum: ["confirmation_sent"]},
+        user: AuthUser
+      },
+      required: [:status, :user]
+    })
+  end
+
+  defmodule AuthExchangeResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AuthExchangeResponse",
+      type: :object,
+      properties: %{
+        device_token: %Schema{type: :string},
+        user: AuthUser
+      },
+      required: [:device_token, :user]
+    })
+  end
+
+  defmodule StatusResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "StatusResponse",
+      type: :object,
+      properties: %{status: %Schema{type: :string}},
+      required: [:status]
+    })
+  end
+
+  defmodule HomeGroupSummary do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "HomeGroupSummary",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        name: %Schema{type: :string},
+        slug: %Schema{type: :string}
+      },
+      required: [:id, :name, :slug]
+    })
+  end
+
+  defmodule HomeResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "HomeResponse",
+      description:
+        "Upcoming events and recent activity across all the device owner's communities",
+      type: :object,
+      properties: %{
+        upcoming_events: %Schema{
+          type: :array,
+          items: %Schema{
+            allOf: [
+              Event,
+              %Schema{
+                type: :object,
+                properties: %{community: Community, group: HomeGroupSummary},
+                required: [:community, :group]
+              }
+            ]
+          }
+        },
+        recent_activity: %Schema{
+          type: :array,
+          items: %Schema{
+            allOf: [
+              Post,
+              %Schema{
+                type: :object,
+                properties: %{community: Community, group: HomeGroupSummary},
+                required: [:community, :group]
+              }
+            ]
+          }
+        }
+      },
+      required: [:upcoming_events, :recent_activity]
+    })
+  end
 end
