@@ -580,4 +580,18 @@ defmodule Kammer.FeedTest do
       assert %DateTime{} = Feed.record_visit(member, group)
     end
   end
+
+  describe "comment_context/1" do
+    test "raises Ecto.NoResultsError (not MatchError) for a comment on a missing assignment" do
+      comment = %Kammer.Feed.Comment{assignment_id: Ecto.UUID.generate()}
+
+      assert_raise Ecto.NoResultsError, fn -> Feed.comment_context(comment) end
+    end
+
+    test "raises Ecto.NoResultsError (not MatchError) for a comment on a missing event" do
+      comment = %Kammer.Feed.Comment{event_id: Ecto.UUID.generate()}
+
+      assert_raise Ecto.NoResultsError, fn -> Feed.comment_context(comment) end
+    end
+  end
 end

@@ -921,9 +921,7 @@ defmodule Kammer.Feed do
   end
 
   def comment_context(%Comment{assignment_id: assignment_id}) do
-    %Kammer.Assignments.Assignment{} =
-      assignment = Kammer.Assignments.get_assignment(assignment_id)
-
+    assignment = Kammer.Assignments.get_assignment!(assignment_id)
     {Repo.get!(Group, assignment.group_id), assignment_id}
   end
 
