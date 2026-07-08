@@ -24,6 +24,14 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Moderation.report_comment/3` and `report_group/1` (via a
+  private `comment_group/1` helper) re-derived a comment's owning
+  group by branching on which of `post_id`/`event_id`/`assignment_id`
+  was set — the exact same resolution `Kammer.Feed.comment_context/1`
+  already did, reaching directly into `Events`/`Assignments` schemas
+  instead of asking `Feed`. Found by the full-codebase audit (#76).
+  Now `Moderation` calls the newly-public `Feed.comment_context/1`
+  instead of re-deriving the branch itself.
 - `Layouts.community_shell/1`, `CommunityLive.Home`, and
   `GroupLive.Show` each re-derived community membership/admin status
   with a private `member?/1`/`admin?/1`/`member_of_community?/1`

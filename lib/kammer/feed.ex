@@ -871,17 +871,23 @@ defmodule Kammer.Feed do
     end
   end
 
-  defp comment_context(%Comment{post_id: post_id}) when is_binary(post_id) do
+  @doc """
+  Resolves a comment's owning group and the id of its subject (post,
+  event, or assignment), by branching on which of `post_id`/`event_id`/
+  `assignment_id` is set.
+  """
+  @spec comment_context(Comment.t()) :: {Group.t(), Ecto.UUID.t()}
+  def comment_context(%Comment{post_id: post_id}) when is_binary(post_id) do
     post = Repo.get!(Post, post_id)
     {get_group(post), post.id}
   end
 
-  defp comment_context(%Comment{event_id: event_id}) when is_binary(event_id) do
+  def comment_context(%Comment{event_id: event_id}) when is_binary(event_id) do
     event = Repo.get!(Kammer.Events.Event, event_id)
     {Repo.get!(Group, event.group_id), event_id}
   end
 
-  defp comment_context(%Comment{assignment_id: assignment_id}) do
+  def comment_context(%Comment{assignment_id: assignment_id}) do
     assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
     {Repo.get!(Group, assignment.group_id), assignment_id}
   end
