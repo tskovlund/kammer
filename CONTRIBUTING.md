@@ -17,10 +17,10 @@ writing it, while describing a change well costs you far less than
 implementing it. The better the prompt request — context, the _why_,
 edge cases, proposed behavior — the faster it ships.
 
-**Who "a maintainer" is, today**: mostly Claude (Anthropic's AI coding
+Who "a maintainer" is, today: mostly Claude (Anthropic's AI coding
 agent), operating autonomously against the issue queue — implementing,
-testing, and opening PRs — under the project owner's specification,
-review, and final say on anything product-shaping. Not hidden: see
+testing, and opening PRs — under the project owner's specification and
+final say on anything product-shaping. Not hidden: see
 [AGENTS.md](AGENTS.md) for exactly how it operates. The model above
 still holds regardless of who's on the other end of it.
 

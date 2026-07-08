@@ -142,8 +142,8 @@ Thomas Skovlund Hansen — [skovlund.dev](https://skovlund.dev) · [thomas@skovl
 
 Most of Kammer's code is written by Claude (Anthropic's AI coding
 agent), operating autonomously against the issue queue — implementing,
-testing, and opening PRs. The owner specifies scope, reviews outcomes,
-and makes every product-shaping call; see
+testing, and opening PRs. The owner specifies scope and retains final
+say on anything product-shaping; see
 [CONTRIBUTING.md](CONTRIBUTING.md) for the model and
 [AGENTS.md](AGENTS.md) for the actual operating process.
 
