@@ -14,5 +14,8 @@ labels: enhancement
 
 ## Notes
 
-<!-- Check SPEC.md first: some things (algorithmic feeds, per-group threading
-     variants, tracking) are deliberate non-goals, not missing features. -->
+<!-- Check SPEC.md §16 first: algorithmic feeds and tracking/analytics
+     are deliberate non-goals, not missing features. Raw per-group
+     threading toggles are excluded too, but curated threading options
+     via group type templates are on the roadmap (#138) — not the same
+     thing as a flat non-goal. -->

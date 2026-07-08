@@ -125,6 +125,29 @@ the conversation.
   work, including sequencing already-approved backlog items, is never
   a reason to keep the owner assigned.
 
+### Product scope changes
+
+SPEC.md §16's "explicit non-goals" list is the canonical, durable
+record of what's out of scope — not this file, not a conversation.
+The moment the owner adds, removes, or narrows a non-goal, or states
+any other scope decision, it gets written into SPEC.md (and a GitHub
+issue tracking the now-in-scope item, cross-referenced; an ADR too if
+it reverses or amends a prior architectural decision) in the same
+turn — before continuing whatever else was in progress. A scope
+decision that only lives in conversation is exactly the kind of thing
+a long, compacted session loses; "the owner said this once and I
+forgot" is not an acceptable failure mode. (This rule exists because
+that failure mode happened: native apps were listed as an explicit
+non-goal despite the owner wanting them built.)
+
+Corollary: don't treat the non-goals list as static background
+reading. If a session's work touches it, or the owner's request
+brushes up against something listed there, read the whole list back
+and ask explicitly whether it's still accurate — the cost of asking
+is one message; the cost of silently building, or silently refusing
+to build, something the owner already changed their mind about is
+much higher.
+
 ### Owner interaction
 
 - Renovate runs Mondays 07:00 CPH; non-major dependency PRs automerge
