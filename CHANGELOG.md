@@ -10,6 +10,18 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Files.fetch_accessible_file/2` only checked coarse
+  group/community visibility — it never loaded the file's folder
+  chain or checked an `admins_only` read override, unlike
+  `list_files/3` which correctly does. A file placed in an
+  `admins_only` folder was correctly hidden from folder listings for
+  non-admins, but still directly downloadable via `/files/:id`,
+  `/files/:id/thumbnail`, and `/files/:id/download` by anyone who
+  could see the owning group or community, if the file's ID was known
+  or guessed — the folder-level restriction was silently bypassed on
+  the direct-fetch path. Now applies the same folder-permission
+  invariant (ADR 0009) as `list_files/3`.
+
 - `Kammer.Files.fetch_accessible_file/2` skipped the `Ecto.UUID.cast`
   guard its sibling `fetch_viewable_*` functions use, so a malformed
   file ID raised `Ecto.Query.CastError` instead of returning

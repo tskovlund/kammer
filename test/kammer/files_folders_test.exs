@@ -65,7 +65,7 @@ defmodule Kammer.FilesFoldersTest do
 
       upload_path = write_file(tmp_dir, "secret.txt")
 
-      {:ok, _stored_file} =
+      {:ok, stored_file} =
         Files.upload_to_space(group_admin, group, folder, upload_path, %{
           filename: "secret.txt",
           content_type: "text/plain"
@@ -73,6 +73,14 @@ defmodule Kammer.FilesFoldersTest do
 
       assert {:error, :unauthorized} = Files.list_files(member, group, folder)
       assert {:ok, [_file]} = Files.list_files(group_admin, group, folder)
+
+      # The same restriction applies to direct fetch by ID (issue #64) —
+      # a member can't bypass the folder listing by knowing/guessing the
+      # file's UUID, even though they can see other, unrestricted files
+      # in the group.
+      assert {:error, :unauthorized} = Files.fetch_accessible_file(member, stored_file.id)
+      assert {:ok, %{id: file_id}} = Files.fetch_accessible_file(group_admin, stored_file.id)
+      assert file_id == stored_file.id
     end
 
     test "write override blocks member uploads but not admins",
