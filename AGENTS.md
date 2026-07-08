@@ -23,6 +23,11 @@ everything else open and unassigned is fair game.
 
 ### PR lifecycle
 
+Full policy (Conventional Commits, Gettext EN/DA, ADR triggers,
+CHANGELOG scope) lives in [docs/development.md](docs/development.md)
+and [CONVENTIONS.md](CONVENTIONS.md) — this is the agent-specific
+operational sequence layered on top, not a restatement of it.
+
 One coherent PR at a time: unrelated concerns (a feature vs. a docs
 reorg vs. a dependency bump) get separate branches/PRs, even
 mid-session.
@@ -32,47 +37,62 @@ mid-session.
    `mix precommit` (format, Credo strict, compile warnings-as-errors,
    tests), `mix dialyzer --format short`, `mix sobelow --config` —
    dialyzer and sobelow are not part of the `precommit` alias.
-3. Add a `CHANGELOG.md` entry under `## [Unreleased]` for anything
-   user-facing, including pure test-coverage additions (describe what
-   gap it closed).
-4. Commit inside `nix develop --command` (git hooks need `mix` on
-   `PATH`); Conventional Commit message. Use `Closes #N` only on the
+3. Self-review before opening the PR: run the `code-review` skill
+   against the diff (per CONTRIBUTING.md — "is the code
+   well-structured, not just lint-clean" is the one thing genuinely
+   not machine-checkable). Address what it finds.
+4. Add a `CHANGELOG.md` entry under `## [Unreleased]` for anything
+   worth recording: user-facing changes, and also audit-driven
+   fixes or additions (including pure test-coverage additions) even
+   though those aren't user-facing — describe what gap it closed.
+5. Commit (`nix develop --command` — see remote container notes
+   below); Conventional Commit message. Use `Closes #N` only on the
    commit that actually finishes an issue — GitHub auto-closes on
    merge to `main` from **any** commit referencing the issue, not
    just the PR description, so an earlier PR in a multi-PR issue says
    `Part of #N` instead, or it closes prematurely.
-5. Push with `-u`, open the PR, subscribe to its activity.
-6. **Before merging**: run an independent Agent review pass over the
-   diff (below) and address what it finds, or record why not.
-7. Babysit to green CI, addressing failures and unresolved review
-   comments as they come.
+6. Push with `-u`, open the PR, subscribe to its activity.
+7. Before merging, all three gate it (no fixed order between them):
+   CI green, unresolved review comments addressed, and an
+   independent Agent review pass (below) run and addressed.
 8. Merge with a merge commit. Restart the branch from `origin/main`
    before touching anything else.
 
 ### Independent review
 
-Automated tooling (`mix precommit`, dialyzer, sobelow, CI) enforces
-correctness rules and style — it does not judge design quality,
-whether a test actually tests what it claims to, or whether an
-abstraction is the right one. Before merging any non-trivial PR (a
-pure mechanical change — a dependency bump, a typo fix — can skip
-this), spawn an Agent to review the diff cold: no context from the
-implementing session, told to be adversarial, asked to report ranked
-findings rather than default to a clean bill of health. Address what
-it finds, or note in the PR why not, before merging — don't just run
-it and move on regardless of what it says.
+Two review gates, both required, not redundant with each other.
+**Self-review** (step 3 above — the `code-review` skill, run by the
+implementing session, before the PR opens) catches obvious issues
+cheaply, but the session that just wrote the code can't see its own
+blind spots. **Independent review** — a fresh Agent spawned with no
+context from the implementing session, before merge — is what
+catches those instead. Neither is covered by automated tooling
+(`mix precommit`, dialyzer, sobelow, CI), which enforces correctness
+rules and style, not design quality or "does this test actually test
+what it claims to." Tell the independent reviewer to be adversarial
+and report ranked findings rather than default to a clean bill of
+health. Skip independent review only for a purely mechanical change
+(a dependency bump, a typo fix). Address what it finds, or note in
+the PR why not — don't just run it and move on regardless of what it
+says.
 
 ### Architecture audits
 
 Distinct from the line-level quality/elegance/DRY sweeps already run
-periodically (which ask "is each piece internally consistent"):
-schedule a separate, dedicated architecture-level review asking "is
-the system's shape still right" — module cohesion, context
-boundaries, the inter-context dependency graph, god-modules
-accreting unrelated responsibility, whether a context split made
-early in the project still holds as it's grown. File findings as
-GitHub issues the same way line-level audits do. Don't let this be a
-one-off: schedule the next one before closing the current one out.
+periodically (which ask "is each piece internally consistent"): a
+separate, dedicated architecture-level review asking "is the
+system's shape still right" — module cohesion, context boundaries,
+the inter-context dependency graph, god-modules accreting unrelated
+responsibility, whether a context split made early in the project
+still holds as it's grown. File findings as GitHub issues the same
+way line-level audits do, and file the audit itself as a GitHub issue
+labeled `architecture-audit` so the cadence is checkable without
+relying on memory.
+
+**Trigger**: run one now if no `architecture-audit`-labeled issue
+exists yet. After that, re-run whenever either is true: 90 days have
+passed since the last one was opened, or a full round of line-level
+audit fixes has just been completed — whichever comes first.
 
 ### Task & state tracking
 
