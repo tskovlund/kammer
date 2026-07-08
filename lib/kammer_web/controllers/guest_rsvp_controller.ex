@@ -8,6 +8,7 @@ defmodule KammerWeb.GuestRsvpController do
   use KammerWeb, :controller
 
   alias Kammer.Events
+  alias KammerWeb.GuestPaths
 
   @spec confirm(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def confirm(conn, %{"token" => token}) do
@@ -24,19 +25,12 @@ defmodule KammerWeb.GuestRsvpController do
             title: event.title
           )
         )
-        |> redirect(to: confirmed_path(event))
+        |> redirect(to: GuestPaths.event_path(event))
 
       {:error, :invalid} ->
         conn
         |> put_flash(:error, gettext("That link is invalid or has expired."))
         |> redirect(to: ~p"/")
-    end
-  end
-
-  defp confirmed_path(event) do
-    case Kammer.Repo.get(Kammer.Communities.Community, event.community_id) do
-      nil -> ~p"/"
-      community -> ~p"/c/#{community.slug}/events/#{event.id}"
     end
   end
 end
