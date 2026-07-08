@@ -18,8 +18,15 @@ and this project adheres to
   inside the Elixir gate; root Prettier excludes `clients/web/` since
   it owns its own config/plugins (Svelte, Tailwind class sorting).
   Screens (sign-in, merged home, community list, group feed, events)
-  and the generated API client land in follow-up PRs — this is
-  tooling-only, verified to lint/typecheck/test/build clean.
+  land in follow-up PRs — this is tooling-only, verified to
+  lint/typecheck/test/build clean.
+
+- Generated TypeScript API client for the Svelte PWA (issue #32):
+  `openapi-typescript` types generated from `/api/v1/openapi.json`
+  (`clients/web/src/lib/api/schema.d.ts`, regenerated via
+  `pnpm run generate:api`, never hand-edited) plus a thin
+  `openapi-fetch`-based wrapper (`client.ts`) creating one typed
+  client per added instance, per ADR 0001's multi-instance model.
 
 - `POST /api/v1/auth/register` (issue #30): the API can now create
   accounts, not just authenticate existing ones — mirrors
