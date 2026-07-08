@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- SPEC.md §16's "explicit non-goals" list corrected: native apps,
+  offline support (beyond v1 app-shell caching), chat/DMs, E2EE, event
+  ticketing/capacity/waitlists, collaborative document editing, video
+  upload, storage billing, and group type templates were listed as
+  permanently excluded when they're actually owner-confirmed future
+  roadmap — several (native apps, offline support, group type
+  templates) were oversold exclusions even by the ADRs that originally
+  scoped them narrower. Each now has a tracking issue (#131–#138, #22)
+  and the list itself is corrected so it stops reading as settled
+  product philosophy. ActivityPub was considered directly and stays
+  excluded, now with documented reasoning (ADR 0023) instead of a bare
+  mention. Native apps' and offline support's re-scoping is recorded
+  in ADR 0022, amending ADR 0012. See AGENTS.md's new "Product scope
+  changes" section for the process fix this prompted.
+
 ### Removed
 
 - 10 unused "valid values" accessor functions with zero call sites

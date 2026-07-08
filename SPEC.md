@@ -162,14 +162,31 @@ when, open GitHub issues for what's still open. What follows are the
 standing architectural decisions that outlive any one build phase:
 
 **Explicit non-goals (design constraints, not a to-do list):**
-chat/DMs, E2EE, ticketing/capacity/waitlists, native apps, ActivityPub,
-document editing, video upload, offline support, storage billing,
-**group type templates** (presets such as "Announcement channel",
-"Discussion forum", "Standard group" that bundle posting/comment
-policies and — explicitly — reply-style options like deeper forum
-threading; template presets are the sanctioned future path to
-configurable comment mechanics, keeping raw per-group threading
-switches out of the product).
+ActivityPub/federation. Kammer's cross-instance strategy (below) is a
+client-side session-holder merging one user's own views across the
+instances *they* are actually a member of, not server-to-server
+content distribution to strangers' servers — a community lives on
+exactly one instance (§3, the Discord model) and there is no
+cross-instance community concept to federate between. See ADR 0023
+for the full reasoning: this isn't a lesser version of federation,
+it's a better fit for what Kammer actually needs, considered and
+rejected deliberately rather than left unexamined.
+
+**Confirmed future roadmap (owner-approved scope, not yet designed or
+scheduled — each item has its own tracking issue so nothing here gets
+silently dropped):** native apps — Kotlin/Android, Swift/iOS, API
+siblings of the Svelte client (#131, ADR 0022); offline support beyond
+v1's app-shell-only service worker caching (#137, ADR 0022); chat/DMs
+(#136); E2EE, shape depends on chat/DMs landing first (#132); event
+ticketing/capacity/waitlists (#133); collaborative document editing
+(#134); video upload (#135); storage billing, part of the managed-cloud
+business model (#22); group type templates — presets such as
+"Announcement channel", "Discussion forum", "Standard group" that
+bundle posting/comment policies including reply-style options like
+deeper forum threading (#138; ADR 0007 already named curated templates
+the sanctioned path to configurable comment mechanics, keeping raw
+per-group threading switches out of the product — that constraint
+still holds, only the "non-goal" framing changes).
 
 **UI architecture strategy:** LiveView is the v1 *vehicle*, not the
 end state. v2 = JSON API over the same Phoenix contexts (already
@@ -180,8 +197,9 @@ foreign items resolve naturally since the client is a session-holder,
 not a proxy). LiveView is then frozen and retired — no permanent
 dual-UI maintenance. This client-side model replaces any server-side
 "home instance" aggregation scheme; no inter-instance sync protocol is
-required. Native apps become API siblings of the Svelte client. Note:
-ICS and RSS already provide standards-based cross-instance merging.
+required. Native apps become API siblings of the Svelte client (#131,
+ADR 0022). Note: ICS and RSS already provide standards-based
+cross-instance merging.
 
 **Identity strategy:** email + synced passkeys is the identity layer
 for v1–v2 (email is the existing federated identifier; the
