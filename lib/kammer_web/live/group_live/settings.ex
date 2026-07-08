@@ -7,12 +7,13 @@ defmodule KammerWeb.GroupLive.Settings do
 
   use KammerWeb, :live_view
 
-  import KammerWeb.KammerComponents, only: [visibility_label: 1, user_avatar: 1]
+  import KammerWeb.KammerComponents, only: [visibility_label: 1, user_avatar: 1, invite_list: 1]
 
   alias Kammer.Authorization
   alias Kammer.Groups
   alias Kammer.Groups.Group
   alias Kammer.Invitations
+  alias KammerWeb.InviteEventHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -170,23 +171,7 @@ defmodule KammerWeb.GroupLive.Settings do
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
           {gettext("Invite links")}
         </h2>
-        <ul :if={@invites != []} class="space-y-2 pb-3">
-          <li
-            :for={invite <- @invites}
-            class="flex items-center gap-3 rounded-box border border-base-200 p-3 text-sm"
-          >
-            <code class="min-w-0 flex-1 truncate">{url(~p"/invite/#{invite.token}")}</code>
-            <span class="whitespace-nowrap text-base-content/50">
-              {invite_usage(invite)}
-            </span>
-            <.button phx-click="revoke_invite" phx-value-id={invite.id} class="btn btn-ghost btn-xs">
-              {gettext("Revoke")}
-            </.button>
-          </li>
-        </ul>
-        <.button phx-click="create_invite" class="btn btn-ghost btn-sm">
-          <.icon name="hero-link" class="size-4" /> {gettext("Create invite link")}
-        </.button>
+        <.invite_list invites={@invites} />
       </section>
 
       <section class="space-y-3 pt-8">
@@ -304,39 +289,19 @@ defmodule KammerWeb.GroupLive.Settings do
   end
 
   def handle_event("create_invite", _params, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    case Invitations.create_group_invite(current_user, socket.assigns.group) do
-      {:ok, _invite} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Invite link created."))
-         |> load_admin_lists(current_user)}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    InviteEventHandlers.handle_create_invite(
+      socket,
+      &Invitations.create_group_invite(&1, socket.assigns.group),
+      fn socket -> load_admin_lists(socket, socket.assigns.current_scope.user) end
+    )
   end
 
   def handle_event("revoke_invite", %{"id" => invite_id}, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    invite = Enum.find(socket.assigns.invites, fn invite -> invite.id == invite_id end)
-
-    if invite do
-      case Invitations.revoke_invite(current_user, invite) do
-        {:ok, _revoked} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Invite revoked."))
-           |> load_admin_lists(current_user)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-      end
-    else
-      {:noreply, socket}
-    end
+    InviteEventHandlers.handle_revoke_invite(
+      socket,
+      invite_id,
+      fn socket -> load_admin_lists(socket, socket.assigns.current_scope.user) end
+    )
   end
 
   def handle_event("archive", _params, socket) do
@@ -422,15 +387,6 @@ defmodule KammerWeb.GroupLive.Settings do
     socket
     |> assign(:join_requests, join_requests)
     |> assign(:invites, invites)
-  end
-
-  defp invite_usage(invite) do
-    used = gettext("%{count} used", count: invite.use_count)
-
-    case invite.max_uses do
-      nil -> used
-      max_uses -> "#{invite.use_count}/#{max_uses}"
-    end
   end
 
   defp visibility_options do

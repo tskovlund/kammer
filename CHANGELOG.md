@@ -24,6 +24,16 @@ and this project adheres to
 
 ### Fixed
 
+- Group and community settings each hand-rolled their own invite-link
+  list markup and create/revoke `handle_event` bodies, near-verbatim.
+  The community copy also displayed a bare `invite.use_count` instead
+  of the group copy's `used/max_uses` label — so a single-use email
+  invite (`max_uses: 1`) showed as a plain "0" or "1" in the list
+  instead of "0/1", losing the cap information. Found by the
+  full-codebase audit (#77). Now both call a shared
+  `KammerComponents.invite_list/1` component and
+  `KammerWeb.InviteEventHandlers`, so the two scopes can no longer
+  drift.
 - `Kammer.Moderation.report_comment/3` and `report_group/1` (via a
   private `comment_group/1` helper) re-derived a comment's owning
   group by branching on which of `post_id`/`event_id`/`assignment_id`

@@ -139,6 +139,46 @@ defmodule KammerWeb.KammerComponents do
   def visibility_label(:public_link), do: gettext("Link only")
   def visibility_label(:public_listed), do: gettext("Public")
 
+  @doc """
+  The invite-link list and "Create invite link" button shared by group
+  and community settings: expects `phx-click="create_invite"` and
+  `phx-click="revoke_invite" phx-value-id={invite.id}` handled by the
+  host LiveView.
+  """
+  attr :invites, :list, required: true
+
+  @spec invite_list(map()) :: Phoenix.LiveView.Rendered.t()
+  def invite_list(assigns) do
+    ~H"""
+    <ul :if={@invites != []} class="space-y-2 pb-3">
+      <li
+        :for={invite <- @invites}
+        class="flex items-center gap-3 rounded-box border border-base-200 p-3 text-sm"
+      >
+        <code class="min-w-0 flex-1 truncate">{url(~p"/invite/#{invite.token}")}</code>
+        <span class="whitespace-nowrap text-base-content/50">
+          {invite_usage(invite)}
+        </span>
+        <.button phx-click="revoke_invite" phx-value-id={invite.id} class="btn btn-ghost btn-xs">
+          {gettext("Revoke")}
+        </.button>
+      </li>
+    </ul>
+    <.button phx-click="create_invite" class="btn btn-ghost btn-sm">
+      <.icon name="hero-link" class="size-4" /> {gettext("Create invite link")}
+    </.button>
+    """
+  end
+
+  defp invite_usage(invite) do
+    used = gettext("%{count} used", count: invite.use_count)
+
+    case invite.max_uses do
+      nil -> used
+      max_uses -> "#{invite.use_count}/#{max_uses}"
+    end
+  end
+
   defp initials(name) do
     name
     |> String.split(~r/\s+/, trim: true)

@@ -56,6 +56,10 @@ defmodule KammerWeb.CommunityAdminTest do
         |> form("#email_invite_form", %{"invite" => %{"invited_email" => "tuba@example.com"}})
         |> render_submit()
 
+      # Email invites are single-use (max_uses: 1); the shared invite
+      # list must show the "/1" cap, not a bare use-count.
+      assert html =~ "0/1"
+
       assert html =~ "tuba@example.com"
     end
 
