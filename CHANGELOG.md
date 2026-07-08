@@ -44,6 +44,12 @@ and this project adheres to
   `InstanceLive.Home`'s imprint-nag link and demo-purge button,
   `SearchLive.Index`'s per-result links), then rewrote every assertion
   to `has_element?/2,3` scoped to those ids. No behavior changed.
+- `Moderation.ban_instance/3` ran two separate `CommunityMembership`
+  queries against the same target user (an ownership check, then a
+  second query for the communities to audit-log) — self-review on
+  #122 flagged this and it was waved off as not worth fixing; it was.
+  Folded into one `community_memberships_for/1` query that serves
+  both the guard and the audit list.
 - `Kammer.Media.process_image/1` — the libvips pipeline SPEC §11
   credits with stripping EXIF/GPS metadata via re-encoding — had no
   test. Found by the full-codebase audit (#79). Added

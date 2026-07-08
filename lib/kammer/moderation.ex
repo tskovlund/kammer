@@ -274,6 +274,7 @@ defmodule Kammer.Moderation do
   def ban_instance(%User{} = actor, email, reason) when is_binary(email) do
     normalized_email = String.downcase(email)
     target = Repo.get_by(User, email: normalized_email)
+    memberships = target && community_memberships_for(target)
 
     cond do
       not Authorization.instance_operator?(actor) ->
@@ -285,11 +286,11 @@ defmodule Kammer.Moderation do
       Authorization.instance_operator?(target) ->
         {:error, :unauthorized}
 
-      target && owns_any_community?(target) ->
+      memberships && Enum.any?(memberships, &(&1.role == :owner)) ->
         {:error, :unauthorized}
 
       true ->
-        affected_communities = target && communities_for(target)
+        affected_communities = memberships && Enum.map(memberships, & &1.community)
 
         with {:ok, ban} <-
                Repo.transact(fn ->
@@ -433,20 +434,13 @@ defmodule Kammer.Moderation do
     )
   end
 
-  defp owns_any_community?(target) do
-    Repo.exists?(
-      from(membership in Kammer.Communities.CommunityMembership,
-        where: membership.user_id == ^target.id and membership.role == :owner
-      )
-    )
-  end
-
-  defp communities_for(target) do
+  defp community_memberships_for(target) do
     Repo.all(
       from(community in Community,
         join: membership in Kammer.Communities.CommunityMembership,
         on: membership.community_id == community.id,
-        where: membership.user_id == ^target.id
+        where: membership.user_id == ^target.id,
+        select: %{community: community, role: membership.role}
       )
     )
   end
