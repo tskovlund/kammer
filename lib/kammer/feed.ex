@@ -261,6 +261,16 @@ defmodule Kammer.Feed do
   @spec get_poll(Ecto.UUID.t()) :: Poll.t() | nil
   def get_poll(poll_id), do: Repo.get(Poll, poll_id)
 
+  @doc """
+  Stored file ids attached to any feed post, as a composable query (for
+  `subquery/1`) rather than a materialized list — callers filter files
+  by "is this attached to a post" without a second round trip.
+  """
+  @spec attached_stored_file_ids_query() :: Ecto.Query.t()
+  def attached_stored_file_ids_query do
+    from(attachment in PostAttachment, select: attachment.stored_file_id)
+  end
+
   ## Visits (new-since-last-visit marker)
 
   @doc """
@@ -906,12 +916,14 @@ defmodule Kammer.Feed do
   end
 
   def comment_context(%Comment{event_id: event_id}) when is_binary(event_id) do
-    event = Repo.get!(Kammer.Events.Event, event_id)
+    event = Kammer.Events.get_event!(event_id)
     {Repo.get!(Group, event.group_id), event_id}
   end
 
   def comment_context(%Comment{assignment_id: assignment_id}) do
-    assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
+    %Kammer.Assignments.Assignment{} =
+      assignment = Kammer.Assignments.get_assignment(assignment_id)
+
     {Repo.get!(Group, assignment.group_id), assignment_id}
   end
 

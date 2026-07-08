@@ -17,6 +17,7 @@ defmodule Kammer.Communities do
   alias Kammer.Communities.CustomFieldValue
   alias Kammer.Communities.InstanceBookmark
   alias Kammer.Communities.InstanceSettings
+  alias Kammer.Groups
   alias Kammer.Repo
 
   ## Instance settings
@@ -280,7 +281,7 @@ defmodule Kammer.Communities do
 
         with {:ok, removed} <-
                Repo.transact(fn ->
-                 delete_group_memberships_in_community(community, membership.user_id)
+                 Groups.remove_memberships_in_community(community, membership.user_id)
                  Repo.delete(membership)
                end) do
           if actor.id != target.id do
@@ -298,15 +299,6 @@ defmodule Kammer.Communities do
       true ->
         {:error, :unauthorized}
     end
-  end
-
-  defp delete_group_memberships_in_community(%Community{} = community, user_id) do
-    Repo.delete_all(
-      from(group_membership in Kammer.Groups.GroupMembership,
-        join: group in assoc(group_membership, :group),
-        where: group.community_id == ^community.id and group_membership.user_id == ^user_id
-      )
-    )
   end
 
   defp insert_membership(%Community{} = community, %User{} = user, role) do

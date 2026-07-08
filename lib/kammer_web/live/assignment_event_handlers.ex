@@ -14,7 +14,6 @@ defmodule KammerWeb.AssignmentEventHandlers do
   alias Kammer.Assignments
   alias Kammer.Assignments.Assignment
   alias Kammer.Assignments.AssignmentClaim
-  alias Kammer.Repo
 
   @type reload_fun() :: (Phoenix.LiveView.Socket.t() -> Phoenix.LiveView.Socket.t())
 
@@ -34,8 +33,7 @@ defmodule KammerWeb.AssignmentEventHandlers do
   def handle_unclaim(socket, assignment_id, reload) do
     current_user = current_user(socket)
 
-    claim =
-      Repo.get_by(AssignmentClaim, assignment_id: assignment_id, user_id: current_user.id)
+    claim = Assignments.get_claim(assignment_id, current_user.id)
 
     with %AssignmentClaim{} <- claim,
          {:ok, _claim} <- Assignments.unclaim(current_user, claim) do

@@ -93,13 +93,7 @@ defmodule Kammer.Decisions do
   """
   @spec can_record_outcome?(User.t() | nil, Decision.t(), Group.t()) :: boolean()
   def can_record_outcome?(actor, %Decision{} = decision, %Group{} = group) do
-    proposer_id =
-      Repo.one(
-        from(post in Kammer.Feed.Post,
-          where: post.id == ^decision.post_id,
-          select: post.author_user_id
-        )
-      )
+    proposer_id = decision.post_id |> Feed.get_post() |> then(&(&1 && &1.author_user_id))
 
     Authorization.can_manage_own_resource?(actor, proposer_id, group)
   end

@@ -54,6 +54,15 @@ defmodule Kammer.Events do
   end
 
   @doc """
+  Fetches an event by id, raising if it doesn't exist. Unauthenticated
+  — for callers that already know the id is valid (e.g. resolving a
+  comment's `event_id`) and want the record or a loud failure, not a
+  `nil` to handle.
+  """
+  @spec get_event!(Ecto.UUID.t()) :: Event.t()
+  def get_event!(event_id), do: Repo.get!(Event, event_id)
+
+  @doc """
   Fetches a series the actor may manage, for the series/attendance
   page — its creator or a group moderator (SPEC §6: "organizer
   attendance matrix").

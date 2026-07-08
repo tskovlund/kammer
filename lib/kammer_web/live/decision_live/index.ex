@@ -208,7 +208,7 @@ defmodule KammerWeb.DecisionLive.Index do
       ) do
     current_user = socket.assigns.current_scope.user
 
-    with %Decision{} = decision <- Kammer.Repo.get(Decision, decision_id),
+    with {:ok, decision, _group} <- Decisions.fetch_viewable_decision(current_user, decision_id),
          {:ok, _decision} <-
            Decisions.record_outcome(current_user, decision, %{
              "outcome" => outcome,

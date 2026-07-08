@@ -88,6 +88,16 @@ defmodule Kammer.Assignments do
   def get_assignment(assignment_id), do: Repo.get(Assignment, assignment_id)
 
   @doc """
+  Fetches a user's claim on an assignment, or `nil` if they haven't
+  claimed it. Unauthenticated — callers pass the result to an
+  authorization-checked mutator below.
+  """
+  @spec get_claim(Ecto.UUID.t(), Ecto.UUID.t()) :: AssignmentClaim.t() | nil
+  def get_claim(assignment_id, user_id) do
+    Repo.get_by(AssignmentClaim, assignment_id: assignment_id, user_id: user_id)
+  end
+
+  @doc """
   Updates an assignment (creator or moderators).
   """
   @spec update_assignment(User.t(), Assignment.t(), map()) ::

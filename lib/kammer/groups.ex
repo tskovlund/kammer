@@ -306,6 +306,23 @@ defmodule Kammer.Groups do
   end
 
   @doc """
+  Removes every group membership `user_id` holds within `community` —
+  the group half of `Communities.remove_member/3`'s community removal
+  (which cascades across every group in the community, not just one).
+  Unauthenticated: callers own the authorization decision.
+  """
+  @spec remove_memberships_in_community(Community.t(), Ecto.UUID.t()) ::
+          {non_neg_integer(), nil}
+  def remove_memberships_in_community(%Community{} = community, user_id) do
+    Repo.delete_all(
+      from(membership in GroupMembership,
+        join: group in assoc(membership, :group),
+        where: group.community_id == ^community.id and membership.user_id == ^user_id
+      )
+    )
+  end
+
+  @doc """
   Lists group members with profiles. Requires `:view_group`.
   """
   @spec list_members(User.t() | nil, Group.t()) ::
