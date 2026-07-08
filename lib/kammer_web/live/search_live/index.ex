@@ -46,6 +46,7 @@ defmodule KammerWeb.SearchLive.Index do
         </h2>
         <.link
           :for={post <- @results.posts}
+          id={"search-result-post-#{post.id}"}
           navigate={~p"/c/#{@active_community.slug}/g/#{post.group.slug}" <> "#post-#{post.id}"}
           class="block rounded-box border border-base-200 p-4 hover:bg-base-200"
         >
@@ -64,6 +65,7 @@ defmodule KammerWeb.SearchLive.Index do
         </h2>
         <.link
           :for={comment <- @results.comments}
+          id={"search-result-comment-#{comment.id}"}
           navigate={comment_path(comment, @active_community)}
           class="block rounded-box border border-base-200 p-4 hover:bg-base-200"
         >
@@ -82,6 +84,7 @@ defmodule KammerWeb.SearchLive.Index do
         </h2>
         <.link
           :for={event <- @results.events}
+          id={"search-result-event-#{event.id}"}
           navigate={~p"/c/#{@active_community.slug}/events/#{event.id}"}
           class="block rounded-box border border-base-200 p-4 hover:bg-base-200"
         >
@@ -98,6 +101,7 @@ defmodule KammerWeb.SearchLive.Index do
         </h2>
         <.link
           :for={file <- @results.files}
+          id={"search-result-file-#{file.id}"}
           href={file_href(file)}
           class="block rounded-box border border-base-200 p-4 hover:bg-base-200"
         >

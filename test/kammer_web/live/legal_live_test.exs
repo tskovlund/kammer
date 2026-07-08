@@ -14,11 +14,11 @@ defmodule KammerWeb.LegalLiveTest do
 
   describe "public legal pages" do
     test "render the template for visitors", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/legal/imprint")
-      assert html =~ "template"
+      {:ok, lv, _html} = live(conn, ~p"/legal/imprint")
+      assert has_element?(lv, "#legal-page-content", "template")
 
-      {:ok, _lv, html} = live(conn, ~p"/legal/privacy")
-      assert html =~ "template"
+      {:ok, lv, _html} = live(conn, ~p"/legal/privacy")
+      assert has_element?(lv, "#legal-page-content", "template")
     end
 
     test "render published text once an operator saves it", %{conn: conn} do
@@ -29,9 +29,9 @@ defmodule KammerWeb.LegalLiveTest do
           "content_markdown" => "## Responsible\n\nThe Sample Club."
         })
 
-      {:ok, _lv, html} = live(conn, ~p"/legal/imprint")
-      assert html =~ "The Sample Club."
-      refute html =~ "This is a template"
+      {:ok, lv, _html} = live(conn, ~p"/legal/imprint")
+      assert has_element?(lv, "#legal-page-content", "The Sample Club.")
+      refute has_element?(lv, "#legal-page-content", "This is a template")
     end
 
     test "an unknown key bounces home", %{conn: conn} do
@@ -44,8 +44,8 @@ defmodule KammerWeb.LegalLiveTest do
       operator = operator_fixture()
       conn = log_in_user(conn, operator)
 
-      {:ok, lv, html} = live(conn, ~p"/legal/imprint/edit")
-      assert html =~ "legal-page-form"
+      {:ok, lv, _html} = live(conn, ~p"/legal/imprint/edit")
+      assert has_element?(lv, "#legal-page-form")
 
       lv
       |> form("#legal-page-form", legal_page: %{content_markdown: "## Us\n\nWe run this."})
@@ -67,21 +67,21 @@ defmodule KammerWeb.LegalLiveTest do
       operator = operator_fixture()
       conn = log_in_user(conn, operator)
 
-      {:ok, _lv, html} = live(conn, ~p"/")
-      assert html =~ "Edit imprint"
+      {:ok, lv, _html} = live(conn, ~p"/")
+      assert has_element?(lv, "#edit-imprint-link", "Edit imprint")
 
       {:ok, _page} =
         Legal.upsert_page(operator, "imprint", %{"content_markdown" => "Published."})
 
-      {:ok, _lv, html} = live(conn, ~p"/")
-      refute html =~ "Edit imprint"
+      {:ok, lv, _html} = live(conn, ~p"/")
+      refute has_element?(lv, "#edit-imprint-link")
     end
 
     test "ordinary users never see the nag", %{conn: conn} do
       conn = log_in_user(conn, user_fixture())
 
-      {:ok, _lv, html} = live(conn, ~p"/")
-      refute html =~ "Edit imprint"
+      {:ok, lv, _html} = live(conn, ~p"/")
+      refute has_element?(lv, "#edit-imprint-link")
     end
   end
 
@@ -91,13 +91,13 @@ defmodule KammerWeb.LegalLiveTest do
       {:ok, demo} = Kammer.Setup.DemoData.create(operator)
 
       conn = log_in_user(conn, operator)
-      {:ok, lv, html} = live(conn, ~p"/")
-      assert html =~ "Remove demo"
+      {:ok, lv, _html} = live(conn, ~p"/")
+      assert has_element?(lv, "#purge-demo-button", "Remove demo")
 
       render_click(lv, "purge_demo", %{})
 
       assert Kammer.Repo.get(Kammer.Communities.Community, demo.id) == nil
-      refute render(lv) =~ "Remove demo"
+      refute has_element?(lv, "#purge-demo-button")
     end
   end
 end

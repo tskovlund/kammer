@@ -58,17 +58,17 @@ defmodule KammerWeb.DecisionFlowsTest do
       assert decision.title == "Hæv kontingentet"
 
       # The vote landed in the feed as a normal post with a poll.
-      {:ok, _feed_lv, feed_html} = live(proposer_conn, ~p"/c/#{community.slug}/g/#{group.slug}")
-      assert feed_html =~ "Kassen er tom."
-      assert feed_html =~ "For"
+      {:ok, feed_lv, _html} = live(proposer_conn, ~p"/c/#{community.slug}/g/#{group.slug}")
+      assert has_element?(feed_lv, "#post-#{decision.post_id}", "Kassen er tom.")
+      assert has_element?(feed_lv, "#post-#{decision.post_id} button", "For")
 
       # A moderator records the outcome.
       moderator_conn = log_in_user(build_conn(), moderator)
 
-      {:ok, moderator_lv, moderator_html} =
+      {:ok, moderator_lv, _html} =
         live(moderator_conn, ~p"/c/#{community.slug}/g/#{group.slug}/decisions")
 
-      assert moderator_html =~ "Hæv kontingentet"
+      assert has_element?(moderator_lv, "#decision-#{decision.id}", "Hæv kontingentet")
 
       moderator_lv
       |> form("#record-outcome-#{decision.id}", %{
@@ -81,7 +81,7 @@ defmodule KammerWeb.DecisionFlowsTest do
       recorded = Repo.get!(Decision, decision.id)
       assert recorded.outcome == :adopted
 
-      assert render(moderator_lv) =~ "8 for, 1 imod"
+      assert has_element?(moderator_lv, "#decision-#{decision.id}", "8 for, 1 imod")
     end
 
     test "gated-off groups 404 the register", %{community: community, proposer: proposer} do
@@ -101,13 +101,13 @@ defmodule KammerWeb.DecisionFlowsTest do
       group: group,
       proposer: proposer
     } do
-      {:ok, _decision} =
+      {:ok, decision} =
         Decisions.create_decision(proposer, group, %{"title" => "Åben sag"}, with_vote: false)
 
       conn = log_in_user(build_conn(), proposer)
-      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/g/#{group.slug}/decisions")
-      assert html =~ "Åben sag"
-      assert html =~ "Open"
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/g/#{group.slug}/decisions")
+      assert has_element?(lv, "#decision-#{decision.id}", "Åben sag")
+      assert has_element?(lv, "#decision-#{decision.id}", "Open")
     end
   end
 end
