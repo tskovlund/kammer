@@ -4,8 +4,8 @@ This is the living definition of what Kammer is: the product's source
 of truth, kept current as decisions change it. It started as the
 owner's original build prompt and is edited in place as the product
 evolves — it does not stay frozen at "what we set out to build."
-`docs/decisions/` records the *why* behind a decision worth
-relitigating; this file records the *current* shape of the product.
+`docs/decisions/` records the _why_ behind a decision worth
+relitigating; this file records the _current_ shape of the product.
 Shipped-vs-not is tracked in CHANGELOG.md/git history and open GitHub
 issues, not here — this document describes intent regardless of build
 status.
@@ -45,6 +45,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - Community Admins have **full override** on all groups in their community — except sealed groups. Instance operators have no in-app content access to communities they don't belong to (honest caveat everywhere: the server operator can technically read the database).
 
 ### Group settings
+
 - **Visibility preset** (exactly four): `private` / `community` / `public_link` (unlisted) / `public_listed` (listed on its community's public page).
 - **Public pages**: each community has a public page listing its `public_listed` groups. The instance landing page lists communities that opt in (per-community `listed_on_instance` toggle, default off).
 - **Join policy**: invite-only / request-with-approval / open.
@@ -56,6 +57,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Per-group feature toggles** (ADR 0016): group admins choose which optional tools a group shows (events, files, availability polls, assignments, decisions register — the feed is always on). A disabled feature is fully hidden, not just unlinked: its routes, ICS feeds, and guest surfaces all behave as not-found. Toggling back on restores everything; nothing is deleted.
 
 ### Invitations
+
 - Invite links with optional expiry and max-use count, revocable, per group and community. Admin email invites supported.
 
 ## 4. Profiles & member directory
@@ -64,8 +66,8 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Profile scope**: the base profile (display name, avatar, bio, pronouns, contact) is **global per account**; community custom fields are per-community by definition. Per-community display-name overrides (Discord-style nicknames) are roadmap.
 - **Avatar — optional**, with a deterministic generated fallback (initials + stable color) so feeds stay scannable. Roadmap: personalizable generated avatars (font, color, style templates on the deterministic base).
 - **Optional base fields**: bio (short), pronouns (with per-user display control), contact info (phone, visible email, other) — each contact field with **user-controlled visibility** (hidden / members / admins-only), **default hidden**.
-- **Community-defined custom fields** (text / single-select), e.g. "Instrument", "Section", "Dietary needs", each with admin-set visibility (members / admins-only). Admins may mark fields **required**: required fields **hard-block** at join/onboarding; fields made required *after* a member joined trigger a persistent nag banner, never a lockout.
-- Member directory is filterable by custom fields — the directory *is* the band roster.
+- **Community-defined custom fields** (text / single-select), e.g. "Instrument", "Section", "Dietary needs", each with admin-set visibility (members / admins-only). Admins may mark fields **required**: required fields **hard-block** at join/onboarding; fields made required _after_ a member joined trigger a persistent nag banner, never a lockout.
+- Member directory is filterable by custom fields — the directory _is_ the band roster.
 - Timezone and language are auto-detected and editable in settings; never demanded at onboarding. Notification preferences live in settings, not the profile.
 
 ## 5. Feed & posts
@@ -148,11 +150,11 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 - **Primary**: `docker-compose.yml` (app + Postgres + optional MinIO + optional ClamAV), `.env.example`, Caddy TLS example, multi-stage Dockerfile → small Elixir release image.
 - **Also**: Nix flake as the **canonical dev environment** (dev shell with Elixir/OTP, Node for tooling, Postgres client, libvips, lefthook; plus package + NixOS module). Ship `.envrc` (`use flake`) for **direnv** auto-activation and a **devbox.json** wrapping the same toolset for contributors who don't speak Nix. Every dev task (setup, test, lint, format, run) must work identically inside the flake shell, devbox shell, and CI — document the three entry paths in CONTRIBUTING ("`direnv allow`, or `devbox shell`, or `nix develop` — then `mix setup && mix phx.server`").
-- Repo: README that *sells* (ethos, screenshots, 10-minute quickstart), CONTRIBUTING, LICENSE, CHANGELOG (Keep a Changelog format; semver from 0.1.0), CONVENTIONS.md, CODE_OF_CONDUCT.md (Contributor Covenant), SECURITY.md (disclosure policy), GitHub issue templates (bug/feature) + PR template, `.editorconfig`, `docs/`, `docs/decisions/` (ADRs), seeds, `BUILDLOG.md` (frozen Phase 1 record — later scope trims live in PR descriptions and CHANGELOG.md instead).
+- Repo: README that _sells_ (ethos, screenshots, 10-minute quickstart), CONTRIBUTING, LICENSE, CHANGELOG (Keep a Changelog format; semver from 0.1.0), CONVENTIONS.md, CODE_OF_CONDUCT.md (Contributor Covenant), SECURITY.md (disclosure policy), GitHub issue templates (bug/feature) + PR template, `.editorconfig`, `docs/`, `docs/decisions/` (ADRs), seeds, `BUILDLOG.md` (frozen Phase 1 record — later scope trims live in PR descriptions and CHANGELOG.md instead).
 
 ## 15. Naming
 
-**Working title: Kammer** — scaffold under module namespace `Kammer`; keep the display name a single config constant so renaming is one commit. (Origin homage: TÅGEKAMMERET; resonances: kammermusik — small ensembles, no conductor; *kammerat*, etymologically "chamber-mate.") Final name pending owner verification (domains, GitHub, Hex, existing products, trademark skim). Shortlist: Kammer, Kammerat, Stemme, Grapevine, Ekko; alternates: Knyt, Felles, Langbord, Torvet, Havn, Tutti, Husting.
+**Working title: Kammer** — scaffold under module namespace `Kammer`; keep the display name a single config constant so renaming is one commit. (Origin homage: TÅGEKAMMERET; resonances: kammermusik — small ensembles, no conductor; _kammerat_, etymologically "chamber-mate.") Final name pending owner verification (domains, GitHub, Hex, existing products, trademark skim). Shortlist: Kammer, Kammerat, Stemme, Grapevine, Ekko; alternates: Knyt, Felles, Langbord, Torvet, Havn, Tutti, Husting.
 
 ## 16. Architecture strategy (standing decisions)
 
@@ -164,7 +166,7 @@ standing architectural decisions that outlive any one build phase:
 **Explicit non-goals (design constraints, not a to-do list):**
 ActivityPub/federation. Kammer's cross-instance strategy (below) is a
 client-side session-holder merging one user's own views across the
-instances *they* are actually a member of, not server-to-server
+instances _they_ are actually a member of, not server-to-server
 content distribution to strangers' servers — a community lives on
 exactly one instance (§3, the Discord model) and there is no
 cross-instance community concept to federate between. See ADR 0023
@@ -188,7 +190,7 @@ the sanctioned path to configurable comment mechanics, keeping raw
 per-group threading switches out of the product — that constraint
 still holds, only the "non-goal" framing changes).
 
-**UI architecture strategy:** LiveView is the v1 *vehicle*, not the
+**UI architecture strategy:** LiveView is the v1 _vehicle_, not the
 end state. v2 = JSON API over the same Phoenix contexts (already
 shipped, ADR 0014), then a **Svelte PWA as the primary client — built
 multi-instance-capable from day one** (holds sessions on N instances,

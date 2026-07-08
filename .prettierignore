@@ -1,7 +1,5 @@
 # Prettier covers Markdown/JSON/YAML; Elixir/HEEx is mix format's job.
-SPEC.md
-BUILDLOG.md
-CHANGELOG.md
+# LICENSE is legal text, not reformatted like ordinary prose/markdown.
 LICENSE
 _build/
 deps/
