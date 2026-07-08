@@ -24,6 +24,12 @@ and this project adheres to
 
 ### Fixed
 
+- The passkey sign-in and passkey-registration colocated JS hooks
+  (`user_live/login.ex`, `user_live/devices.ex`) each defined
+  identical `b64urlToBytes`/`bytesToB64url` WebAuthn base64url
+  helpers. Found by the full-codebase audit (#77), which is now fully
+  addressed. Extracted `assets/js/webauthn.js`; both hooks import from
+  it instead of maintaining their own copy.
 - `GuestClaimController` and `GuestRsvpController` each had a
   byte-for-byte identical private path helper (`event_path/1` and
   `confirmed_path/1`) resolving a guest-confirmed event's
