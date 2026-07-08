@@ -24,6 +24,16 @@ and this project adheres to
 
 ### Fixed
 
+- Six Oban workers with real branching logic — no-op vs. configured,
+  scheduled vs. approval-held, empty vs. due recipients, vanished vs.
+  live records — had zero `perform_job/2` coverage, unlike their
+  tested siblings. Found by the full-codebase audit (#79). Added
+  worker-level tests for `DigestWorker`, `BackupWorker`,
+  `PublishScheduledPostWorker`, `PurgeDeletedContentWorker`,
+  `NewsletterDigestWorker`, and `UpdateCheckWorker` that exercise each
+  worker's own branches via `perform_job/2`; the underlying context
+  functions each delegates to remain covered in depth by their own
+  context test suites. No production code changed.
 - The guest-confirm controllers resolved a post/event/group's
   community by walking `Kammer.Repo.get(Community, ...)` chains
   themselves instead of asking the owning context for it. Found by
