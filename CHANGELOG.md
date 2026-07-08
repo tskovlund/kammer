@@ -24,6 +24,15 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Media.process_image/1` — the libvips pipeline SPEC §11
+  credits with stripping EXIF/GPS metadata via re-encoding — had no
+  test. Found by the full-codebase audit (#79). Added
+  `test/kammer/media_test.exs`, verifying the metadata-stripping claim
+  directly (embeds real EXIF data via `Vix.Vips.MutableImage.set/4`,
+  confirms it survives an unstripped save and is gone after
+  `process_image/1`), plus dimension math (unscaled below the display
+  max, downscaled and aspect-preserved above it), the WebP thumbnail's
+  format and width, and the error path for an unreadable source file.
 - `Kammer.Storage.S3` (the S3-compatible storage adapter — MinIO,
   Hetzner Object Storage, or any S3 API, SPEC §1's alternative to
   local disk) had zero test coverage of any kind. Found by the
