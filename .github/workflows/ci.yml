@@ -147,7 +147,12 @@ jobs:
         with:
           node-version: 22
 
+      # pnpm/action-setup doesn't honor the job's default working-directory
+      # (that only applies to `run:` steps) -- it looks for package.json at
+      # the repo root by default, which doesn't exist in this Elixir repo.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: clients/web/package.json
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
