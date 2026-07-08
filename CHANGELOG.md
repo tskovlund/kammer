@@ -24,6 +24,13 @@ and this project adheres to
 
 ### Fixed
 
+- The group feed and the aggregated community home feed each
+  hand-rolled their own feed-sort (Newest/Activity) control markup and
+  `set_feed_sort` `handle_event` body, near-verbatim. Found by the
+  full-codebase audit (#77). Now both share
+  `FeedComponents.feed_sort_form/1` and route `set_feed_sort` through
+  the existing `FeedEventHandlers` (already used for the rest of their
+  feed interactions), so the two can no longer drift.
 - Group and community settings each hand-rolled their own invite-link
   list markup and create/revoke `handle_event` bodies, near-verbatim.
   The community copy also displayed a bare `invite.use_count` instead

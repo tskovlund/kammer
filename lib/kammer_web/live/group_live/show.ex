@@ -23,7 +23,8 @@ defmodule KammerWeb.GroupLive.Show do
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
                   show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
-                  soft_delete_post hard_delete_post approve_guest_comment reject_guest_comment)
+                  soft_delete_post hard_delete_post approve_guest_comment reject_guest_comment
+                  set_feed_sort)
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -370,22 +371,11 @@ defmodule KammerWeb.GroupLive.Show do
       </section>
 
       <%!-- Feed --%>
-      <form
+      <.feed_sort_form
         :if={current_user(assigns)}
-        id="feed-sort-form"
-        phx-change="set_feed_sort"
+        current_user={current_user(assigns)}
         class="flex items-center justify-end gap-1.5 pt-2 text-sm text-base-content/60"
-      >
-        <.icon name="hero-arrows-up-down" class="size-4" />
-        <select name="sort" class="select select-xs">
-          <option value="chronological" selected={feed_sort(current_user(assigns)) == :chronological}>
-            {gettext("Newest")}
-          </option>
-          <option value="activity" selected={feed_sort(current_user(assigns)) == :activity}>
-            {gettext("Activity")}
-          </option>
-        </select>
-      </form>
+      />
 
       <section class="space-y-3 pt-2" id="group-feed">
         <div :for={post <- @posts}>
@@ -734,17 +724,6 @@ defmodule KammerWeb.GroupLive.Show do
       )
 
     {:noreply, refresh(socket, current_user)}
-  end
-
-  def handle_event("set_feed_sort", %{"sort" => sort}, socket)
-      when sort in ~w(chronological activity) do
-    current_user = current_user(socket.assigns)
-    {:ok, updated_user} = Kammer.Accounts.update_user_settings(current_user, %{feed_sort: sort})
-
-    socket =
-      assign(socket, :current_scope, %{socket.assigns.current_scope | user: updated_user})
-
-    {:noreply, refresh(socket, updated_user)}
   end
 
   def handle_event("leave", _params, socket) do
