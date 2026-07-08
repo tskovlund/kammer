@@ -10,6 +10,17 @@ and this project adheres to
 
 ### Added
 
+- Svelte PWA client scaffold at `clients/web/` (issue #32, ADR 0001):
+  SvelteKit + TypeScript, static adapter in SPA mode (`ssr = false` —
+  the client is a pure session-holder talking to remote instances,
+  nothing server-rendered), Tailwind CSS, Prettier/ESLint, Vitest, and
+  a minimal PWA manifest. Own CI job (`web-client`, node/pnpm), not
+  inside the Elixir gate; root Prettier excludes `clients/web/` since
+  it owns its own config/plugins (Svelte, Tailwind class sorting).
+  Screens (sign-in, merged home, community list, group feed, events)
+  and the generated API client land in follow-up PRs — this is
+  tooling-only, verified to lint/typecheck/test/build clean.
+
 - `POST /api/v1/auth/register` (issue #30): the API can now create
   accounts, not just authenticate existing ones — mirrors
   `UserLive.Registration` exactly (same changeset, same per-IP rate

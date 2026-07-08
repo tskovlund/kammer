@@ -1,0 +1,9 @@
+{
+	"name": "Kammer",
+	"short_name": "Kammer",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#ffffff",
+	"icons": []
+}

@@ -14,3 +14,7 @@ docs/deploy/
 tooling/commitlint/package-lock.json
 scripts/package-lock.json
 uploads/
+# clients/web/ owns its own Prettier config/plugins (Svelte, Tailwind
+# class sorting) and CI job — the root config doesn't understand .svelte
+# files and would reformat them wrong.
+clients/web/
