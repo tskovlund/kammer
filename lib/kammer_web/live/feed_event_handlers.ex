@@ -13,6 +13,7 @@ defmodule KammerWeb.FeedEventHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
+  alias Kammer.Accounts
   alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
@@ -178,6 +179,15 @@ defmodule KammerWeb.FeedEventHandlers do
     else
       _error -> {:noreply, refuse(socket)}
     end
+  end
+
+  def handle("set_feed_sort", %{"sort" => sort}, socket, reload)
+      when sort in ~w(chronological activity) do
+    {:ok, updated_user} = Accounts.update_user_settings(current_user(socket), %{feed_sort: sort})
+
+    socket
+    |> assign(:current_scope, %{socket.assigns.current_scope | user: updated_user})
+    |> then(&{:noreply, reload.(&1)})
   end
 
   # Single-choice: voting for an option selects it (replacing the old

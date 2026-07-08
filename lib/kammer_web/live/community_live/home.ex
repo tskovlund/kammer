@@ -19,7 +19,7 @@ defmodule KammerWeb.CommunityLive.Home do
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
                   show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
-                  soft_delete_post hard_delete_post)
+                  soft_delete_post hard_delete_post set_feed_sort)
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -68,25 +68,11 @@ defmodule KammerWeb.CommunityLive.Home do
           </:subtitle>
         </.header>
 
-        <form
+        <.feed_sort_form
           :if={@home_posts != []}
-          id="feed-sort-form"
-          phx-change="set_feed_sort"
+          current_user={@current_scope.user}
           class="flex items-center justify-end gap-1.5 pb-1 text-sm text-base-content/60"
-        >
-          <.icon name="hero-arrows-up-down" class="size-4" />
-          <select name="sort" class="select select-xs">
-            <option
-              value="chronological"
-              selected={@current_scope.user.feed_sort == :chronological}
-            >
-              {gettext("Newest")}
-            </option>
-            <option value="activity" selected={@current_scope.user.feed_sort == :activity}>
-              {gettext("Activity")}
-            </option>
-          </select>
-        </form>
+        />
 
         <section :if={@home_posts != []} class="space-y-3">
           <div :for={post <- @home_posts}>
@@ -207,17 +193,6 @@ defmodule KammerWeb.CommunityLive.Home do
     FeedEventHandlers.handle(event, params, socket, fn socket ->
       load_home_feed(socket, socket.assigns.current_scope.user)
     end)
-  end
-
-  def handle_event("set_feed_sort", %{"sort" => sort}, socket)
-      when sort in ~w(chronological activity) do
-    current_user = socket.assigns.current_scope.user
-    {:ok, updated_user} = Kammer.Accounts.update_user_settings(current_user, %{feed_sort: sort})
-
-    socket =
-      assign(socket, :current_scope, %{socket.assigns.current_scope | user: updated_user})
-
-    {:noreply, load_home_feed(socket, updated_user)}
   end
 
   defp load_home_feed(socket, current_user) do

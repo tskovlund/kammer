@@ -697,4 +697,32 @@ defmodule KammerWeb.FeedComponents do
   defp format_bytes(bytes) when bytes >= 1_048_576, do: "#{Float.round(bytes / 1_048_576, 1)} MB"
   defp format_bytes(bytes) when bytes >= 1024, do: "#{div(bytes, 1024)} kB"
   defp format_bytes(bytes), do: "#{bytes} B"
+
+  @doc """
+  The Newest/Activity feed sort control, shared by the group feed and
+  the aggregated community home feed. Expects `phx-change="set_feed_sort"`
+  handled by the host LiveView (via `FeedEventHandlers`).
+  """
+  attr :current_user, :map, default: nil
+  attr :class, :string, required: true
+
+  @spec feed_sort_form(map()) :: Phoenix.LiveView.Rendered.t()
+  def feed_sort_form(assigns) do
+    ~H"""
+    <form id="feed-sort-form" phx-change="set_feed_sort" class={@class}>
+      <.icon name="hero-arrows-up-down" class="size-4" />
+      <select name="sort" class="select select-xs">
+        <option value="chronological" selected={feed_sort(@current_user) == :chronological}>
+          {gettext("Newest")}
+        </option>
+        <option value="activity" selected={feed_sort(@current_user) == :activity}>
+          {gettext("Activity")}
+        </option>
+      </select>
+    </form>
+    """
+  end
+
+  defp feed_sort(%{feed_sort: sort}), do: sort
+  defp feed_sort(_no_user), do: :chronological
 end
