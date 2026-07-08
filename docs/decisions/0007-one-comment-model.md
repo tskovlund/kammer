@@ -15,4 +15,5 @@ engine as posts. No per-group or per-post threading variants.
 
 - One rendering component, one notification path, one moderation surface.
 - Future configurable comment mechanics arrive only via group _type
-  templates_ (an explicit v1 non-goal), never as raw per-group switches.
+  templates_ (confirmed future roadmap, SPEC.md §16, #138), never as
+  raw per-group switches.
