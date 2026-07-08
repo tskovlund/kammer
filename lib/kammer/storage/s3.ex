@@ -12,16 +12,20 @@ defmodule Kammer.Storage.S3 do
 
   @behaviour Kammer.Storage
 
+  @doc """
+  `opts` is merged into the underlying `Req.new/1` call — unused in
+  production, a seam for tests to pass `plug: {Req.Test, name}`.
+  """
   @impl Kammer.Storage
-  @spec put(Kammer.Storage.key(), Path.t()) :: :ok | {:error, term()}
-  def put(key, source_path) do
-    put_binary(key, File.read!(source_path))
+  @spec put(Kammer.Storage.key(), Path.t(), keyword()) :: :ok | {:error, term()}
+  def put(key, source_path, opts \\ []) do
+    put_binary(key, File.read!(source_path), opts)
   end
 
   @impl Kammer.Storage
-  @spec put_binary(Kammer.Storage.key(), binary()) :: :ok | {:error, term()}
-  def put_binary(key, contents) do
-    case Req.put(request(), url: object_url(key), body: contents) do
+  @spec put_binary(Kammer.Storage.key(), binary(), keyword()) :: :ok | {:error, term()}
+  def put_binary(key, contents, opts \\ []) do
+    case Req.put(request(opts), url: object_url(key), body: contents) do
       {:ok, %Req.Response{status: status}} when status in 200..299 -> :ok
       {:ok, %Req.Response{status: status}} -> {:error, {:unexpected_status, status}}
       {:error, reason} -> {:error, reason}
@@ -29,19 +33,19 @@ defmodule Kammer.Storage.S3 do
   end
 
   @impl Kammer.Storage
-  @spec path_for(Kammer.Storage.key()) :: {:ok, Path.t()} | {:error, term()}
-  def path_for(key) do
+  @spec path_for(Kammer.Storage.key(), keyword()) :: {:ok, Path.t()} | {:error, term()}
+  def path_for(key, opts \\ []) do
     cache_path = Path.join(cache_directory(), key)
 
     if File.exists?(cache_path) do
       {:ok, cache_path}
     else
-      download(key, cache_path)
+      download(key, cache_path, opts)
     end
   end
 
-  defp download(key, cache_path) do
-    case Req.get(request(), url: object_url(key)) do
+  defp download(key, cache_path, opts) do
+    case Req.get(request(opts), url: object_url(key)) do
       {:ok, %Req.Response{status: 200, body: body}} ->
         File.mkdir_p!(Path.dirname(cache_path))
         File.write!(cache_path, body)
@@ -59,28 +63,30 @@ defmodule Kammer.Storage.S3 do
   end
 
   @impl Kammer.Storage
-  @spec delete(Kammer.Storage.key()) :: :ok | {:error, term()}
-  def delete(key) do
+  @spec delete(Kammer.Storage.key(), keyword()) :: :ok | {:error, term()}
+  def delete(key, opts \\ []) do
     cache_path = Path.join(cache_directory(), key)
     File.rm(cache_path)
 
-    case Req.delete(request(), url: object_url(key)) do
+    case Req.delete(request(opts), url: object_url(key)) do
       {:ok, %Req.Response{status: status}} when status in [200, 204, 404] -> :ok
       {:ok, %Req.Response{status: status}} -> {:error, {:unexpected_status, status}}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp request do
+  defp request(opts) do
     configuration = configuration()
 
     Req.new(
-      aws_sigv4: [
-        access_key_id: Keyword.fetch!(configuration, :access_key_id),
-        secret_access_key: Keyword.fetch!(configuration, :secret_access_key),
-        service: "s3",
-        region: Keyword.get(configuration, :region, "us-east-1")
-      ]
+      [
+        aws_sigv4: [
+          access_key_id: Keyword.fetch!(configuration, :access_key_id),
+          secret_access_key: Keyword.fetch!(configuration, :secret_access_key),
+          service: "s3",
+          region: Keyword.get(configuration, :region, "us-east-1")
+        ]
+      ] ++ opts
     )
   end
 

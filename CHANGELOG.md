@@ -24,6 +24,17 @@ and this project adheres to
 
 ### Fixed
 
+- `Kammer.Storage.S3` (the S3-compatible storage adapter — MinIO,
+  Hetzner Object Storage, or any S3 API, SPEC §1's alternative to
+  local disk) had zero test coverage of any kind. Found by the
+  full-codebase audit (#79). Added tests for `put/2`, `put_binary/2`,
+  `path_for/1`, and `delete/1` against a fake S3 endpoint
+  (`Req.Test`), covering the round trip, the local-cache short
+  circuit, `:not_found`, and unexpected-status errors. Each function
+  gained an optional third `opts` argument (default `[]`, merged into
+  the underlying `Req.new/1` call) purely as a test seam for injecting
+  `plug: {Req.Test, name}` — behavior is unchanged for every existing
+  caller, which never passes it.
 - Six Oban workers with real branching logic — no-op vs. configured,
   scheduled vs. approval-held, empty vs. due recipients, vanished vs.
   live records — had zero `perform_job/2` coverage, unlike their
