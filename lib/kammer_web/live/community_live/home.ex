@@ -16,6 +16,7 @@ defmodule KammerWeb.CommunityLive.Home do
   alias Kammer.Feed
   alias Kammer.Groups
   alias KammerWeb.FeedEventHandlers
+  alias KammerWeb.PostPermissions
 
   @feed_events ~w(toggle_reaction create_comment delete_comment vote_poll acknowledge
                   show_acknowledgment_status toggle_pin toggle_comment_lock approve_post
@@ -206,18 +207,6 @@ defmodule KammerWeb.CommunityLive.Home do
   defp post_permissions(post, current_user) do
     group = post.group
     relationship = Authorization.relationship(current_user, group)
-
-    %{
-      edit: false,
-      soft_delete: Authorization.can_soft_delete_post?(current_user, post, group, relationship),
-      hard_delete: Authorization.can_hard_delete_post?(current_user, post, group, relationship),
-      pin: false,
-      lock_comments: false,
-      view_acknowledgments:
-        Authorization.can_view_acknowledgments?(current_user, post, group, relationship),
-      approve: false,
-      comment: Authorization.can?(current_user, :comment_in_group, group, relationship),
-      react: Authorization.can_react?(current_user, group, relationship)
-    }
+    PostPermissions.for_post(post, group, relationship, current_user)
   end
 end

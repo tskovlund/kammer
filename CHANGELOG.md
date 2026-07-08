@@ -24,6 +24,17 @@ and this project adheres to
 
 ### Fixed
 
+- The community home feed hardcoded a post's `edit`, `pin`,
+  `lock_comments`, and `approve` permissions to `false`, unlike the
+  group feed's `post_permissions` which computed all of them via
+  `Kammer.Authorization` from the exact same inputs (post, group,
+  relationship, current user). A group admin or post author browsing
+  their Home screen instead of the group page couldn't edit, pin,
+  lock, or approve a post they were fully entitled to act on — the
+  moderation menu simply didn't show those options. Found by the
+  full-codebase audit (#77). Both feeds now share
+  `KammerWeb.PostPermissions.for_post/4`, so the two can no longer
+  drift.
 - The group feed and the aggregated community home feed each
   hand-rolled their own feed-sort (Newest/Activity) control markup and
   `set_feed_sort` `handle_event` body, near-verbatim. Found by the

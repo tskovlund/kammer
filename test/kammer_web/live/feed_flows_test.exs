@@ -258,6 +258,16 @@ defmodule KammerWeb.FeedFlowsTest do
       assert html =~ group.name
     end
 
+    test "a group admin sees moderation actions on their own posts from the home feed",
+         %{community: community, group: group, group_owner: group_owner} do
+      {:ok, post} = Feed.create_post(group_owner, group, %{"body_markdown" => "Admin post"})
+
+      admin_conn = build_conn() |> log_in_user(group_owner)
+      {:ok, lv, _html} = live(admin_conn, ~p"/c/#{community.slug}")
+
+      assert has_element?(lv, ~s(button[phx-click="toggle_pin"][phx-value-id="#{post.id}"]))
+    end
+
     test "the activity toggle persists and reorders (ADR 0006)", %{
       conn: conn,
       community: community,
