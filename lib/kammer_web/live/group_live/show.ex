@@ -31,7 +31,15 @@ defmodule KammerWeb.GroupLive.Show do
     <Layouts.app
       flash={@flash}
       current_scope={@current_scope}
-      active_community={member_of_community?(@community_relationship) && @active_community}
+      active_community={
+        Authorization.can?(
+          @current_scope,
+          :view_community,
+          @active_community,
+          @community_relationship
+        ) &&
+          @active_community
+      }
       member_communities={@member_communities}
       member_groups={@member_groups}
       community_relationship={@community_relationship}
@@ -930,9 +938,6 @@ defmodule KammerWeb.GroupLive.Show do
 
   defp current_user(%{current_scope: %{user: user}}), do: user
   defp current_user(_assigns), do: nil
-
-  defp member_of_community?(%{community_role: role}), do: role != nil
-  defp member_of_community?(_relationship), do: false
 
   defp notification_level_options do
     [

@@ -122,10 +122,6 @@ defmodule Kammer.Accounts.User do
     |> validate_length(:pronouns, max: 40)
   end
 
-  @doc "All valid contact-field visibility levels."
-  @spec visibilities() :: [visibility()]
-  def visibilities, do: @visibilities
-
   defp validate_email(changeset, opts) do
     changeset =
       changeset
