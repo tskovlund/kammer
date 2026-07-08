@@ -9,7 +9,6 @@ defmodule KammerWeb.FeedEventHandlers do
 
   use Gettext, backend: KammerWeb.Gettext
 
-  import Ecto.Query, only: [from: 2]
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
@@ -17,7 +16,6 @@ defmodule KammerWeb.FeedEventHandlers do
   alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
-  alias Kammer.Repo
 
   @type reload_fun() :: (Phoenix.LiveView.Socket.t() -> Phoenix.LiveView.Socket.t())
 
@@ -36,8 +34,8 @@ defmodule KammerWeb.FeedEventHandlers do
       ) do
     subject =
       case type do
-        "post" -> Repo.get(Post, subject_id)
-        "comment" -> Repo.get(Comment, subject_id)
+        "post" -> Feed.get_post(subject_id)
+        "comment" -> Feed.get_comment(subject_id)
       end
 
     if subject do
@@ -51,7 +49,14 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("create_comment", params, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, params["post_id"]),
+    # Deliberately Kammer.Repo.get/2, not Feed.get_post/1: narrowing the
+    # fetched post's type here (confirmed via bisection — any narrow
+    # re-match of a bare Repo.get(Post, ...) reproduces it identically,
+    # unrelated to Feed.get_post/1 itself) makes Dialyzer's success
+    # typing lose Feed.create_comment/3's :comments_locked branch,
+    # which is real and covered by feed_test.exs's "comment lock blocks
+    # new comments" test. Left as the one exception to #91's fix.
+    with %Post{} = post <- Kammer.Repo.get(Post, params["post_id"]),
          {:ok, _comment} <-
            Feed.create_comment(current_user(socket), post, %{
              "body_markdown" => params["body_markdown"],
@@ -72,7 +77,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("approve_guest_comment", %{"id" => comment_id}, socket, reload) do
-    with %Comment{} = comment <- Repo.get(Comment, comment_id),
+    with %Comment{} = comment <- Feed.get_comment(comment_id),
          {:ok, _comment} <- Feed.approve_guest_comment(current_user(socket), comment) do
       {:noreply, reload.(socket)}
     else
@@ -81,7 +86,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("reject_guest_comment", %{"id" => comment_id}, socket, reload) do
-    with %Comment{} = comment <- Repo.get(Comment, comment_id),
+    with %Comment{} = comment <- Feed.get_comment(comment_id),
          {:ok, _comment} <- Feed.reject_guest_comment(current_user(socket), comment) do
       {:noreply, reload.(socket)}
     else
@@ -90,7 +95,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("delete_comment", %{"id" => comment_id}, socket, reload) do
-    with %Comment{} = comment <- Repo.get(Comment, comment_id),
+    with %Comment{} = comment <- Feed.get_comment(comment_id),
          {:ok, _deleted} <- Feed.delete_comment(current_user(socket), comment) do
       {:noreply, reload.(socket)}
     else
@@ -99,8 +104,8 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("vote_poll", %{"poll-id" => poll_id, "option-id" => option_id}, socket, reload) do
-    with %Feed.Poll{} = poll <- Repo.get(Feed.Poll, poll_id) do
-      option_ids = toggle_option(current_user(socket), poll, option_id)
+    with %Feed.Poll{} = poll <- Feed.get_poll(poll_id) do
+      option_ids = Feed.toggle_poll_option(current_user(socket), poll, option_id)
 
       case Feed.vote(current_user(socket), poll, option_ids) do
         :ok ->
@@ -118,7 +123,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("acknowledge", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _acknowledgment} <- Feed.acknowledge_post(current_user(socket), post) do
       {:noreply, reload.(socket)}
     else
@@ -127,7 +132,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("show_acknowledgment_status", %{"id" => post_id}, socket, _reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, status} <- Feed.acknowledgment_status(current_user(socket), post) do
       {:noreply, assign(socket, :acknowledgment_status, %{post_id: post_id, status: status})}
     else
@@ -136,7 +141,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("toggle_pin", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <- Feed.set_pinned(current_user(socket), post, is_nil(post.pinned_at)) do
       {:noreply, reload.(socket)}
     else
@@ -145,7 +150,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("toggle_comment_lock", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <-
            Feed.set_comments_locked(current_user(socket), post, is_nil(post.comment_locked_at)) do
       {:noreply, reload.(socket)}
@@ -155,7 +160,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("approve_post", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <- Feed.approve_post(current_user(socket), post) do
       {:noreply, reload.(socket)}
     else
@@ -164,7 +169,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("soft_delete_post", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <- Feed.soft_delete_post(current_user(socket), post) do
       {:noreply, reload.(socket)}
     else
@@ -173,7 +178,7 @@ defmodule KammerWeb.FeedEventHandlers do
   end
 
   def handle("hard_delete_post", %{"id" => post_id}, socket, reload) do
-    with %Post{} = post <- Repo.get(Post, post_id),
+    with %Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <- Feed.hard_delete_post(current_user(socket), post) do
       {:noreply, reload.(socket)}
     else
@@ -188,33 +193,6 @@ defmodule KammerWeb.FeedEventHandlers do
     socket
     |> assign(:current_scope, %{socket.assigns.current_scope | user: updated_user})
     |> then(&{:noreply, reload.(&1)})
-  end
-
-  # Single-choice: voting for an option selects it (replacing the old
-  # vote); clicking the already-selected option clears the vote.
-  # Multiple-choice: toggles the option within the current selection.
-  defp toggle_option(user, poll, option_id) do
-    current_option_ids =
-      Repo.all(
-        from(vote in Feed.PollVote,
-          where: vote.poll_id == ^poll.id and vote.user_id == ^user.id,
-          select: vote.option_id
-        )
-      )
-
-    cond do
-      option_id in current_option_ids and poll.multiple_choice ->
-        current_option_ids -- [option_id]
-
-      option_id in current_option_ids ->
-        []
-
-      poll.multiple_choice ->
-        [option_id | current_option_ids]
-
-      true ->
-        [option_id]
-    end
   end
 
   defp current_user(socket) do

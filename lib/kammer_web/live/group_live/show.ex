@@ -545,7 +545,7 @@ defmodule KammerWeb.GroupLive.Show do
   def handle_event("guest_comment", %{"post_id" => post_id, "guest" => guest_params}, socket) do
     group = socket.assigns.group
 
-    with %Kammer.Feed.Post{} = post <- Kammer.Repo.get(Kammer.Feed.Post, post_id),
+    with %Kammer.Feed.Post{} = post <- Feed.get_post(post_id),
          :ok <-
            Feed.request_guest_comment(post, group, guest_params,
              client_ip: socket.assigns.client_ip,
@@ -661,7 +661,7 @@ defmodule KammerWeb.GroupLive.Show do
   def handle_event("save_edit", %{"post_id" => post_id, "body_markdown" => body}, socket) do
     current_user = current_user(socket.assigns)
 
-    with %Kammer.Feed.Post{} = post <- Kammer.Repo.get(Kammer.Feed.Post, post_id),
+    with %Kammer.Feed.Post{} = post <- Feed.get_post(post_id),
          {:ok, _post} <- Feed.edit_post(current_user, post, %{"body_markdown" => body}) do
       {:noreply, socket |> assign(:editing_post_id, nil) |> refresh(current_user)}
     else

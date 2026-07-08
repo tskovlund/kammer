@@ -307,7 +307,7 @@ defmodule KammerWeb.AssignmentLive.Show do
   end
 
   def handle_event("delete_comment", %{"id" => comment_id}, socket) do
-    with %Kammer.Feed.Comment{} = comment <- Kammer.Repo.get(Kammer.Feed.Comment, comment_id),
+    with %Kammer.Feed.Comment{} = comment <- Feed.get_comment(comment_id),
          {:ok, _deleted} <- Feed.delete_comment(socket.assigns.current_scope.user, comment) do
       {:noreply, reload(socket)}
     else

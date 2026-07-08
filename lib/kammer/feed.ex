@@ -240,6 +240,27 @@ defmodule Kammer.Feed do
     )
   end
 
+  @doc """
+  Fetches a post by id, or `nil` if it doesn't exist. Unauthenticated —
+  callers pass the result to an authorization-checked mutator below.
+  """
+  @spec get_post(Ecto.UUID.t()) :: Post.t() | nil
+  def get_post(post_id), do: Repo.get(Post, post_id)
+
+  @doc """
+  Fetches a comment by id, or `nil` if it doesn't exist. Unauthenticated
+  — callers pass the result to an authorization-checked mutator below.
+  """
+  @spec get_comment(Ecto.UUID.t()) :: Comment.t() | nil
+  def get_comment(comment_id), do: Repo.get(Comment, comment_id)
+
+  @doc """
+  Fetches a poll by id, or `nil` if it doesn't exist. Unauthenticated —
+  callers pass the result to an authorization-checked mutator below.
+  """
+  @spec get_poll(Ecto.UUID.t()) :: Poll.t() | nil
+  def get_poll(poll_id), do: Repo.get(Poll, poll_id)
+
   ## Visits (new-since-last-visit marker)
 
   @doc """
@@ -945,6 +966,37 @@ defmodule Kammer.Feed do
   end
 
   ## Polls
+
+  @doc """
+  Single-choice: voting for an option selects it (replacing the old
+  vote); clicking the already-selected option clears the vote.
+  Multiple-choice: toggles the option within the current selection.
+  Returns the new set of selected option ids, to be passed to `vote/3`.
+  """
+  @spec toggle_poll_option(User.t(), Poll.t(), Ecto.UUID.t()) :: [Ecto.UUID.t()]
+  def toggle_poll_option(%User{} = user, %Poll{} = poll, option_id) do
+    current_option_ids =
+      Repo.all(
+        from(vote in PollVote,
+          where: vote.poll_id == ^poll.id and vote.user_id == ^user.id,
+          select: vote.option_id
+        )
+      )
+
+    cond do
+      option_id in current_option_ids and poll.multiple_choice ->
+        current_option_ids -- [option_id]
+
+      option_id in current_option_ids ->
+        []
+
+      poll.multiple_choice ->
+        [option_id | current_option_ids]
+
+      true ->
+        [option_id]
+    end
+  end
 
   @doc """
   Casts the actor's vote(s). Single-choice polls replace the previous
