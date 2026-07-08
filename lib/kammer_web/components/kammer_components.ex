@@ -179,6 +179,42 @@ defmodule KammerWeb.KammerComponents do
     end
   end
 
+  @doc """
+  One row in a ban list (community or instance moderation): email,
+  date, optional reason, and a "Lift ban" button. Expects
+  `phx-click="unban"` handled by the host LiveView. `id_prefix`
+  distinguishes the two scopes' DOM ids (`unban-<id>` vs
+  `unban-instance-<id>`); `confirm` is the scope-specific confirmation
+  text.
+  """
+  attr :ban, :map, required: true
+  attr :id_prefix, :string, required: true
+  attr :confirm, :string, required: true
+
+  @spec ban_row(map()) :: Phoenix.LiveView.Rendered.t()
+  def ban_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 rounded-box border border-base-200 p-3">
+      <div class="min-w-0 flex-1">
+        <p class="truncate font-medium">{@ban.email}</p>
+        <p class="text-xs text-base-content/60">
+          {Calendar.strftime(@ban.inserted_at, "%d %b %Y")}
+          <span :if={@ban.reason}>· {@ban.reason}</span>
+        </p>
+      </div>
+      <.button
+        id={"#{@id_prefix}-#{@ban.id}"}
+        phx-click="unban"
+        phx-value-id={@ban.id}
+        data-confirm={@confirm}
+        class="btn btn-ghost btn-sm"
+      >
+        {gettext("Lift ban")}
+      </.button>
+    </div>
+    """
+  end
+
   defp initials(name) do
     name
     |> String.split(~r/\s+/, trim: true)

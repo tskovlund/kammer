@@ -15,6 +15,7 @@ defmodule KammerWeb.ModerationLive.Index do
   alias Kammer.Feed.Post
   alias Kammer.Moderation
   alias Kammer.Moderation.Report
+  alias KammerWeb.BanEventHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -90,27 +91,12 @@ defmodule KammerWeb.ModerationLive.Index do
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
           {gettext("Active bans")}
         </h2>
-        <div
+        <.ban_row
           :for={ban <- @bans}
-          class="flex items-center gap-3 rounded-box border border-base-200 p-3"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="truncate font-medium">{ban.email}</p>
-            <p class="text-xs text-base-content/60">
-              {Calendar.strftime(ban.inserted_at, "%d %b %Y")}
-              <span :if={ban.reason}>· {ban.reason}</span>
-            </p>
-          </div>
-          <.button
-            id={"unban-#{ban.id}"}
-            phx-click="unban"
-            phx-value-id={ban.id}
-            data-confirm={gettext("Lift this ban?")}
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Lift ban")}
-          </.button>
-        </div>
+          ban={ban}
+          id_prefix="unban"
+          confirm={gettext("Lift this ban?")}
+        />
       </section>
 
       <section :if={@can_view_audit_log?} class="pt-6">
@@ -168,14 +154,12 @@ defmodule KammerWeb.ModerationLive.Index do
   end
 
   def handle_event("unban", %{"id" => ban_id}, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    with %Moderation.CommunityBan{} = ban <- Kammer.Repo.get(Moderation.CommunityBan, ban_id),
-         {:ok, _ban} <- Moderation.unban(current_user, ban) do
-      {:noreply, reload(socket)}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    BanEventHandlers.handle_unban(
+      socket,
+      Kammer.Repo.get(Moderation.CommunityBan, ban_id),
+      &Moderation.unban/2,
+      &reload/1
+    )
   end
 
   defp reload(socket) do

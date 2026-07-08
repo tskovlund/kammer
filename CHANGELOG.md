@@ -24,6 +24,12 @@ and this project adheres to
 
 ### Fixed
 
+- Community and instance moderation each hand-rolled their own
+  ban-row list markup and `unban` `handle_event` body. Found by the
+  full-codebase audit (#77). Now both call the shared
+  `KammerComponents.ban_row/1` and `KammerWeb.BanEventHandlers`,
+  parameterized on the DOM id prefix, confirmation text, and the
+  scope-specific unban function, so the two can no longer drift.
 - The group assignment list and the single-assignment page each
   hand-rolled their own `claim`/`unclaim`/`complete`/`reopen`
   `handle_event` bodies, including a byte-for-byte identical manual

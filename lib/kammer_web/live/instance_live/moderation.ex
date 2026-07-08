@@ -13,6 +13,7 @@ defmodule KammerWeb.InstanceLive.Moderation do
   alias Kammer.Authorization
   alias Kammer.Moderation
   alias Kammer.Moderation.InstanceBan
+  alias KammerWeb.BanEventHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -37,27 +38,12 @@ defmodule KammerWeb.InstanceLive.Moderation do
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
           {gettext("Active instance bans")}
         </h2>
-        <div
+        <.ban_row
           :for={ban <- @bans}
-          class="flex items-center gap-3 rounded-box border border-base-200 p-3"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="truncate font-medium">{ban.email}</p>
-            <p class="text-xs text-base-content/60">
-              {Calendar.strftime(ban.inserted_at, "%d %b %Y")}
-              <span :if={ban.reason}>· {ban.reason}</span>
-            </p>
-          </div>
-          <.button
-            id={"unban-instance-#{ban.id}"}
-            phx-click="unban"
-            phx-value-id={ban.id}
-            data-confirm={gettext("Lift this instance ban?")}
-            class="btn btn-ghost btn-sm"
-          >
-            {gettext("Lift ban")}
-          </.button>
-        </div>
+          ban={ban}
+          id_prefix="unban-instance"
+          confirm={gettext("Lift this instance ban?")}
+        />
 
         <.empty_state
           :if={@bans == []}
@@ -110,14 +96,14 @@ defmodule KammerWeb.InstanceLive.Moderation do
   end
 
   def handle_event("unban", %{"id" => ban_id}, socket) do
-    user = socket.assigns.current_scope.user
-
-    with %InstanceBan{} = ban <- Kammer.Repo.get(InstanceBan, ban_id),
-         {:ok, _ban} <- Moderation.unban_instance(user, ban) do
-      {:noreply, assign(socket, :bans, Moderation.list_instance_bans(user))}
-    else
-      _error -> {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    BanEventHandlers.handle_unban(
+      socket,
+      Kammer.Repo.get(InstanceBan, ban_id),
+      &Moderation.unban_instance/2,
+      fn socket ->
+        assign(socket, :bans, Moderation.list_instance_bans(socket.assigns.current_scope.user))
+      end
+    )
   end
 
   defp blank_form, do: to_form(%{"email" => "", "reason" => ""}, as: :instance_ban)
