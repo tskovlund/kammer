@@ -24,6 +24,23 @@ and this project adheres to
 
 ### Fixed
 
+- The web layer fetched `Feed` entities (posts, comments, polls)
+  directly via `Kammer.Repo` and the schema modules instead of through
+  `Kammer.Feed`, and hand-rolled the poll-vote-toggle selection logic
+  (`FeedEventHandlers.toggle_option/3`) — Feed domain logic living in
+  `KammerWeb`. Found by the round-2 audit (#91). `Kammer.Feed` now
+  exposes `get_post/1`, `get_comment/1`, `get_poll/1`, and
+  `toggle_poll_option/3`; `FeedEventHandlers`, `ReportHandlers`,
+  `GroupLive.Show`, `AssignmentLive.Show`, and `EventLive.Show` call
+  them instead of naming `Kammer.Repo`/`Kammer.Feed.Post`/
+  `Kammer.Feed.Comment` directly (one exception, documented inline:
+  `FeedEventHandlers`'s `create_comment` handler keeps a direct
+  `Repo.get/2` — narrowing that one call site's type triggers an
+  unrelated Dialyzer false positive on `Feed.create_comment/3`'s
+  `:comments_locked` branch, confirmed real via `feed_test.exs`).
+  Remaining bypasses in Assignments/Availability/Events/Moderation and
+  the guest-controller redirect-path chains are tracked as follow-up
+  work under the same issue.
 - The passkey sign-in and passkey-registration colocated JS hooks
   (`user_live/login.ex`, `user_live/devices.ex`) each defined
   identical `b64urlToBytes`/`bytesToB64url` WebAuthn base64url

@@ -459,7 +459,7 @@ defmodule KammerWeb.EventLive.Show do
   def handle_event("delete_comment", %{"id" => comment_id}, socket) do
     current_user = socket.assigns.current_scope.user
 
-    with %Kammer.Feed.Comment{} = comment <- Kammer.Repo.get(Kammer.Feed.Comment, comment_id),
+    with %Kammer.Feed.Comment{} = comment <- Feed.get_comment(comment_id),
          {:ok, _deleted} <- Feed.delete_comment(current_user, comment) do
       {:noreply, reload(socket)}
     else

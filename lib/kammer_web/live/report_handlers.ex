@@ -14,10 +14,10 @@ defmodule KammerWeb.ReportHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
+  alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
   alias Kammer.Moderation
-  alias Kammer.Repo
 
   @doc """
   Handles a report-flow event. Returns `{:noreply, socket}`.
@@ -42,12 +42,12 @@ defmodule KammerWeb.ReportHandlers do
     result =
       case reporting do
         %{type: "post", id: post_id} ->
-          with %Post{} = post <- Repo.get(Post, post_id) do
+          with %Post{} = post <- Feed.get_post(post_id) do
             Moderation.report_post(current_user, post, reason)
           end
 
         %{type: "comment", id: comment_id} ->
-          with %Comment{} = comment <- Repo.get(Comment, comment_id) do
+          with %Comment{} = comment <- Feed.get_comment(comment_id) do
             Moderation.report_comment(current_user, comment, reason)
           end
 
