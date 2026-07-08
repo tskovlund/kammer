@@ -24,6 +24,11 @@ and this project adheres to
 
 ### Fixed
 
+- `GuestClaimController` and `GuestRsvpController` each had a
+  byte-for-byte identical private path helper (`event_path/1` and
+  `confirmed_path/1`) resolving a guest-confirmed event's
+  community-scoped URL. Found by the full-codebase audit (#77). Now
+  both call the shared `KammerWeb.GuestPaths.event_path/1`.
 - Community and instance moderation each hand-rolled their own
   ban-row list markup and `unban` `handle_event` body. Found by the
   full-codebase audit (#77). Now both call the shared
