@@ -118,7 +118,8 @@ mix setup && mix phx.server
 ```
 
 Contributions work as **prompt requests**: open a well-described issue
-(bug, feature, design sketch) and a maintainer implements it — see
+(bug, feature, design sketch) and a maintainer implements it — usually
+Claude, an AI coding agent (see [Author](#author) below) — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for the why, and
 [CONVENTIONS.md](CONVENTIONS.md) for the bar. Engineering standards
 (Credo strict, Dialyzer, warnings-as-errors, coverage floor,
@@ -138,6 +139,13 @@ Conventional Commits) are enforced by hooks and CI.
 ## Author
 
 Thomas Skovlund Hansen — [skovlund.dev](https://skovlund.dev) · [thomas@skovlund.dev](mailto:thomas@skovlund.dev)
+
+Most of Kammer's code is written by Claude (Anthropic's AI coding
+agent), operating autonomously against the issue queue — implementing,
+testing, and opening PRs. The owner specifies scope and retains final
+say on anything product-shaping; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the model and
+[AGENTS.md](AGENTS.md) for the actual operating process.
 
 ## License
 

@@ -11,8 +11,105 @@ pitfalls) → open GitHub issues — especially anything labeled
 [`docs/decisions/`](docs/decisions/) (why past calls were made). Owner
 comments on issues override everything below.
 
-- Babysit every open PR to green CI; merge with a merge commit yourself
-  once green and unresolved review comments are addressed.
+**Picking this up in a brand-new session**: check open PRs on this
+repo first — an unmerged PR from a prior session takes priority over
+starting anything new (see PR lifecycle below; never start new work
+on a branch until the current PR is merged). If none, open GitHub
+issues are the only durable backlog — a prior session's in-memory
+task list is not persisted anywhere and must not be assumed to exist
+or be reconstructable. `decision`/`action`-labeled issues assigned to
+the owner are read-only for you (see Task & state tracking below);
+everything else open and unassigned is fair game.
+
+### PR lifecycle
+
+Full policy for Conventional Commits, Gettext EN/DA, and ADR triggers
+lives in [docs/development.md](docs/development.md) and
+[CONVENTIONS.md](CONVENTIONS.md) — this is the agent-specific
+operational sequence layered on top, not a restatement of it. (The
+CHANGELOG scope in step 4 below is the actual policy, not a pointer
+to one defined elsewhere — neither of those docs states one.)
+
+One coherent PR at a time: unrelated concerns (a feature vs. a docs
+reorg vs. a dependency bump) get separate branches/PRs, even
+mid-session.
+
+1. `git fetch origin main && git checkout -B <branch> origin/main`.
+2. Implement. Verify with **all three** gates, not just the first:
+   `mix precommit` (format, Credo strict, compile warnings-as-errors,
+   tests), `mix dialyzer --format short`, `mix sobelow --config` —
+   dialyzer and sobelow are not part of the `precommit` alias.
+3. Self-review before opening the PR: run the `code-review` skill
+   against the diff (per CONTRIBUTING.md — "is the code
+   well-structured, not just lint-clean" is the one thing genuinely
+   not machine-checkable). Address what it finds.
+4. Add a `CHANGELOG.md` entry under `## [Unreleased]` for anything
+   worth recording: user-facing changes, and also audit-driven
+   fixes or additions (including pure test-coverage additions) even
+   though those aren't user-facing — describe what gap it closed.
+5. Commit (`nix develop --command` — see remote container notes
+   below); Conventional Commit message. Use `Closes #N` only on the
+   commit that actually finishes an issue — GitHub auto-closes on
+   merge to `main` from **any** commit referencing the issue, not
+   just the PR description, so an earlier PR in a multi-PR issue says
+   `Part of #N` instead, or it closes prematurely.
+6. Push with `-u`, open the PR, subscribe to its activity.
+7. Before merging, all three gate it (no fixed order between them):
+   CI green, unresolved review comments addressed, and an
+   independent Agent review pass (below) run and addressed.
+8. Merge with a merge commit. Restart the branch from `origin/main`
+   before touching anything else.
+
+### Independent review
+
+Two review gates, both required, not redundant with each other.
+**Self-review** (step 3 above — the `code-review` skill, run by the
+implementing session, before the PR opens) catches obvious issues
+cheaply, but the session that just wrote the code can't see its own
+blind spots. **Independent review** — a fresh Agent spawned with no
+context from the implementing session, before merge — is what
+catches those instead. Neither is covered by automated tooling
+(`mix precommit`, dialyzer, sobelow, CI), which enforces correctness
+rules and style, not design quality or "does this test actually test
+what it claims to." Tell the independent reviewer to be adversarial
+and report ranked findings rather than default to a clean bill of
+health. Skip independent review only for a purely mechanical change
+(a dependency bump, a typo fix). Address what it finds, or note in
+the PR why not — don't just run it and move on regardless of what it
+says.
+
+### Architecture audits
+
+Distinct from the line-level quality/elegance/DRY sweeps already run
+periodically (which ask "is each piece internally consistent"): a
+separate, dedicated architecture-level review asking "is the
+system's shape still right" — module cohesion, context boundaries,
+the inter-context dependency graph, god-modules accreting unrelated
+responsibility, whether a context split made early in the project
+still holds as it's grown. File findings as GitHub issues the same
+way line-level audits do, and file the audit itself as a GitHub issue
+labeled `architecture-audit` so the cadence is checkable without
+relying on memory.
+
+**Trigger**: search issues **including closed ones**
+(`label:architecture-audit` with `state:all`, sorted by creation
+date — a completed audit's tracking issue gets closed, so an
+open-only search always reads as "none has ever run"). Run one now
+if that search returns nothing. After that, re-run whenever either
+is true: 90 days have passed since the most recent one (by that same
+search) was opened, or a full round of line-level audit fixes has
+just been completed — whichever comes first.
+
+### Task & state tracking
+
+GitHub Issues are the only durable, cross-session source of truth.
+The in-session task list (TaskCreate/TaskUpdate) is scratch for
+staying organized within the current session only — it does not
+persist, and a new session must not assume it exists. If something
+needs to survive past this session, it goes in a GitHub issue, a
+CHANGELOG entry, an ADR, or this file — never only the task list or
+the conversation.
+
 - Work from open GitHub issues, not a separate backlog doc.
   Implementation choices are yours to make; product-shaping choices
   (pricing, naming, new scope) go to a GitHub issue assigned to the
@@ -27,24 +124,39 @@ comments on issues override everything below.
   resolved (the issue itself can stay open for tracking); implementation
   work, including sequencing already-approved backlog items, is never
   a reason to keep the owner assigned.
+
+### Owner interaction
+
 - Renovate runs Mondays 07:00 CPH; non-major dependency PRs automerge
   when checks pass, majors wait for the owner.
 - Message the owner only at milestones or when genuinely blocked.
-- One coherent PR at a time: unrelated concerns (a feature vs. a docs
-  reorg vs. a dependency bump) get separate branches/PRs, even
-  mid-session.
-- Continuously and critically evaluate the process itself, not just
-  the product — unprompted, as work happens, on every abstraction
-  level: orchestration (solo vs. delegating to an Agent, vs. a
-  Workflow swarm — pick per task, don't default), tracking (Issues
-  vs. the session task list; prune staleness, don't let two sources
-  of truth drift), prioritization (what's being deferred and why,
-  said out loud rather than assumed), owner-interaction cadence
-  (surface a process/convention question when there's no precedent in
-  the docs, rather than picking one silently), and whether what was
-  just decided is written down somewhere durable or only lives in
-  this conversation. Give opinions and concrete optimization
-  proposals as they come up, not only when asked.
+- Surface a process/convention question when there's no precedent in
+  this file or the linked docs, rather than picking one silently —
+  and once answered, write the answer down here so it isn't asked
+  twice.
+
+### Continuous process critique
+
+Continuously and critically evaluate the process itself, not just
+the product — unprompted, as work happens, on every abstraction
+level: orchestration (solo vs. delegating to an Agent, vs. a
+Workflow swarm — pick per task, don't default), tracking (see above),
+prioritization (what's being deferred and why, said out loud rather
+than assumed), owner-interaction cadence, and whether what was just
+decided is written down somewhere durable (this file, an ADR, a
+CHANGELOG entry) or only lives in the conversation. Give opinions and
+concrete optimization proposals as they come up, not only when asked.
+
+**Persist process changes automatically, without being asked.** The
+moment a standing decision or convention is made — whether the owner
+states it directly, or you determine it yourself while critiquing the
+process per the paragraph above — write it into this file (or a
+CHANGELOG entry, ADR, or GitHub issue, whichever fits) in the same
+session, before moving on. Don't wait for an explicit "write this
+down" — a decision that only lives in one conversation is not
+persisted, and the next session has no way to know it was made. This
+instruction is itself an example: it exists here because it was
+asked for once and must never need to be asked for again.
 
 ## Kammer: remote container notes (Claude Code on the web)
 
