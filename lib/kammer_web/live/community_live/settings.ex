@@ -7,9 +7,12 @@ defmodule KammerWeb.CommunityLive.Settings do
 
   use KammerWeb, :live_view
 
+  import KammerWeb.KammerComponents, only: [invite_list: 1]
+
   alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Invitations
+  alias KammerWeb.InviteEventHandlers
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -64,21 +67,7 @@ defmodule KammerWeb.CommunityLive.Settings do
         <h2 class="pb-2 text-sm font-medium uppercase tracking-wide text-base-content/50">
           {gettext("Community invite links")}
         </h2>
-        <ul :if={@invites != []} class="space-y-2 pb-3">
-          <li
-            :for={invite <- @invites}
-            class="flex items-center gap-3 rounded-box border border-base-200 p-3 text-sm"
-          >
-            <code class="min-w-0 flex-1 truncate">{url(~p"/invite/#{invite.token}")}</code>
-            <span class="whitespace-nowrap text-base-content/50">{invite.use_count}</span>
-            <.button phx-click="revoke_invite" phx-value-id={invite.id} class="btn btn-ghost btn-xs">
-              {gettext("Revoke")}
-            </.button>
-          </li>
-        </ul>
-        <.button phx-click="create_invite" class="btn btn-ghost btn-sm">
-          <.icon name="hero-link" class="size-4" /> {gettext("Create invite link")}
-        </.button>
+        <.invite_list invites={@invites} />
       </section>
 
       <section class="pt-6">
@@ -252,18 +241,11 @@ defmodule KammerWeb.CommunityLive.Settings do
   end
 
   def handle_event("create_invite", _params, socket) do
-    current_user = socket.assigns.current_scope.user
-
-    case Invitations.create_community_invite(current_user, socket.assigns.active_community) do
-      {:ok, _invite} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Invite link created."))
-         |> load_invites(current_user)}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-    end
+    InviteEventHandlers.handle_create_invite(
+      socket,
+      &Invitations.create_community_invite(&1, socket.assigns.active_community),
+      fn socket -> load_invites(socket, socket.assigns.current_scope.user) end
+    )
   end
 
   def handle_event("email_invite", %{"invite" => %{"invited_email" => invited_email}}, socket) do
@@ -286,23 +268,11 @@ defmodule KammerWeb.CommunityLive.Settings do
   end
 
   def handle_event("revoke_invite", %{"id" => invite_id}, socket) do
-    current_user = socket.assigns.current_scope.user
-    invite = Enum.find(socket.assigns.invites, fn invite -> invite.id == invite_id end)
-
-    if invite do
-      case Invitations.revoke_invite(current_user, invite) do
-        {:ok, _revoked} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Invite revoked."))
-           |> load_invites(current_user)}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("You are not allowed to do that."))}
-      end
-    else
-      {:noreply, socket}
-    end
+    InviteEventHandlers.handle_revoke_invite(
+      socket,
+      invite_id,
+      fn socket -> load_invites(socket, socket.assigns.current_scope.user) end
+    )
   end
 
   def handle_event("add_custom_field", %{"custom_field" => params}, socket) do
