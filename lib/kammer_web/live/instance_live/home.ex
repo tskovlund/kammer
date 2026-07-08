@@ -27,7 +27,7 @@ defmodule KammerWeb.InstanceLive.Home do
             "Your imprint still shows the built-in template. Publish your own before inviting members."
           )}
         </span>
-        <.link navigate={~p"/legal/imprint/edit"} class="btn btn-sm">
+        <.link navigate={~p"/legal/imprint/edit"} id="edit-imprint-link" class="btn btn-sm">
           {gettext("Edit imprint")}
         </.link>
       </div>
@@ -137,6 +137,7 @@ defmodule KammerWeb.InstanceLive.Home do
           </span>
           <button
             type="button"
+            id="purge-demo-button"
             phx-click="purge_demo"
             data-confirm={gettext("Delete the demo community and everything in it?")}
             class="btn btn-outline btn-error btn-sm"

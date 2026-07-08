@@ -18,10 +18,10 @@ defmodule KammerWeb.SearchFlowsTest do
     group = group_fixture(community, visibility: :community)
     member = group_member_fixture(group)
 
-    {:ok, _post} =
+    {:ok, post} =
       Feed.create_post(member, group, %{"body_markdown" => "Sommerkoncerten er bekræftet"})
 
-    %{community: community, group: group, member: member}
+    %{community: community, group: group, member: member, post: post}
   end
 
   # No real bytes needed to render a search result — only a DB row that
@@ -45,42 +45,51 @@ defmodule KammerWeb.SearchFlowsTest do
     test "a member finds a post and lands on it", %{
       community: community,
       group: group,
-      member: member
+      member: member,
+      post: post
     } do
       conn = log_in_user(build_conn(), member)
       {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/search")
 
       lv |> form("#search-form", %{q: "sommerkoncerten"}) |> render_change()
 
-      html = render(lv)
-      assert html =~ "Sommerkoncerten er bekræftet"
-      assert html =~ group.name
+      assert has_element?(
+               lv,
+               "#search-result-post-#{post.id}",
+               "Sommerkoncerten er bekræftet"
+             )
+
+      assert has_element?(lv, "#search-result-post-#{post.id}", group.name)
     end
 
     test "anonymous visitors don't see community-only content", %{
       conn: conn,
-      community: community
+      community: community,
+      post: post
     } do
       {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/search")
 
       lv |> form("#search-form", %{q: "sommerkoncerten"}) |> render_change()
 
-      html = render(lv)
-      refute html =~ "Sommerkoncerten er bekræftet"
-      assert html =~ "Nothing found"
+      refute has_element?(lv, "#search-result-post-#{post.id}")
+      assert has_element?(lv, "p", "Nothing found")
     end
 
     test "a member finds a file by name", %{community: community, group: group, member: member} do
-      stored_file_fixture(group, "koncertplakat.pdf")
+      stored_file = stored_file_fixture(group, "koncertplakat.pdf")
 
       conn = log_in_user(build_conn(), member)
       {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/search")
 
       lv |> form("#search-form", %{q: "koncertplakat"}) |> render_change()
 
-      html = render(lv)
-      assert html =~ "koncertplakat.pdf"
-      assert html =~ "/download"
+      assert has_element?(
+               lv,
+               "#search-result-file-#{stored_file.id}",
+               "koncertplakat.pdf"
+             )
+
+      assert has_element?(lv, "#search-result-file-#{stored_file.id}[href*='/download']")
     end
   end
 end

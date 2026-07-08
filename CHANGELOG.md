@@ -24,6 +24,16 @@ and this project adheres to
 
 ### Fixed
 
+- `test/kammer_web/live/decision_flows_test.exs`, `legal_live_test.exs`,
+  and `search_flows_test.exs` asserted exclusively via raw HTML
+  substring matching (`html =~ "..."`), contrary to
+  CONVENTIONS.md/CLAUDE.md's guidance to use `element/2`/`has_element?/2`.
+  Found by the full-codebase audit (#79), closing it. Added DOM ids to
+  the elements these tests needed to target that didn't have one yet
+  (`LegalLive.Show`'s content article and edit link,
+  `InstanceLive.Home`'s imprint-nag link and demo-purge button,
+  `SearchLive.Index`'s per-result links), then rewrote every assertion
+  to `has_element?/2,3` scoped to those ids. No behavior changed.
 - `Kammer.Media.process_image/1` — the libvips pipeline SPEC §11
   credits with stripping EXIF/GPS metadata via re-encoding — had no
   test. Found by the full-codebase audit (#79). Added

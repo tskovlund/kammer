@@ -17,13 +17,17 @@ defmodule KammerWeb.LegalLive.Show do
       <.header>
         {Legal.title(@page.key)}
         <:actions :if={@operator?}>
-          <.link navigate={~p"/legal/#{@page.key}/edit"} class="btn btn-ghost btn-sm">
+          <.link
+            navigate={~p"/legal/#{@page.key}/edit"}
+            id="edit-legal-page-link"
+            class="btn btn-ghost btn-sm"
+          >
             <.icon name="hero-pencil-square" class="size-4" /> {gettext("Edit")}
           </.link>
         </:actions>
       </.header>
 
-      <article class="prose prose-sm max-w-none dark:prose-invert">
+      <article id="legal-page-content" class="prose prose-sm max-w-none dark:prose-invert">
         {Phoenix.HTML.raw(Kammer.Markdown.to_html(@page.content_markdown))}
       </article>
     </Layouts.app>
