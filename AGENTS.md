@@ -37,9 +37,24 @@ operational sequence layered on top, not a restatement of it. (The
 CHANGELOG scope in step 4 below is the actual policy, not a pointer
 to one defined elsewhere — neither of those docs states one.)
 
-One coherent PR at a time: unrelated concerns (a feature vs. a docs
+One coherent concern per PR: unrelated concerns (a feature vs. a docs
 reorg vs. a dependency bump) get separate branches/PRs, even
 mid-session.
+
+**Parallel PRs via side branches** (owner-approved, 2026-07-09): the
+designated branch is the _main lane_, reserved for ladder/server
+feature PRs — those all touch the same hotspots (CHANGELOG,
+serializer, api_spec, schemas, router, the generated `schema.d.ts`),
+so running two of them as open PRs just converts merge-waits into
+rebase-waits; keep the main lane strictly serial. Genuinely
+_orthogonal_ PRs may run in parallel on suffixed side branches —
+`<designated-branch>-docs`, `-client`, `-site`, `-ci` — one coherent
+concern each, same gates and review rules, created fresh from
+`origin/main` per PR and deleted after merge. The agent manages merge
+order; if a side PR unexpectedly collides with the main lane (e.g.
+both touch CHANGELOG), merge the main-lane PR first and rebase the
+side branch. Never more than one open PR _per lane_, and never use a
+side branch to dodge the one-coherent-concern rule.
 
 1. `git fetch origin main && git checkout -B <branch> origin/main`.
 2. Implement. Verify with **all three** gates, not just the first:
