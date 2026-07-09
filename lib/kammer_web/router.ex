@@ -154,7 +154,9 @@ defmodule KammerWeb.Router do
   # deep-link straight into the SPA: real files were already served by
   # Plug.Static in the endpoint, so whatever reaches this route gets
   # index.html and lets the client router take over. Scoped strictly
-  # under :pwa_base_path — it can never shadow /api, /live, /healthz,
+  # under :pwa_base_path — at "/app" it can never shadow /api, /live,
+  # /healthz (at the #187 flip to "/" this scope must move to the END
+  # of the router: scopes match in definition order),
   # the RSS/iCal feeds, or the LiveView routes at "/". Flip note (#187):
   # see config/config.exs.
   scope Application.compile_env!(:kammer, :pwa_base_path), KammerWeb do

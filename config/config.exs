@@ -31,12 +31,22 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 config :kammer, :product_name, "Kammer"
 
 # Where the instance-served Svelte PWA is mounted (ADR 0024, issue #176).
-# LiveView keeps "/" until the removal cut (#187); at that cut this flips
-# to "/" — together with `paths.base` in clients/web/vite.config.ts, which
-# must match (the client bakes the base into its asset URLs and router).
+# LiveView keeps "/" until the removal cut (#187). The flip to "/" is
+# FOUR coordinated changes, not one: (1) this key → "/", (2) `paths.base`
+# in clients/web/vite.config.ts → '' (the client bakes the base into its
+# asset URLs and router), (3) clients/web/static/manifest.webmanifest —
+# start_url/scope/icon srcs hardcode /app/ and must lose the prefix,
+# (4) the router's :pwa catch-all scope must MOVE TO THE END of the
+# router — Phoenix matches scopes in definition order, and at "/" an
+# early catch-all would swallow /api and every other route.
 # Compile-time: the endpoint's Plug.Static mount and the router scope both
 # read it at compile time.
 config :kammer, :pwa_base_path, "/app"
+
+# Where the endpoint's Plug.Static reads the built client from.
+# Test env points this at a committed fixture so the static-serving
+# path (only:-list, immutable caching) is genuinely exercised.
+config :kammer, :pwa_static_root, {:kammer, "priv/static/app"}
 
 # i18n: English and Danish complete for everything shipped (SPEC §1).
 config :kammer, KammerWeb.Gettext, allowed_locales: ["en", "da"], default_locale: "en"

@@ -38,10 +38,16 @@ defmodule KammerWeb.Endpoint do
   # client build's, not the LiveView-era statics). Flip note (#187): the
   # mount point comes from :pwa_base_path; see config/config.exs for what
   # the flip to "/" involves.
+  # `only:` deliberately excludes index.html — the SPA document must
+  # always go through PwaController (CSP, frame-ancestors, no-cache);
+  # serving it as a plain static file would ship it cacheable and
+  # unguarded. Content-hashed build assets get immutable caching.
   plug Plug.Static,
     at: Application.compile_env!(:kammer, :pwa_base_path),
-    from: {:kammer, "priv/static/app"},
-    gzip: not code_reloading?
+    from: Application.compile_env!(:kammer, :pwa_static_root),
+    gzip: not code_reloading?,
+    only: ~w(_app icons manifest.webmanifest robots.txt),
+    headers: {__MODULE__, :pwa_static_headers, []}
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -85,4 +91,15 @@ defmodule KammerWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug KammerWeb.Router
+
+  @doc false
+  def pwa_static_headers(conn) do
+    # SvelteKit's content-hashed output is safe to cache forever; the
+    # rest (icons, manifest) revalidates normally.
+    if String.contains?(conn.request_path, "/_app/immutable/") do
+      [{"cache-control", "public, max-age=31536000, immutable"}]
+    else
+      []
+    end
+  end
 end

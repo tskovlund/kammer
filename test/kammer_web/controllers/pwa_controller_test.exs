@@ -67,6 +67,26 @@ defmodule KammerWeb.PwaControllerTest do
       assert get_resp_header(conn, "cache-control") == ["no-cache"]
     end
 
+    test "/app/index.html cannot bypass the controller's guards", %{conn: conn} do
+      # Plug.Static (serving the committed pwa_static fixture in test)
+      # must exclude index.html via its only: list — a direct request
+      # would otherwise serve the SPA document cacheable, with no CSP
+      # and no frame-ancestors (independent review of #194). The
+      # controller answers instead, with its guards.
+      conn = get(conn, "/app/index.html")
+
+      assert [_csp] = get_resp_header(conn, "content-security-policy")
+      assert get_resp_header(conn, "cache-control") == ["no-cache"]
+    end
+
+    test "content-hashed build assets cache as immutable", %{conn: conn} do
+      conn = get(conn, "/app/_app/immutable/entry.js")
+
+      assert response(conn, 200) =~ "immutable fixture"
+      assert [cache] = get_resp_header(conn, "cache-control")
+      assert cache =~ "immutable"
+    end
+
     test "the PWA scope shadows nothing outside its base path", %{conn: conn} do
       # Liveness probe.
       assert text_response(get(conn, "/healthz"), 200) == "ok"
