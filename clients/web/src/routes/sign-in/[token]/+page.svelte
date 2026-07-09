@@ -10,10 +10,13 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
-	// Deep-link sign-in for the instance-served PWA: the sign-in email
-	// links to /sign-in/{token} on the instance's own origin, so the
-	// instance to exchange against is exactly where this page is served
-	// from — no address entry needed.
+	// Deep-link sign-in for the instance-served PWA (forward-looking:
+	// today the server emails /users/log-in/{token}; #176/#177 flip the
+	// emails to this route once the instance serves the client). When
+	// that lands, the instance to exchange against is exactly where this
+	// page is served from — no address entry needed. On failure the
+	// token stays in history, which is acceptable: exchange failure
+	// means the single-use token is already dead or was never valid.
 	let failed = $state(false);
 
 	onMount(async () => {

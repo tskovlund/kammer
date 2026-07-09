@@ -36,6 +36,11 @@ export async function probeInstance(
 		if (error || !data) {
 			throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
 		}
+		if (typeof data.instance_name !== 'string' || data.instance_name.length === 0) {
+			// A non-Kammer server that answers 200 JSON on unknown paths
+			// must not become a stored instance named "undefined".
+			throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
+		}
 		return {
 			instanceName: data.instance_name,
 			registrationOpen: data.features.registration === 'open'

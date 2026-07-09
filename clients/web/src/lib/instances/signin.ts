@@ -29,7 +29,9 @@ export function normalizeInstanceUrl(input: string): string | null {
  * paste can't contain a token.
  */
 export function extractMagicToken(input: string): string | null {
-	const trimmed = input.trim();
+	// Plaintext mail clients and hurried copies drag sentence-final
+	// punctuation along with the link — strip it before parsing.
+	const trimmed = input.trim().replace(/[.,;:)\]>]+$/, '');
 	if (!trimmed) return null;
 
 	try {

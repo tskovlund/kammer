@@ -68,7 +68,9 @@
 
 	<div class="min-w-0 flex-1">
 		<main id="main" class="mx-auto w-full max-w-2xl px-4 pt-6 pb-24 md:px-8 md:pt-10 md:pb-16">
-			{@render children()}
+			{#if instances.list.length > 0}
+				{@render children()}
+			{/if}
 		</main>
 	</div>
 

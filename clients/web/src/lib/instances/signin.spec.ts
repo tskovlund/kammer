@@ -31,6 +31,12 @@ describe('normalizeInstanceUrl', () => {
 });
 
 describe('extractMagicToken', () => {
+	it('strips sentence-final punctuation dragged along from email text', () => {
+		expect(extractMagicToken('https://kammer.example.com/users/log-in/AbC123.')).toBe('AbC123');
+		expect(extractMagicToken('https://kammer.example.com/sign-in/AbC123),')).toBe('AbC123');
+		expect(extractMagicToken('AbC123.')).toBe('AbC123');
+	});
+
 	it('extracts the token from a pasted /users/log-in/{token} magic link', () => {
 		expect(extractMagicToken('https://klub.example.dk/users/log-in/abc123DEF-_x')).toBe(
 			'abc123DEF-_x'

@@ -32,6 +32,11 @@ function apply(preference: ThemePreference): void {
 
 let current = $state<ThemePreference>(initialPreference());
 
+// The pre-hydration script stamps data-theme for first paint, but it
+// leaves the media-scoped theme-color metas at their system defaults —
+// a forced theme must pin them on load, not only on the next toggle.
+apply(current);
+
 /**
  * Theme preference: `prefers-color-scheme` by default, with a manual
  * override persisted in localStorage and stamped on `<html data-theme>`.

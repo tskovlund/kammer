@@ -9,6 +9,11 @@ const CURRENT_VERSION = 1;
  * - v0 (unversioned): a bare `Instance[]` — still read, migrated on the
  *   next write.
  * - v1: `{ version: 1, instances: Instance[] }`.
+ *
+ * Cross-tab coherence is deliberately last-write-wins: no `storage`
+ * event listener, reads happen per operation. Two tabs mutating
+ * concurrently can briefly disagree until the next read; acceptable
+ * for a session list that changes a few times a year.
  */
 interface Envelope {
 	version: typeof CURRENT_VERSION;
