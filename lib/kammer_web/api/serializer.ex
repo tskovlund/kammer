@@ -111,6 +111,21 @@ defmodule KammerWeb.Api.Serializer do
     }
   end
 
+  # A group-authored post (no comment involved — comments always have a
+  # human author) hides its human author by design, so the actor is the
+  # group (#167) — same dispatch as `author/1` below. Requires the
+  # notification's `:post` preloaded (the Notifications read paths do).
+  defp notification_actor(%Notification{
+         comment_id: nil,
+         post: %Post{author_type: :group},
+         group: group
+       }) do
+    case group do
+      %Group{id: id, name: name} -> %{type: "group", id: id, display_name: name}
+      _not_loaded -> nil
+    end
+  end
+
   defp notification_actor(%Notification{actor_user: %{id: id, display_name: name}}),
     do: %{type: "user", id: id, display_name: name}
 

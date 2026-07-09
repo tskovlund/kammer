@@ -392,6 +392,18 @@ and this project adheres to
 
 ### Fixed
 
+- Group-authored posts no longer leak the human author's identity on
+  the remaining web surfaces (issue #167, found by independent review
+  of #166) — completing #153's closure across all transports: search
+  results and the signed-in home's recent activity now dispatch on
+  `author_type` like the feed does, and notifications for as-group
+  posts render the group as actor everywhere the fanout's
+  `actor_user_id` used to surface — the in-app notification center
+  (name and avatar), the JSON API's notification serializer, and the
+  email/push summary line ("Board posted", not "Alice posted").
+  Rendering-side dispatch keeps `post.author_type` the single source
+  of truth (matching digests and newsletters) and retroactively fixes
+  already-stored notification rows. Regression tests per surface.
 - Three residual holes in the ban enforcement family #129 hardened
   (issues #170, #171, #172, found by independent review of #169):
   `Communities.add_member/3` re-checks the community and instance ban

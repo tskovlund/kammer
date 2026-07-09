@@ -22,7 +22,13 @@ defmodule KammerWeb.NotificationFlowsTest do
     {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Notify me"})
     :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
 
-    %{conn: log_in_user(conn, reader), community: community, author: author, reader: reader}
+    %{
+      conn: log_in_user(conn, reader),
+      community: community,
+      group: group,
+      author: author,
+      reader: reader
+    }
   end
 
   test "center lists notifications and marks all read", %{
@@ -38,6 +44,27 @@ defmodule KammerWeb.NotificationFlowsTest do
 
     lv |> element("button", "Mark all read") |> render_click()
     assert Notifications.unread_count(reader) == 0
+  end
+
+  test "a group-authored post notifies as the group, not the human (#167)", %{
+    conn: conn,
+    community: community,
+    group: group
+  } do
+    group_owner = group_member_fixture(group, :owner)
+
+    {:ok, post} =
+      Feed.create_post(group_owner, group, %{
+        "body_markdown" => "From the board",
+        "author_type" => "group"
+      })
+
+    :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+
+    {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/notifications")
+
+    assert has_element?(lv, "li p", "#{group.name} posted")
+    refute has_element?(lv, "li", group_owner.display_name)
   end
 
   test "unread badge shows in the tab bar", %{conn: conn, community: community} do

@@ -6,6 +6,11 @@ defmodule Kammer.Moderation do
   through the same moderation functions the UI already uses; bans are
   keyed on email and enforced at the single membership choke-point
   (`Communities.add_member/3`).
+
+  Boundary note (#167): as-group posts hide the human author on every
+  member-facing surface, but the moderation queue deliberately shows
+  them — moderator accountability is why `author_user_id` is retained
+  at all. Moderators sit inside the hiding boundary.
   """
 
   import Ecto.Query, warn: false

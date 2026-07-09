@@ -62,6 +62,28 @@ defmodule KammerWeb.SearchFlowsTest do
       assert has_element?(lv, "#search-result-post-#{post.id}", group.name)
     end
 
+    test "a group-authored post shows the group as author, not the human (#167)", %{
+      community: community,
+      group: group,
+      member: member
+    } do
+      group_owner = group_member_fixture(group, :owner)
+
+      {:ok, post} =
+        Feed.create_post(group_owner, group, %{
+          "body_markdown" => "Generalforsamling til efteråret",
+          "author_type" => "group"
+        })
+
+      conn = log_in_user(build_conn(), member)
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/search")
+
+      lv |> form("#search-form", %{q: "generalforsamling"}) |> render_change()
+
+      assert has_element?(lv, "#search-result-post-#{post.id}", group.name)
+      refute has_element?(lv, "#search-result-post-#{post.id}", group_owner.display_name)
+    end
+
     test "anonymous visitors don't see community-only content", %{
       conn: conn,
       community: community,

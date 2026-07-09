@@ -136,7 +136,8 @@ defmodule Kammer.Notifications do
 
   @doc """
   One page of the user's notifications, newest first, with the
-  associations the API serializer shapes (actor, community, group).
+  associations the API serializer shapes (actor, community, group, and
+  the post — so group-authored posts render the group as actor, #167).
   Returns `{notifications, next_cursor}` — `next_cursor` is `nil` on the
   last page (same contract as `Kammer.Feed.list_group_feed_page/4`).
   """
@@ -152,7 +153,7 @@ defmodule Kammer.Notifications do
         where: notification.user_id == ^user.id,
         order_by: [desc: notification.inserted_at, desc: notification.id],
         limit: ^(limit + 1),
-        preload: [:actor_user, :community, :group]
+        preload: [:actor_user, :community, :group, :post]
       )
 
     query =
@@ -187,7 +188,7 @@ defmodule Kammer.Notifications do
         Repo.one(
           from(notification in Notification,
             where: notification.id == ^uuid and notification.user_id == ^user.id,
-            preload: [:actor_user, :community, :group]
+            preload: [:actor_user, :community, :group, :post]
           )
         )
 

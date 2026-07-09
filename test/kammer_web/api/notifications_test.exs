@@ -73,6 +73,30 @@ defmodule KammerWeb.Api.NotificationsTest do
         author |> api_conn() |> get(~p"/api/v1/notifications") |> json_response(200)
     end
 
+    test "a group-authored post's actor is the group, not the human (#167)", %{
+      group: group,
+      reader: reader
+    } do
+      group_owner = group_member_fixture(group, :owner)
+
+      {:ok, post} =
+        Feed.create_post(group_owner, group, %{
+          "body_markdown" => "From the board",
+          "author_type" => "group"
+        })
+
+      :ok = Notifications.fanout_post(post)
+
+      %{"data" => [entry]} =
+        reader |> api_conn() |> get(~p"/api/v1/notifications") |> json_response(200)
+
+      assert entry["actor"] == %{
+               "type" => "group",
+               "id" => group.id,
+               "display_name" => group.name
+             }
+    end
+
     test "requires a device token" do
       assert %{"error" => %{"code" => "unauthorized"}} =
                build_conn()

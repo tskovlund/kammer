@@ -1,8 +1,8 @@
 defmodule KammerWeb.InstanceHomeTest do
   @moduledoc """
-  The admin update notice on the instance landing page (SPEC §13):
+  The instance landing page: the admin update notice (SPEC §13) —
   visible to operators only, and only once a check has actually found
-  something newer.
+  something newer — and the merged Home lens (ADR 0015).
   """
 
   use KammerWeb.ConnCase, async: false
@@ -40,6 +40,27 @@ defmodule KammerWeb.InstanceHomeTest do
 
     {:ok, _lv, html} = conn |> log_in_user(operator) |> live(~p"/")
     refute html =~ "newer version of Kammer"
+  end
+
+  test "recent activity shows the group as author for group-authored posts (#167)", %{
+    conn: conn
+  } do
+    {community, _owner} = community_with_owner_fixture()
+    group = group_fixture(community)
+    group_owner = group_member_fixture(group, :owner)
+    member = group_member_fixture(group)
+
+    {:ok, _post} =
+      Kammer.Feed.create_post(group_owner, group, %{
+        "body_markdown" => "Announcement from the board",
+        "author_type" => "group"
+      })
+
+    {:ok, lv, _html} = conn |> log_in_user(member) |> live(~p"/")
+
+    assert has_element?(lv, "#home-activity", "Announcement from the board")
+    assert has_element?(lv, "#home-activity", group.name)
+    refute has_element?(lv, "#home-activity", group_owner.display_name)
   end
 
   test "a plain member never sees the notice, even if one is recorded", %{conn: conn} do
