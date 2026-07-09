@@ -42,7 +42,13 @@ defmodule KammerWeb.FeedComponents do
       ]}
     >
       <div class="flex items-start gap-3 p-4 pb-2">
-        <.user_avatar :if={@post.author_user} user={@post.author_user} />
+        <%!-- As-group posts hide the human entirely: initials + the
+             stable per-user avatar color are identifying in a small
+             community (#167 review). --%>
+        <.user_avatar
+          :if={@post.author_type != :group and @post.author_user}
+          user={@post.author_user}
+        />
         <div class="min-w-0 flex-1">
           <p class="flex flex-wrap items-center gap-x-2 text-sm">
             <span class="font-medium">{author_name(@post)}</span>

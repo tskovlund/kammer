@@ -42,6 +42,29 @@ defmodule KammerWeb.FeedFlowsTest do
       assert html =~ "<strong>band</strong>"
     end
 
+    test "an as-group post shows no human avatar on the feed card (#167)", %{
+      conn: conn,
+      community: community,
+      group: group,
+      group_owner: group_owner
+    } do
+      {:ok, post} =
+        Kammer.Feed.create_post(group_owner, group, %{
+          "body_markdown" => "Fra bestyrelsen",
+          "author_type" => "group"
+        })
+
+      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/g/#{group.slug}")
+
+      card = lv |> element("#post-#{post.id}") |> render()
+      assert card =~ group.name
+      # The human's name/initials avatar is identifying in a small
+      # community — nothing of the author may render on the card
+      # (the name appearing elsewhere on the page, e.g. the member
+      # sidebar, is fine).
+      refute card =~ group_owner.display_name
+    end
+
     test "posting UI hidden for non-members", %{community: community, group: group} do
       outsider = member_fixture(community)
 
