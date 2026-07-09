@@ -58,7 +58,18 @@ mid-session.
    CI green, unresolved review comments addressed, and an
    independent Agent review pass (below) run and addressed.
 8. Merge with a merge commit. Restart the branch from `origin/main`
-   before touching anything else.
+   (`git fetch origin main && git checkout -B <branch> origin/main`),
+   **then immediately push that reset** (`git push origin <branch>`)
+   before touching anything else — not just when the next commit
+   happens to trigger one. Skipping this leaves the remote copy of
+   `<branch>` stale (still pointing at the pre-merge tip) until
+   whenever a later commit incidentally pushes it forward; any
+   session-stop check that diffs local `HEAD` against that stale
+   remote ref in between will find the merge commit "unpushed" and
+   fire on it — repeatedly, every session, until something happens to
+   close the gap. The push here is always a plain fast-forward (the
+   old branch tip is an ancestor of the new merge commit), never a
+   force-push.
 
 ### Independent review
 
