@@ -17,6 +17,21 @@ defmodule Kammer.Accounts do
   ## Database getters
 
   @doc """
+  Locks the user's row (`FOR UPDATE`) inside the caller's transaction
+  and returns their current email, or `nil` if the account vanished
+  concurrently. The serialization point every ban-sensitive write
+  shares: the ban paths, membership adds, and community creation all
+  take this lock first so ban-vs-join/create/ban races serialize
+  instead of interleaving (issues #170/#171/#172).
+  """
+  @spec lock_user_email(User.t()) :: String.t() | nil
+  def lock_user_email(%User{id: user_id}) do
+    Repo.one(
+      from(user in User, where: user.id == ^user_id, lock: "FOR UPDATE", select: user.email)
+    )
+  end
+
+  @doc """
   Gets a user by email, or `nil`.
   """
   @spec get_user_by_email(String.t()) :: User.t() | nil

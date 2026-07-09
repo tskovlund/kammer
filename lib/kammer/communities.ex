@@ -84,7 +84,11 @@ defmodule Kammer.Communities do
 
   @doc """
   Creates a community; the creator becomes its Owner (SPEC §3). Authorized
-  against the instance community-creation policy.
+  against the instance community-creation policy, and refused for
+  instance-banned creators — an instance ban is an email-keyed rejoin
+  block the creator's live session survives, and becoming a community
+  owner is exactly the protected state the ban guards exist to prevent
+  (issue #172).
   """
   @spec create_community(User.t(), map()) ::
           {:ok, Community.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
@@ -93,10 +97,19 @@ defmodule Kammer.Communities do
 
     if Authorization.can_create_community?(creator, settings) do
       Repo.transact(fn ->
-        with {:ok, community} <-
-               %Community{} |> Community.changeset(attrs) |> Repo.insert(),
-             {:ok, _membership} <- insert_membership(community, creator, :owner) do
-          {:ok, community}
+        # Same user-row lock (and current-email re-read) as
+        # `add_member/3`, for the same reason: ban-vs-create serializes
+        # against the ban paths, which take this lock first (#170/#172).
+        email = Kammer.Accounts.lock_user_email(creator) || creator.email
+
+        if Kammer.Moderation.instance_banned?(email) do
+          {:error, :unauthorized}
+        else
+          with {:ok, community} <-
+                 %Community{} |> Community.changeset(attrs) |> Repo.insert(),
+               {:ok, _membership} <- insert_membership(community, creator, :owner) do
+            {:ok, community}
+          end
         end
       end)
     else
@@ -177,28 +190,45 @@ defmodule Kammer.Communities do
   Adds a user to a community with the given role. Idempotent: an existing
   membership is returned unchanged. Intended for invite redemption and
   internal flows — there is no open "join community" in v1 (communities are
-  entered by invitation, SPEC §3).
+  entered by invitation, SPEC §3). The ban checks run inside a transaction
+  against the row-locked user, so a ban and a join of the same user
+  serialize instead of racing (issue #170).
   """
   @spec add_member(Community.t(), User.t(), CommunityMembership.role()) ::
           {:ok, CommunityMembership.t()}
           | {:error, Ecto.Changeset.t() | :banned | :instance_banned}
   def add_member(%Community{} = community, %User{} = user, role \\ :member) do
-    cond do
-      # The single choke-point for bans (SPEC §11): instance-wide first,
-      # then the per-community list — banned emails cannot rejoin
-      # through any invite.
-      Kammer.Moderation.instance_banned?(user.email) ->
-        {:error, :instance_banned}
+    Repo.transact(fn ->
+      # Lock the user's row before the ban checks — the first lock both
+      # of `Kammer.Moderation`'s ban paths take (user row, then
+      # membership rows, #129/#171) — so ban-vs-join serializes instead
+      # of racing (issue #170): a concurrent ban either committed
+      # before this lock was granted (the checks below see it) or
+      # blocks on it until this membership commits (its purge then
+      # removes the membership). Deadlock-safe: no transaction locks a
+      # membership row before a user row, and this one takes no lock at
+      # all before the user row. The locked re-read also keeps the ban
+      # checks keyed on the user's current email, not the caller's
+      # possibly stale struct.
+      email = Kammer.Accounts.lock_user_email(user) || user.email
 
-      Kammer.Moderation.banned?(community, user.email) ->
-        {:error, :banned}
+      cond do
+        # The single choke-point for bans (SPEC §11): instance-wide first,
+        # then the per-community list — banned emails cannot rejoin
+        # through any invite.
+        Kammer.Moderation.instance_banned?(email) ->
+          {:error, :instance_banned}
 
-      membership = get_membership(community, user) ->
-        {:ok, membership}
+        Kammer.Moderation.banned?(community, email) ->
+          {:error, :banned}
 
-      true ->
-        insert_membership(community, user, role)
-    end
+        membership = get_membership(community, user) ->
+          {:ok, membership}
+
+        true ->
+          insert_membership(community, user, role)
+      end
+    end)
   end
 
   @doc """
