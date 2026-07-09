@@ -21,6 +21,47 @@ defmodule Kammer.FeedTest do
     }
   end
 
+  describe "fetch_visible_post/3" do
+    setup do
+      group_with_members()
+    end
+
+    test "returns a published post with the feed's preloads", %{group: group, member: member} do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Visible"})
+
+      assert {:ok, fetched} = Feed.fetch_visible_post(member, group, post.id)
+      assert fetched.author_user.id == member.id
+      assert is_list(fetched.comments)
+      assert is_list(fetched.reactions)
+    end
+
+    test "hides scheduled and pending posts exactly like the feed", %{community: community} do
+      group = group_fixture(community, approval_queue: true)
+      admin = group_member_fixture(group, :admin)
+      author = group_member_fixture(group)
+      other_member = group_member_fixture(group)
+
+      {:ok, pending} = Feed.create_post(author, group, %{"body_markdown" => "Held"})
+      assert pending.pending_approval
+
+      assert {:error, :not_found} = Feed.fetch_visible_post(other_member, group, pending.id)
+      assert {:ok, _own} = Feed.fetch_visible_post(author, group, pending.id)
+      assert {:ok, _moderated} = Feed.fetch_visible_post(admin, group, pending.id)
+
+      future = DateTime.add(DateTime.utc_now(:second), 3600, :second)
+
+      {:ok, scheduled} =
+        Feed.create_post(admin, group, %{"body_markdown" => "Later", "published_at" => future})
+
+      assert {:error, :not_found} = Feed.fetch_visible_post(other_member, group, scheduled.id)
+      assert {:ok, _own_scheduled} = Feed.fetch_visible_post(admin, group, scheduled.id)
+
+      # Nonexistent ids read the same as hidden ones.
+      assert {:error, :not_found} =
+               Feed.fetch_visible_post(other_member, group, Ecto.UUID.generate())
+    end
+  end
+
   describe "create_post/3" do
     setup do
       group_with_members()

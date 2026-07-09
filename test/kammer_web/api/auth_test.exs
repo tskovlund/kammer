@@ -112,6 +112,9 @@ defmodule KammerWeb.Api.AuthTest do
       |> json_response(401)
 
       # Revoke kills the device token.
+      # Revocation also severs any live socket for the device's user.
+      KammerWeb.Endpoint.subscribe("api_user_socket:#{user_body["id"]}")
+
       build_conn()
       |> json_conn()
       |> put_req_header("authorization", "Bearer #{device_token}")
@@ -119,6 +122,7 @@ defmodule KammerWeb.Api.AuthTest do
       |> json_response(200)
 
       assert Accounts.get_user_by_device_token(device_token) == nil
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
     end
 
     test "unknown emails get the same neutral answer", %{conn: conn} do

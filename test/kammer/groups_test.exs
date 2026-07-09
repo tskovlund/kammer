@@ -147,6 +147,25 @@ defmodule Kammer.GroupsTest do
     end
   end
 
+  describe "fetch_viewable_group_by_id/2" do
+    test "mirrors fetch_viewable_group/3 with an id handle" do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, visibility: :private)
+      member = group_member_fixture(group)
+      outsider = member_fixture(community)
+
+      assert {:ok, fetched} = Groups.fetch_viewable_group_by_id(member, group.id)
+      assert fetched.id == group.id
+      assert fetched.community.id == community.id
+
+      assert {:error, :unauthorized} = Groups.fetch_viewable_group_by_id(outsider, group.id)
+      assert {:error, :not_found} = Groups.fetch_viewable_group_by_id(member, "not-a-uuid")
+
+      assert {:error, :not_found} =
+               Groups.fetch_viewable_group_by_id(member, Ecto.UUID.generate())
+    end
+  end
+
   describe "listing respects visibility (through Authorization)" do
     setup do
       {community, owner} = community_with_owner_fixture()

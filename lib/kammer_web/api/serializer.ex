@@ -12,6 +12,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
   alias Kammer.Groups.Group
+  alias Kammer.Notifications.Notification
 
   @spec community(Community.t()) :: map()
   def community(%Community{} = community) do
@@ -92,6 +93,38 @@ defmodule KammerWeb.Api.Serializer do
       slots: slots(event)
     }
   end
+
+  @spec notification(Notification.t()) :: map()
+  def notification(%Notification{} = notification) do
+    %{
+      id: notification.id,
+      kind: notification.kind,
+      read: notification.read_at != nil,
+      read_at: notification.read_at,
+      inserted_at: notification.inserted_at,
+      actor: notification_actor(notification),
+      community: notification_community(notification),
+      group: notification_group(notification),
+      post_id: notification.post_id,
+      comment_id: notification.comment_id,
+      event_id: notification.event_id
+    }
+  end
+
+  defp notification_actor(%Notification{actor_user: %{id: id, display_name: name}}),
+    do: %{type: "user", id: id, display_name: name}
+
+  defp notification_actor(_notification), do: nil
+
+  defp notification_community(%Notification{community: %Community{} = loaded}),
+    do: community(loaded)
+
+  defp notification_community(_notification), do: nil
+
+  defp notification_group(%Notification{group: %Group{id: id, name: name, slug: slug}}),
+    do: %{id: id, name: name, slug: slug}
+
+  defp notification_group(_notification), do: nil
 
   defp author(%Post{author_type: :group, group: %Group{} = group}),
     do: %{type: "group", id: group.id, display_name: group.name}

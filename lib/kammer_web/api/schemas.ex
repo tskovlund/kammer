@@ -235,6 +235,52 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule Notification do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Notification",
+      description:
+        "An in-app notification. Navigate via community.slug + group.slug " <>
+          "plus whichever of post_id/comment_id/event_id is set.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        kind: %Schema{
+          type: :string,
+          enum: [
+            "post",
+            "mention",
+            "reply",
+            "acknowledgment_required",
+            "event_created",
+            "event_reminder"
+          ]
+        },
+        read: %Schema{type: :boolean},
+        read_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        inserted_at: %Schema{type: :string, format: :"date-time"},
+        actor: Author,
+        community: Community,
+        group: %Schema{
+          type: :object,
+          nullable: true,
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            name: %Schema{type: :string},
+            slug: %Schema{type: :string}
+          },
+          required: [:id, :name, :slug]
+        },
+        post_id: %Schema{type: :string, format: :uuid, nullable: true},
+        comment_id: %Schema{type: :string, format: :uuid, nullable: true},
+        event_id: %Schema{type: :string, format: :uuid, nullable: true}
+      },
+      required: [:id, :kind, :read, :inserted_at]
+    })
+  end
+
   defmodule Instance do
     @moduledoc false
     require OpenApiSpex

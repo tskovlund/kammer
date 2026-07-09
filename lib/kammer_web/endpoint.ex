@@ -15,6 +15,15 @@ defmodule KammerWeb.Endpoint do
     websocket: [connect_info: [:peer_data, :user_agent, session: @session_options]],
     longpoll: [connect_info: [:peer_data, :user_agent, session: @session_options]]
 
+  # Realtime for API clients (ADR 0014). No origin check for the same
+  # reason /api gets CORS `*` (issue #150): auth is the device token in
+  # the connect params, never a cookie, so a cross-origin page gains
+  # nothing a same-origin one doesn't already have — and the Svelte PWA
+  # and native apps connect from origins this server can't predict.
+  socket "/api/socket", KammerWeb.Api.UserSocket,
+    websocket: [check_origin: false],
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),

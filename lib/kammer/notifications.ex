@@ -84,6 +84,39 @@ defmodule Kammer.Notifications do
     )
   end
 
+  ## PubSub
+
+  @doc "PubSub topic for a user's notifications."
+  @spec user_topic(User.t() | Ecto.UUID.t()) :: String.t()
+  def user_topic(%User{id: user_id}), do: "notifications:user:#{user_id}"
+  def user_topic(user_id) when is_binary(user_id), do: "notifications:user:#{user_id}"
+
+  @doc "Subscribes the caller to the user's notification events."
+  @spec subscribe(User.t()) :: :ok | {:error, term()}
+  def subscribe(%User{} = user) do
+    Phoenix.PubSub.subscribe(Kammer.PubSub, user_topic(user))
+  end
+
+  @doc """
+  The one insert path for in-app notifications: inserts the row and
+  broadcasts it on the owner's topic, so realtime subscribers never
+  miss one. Anything creating a `%Notification{}` goes through here —
+  a bare `Repo.insert!` would silently skip the broadcast (that's how
+  event reminders were invisible to Channels clients until fetched).
+  """
+  @spec insert_notification!(map()) :: Notification.t()
+  def insert_notification!(attrs) when is_map(attrs) do
+    notification = Repo.insert!(struct!(Notification, attrs))
+
+    Phoenix.PubSub.broadcast(
+      Kammer.PubSub,
+      user_topic(notification.user_id),
+      {__MODULE__, {:notification_created, notification.id}}
+    )
+
+    notification
+  end
+
   ## In-app center
 
   @doc """
@@ -102,6 +135,68 @@ defmodule Kammer.Notifications do
   end
 
   @doc """
+  One page of the user's notifications, newest first, with the
+  associations the API serializer shapes (actor, community, group).
+  Returns `{notifications, next_cursor}` — `next_cursor` is `nil` on the
+  last page (same contract as `Kammer.Feed.list_group_feed_page/4`).
+  """
+  @spec list_notifications_page(
+          User.t(),
+          {DateTime.t(), Ecto.UUID.t()} | nil,
+          pos_integer()
+        ) :: {[Notification.t()], {DateTime.t(), Ecto.UUID.t()} | nil}
+  def list_notifications_page(%User{} = user, cursor, limit)
+      when limit > 0 and limit <= 100 do
+    query =
+      from(notification in Notification,
+        where: notification.user_id == ^user.id,
+        order_by: [desc: notification.inserted_at, desc: notification.id],
+        limit: ^(limit + 1),
+        preload: [:actor_user, :community, :group]
+      )
+
+    query =
+      case cursor do
+        nil ->
+          query
+
+        {cursor_at, cursor_id} ->
+          from(notification in query,
+            where:
+              notification.inserted_at < ^cursor_at or
+                (notification.inserted_at == ^cursor_at and notification.id < ^cursor_id)
+          )
+      end
+
+    notifications = Repo.all(query)
+
+    case Enum.split(notifications, limit) do
+      {page, []} -> {page, nil}
+      {page, _more} -> {page, page |> List.last() |> then(&{&1.inserted_at, &1.id})}
+    end
+  end
+
+  @doc """
+  One notification with the associations the API serializer shapes,
+  scoped to the owner — someone else's id reads as `nil`.
+  """
+  @spec get_notification(User.t(), Ecto.UUID.t()) :: Notification.t() | nil
+  def get_notification(%User{} = user, notification_id) do
+    case Ecto.UUID.cast(notification_id) do
+      {:ok, uuid} ->
+        Repo.one(
+          from(notification in Notification,
+            where: notification.id == ^uuid and notification.user_id == ^user.id,
+            preload: [:actor_user, :community, :group]
+          )
+        )
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   Count of unread notifications.
   """
   @spec unread_count(User.t() | nil) :: non_neg_integer()
@@ -117,18 +212,24 @@ defmodule Kammer.Notifications do
   end
 
   @doc """
-  Marks one notification read (scoped to the owner).
+  Marks one notification read (scoped to the owner). Someone else's id —
+  or one that doesn't exist — reads as `{:error, :not_found}`, the same
+  answer for both so ids can't be probed.
   """
-  @spec mark_read(User.t(), Ecto.UUID.t()) :: :ok
+  @spec mark_read(User.t(), Ecto.UUID.t()) :: :ok | {:error, :not_found}
   def mark_read(%User{} = user, notification_id) do
-    Repo.update_all(
-      from(notification in Notification,
-        where: notification.id == ^notification_id and notification.user_id == ^user.id
-      ),
-      set: [read_at: DateTime.utc_now(:second)]
-    )
-
-    :ok
+    with {:ok, uuid} <- Ecto.UUID.cast(notification_id),
+         {count, nil} when count > 0 <-
+           Repo.update_all(
+             from(notification in Notification,
+               where: notification.id == ^uuid and notification.user_id == ^user.id
+             ),
+             set: [read_at: DateTime.utc_now(:second)]
+           ) do
+      :ok
+    else
+      _missing -> {:error, :not_found}
+    end
   end
 
   @doc """
@@ -291,7 +392,7 @@ defmodule Kammer.Notifications do
     channels = channels_for(kind, level)
 
     if :in_app in channels do
-      Repo.insert!(%Notification{
+      insert_notification!(%{
         user_id: recipient.id,
         community_id: group.community_id,
         group_id: group.id,
@@ -340,10 +441,14 @@ defmodule Kammer.Notifications do
   end
 
   @doc """
-  Registers a browser push subscription for the user.
+  Registers a browser push subscription for the user. Re-registering an
+  endpoint the user already has is a no-op (`ON CONFLICT DO NOTHING`) —
+  browsers re-send the same subscription freely. Anything that isn't the
+  browser's `PushSubscription.toJSON()` shape reads as
+  `{:error, :invalid_subscription}`.
   """
   @spec register_push_subscription(User.t(), map()) ::
-          {:ok, PushSubscription.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, PushSubscription.t()} | {:error, Ecto.Changeset.t() | :invalid_subscription}
   def register_push_subscription(%User{} = user, %{
         "endpoint" => endpoint,
         "keys" => %{"p256dh" => p256dh_key, "auth" => auth_key}
@@ -356,6 +461,24 @@ defmodule Kammer.Notifications do
       auth_key: auth_key
     })
     |> Repo.insert(on_conflict: :nothing, conflict_target: [:user_id, :endpoint])
+  end
+
+  def register_push_subscription(%User{}, _attrs), do: {:error, :invalid_subscription}
+
+  @doc """
+  Removes the user's push subscription for an endpoint. Idempotent —
+  deleting an endpoint that isn't registered is still `:ok`, mirroring
+  how browsers unsubscribe (they only know the endpoint URL).
+  """
+  @spec delete_push_subscription(User.t(), String.t()) :: :ok
+  def delete_push_subscription(%User{} = user, endpoint) when is_binary(endpoint) do
+    Repo.delete_all(
+      from(subscription in PushSubscription,
+        where: subscription.user_id == ^user.id and subscription.endpoint == ^endpoint
+      )
+    )
+
+    :ok
   end
 
   @doc """
