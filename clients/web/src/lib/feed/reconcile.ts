@@ -58,6 +58,52 @@ export function removePost(posts: Post[], postId: string): Post[] {
 	return posts.filter((post) => post.id !== postId);
 }
 
+export interface EchoMerge {
+	/** The post to store. */
+	post: Post;
+	/** Pending comment ids this echo confirms — the caller drops them from its set. */
+	confirmedIds: string[];
+}
+
+/**
+ * Merge a `post_updated` echo. The server re-fetches and broadcasts the full
+ * viewer-filtered post on every update, so the echo is authoritative — with one
+ * caveat: an echo triggered by a *concurrent* change (say another viewer's
+ * reaction) can be built before a comment this client just created has
+ * committed, so it arrives without that comment. Blindly replacing would drop
+ * the fresh comment until its own echo lands. We instead preserve any
+ * locally-created comment (`pendingCommentIds`) the echo doesn't yet carry, and
+ * defer to the echo for everything else (including deletions it omits on
+ * purpose). Ids the echo now carries are reported back as `confirmedIds` so the
+ * caller stops tracking them.
+ */
+export function reconcilePostEcho(
+	existing: Post | undefined,
+	incoming: Post,
+	pendingCommentIds: ReadonlySet<string>
+): EchoMerge {
+	if (!existing || pendingCommentIds.size === 0) {
+		return { post: incoming, confirmedIds: [] };
+	}
+	const incomingComments = incoming.comments ?? [];
+	const echoedIds = new Set(incomingComments.map((comment) => comment.id));
+	const confirmedIds = [...pendingCommentIds].filter((id) => echoedIds.has(id));
+	const preserved = (existing.comments ?? []).filter(
+		(comment) => pendingCommentIds.has(comment.id) && !echoedIds.has(comment.id)
+	);
+	if (preserved.length === 0) {
+		return { post: incoming, confirmedIds };
+	}
+	return {
+		post: {
+			...incoming,
+			comments: [...incomingComments, ...preserved],
+			comment_count: (incoming.comment_count ?? 0) + preserved.length
+		},
+		confirmedIds
+	};
+}
+
 /**
  * Merge a freshly fetched page onto the existing list (cursor pagination):
  * existing posts win on id collision only if the incoming copy is not newer —

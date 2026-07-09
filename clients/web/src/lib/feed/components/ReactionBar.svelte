@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import type { ReactionState } from '$lib/feed/interactions.js';
+	import { dismissable } from '$lib/ui/dismissable.js';
 
 	interface Props {
 		subject: ReactionState;
@@ -16,6 +17,7 @@
 	let { subject, onToggle, idPrefix }: Props = $props();
 
 	let pickerOpen = $state(false);
+	let pickerTrigger = $state<HTMLButtonElement>();
 
 	// Existing reactions, most-used first, so the liveliest emoji lead.
 	const entries = $derived(
@@ -48,6 +50,7 @@
 
 	<div class="relative">
 		<button
+			bind:this={pickerTrigger}
 			type="button"
 			onclick={() => (pickerOpen = !pickerOpen)}
 			aria-expanded={pickerOpen}
@@ -66,6 +69,11 @@
 
 		{#if pickerOpen}
 			<div
+				use:dismissable={{
+					onDismiss: () => (pickerOpen = false),
+					trigger: pickerTrigger,
+					arrowKeys: true
+				}}
 				class="absolute bottom-full left-0 z-10 mb-1.5 flex gap-0.5 rounded-full border border-line bg-surface p-1 shadow-sm"
 			>
 				{#each REACTION_CHOICES as emoji (emoji)}

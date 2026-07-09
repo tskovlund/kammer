@@ -122,11 +122,17 @@ class FakeTransport implements Transport {
 	}
 }
 
-function manager(options: { baseBackoffMs?: number; maxBackoffMs?: number } = {}) {
+function manager(
+	options: { baseBackoffMs?: number; maxBackoffMs?: number; random?: () => number } = {}
+) {
 	return new InstanceSocketManager(instance(), {
 		createTransport: () => new FakeTransport(),
 		baseBackoffMs: options.baseBackoffMs ?? 1_000,
-		maxBackoffMs: options.maxBackoffMs ?? 30_000
+		maxBackoffMs: options.maxBackoffMs ?? 30_000,
+		// Pin the jitter RNG to its maximum by default so the exact-timing tests
+		// stay deterministic; equal jitter at random()=1 yields the full ceiling
+		// delay (the pre-jitter behaviour). The jitter range has its own test.
+		random: options.random ?? (() => 1)
 	});
 }
 
@@ -216,6 +222,30 @@ describe('InstanceSocketManager', () => {
 		expect(FakeTransport.instances).toHaveLength(2);
 		vi.advanceTimersByTime(1);
 		expect(FakeTransport.instances).toHaveLength(3);
+	});
+
+	it('jitters the reconnect delay within [ceiling/2, ceiling]', () => {
+		// random()=0 → the equal-jitter floor (half the ceiling); the timer must
+		// not fire before it, and must fire at it.
+		const low = manager({ baseBackoffMs: 1_000, random: () => 0 });
+		low.connect();
+		FakeTransport.latest().fireOpen();
+		FakeTransport.latest().fireClose();
+		vi.advanceTimersByTime(499);
+		expect(FakeTransport.instances).toHaveLength(1);
+		vi.advanceTimersByTime(1);
+		expect(FakeTransport.instances).toHaveLength(2);
+
+		// random()=1 → the full ceiling; nothing fires until then.
+		const high = manager({ baseBackoffMs: 1_000, random: () => 1 });
+		high.connect();
+		const created = FakeTransport.instances.length;
+		FakeTransport.latest().fireOpen();
+		FakeTransport.latest().fireClose();
+		vi.advanceTimersByTime(999);
+		expect(FakeTransport.instances).toHaveLength(created);
+		vi.advanceTimersByTime(1);
+		expect(FakeTransport.instances).toHaveLength(created + 1);
 	});
 
 	it('resets the backoff after a successful reconnection', () => {

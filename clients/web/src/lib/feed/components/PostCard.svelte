@@ -9,6 +9,7 @@
 	import Chip from '$lib/ui/Chip.svelte';
 	import Markdown from '$lib/ui/Markdown.svelte';
 	import RelativeTime from '$lib/ui/RelativeTime.svelte';
+	import { dismissable } from '$lib/ui/dismissable.js';
 	import Attachments from './Attachments.svelte';
 	import CommentComposer from './CommentComposer.svelte';
 	import CommentThread from './CommentThread.svelte';
@@ -32,6 +33,7 @@
 
 	let showComments = $state(false);
 	let menuOpen = $state(false);
+	let menuTrigger = $state<HTMLButtonElement>();
 	let editing = $state(false);
 
 	async function saveEdit(body: string): Promise<boolean> {
@@ -74,6 +76,7 @@
 
 				<div class="relative">
 					<button
+						bind:this={menuTrigger}
 						type="button"
 						onclick={() => (menuOpen = !menuOpen)}
 						aria-expanded={menuOpen}
@@ -90,6 +93,11 @@
 					{#if menuOpen}
 						<div
 							role="menu"
+							use:dismissable={{
+								onDismiss: () => (menuOpen = false),
+								trigger: menuTrigger,
+								arrowKeys: true
+							}}
 							class="absolute top-full right-0 z-10 mt-1 flex w-44 flex-col overflow-hidden rounded-lg border border-line bg-surface py-1 text-sm shadow-sm"
 						>
 							{#if isMine && !post.deleted}

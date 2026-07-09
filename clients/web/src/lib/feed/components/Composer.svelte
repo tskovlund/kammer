@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { FeedApiError, uploadFile } from '$lib/feed/api.js';
 	import type { FeedStore } from '$lib/feed/feed-store.svelte.js';
@@ -20,6 +21,11 @@
 	let ackRequired = $state(false);
 	let expanded = $state(false);
 	let submitting = $state(false);
+
+	let textarea = $state<HTMLTextAreaElement>();
+	// Set while we programmatically return focus to the textarea after a reset,
+	// so its focus handler doesn't immediately re-expand the collapsed composer.
+	let restoringFocus = false;
 
 	// Poll builder (null until the author adds a poll).
 	interface PollDraft {
@@ -90,7 +96,7 @@
 		uploads = uploads.filter((upload) => upload.id !== id);
 	}
 
-	function reset(): void {
+	async function reset(): Promise<void> {
 		body = '';
 		previewing = false;
 		ackRequired = false;
@@ -98,6 +104,14 @@
 		uploads = [];
 		uploadError = null;
 		expanded = false;
+		// Collapsing unmounts the submit/cancel buttons, so focus would strand on
+		// a removed node and fall to <body>. Return it to the composer's text
+		// field (rendered once previewing is off) instead. `restoringFocus` keeps
+		// the field's focus handler from re-expanding what we just collapsed.
+		await tick();
+		restoringFocus = true;
+		textarea?.focus();
+		restoringFocus = false;
 	}
 
 	async function publish(event: SubmitEvent): Promise<void> {
@@ -144,8 +158,11 @@
 			</div>
 		{:else}
 			<textarea
+				bind:this={textarea}
 				bind:value={body}
-				onfocus={() => (expanded = true)}
+				onfocus={() => {
+					if (!restoringFocus) expanded = true;
+				}}
 				rows={expanded ? 4 : 2}
 				placeholder={t('feed.compose.placeholder')}
 				aria-label={t('feed.compose.placeholder')}

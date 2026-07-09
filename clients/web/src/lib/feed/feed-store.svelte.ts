@@ -2,8 +2,9 @@ import type { Instance } from '$lib/instances/types.js';
 import { getSocket, noteInstanceAuthFailure } from '$lib/realtime/registry.svelte.js';
 import * as api from './api.js';
 import { FeedApiError, type CreatePostInput, type FeedErrorKind } from './api.js';
+import { SvelteSet } from 'svelte/reactivity';
 import { applyOptimisticVote, toggleReaction } from './interactions.js';
-import { appendPage, sortFeed } from './reconcile.js';
+import { appendPage, reconcilePostEcho, sortFeed } from './reconcile.js';
 import type { Comment, FeedSort, Post } from './types.js';
 
 interface GroupRef {
@@ -38,12 +39,28 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	let actionError = $state<FeedActionError | null>(null);
 	let stopLive: (() => void) | null = null;
 
+	// Ids of comments this client just created that haven't yet appeared in a
+	// `post_updated` echo. They're preserved across a concurrent echo that
+	// predates them (see `applyEcho`), then dropped once the echo confirms them.
+	const pendingCommentIds = new SvelteSet<string>();
+
 	const items = $derived(sortFeed(posts, sort));
 
 	function replace(post: Post): void {
 		const index = posts.findIndex((existing) => existing.id === post.id);
 		if (index === -1) posts = [...posts, post];
 		else posts = posts.map((existing) => (existing.id === post.id ? post : existing));
+	}
+
+	/** Apply a `post_updated` echo, preserving just-created comments it predates. */
+	function applyEcho(incoming: Post): void {
+		const { post, confirmedIds } = reconcilePostEcho(
+			find(incoming.id),
+			incoming,
+			pendingCommentIds
+		);
+		for (const id of confirmedIds) pendingCommentIds.delete(id);
+		replace(post);
 	}
 
 	function drop(postId: string): void {
@@ -66,6 +83,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	async function load(): Promise<void> {
 		loadState = 'loading';
 		loadErrorKind = null;
+		pendingCommentIds.clear();
 		try {
 			const page = await api.fetchFeedPage(instance, ref);
 			posts = page.posts;
@@ -103,7 +121,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		if (stopLive) return;
 		stopLive = getSocket(instance).subscribeFeed(groupId, {
 			onPostCreated: (post) => replace(post),
-			onPostUpdated: (post) => replace(post),
+			onPostUpdated: (post) => applyEcho(post),
 			onPostDeleted: (postId) => drop(postId)
 		});
 	}
@@ -117,16 +135,22 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		const current = find(postId);
 		if (!current) return;
 		// Optimistic: reflect the toggle instantly, reconcile on the response.
-		const before = { reactions: current.reactions, my_reactions: current.my_reactions };
+		const wasMine = current.my_reactions.includes(emoji);
 		replace({ ...current, ...toggleReaction(current, emoji) });
 		try {
 			replace(await api.reactToPost(instance, ref, postId, emoji));
 		} catch (error) {
-			// Roll back only the reaction fields on the latest copy, so a live
-			// update that arrived meanwhile (a new comment, someone else's
-			// reaction) isn't clobbered — mirrors `vote`'s targeted rollback.
+			// Restore *our* membership for this emoji to its pre-optimistic value,
+			// re-deriving from the latest copy instead of blanket-restoring a
+			// snapshot. If a concurrent echo already reconciled us to server truth
+			// (a full post_updated swap, which drops our in-flight reaction), our
+			// membership matches `wasMine` and we leave it — so another viewer's
+			// reaction counted by that echo isn't clobbered, and we don't resurrect
+			// the reaction our own request just failed to make.
 			const latest = find(postId);
-			if (latest) replace({ ...latest, ...before });
+			if (latest && latest.my_reactions.includes(emoji) !== wasMine) {
+				replace({ ...latest, ...toggleReaction(latest, emoji) });
+			}
 			handle(error);
 		}
 	}
@@ -134,15 +158,20 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	async function vote(postId: string, optionIds: string[]): Promise<void> {
 		const current = find(postId);
 		if (!current?.poll) return;
-		const previous = current.poll;
-		replace({ ...current, poll: applyOptimisticVote(previous, optionIds) });
+		const previousVotes = [...current.poll.my_votes];
+		replace({ ...current, poll: applyOptimisticVote(current.poll, optionIds) });
 		try {
 			const poll = await api.votePoll(instance, ref, postId, optionIds);
 			const latest = find(postId);
 			if (latest) replace({ ...latest, poll });
 		} catch (error) {
+			// Re-derive the inverse selection on the latest poll instead of
+			// restoring the pre-vote snapshot, so another viewer's vote counted
+			// mid-flight isn't discarded when our optimistic vote rolls back.
 			const latest = find(postId);
-			if (latest) replace({ ...latest, poll: previous });
+			if (latest?.poll) {
+				replace({ ...latest, poll: applyOptimisticVote(latest.poll, previousVotes) });
+			}
 			handle(error);
 		}
 	}
@@ -223,7 +252,11 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		input: { body_markdown: string; parent_comment_id?: string | null }
 	): Promise<boolean> {
 		try {
-			mergeComment(postId, await api.createComment(instance, ref, postId, input));
+			const created = await api.createComment(instance, ref, postId, input);
+			// Track it until its own echo confirms it, so a concurrent echo that
+			// predates it (built before it committed) can't momentarily drop it.
+			pendingCommentIds.add(created.id);
+			mergeComment(postId, created);
 			return true;
 		} catch (error) {
 			handle(error);
@@ -253,11 +286,18 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		const post = find(postId);
 		const target = post?.comments?.find((c) => c.id === commentId);
 		if (!post || !target) return;
+		const wasMine = target.my_reactions.includes(emoji);
 		mergeComment(postId, { ...target, ...toggleReaction(target, emoji) });
 		try {
 			mergeComment(postId, await api.reactToComment(instance, ref, postId, commentId, emoji));
 		} catch (error) {
-			mergeComment(postId, target);
+			// Restore our membership to its pre-optimistic value on the latest copy
+			// of the comment, leaving it untouched if a concurrent echo already
+			// reconciled us — mirrors `react`'s conditional rollback.
+			const latest = find(postId)?.comments?.find((c) => c.id === commentId);
+			if (latest && latest.my_reactions.includes(emoji) !== wasMine) {
+				mergeComment(postId, { ...latest, ...toggleReaction(latest, emoji) });
+			}
 			handle(error);
 		}
 	}

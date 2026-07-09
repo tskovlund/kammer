@@ -33,6 +33,8 @@ export interface SocketManagerOptions {
 	/** Injectable timers so tests can drive backoff deterministically. */
 	setTimer?: (callback: () => void, ms: number) => number;
 	clearTimer?: (handle: number) => void;
+	/** Injectable RNG for the backoff jitter; defaults to `Math.random`. */
+	random?: () => number;
 }
 
 interface Subscription {
@@ -63,6 +65,7 @@ export class InstanceSocketManager {
 	readonly #maxBackoffMs: number;
 	readonly #setTimer: (callback: () => void, ms: number) => number;
 	readonly #clearTimer: (handle: number) => void;
+	readonly #random: () => number;
 
 	readonly #subscriptions: Subscription[] = [];
 	readonly #statusListeners = new Set<(status: SocketStatus) => void>();
@@ -90,6 +93,7 @@ export class InstanceSocketManager {
 		this.#maxBackoffMs = options.maxBackoffMs ?? DEFAULT_MAX_BACKOFF_MS;
 		this.#setTimer = options.setTimer ?? ((callback, ms) => setTimeout(callback, ms) as never);
 		this.#clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle));
+		this.#random = options.random ?? Math.random;
 	}
 
 	get status(): SocketStatus {
@@ -222,7 +226,12 @@ export class InstanceSocketManager {
 
 	#scheduleReconnect(): void {
 		this.#cancelReconnect();
-		const delay = Math.min(this.#baseBackoffMs * 2 ** this.#attempts, this.#maxBackoffMs);
+		const ceiling = Math.min(this.#baseBackoffMs * 2 ** this.#attempts, this.#maxBackoffMs);
+		// Equal jitter (AWS "Exponential Backoff And Jitter"): keep half the delay
+		// as a floor so backoff still grows, and randomise the other half so a
+		// fleet of clients dropped by the same server blip doesn't reconnect in
+		// lockstep and stampede it. Still capped at `maxBackoffMs`.
+		const delay = ceiling / 2 + this.#random() * (ceiling / 2);
 		this.#attempts += 1;
 		this.#setStatus('reconnecting');
 		this.#reconnectTimer = this.#setTimer(() => {

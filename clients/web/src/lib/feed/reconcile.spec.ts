@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { appendPage, latestActivityAt, removePost, sortFeed, upsertPost } from './reconcile';
+import {
+	appendPage,
+	latestActivityAt,
+	reconcilePostEcho,
+	removePost,
+	sortFeed,
+	upsertPost
+} from './reconcile';
 import type { Comment, Post } from './types';
 
 function post(overrides: Partial<Post> = {}): Post {
@@ -143,5 +150,37 @@ describe('appendPage', () => {
 		const result = appendPage([live], [pageCopy, older], 'chronological');
 		expect(result.map((p) => p.id).sort()).toEqual(['older', 'shared']);
 		expect(result.find((p) => p.id === 'shared')?.reactions).toEqual({ '👍': 5 });
+	});
+});
+
+describe('reconcilePostEcho', () => {
+	it('takes the echo verbatim when nothing is pending', () => {
+		const existing = post({ comments: [comment({ id: 'c1' })] });
+		const incoming = post({ reactions: { '👍': 1 }, comments: [] });
+		const { post: merged, confirmedIds } = reconcilePostEcho(existing, incoming, new Set());
+		expect(merged).toBe(incoming);
+		expect(confirmedIds).toEqual([]);
+	});
+
+	it('preserves a pending comment the echo predates and does not confirm it', () => {
+		const local = comment({ id: 'pending' });
+		const existing = post({ comments: [local], comment_count: 1 });
+		const echo = post({ reactions: { '👍': 1 }, comments: [], comment_count: 0 });
+
+		const { post: merged, confirmedIds } = reconcilePostEcho(existing, echo, new Set(['pending']));
+		expect(merged.comments?.map((c) => c.id)).toEqual(['pending']);
+		expect(merged.reactions).toEqual({ '👍': 1 });
+		expect(merged.comment_count).toBe(1);
+		expect(confirmedIds).toEqual([]);
+	});
+
+	it('confirms a pending comment the echo now carries and takes the echo as-is', () => {
+		const local = comment({ id: 'pending' });
+		const existing = post({ comments: [local], comment_count: 1 });
+		const echo = post({ comments: [local], comment_count: 1 });
+
+		const { post: merged, confirmedIds } = reconcilePostEcho(existing, echo, new Set(['pending']));
+		expect(merged).toBe(echo);
+		expect(confirmedIds).toEqual(['pending']);
 	});
 });

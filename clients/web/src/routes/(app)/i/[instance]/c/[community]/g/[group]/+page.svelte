@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import {
@@ -28,6 +29,11 @@
 	let community = $state<Community | null>(null);
 	let group = $state<Group | null>(null);
 	let metaError = $state<FeedErrorKind | null>(null);
+	let heading = $state<HTMLHeadingElement>();
+	// Skip the very first load: only a client-side navigation between groups
+	// should pull focus to the new heading; the initial page load leaves focus
+	// at the document's natural start.
+	let initialLoad = true;
 
 	const ref = $derived({ community: page.params.community!, group: page.params.group! });
 	const status = $derived(instance ? socketStatus(instance.id) : 'idle');
@@ -65,7 +71,16 @@
 				);
 				store = localStore;
 				await localStore.load();
-				if (!cancelled) localStore.startLive();
+				if (cancelled) return;
+				localStore.startLive();
+				// On navigation between groups, move focus to the new heading so a
+				// keyboard/screen-reader user isn't stranded on the previous page's
+				// context. `tick()` waits for the heading to render its new name.
+				if (!initialLoad) {
+					await tick();
+					if (!cancelled) heading?.focus();
+				}
+				initialLoad = false;
 			} catch (error) {
 				if (!cancelled) metaError = error instanceof FeedApiError ? error.kind : 'server';
 			}
@@ -105,7 +120,11 @@
 		</a>
 		<div class="flex items-end justify-between gap-3">
 			<div class="min-w-0">
-				<h1 class="truncate text-xl font-semibold tracking-tight text-ink">
+				<h1
+					bind:this={heading}
+					tabindex="-1"
+					class="truncate text-xl font-semibold tracking-tight text-ink focus:outline-none"
+				>
 					{group?.name ?? ''}
 				</h1>
 				{#if group?.description}
