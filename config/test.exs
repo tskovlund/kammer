@@ -48,3 +48,6 @@ config :kammer, Oban, testing: :manual
 # The SQL sandbox owns all connections in test — first-run setup is
 # exercised explicitly by the setup tests instead of at boot.
 config :kammer, setup_on_boot: false
+
+# Serve the PWA static fixture so Plug.Static's guards are testable.
+config :kammer, :pwa_static_root, Path.expand("../test/support/fixtures/pwa_static", __DIR__)

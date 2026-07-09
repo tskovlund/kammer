@@ -1,40 +1,41 @@
 {
 	"name": "Kammer",
 	"short_name": "Kammer",
-	"start_url": "/",
+	"start_url": "/app/",
 	"display": "standalone",
 	"background_color": "#f6f4f0",
 	"theme_color": "#f6f4f0",
 	"icons": [
 		{
-			"src": "/icons/icon.svg",
+			"src": "/app/icons/icon.svg",
 			"sizes": "any",
 			"type": "image/svg+xml",
 			"purpose": "any"
 		},
 		{
-			"src": "/icons/icon-192.png",
+			"src": "/app/icons/icon-192.png",
 			"sizes": "192x192",
 			"type": "image/png",
 			"purpose": "any"
 		},
 		{
-			"src": "/icons/icon-512.png",
+			"src": "/app/icons/icon-512.png",
 			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "any"
 		},
 		{
-			"src": "/icons/icon-maskable.svg",
+			"src": "/app/icons/icon-maskable.svg",
 			"sizes": "any",
 			"type": "image/svg+xml",
 			"purpose": "maskable"
 		},
 		{
-			"src": "/icons/icon-maskable-512.png",
+			"src": "/app/icons/icon-maskable-512.png",
 			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "maskable"
 		}
-	]
+	],
+	"scope": "/app/"
 }

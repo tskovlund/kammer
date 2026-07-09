@@ -1,0 +1,29 @@
+# Keep the build context small and reproducible: nothing generated on the
+# host may leak into the image — the Dockerfile builds everything itself
+# (mix deps, assets.deploy, and the clients/web pnpm build).
+.git
+.github
+_build
+deps
+cover
+doc
+.elixir_ls
+.lexical
+.nix-mix
+.nix-hex
+docs/screenshots
+
+# Generated web assets (rebuilt in-image by mix assets.deploy).
+priv/static/assets
+priv/static/app
+
+# Node toolchains and client build output (rebuilt in the client stage).
+**/node_modules
+clients/web/build
+clients/web/.svelte-kit
+
+# Local state.
+.env
+.env.*
+uploads
+tmp

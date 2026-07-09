@@ -5,7 +5,9 @@ kammer.example.org {
 	encode zstd gzip
 	reverse_proxy localhost:4000
 
-	# WebSockets (LiveView) are proxied automatically by Caddy.
+	# WebSockets (LiveView, /api/socket) are proxied automatically by
+	# Caddy. The bundled Svelte web app is served by Phoenix itself at
+	# /app — nothing extra to configure here.
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"

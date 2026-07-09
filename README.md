@@ -96,7 +96,9 @@ token is printed in the server logs (`docker compose logs app`). The wizard
 creates your operator account, instance settings, first community and group,
 an invite link, and (optionally) a removable demo community. Health checks
 live at `/healthz`; put a TLS proxy in front (see
-`docs/deploy/Caddyfile.example`).
+`docs/deploy/Caddyfile.example`). The image also bundles and serves the
+[Svelte web app](docs/decisions/0024-pwa-replaces-liveview.md) at `/app`
+on the same domain — no extra configuration or separate deployment.
 
 ## Documentation
 
