@@ -165,6 +165,12 @@ below, during owner-away stretches they're the _only_ one — a messy
 issue tracker isn't cosmetic, it's a broken channel. Treat hygiene as
 standing maintenance, not a task to schedule once:
 
+- **The total open-issue count is a metric the owner watches**
+  (owner-stressed twice, 2026-07-09). Net growth needs genuine
+  justification: before filing a new issue, ask whether it folds into
+  an existing one, and pair filing with closing — a work session that
+  only ever adds issues is a hygiene smell. Closing what a merge
+  completed is part of landing the merge, not a separate chore.
 - **Stale/superseded issues get closed, not left open.** If a
   reprioritization, a merged PR, or new scope makes an issue's ask
   moot, close it with a comment explaining why (`state_reason:
