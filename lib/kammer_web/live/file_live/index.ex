@@ -124,7 +124,11 @@ defmodule KammerWeb.FileLive.Index do
                   <button
                     phx-click="delete_folder"
                     phx-value-id={folder.id}
-                    data-confirm={gettext("Delete this folder? Files move to the root.")}
+                    data-confirm={
+                      gettext(
+                        "Delete this folder? Files move to the root and become visible to everyone who can see this space."
+                      )
+                    }
                     class="text-error"
                   >
                     {gettext("Delete folder")}
