@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Fixed
 
+- The test suite no longer deadlocks intermittently on the
+  instance-settings singleton (issue #215): the row is seeded once in
+  the test bootstrap, so concurrent sandboxed transactions never race
+  the lazy unique-index insert (production was already safe — the
+  insert is an idempotent upsert).
 - Deleting a folder that contained files crashed (a foreign-key
   cascade interplay deleted the folder's file entries out from under
   their stored files) instead of honoring the documented semantics —
