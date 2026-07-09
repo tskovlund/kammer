@@ -254,6 +254,34 @@ defmodule KammerWeb.Api.EventWritesTest do
       assert body["error"]["code"] == "slot_full"
     end
 
+    test "the event manager deletes a slot; a plain member may not", %{
+      community: community,
+      group: group,
+      creator: creator,
+      member: member
+    } do
+      %{event: event} = create_event(creator, community, group)
+      event_path = ~p"/api/v1/communities/#{community.slug}/events/#{event.id}"
+
+      {:ok, slot} = Events.create_slot(creator, event, %{"title" => "Kage", "capacity" => 2})
+
+      # The event is visible to the member, so the refusal is an honest
+      # 403 — no-oracle 404s are for events the caller can't see at all.
+      member
+      |> api_conn()
+      |> delete("#{event_path}/slots/#{slot.id}")
+      |> json_response(403)
+
+      %{"data" => after_delete} =
+        creator
+        |> api_conn()
+        |> delete("#{event_path}/slots/#{slot.id}")
+        |> tap(&assert_operation_response(&1, "events_delete_slot"))
+        |> json_response(200)
+
+      assert after_delete["slots"] == []
+    end
+
     test "a plain member cannot add a slot", %{
       community: community,
       group: group,

@@ -339,6 +339,7 @@ defmodule KammerWeb.Api.FileLibraryTest do
 
   describe "folders" do
     test "create, browse into, upload within, and delete a folder", %{
+      manager: manager,
       member: member,
       files_path: files_path,
       folders_path: folders_path,
@@ -379,11 +380,25 @@ defmodule KammerWeb.Api.FileLibraryTest do
       assert Enum.any?(inside["files"], &(&1["filename"] == "score.txt"))
 
       # Delete the folder (manager power — the member is not a manager, so
-      # they're refused; the moderator can).
+      # they're refused; the manager succeeds, and the file inside falls
+      # back to the space root — files outlive their folders).
       member
       |> api_conn()
       |> delete("#{folders_path}/#{folder["id"]}")
       |> json_response(403)
+
+      %{"data" => deleted} =
+        manager
+        |> api_conn()
+        |> delete("#{folders_path}/#{folder["id"]}")
+        |> tap(&assert_operation_response(&1, "file_library_delete_folder"))
+        |> json_response(200)
+
+      assert deleted["id"] == folder["id"]
+
+      %{"data" => root_after} = member |> api_conn() |> get(files_path) |> json_response(200)
+      refute Enum.any?(root_after["folders"], &(&1["id"] == folder["id"]))
+      assert Enum.any?(root_after["files"], &(&1["filename"] == "score.txt"))
     end
 
     test "a manager restricts a folder to admins, hiding it from members (no oracle)", %{

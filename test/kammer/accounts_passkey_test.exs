@@ -160,7 +160,7 @@ defmodule Kammer.AccountsPasskeyTest do
                )
     end
 
-    test "a stale, non-increasing sign count is rejected as a possible clone", %{
+    test "a stale sign count never regresses the clone detector's bookkeeping", %{
       user: user,
       key_pair: key_pair
     } do
@@ -193,9 +193,10 @@ defmodule Kammer.AccountsPasskeyTest do
                  replay_challenge
                )
 
-      # The sign-in itself is not blocked (Wax already verified the
-      # signature), but bookkeeping must not regress from the clone
-      # detector's point of view.
+      # WebAuthn §7.2 leaves the stale-count response to the relying
+      # party; Kammer deliberately lets the sign-in through (Wax already
+      # verified the signature) but the recorded high-water mark must
+      # never move backwards — that's the clone detector's whole state.
       assert [%{sign_count: 5}] = Accounts.list_passkeys(user)
     end
   end

@@ -82,13 +82,26 @@ defmodule Kammer.DecisionsTest do
     end
 
     test "non-members are refused; a failed register entry rolls back the post" do
-      %{group: group} = decisions_group_context()
+      %{group: group, proposer: proposer} = decisions_group_context()
       outsider = user_fixture()
 
       assert {:error, :unauthorized} =
                Decisions.create_decision(outsider, group, %{"title" => "Kup"})
 
+      # A register entry that fails after the post insert (here: the
+      # title exceeds the 200-char limit while the motion body is fine,
+      # so the post itself is valid) must take the post and its poll
+      # with it — the create is one transaction.
+      overlong_title = String.duplicate("a", 201)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Decisions.create_decision(proposer, group, %{
+                 "title" => overlong_title,
+                 "motion_markdown" => "Gyldig motivering"
+               })
+
       assert Repo.aggregate(Post, :count) == 0
+      assert Repo.aggregate(Poll, :count) == 0
     end
   end
 

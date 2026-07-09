@@ -4,6 +4,14 @@ defmodule KammerWeb.Api.ResourcesTest do
   guarantee that matters most: authorization parity. Whatever a user
   cannot see in the UI, they cannot see through the API, because both
   transports resolve through the same authorization module.
+
+  The parity property below sweeps reads (posts index) and writes
+  (event creation) over the visibility × sealed × viewer space. Every
+  other API controller funnels through the same single gate
+  (`Groups.fetch_viewable_group`), verified per controller by the
+  deterministic gate tests in FeedWritesTest, EventWritesTest, and
+  FileLibraryTest — file uploads are multipart and stay deterministic
+  there rather than joining this property.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -75,6 +83,22 @@ defmodule KammerWeb.Api.ResourcesTest do
 
       bodies = Enum.map([first, second, third], & &1["body_markdown"])
       assert Enum.sort(bodies) == ["Post 1", "Post 2", "Post 3"]
+
+      # Pagination's documented defensive contract: a garbage cursor
+      # reads as no cursor (the first page again, never a 500)...
+      %{"data" => [garbage_first, _second]} =
+        member
+        |> api_conn()
+        |> get(path <> "?limit=2&after=garbage")
+        |> json_response(200)
+
+      assert garbage_first["id"] == first["id"]
+
+      # ...and an absurd limit clamps into [1, 100] instead of erroring.
+      %{"data" => clamped} =
+        member |> api_conn() |> get(path <> "?limit=999999") |> json_response(200)
+
+      assert length(clamped) == 3
 
       %{"data" => created} =
         member
@@ -256,6 +280,23 @@ defmodule KammerWeb.Api.ResourcesTest do
         {true, 200} -> :ok
         {false, status} when status in [403, 404] -> :ok
         mismatch -> flunk("UI/API visibility mismatch: #{inspect(mismatch)}")
+      end
+
+      # Write parity over the same configuration: a hidden group refuses
+      # writes without confirming existence; a visible one answers on the
+      # merits (created, or an honest 403 for a viewer without rights).
+      write_response =
+        viewer
+        |> api_conn()
+        |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/events", %{
+          "title" => "Parity write",
+          "starts_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(:second), 48, :hour))
+        })
+
+      case {ui_visible?, write_response.status} do
+        {true, status} when status in [201, 403] -> :ok
+        {false, status} when status in [403, 404] -> :ok
+        mismatch -> flunk("UI/API write-parity mismatch: #{inspect(mismatch)}")
       end
     end
   end

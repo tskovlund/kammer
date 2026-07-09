@@ -174,7 +174,12 @@ defmodule Kammer.Files do
           where: entry.community_id == ^community_id,
           where: ^scope_group_condition(group_id),
           where: ^entry_folder_condition(folder_id),
-          where: entry.name == ^name
+          where: entry.name == ^name,
+          # Same-name entries can coexist in one place after a deleted
+          # folder released its contents to the space root — version
+          # onto the newest, never raise on the ambiguity.
+          order_by: [desc: entry.inserted_at, desc: entry.id],
+          limit: 1
         )
       )
 

@@ -132,7 +132,12 @@ defmodule Kammer.FeedTest do
       admin_feed = Feed.list_group_feed(admin, group)
       assert Enum.any?(admin_feed, fn post -> post.id == member_post.id end)
 
-      # Approval publishes it.
+      # A plain member may not approve — the LiveView hands approve_post
+      # a client-supplied post id, so this domain check is the only gate.
+      assert {:error, :unauthorized} = Feed.approve_post(other_member, member_post)
+      assert Kammer.Repo.get!(Post, member_post.id).pending_approval
+
+      # Approval by a moderator publishes it.
       assert {:ok, approved} = Feed.approve_post(admin, member_post)
       refute approved.pending_approval
     end
@@ -805,6 +810,29 @@ defmodule Kammer.FeedTest do
       assert "in one" in bodies
       assert "in two" in bodies
       refute "elsewhere" in bodies
+    end
+
+    test "hides pending-approval and scheduled posts from other members" do
+      # list_home_feed inlines its own published/pending filter instead of
+      # going through visible_posts/4 — if that duplicated clause ever
+      # diverges, hidden posts leak community-wide. This pins it.
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, approval_queue: true)
+      author = group_member_fixture(group)
+      admin = group_member_fixture(group, :admin)
+      member = group_member_fixture(group)
+
+      {:ok, pending_post} = Feed.create_post(author, group, %{"body_markdown" => "Venter"})
+      assert pending_post.pending_approval
+
+      future = DateTime.add(DateTime.utc_now(:second), 3600, :second)
+
+      {:ok, scheduled_post} =
+        Feed.create_post(admin, group, %{"body_markdown" => "Senere", "published_at" => future})
+
+      assert Post.scheduled?(scheduled_post, DateTime.utc_now(:second))
+
+      assert Feed.list_home_feed(member, community) == []
     end
 
     test "record_visit returns the previous visit time" do
