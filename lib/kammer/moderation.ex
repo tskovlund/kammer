@@ -151,13 +151,14 @@ defmodule Kammer.Moderation do
   Bans a member: removes their community membership (group memberships
   cascade through the community removal path they already follow) and
   records the email ban. Community admins only; admins cannot ban
-  admins — demote first, deliberately two steps.
+  admins — demote first, deliberately two steps. The protected-role
+  check runs inside the transaction against the row-locked membership,
+  so a concurrent promotion cannot land between check and removal
+  (issue #129).
   """
   @spec ban_member(User.t(), Community.t(), User.t(), String.t() | nil) ::
           {:ok, CommunityBan.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
   def ban_member(%User{} = actor, %Community{} = community, %User{} = target, reason) do
-    target_relationship = Authorization.relationship(target, community)
-
     cond do
       not Authorization.can?(actor, :manage_community, community) ->
         {:error, :unauthorized}
@@ -165,17 +166,18 @@ defmodule Kammer.Moderation do
       actor.id == target.id ->
         {:error, :unauthorized}
 
-      target_relationship.community_role in [:admin, :owner] ->
-        {:error, :unauthorized}
-
       true ->
         with {:ok, ban} <-
                Repo.transact(fn ->
-                 remove_memberships(community, target)
+                 if lock_community_role(community, target) in [:admin, :owner] do
+                   {:error, :unauthorized}
+                 else
+                   remove_memberships(community, target)
 
-                 %CommunityBan{community_id: community.id, banned_by_user_id: actor.id}
-                 |> CommunityBan.changeset(%{email: target.email, reason: reason})
-                 |> Repo.insert()
+                   %CommunityBan{community_id: community.id, banned_by_user_id: actor.id}
+                   |> CommunityBan.changeset(%{email: target.email, reason: reason})
+                   |> Repo.insert()
+                 end
                end) do
           Audit.record(
             community,
@@ -267,14 +269,15 @@ defmodule Kammer.Moderation do
   banning anyone who owns a community — same demote/transfer-first
   rule `Communities.remove_member/3` enforces for ordinary removal,
   extended here since a bulk purge has no single community to ask
-  "who's the new owner?" of.
+  "who's the new owner?" of. The target-protection checks run inside
+  the transaction against row-locked state, so a concurrent promotion
+  or ownership transfer cannot land between check and purge
+  (issue #129).
   """
   @spec ban_instance(User.t(), String.t(), String.t() | nil) ::
           {:ok, InstanceBan.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
   def ban_instance(%User{} = actor, email, reason) when is_binary(email) do
     normalized_email = String.downcase(email)
-    target = Repo.get_by(User, email: normalized_email)
-    memberships = target && community_memberships_for(target)
 
     cond do
       not Authorization.instance_operator?(actor) ->
@@ -283,24 +286,10 @@ defmodule Kammer.Moderation do
       normalized_email == String.downcase(actor.email) ->
         {:error, :unauthorized}
 
-      Authorization.instance_operator?(target) ->
-        {:error, :unauthorized}
-
-      memberships && Enum.any?(memberships, &(&1.role == :owner)) ->
-        {:error, :unauthorized}
-
       true ->
-        affected_communities = memberships && Enum.map(memberships, & &1.community)
-
-        with {:ok, ban} <-
-               Repo.transact(fn ->
-                 if target, do: remove_all_memberships(target)
-
-                 %InstanceBan{banned_by_user_id: actor.id}
-                 |> InstanceBan.changeset(%{email: normalized_email, reason: reason})
-                 |> Repo.insert()
-               end) do
-          Enum.each(affected_communities || [], fn community ->
+        with {:ok, {ban, target, affected_communities}} <-
+               Repo.transact(fn -> purge_memberships_and_ban(actor, normalized_email, reason) end) do
+          Enum.each(affected_communities, fn community ->
             Audit.record(
               community,
               actor,
@@ -434,15 +423,70 @@ defmodule Kammer.Moderation do
     )
   end
 
-  defp community_memberships_for(target) do
-    Repo.all(
-      from(community in Community,
-        join: membership in Kammer.Communities.CommunityMembership,
-        on: membership.community_id == community.id,
-        where: membership.user_id == ^target.id,
-        select: %{community: community, role: membership.role}
+  # Runs inside `ban_instance/3`'s transaction. The guards a ban must
+  # not race past — the target's operator flag and community ownership
+  # (a purge past an owner would orphan that community, the bug #122
+  # fixed) — are checked here, against the row-locked user and
+  # membership rows, not before the transaction: a concurrent
+  # promotion or ownership transfer either committed before the locks
+  # were taken (so the check sees it) or blocks until the ban commits
+  # (issue #129).
+  defp purge_memberships_and_ban(actor, normalized_email, reason) do
+    target =
+      Repo.one(from(user in User, where: user.email == ^normalized_email, lock: "FOR UPDATE"))
+
+    memberships = (target && lock_community_memberships(target)) || []
+
+    cond do
+      Authorization.instance_operator?(target) ->
+        {:error, :unauthorized}
+
+      Enum.any?(memberships, &(&1.role == :owner)) ->
+        {:error, :unauthorized}
+
+      true ->
+        if target, do: remove_all_memberships(target)
+
+        insert_result =
+          %InstanceBan{banned_by_user_id: actor.id}
+          |> InstanceBan.changeset(%{email: normalized_email, reason: reason})
+          |> Repo.insert()
+
+        with {:ok, ban} <- insert_result do
+          {:ok, {ban, target, Enum.map(memberships, & &1.community)}}
+        end
+    end
+  end
+
+  # Inside `ban_member/4`'s transaction: reads the target's community
+  # role with the membership row locked, so a concurrent role change
+  # cannot land between this check and the membership removal.
+  defp lock_community_role(community, target) do
+    Repo.one(
+      from(membership in Kammer.Communities.CommunityMembership,
+        where: membership.community_id == ^community.id and membership.user_id == ^target.id,
+        lock: "FOR UPDATE",
+        select: membership.role
       )
     )
+  end
+
+  # Inside `ban_instance/3`'s transaction: locks every community
+  # membership row of the target before the ownership check reads
+  # their roles. The community preload runs unlocked afterwards —
+  # only the membership rows (where the roles live) need the lock.
+  defp lock_community_memberships(target) do
+    memberships =
+      Repo.all(
+        from(membership in Kammer.Communities.CommunityMembership,
+          where: membership.user_id == ^target.id,
+          lock: "FOR UPDATE"
+        )
+      )
+
+    memberships
+    |> Repo.preload(:community)
+    |> Enum.map(&%{community: &1.community, role: &1.role})
   end
 
   defp report_group(%Report{post: %Post{} = post}) do

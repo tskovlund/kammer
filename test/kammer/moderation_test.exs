@@ -12,6 +12,7 @@ defmodule Kammer.ModerationTest do
 
   alias Kammer.Audit
   alias Kammer.Communities
+  alias Kammer.Communities.CommunityMembership
   alias Kammer.Feed
   alias Kammer.Feed.Post
   alias Kammer.Moderation
@@ -155,6 +156,54 @@ defmodule Kammer.ModerationTest do
 
       assert {:error, :unauthorized} = Moderation.ban_member(owner, community, author, nil)
     end
+
+    test "the admin guard reads the target's current role, not the caller's snapshot", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      # The struct in hand predates the promotion — the guard must
+      # re-read the role inside the ban transaction (issue #129).
+      stale_target = author
+      membership = Communities.get_membership(community, author)
+      {:ok, _admin} = Communities.update_member_role(owner, community, membership, :admin)
+
+      assert {:error, :unauthorized} = Moderation.ban_member(owner, community, stale_target, nil)
+      refute Moderation.banned?(community, author.email)
+      assert Communities.get_membership(community, author)
+    end
+
+    test "a failed ban insert rolls the membership removal back — check and act are atomic", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      {:ok, _existing_ban} = Moderation.ban_member(owner, community, author, nil)
+
+      # Re-insert the membership directly (the add_member choke-point
+      # would refuse a banned email) so a second ban attempt reaches
+      # the duplicate-ban insert failure inside the transaction.
+      {:ok, _membership} =
+        Repo.insert(%CommunityMembership{
+          community_id: community.id,
+          user_id: author.id,
+          role: :member
+        })
+
+      assert {:error, %Ecto.Changeset{}} = Moderation.ban_member(owner, community, author, nil)
+      assert Communities.get_membership(community, author)
+    end
+
+    test "banning someone who is not a member still records the ban", %{
+      community: community,
+      owner: owner
+    } do
+      outsider = user_fixture()
+
+      assert {:ok, _ban} = Moderation.ban_member(owner, community, outsider, nil)
+      assert Moderation.banned?(community, outsider.email)
+      assert {:error, :banned} = Communities.add_member(community, outsider)
+    end
   end
 
   describe "instance bans" do
@@ -218,6 +267,45 @@ defmodule Kammer.ModerationTest do
 
       refute Moderation.instance_banned?(owner.email)
       assert Communities.get_membership(community, owner)
+    end
+
+    test "refusing a community owner leaves their other memberships untouched", %{
+      community: community,
+      owner: owner
+    } do
+      # The ownership guard and the purge run in one transaction
+      # (issue #129): a refusal must never leave a partial purge, even
+      # of memberships that aren't the protected one.
+      operator = instance_operator_fixture()
+      other_community = community_fixture()
+      {:ok, _membership} = Communities.add_member(other_community, owner)
+
+      assert {:error, :unauthorized} = Moderation.ban_instance(operator, owner.email, nil)
+
+      refute Moderation.instance_banned?(owner.email)
+      assert Communities.get_membership(community, owner)
+      assert Communities.get_membership(other_community, owner)
+    end
+
+    test "a failed instance-ban insert rolls the membership purge back", %{
+      community: community,
+      author: author
+    } do
+      operator = instance_operator_fixture()
+      {:ok, _existing_ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      # Re-insert the membership directly (the add_member choke-point
+      # would refuse a banned email) so a second ban attempt reaches
+      # the duplicate-ban insert failure inside the transaction.
+      {:ok, _membership} =
+        Repo.insert(%CommunityMembership{
+          community_id: community.id,
+          user_id: author.id,
+          role: :member
+        })
+
+      assert {:error, %Ecto.Changeset{}} = Moderation.ban_instance(operator, author.email, nil)
+      assert Communities.get_membership(community, author)
     end
 
     test "list_instance_bans is operator-only", %{author: author} do
