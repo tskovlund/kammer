@@ -654,7 +654,13 @@ defmodule KammerWeb.FeedComponents do
     end
   end
 
-  defp author_name(%Post{author_type: :group} = post) do
+  @doc """
+  The name a post is displayed under: the group for group-authored posts
+  (`author_type: :group` exists to hide the human author — issue #167),
+  otherwise the author's display name.
+  """
+  @spec author_name(Post.t()) :: String.t()
+  def author_name(%Post{author_type: :group} = post) do
     if Ecto.assoc_loaded?(post.group) and post.group do
       post.group.name
     else
@@ -662,8 +668,8 @@ defmodule KammerWeb.FeedComponents do
     end
   end
 
-  defp author_name(%Post{author_user: nil}), do: gettext("Deleted user")
-  defp author_name(%Post{author_user: author}), do: author.display_name
+  def author_name(%Post{author_user: nil}), do: gettext("Deleted user")
+  def author_name(%Post{author_user: author}), do: author.display_name
 
   defp image_attachments(post) do
     post.attachments

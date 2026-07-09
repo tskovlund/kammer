@@ -11,6 +11,7 @@ defmodule KammerWeb.NotificationLive.Index do
   import KammerWeb.FeedComponents, only: [relative_time: 1]
   import KammerWeb.KammerComponents
 
+  alias Kammer.Feed.Post
   alias Kammer.Notifications
 
   @impl Phoenix.LiveView
@@ -61,7 +62,7 @@ defmodule KammerWeb.NotificationLive.Index do
             ]}
           >
             <.user_avatar
-              :if={notification.actor_user}
+              :if={notification.actor_user && not group_actor?(notification)}
               user={notification.actor_user}
               size_class="size-8"
               text_class="text-xs"
@@ -142,8 +143,7 @@ defmodule KammerWeb.NotificationLive.Index do
   end
 
   defp describe(notification) do
-    actor_name =
-      (notification.actor_user && notification.actor_user.display_name) || gettext("Someone")
+    actor_name = actor_name(notification)
 
     case notification.kind do
       :mention ->
@@ -163,6 +163,26 @@ defmodule KammerWeb.NotificationLive.Index do
 
       :post ->
         gettext("%{name} posted", name: actor_name)
+    end
+  end
+
+  # A notification about a group-authored post (no comment involved —
+  # comments always have a human author). Posting "as the group" exists
+  # to hide the human author, so the actor rendered is the group (#167),
+  # matching `feed_components.ex`, digests, and newsletters.
+  defp group_actor?(%{comment_id: nil, post: %Post{author_type: :group}}), do: true
+  defp group_actor?(_notification), do: false
+
+  defp actor_name(notification) do
+    cond do
+      group_actor?(notification) ->
+        (notification.group && notification.group.name) || gettext("The group")
+
+      notification.actor_user ->
+        notification.actor_user.display_name
+
+      true ->
+        gettext("Someone")
     end
   end
 

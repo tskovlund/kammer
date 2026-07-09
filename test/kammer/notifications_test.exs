@@ -177,6 +177,35 @@ defmodule Kammer.NotificationsTest do
       assert [%{kind: :post}] = Notifications.list_notifications(reader)
     end
 
+    test "group-authored post emails name the group, never the human author (#167)", %{
+      group: group,
+      group_owner: group_owner,
+      reader: reader
+    } do
+      {:ok, _preference} = Notifications.set_level(reader, group, :everything)
+
+      {:ok, post} =
+        Feed.create_post(group_owner, group, %{
+          "body_markdown" => "Board news",
+          "author_type" => "group"
+        })
+
+      drain_delivered_emails()
+      assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+
+      emails = collect_emails()
+
+      reader_email =
+        Enum.find(emails, fn email ->
+          Enum.any?(email.to, fn {_name, address} -> address == reader.email end)
+        end)
+
+      assert reader_email, "no email delivered to the reader"
+      assert reader_email.subject =~ "#{group.name} posted"
+      refute reader_email.subject =~ group_owner.display_name
+      refute reader_email.text_body =~ group_owner.display_name
+    end
+
     test "pending posts do not fan out", %{community: community} do
       queue_group = group_fixture(community, approval_queue: true)
       queue_author = group_member_fixture(queue_group)

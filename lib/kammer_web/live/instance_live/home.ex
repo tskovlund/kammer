@@ -7,6 +7,7 @@ defmodule KammerWeb.InstanceLive.Home do
 
   use KammerWeb, :live_view
 
+  import KammerWeb.FeedComponents, only: [author_name: 1]
   import KammerWeb.KammerComponents
 
   alias Kammer.Authorization
@@ -116,7 +117,9 @@ defmodule KammerWeb.InstanceLive.Home do
             >
               <p class="truncate text-sm text-base-content/60">
                 {post.group.community.name} / {post.group.name}
-                <span :if={post.author_user}>· {post.author_user.display_name}</span>
+                <span :if={post.author_type == :group or post.author_user}>
+                  · {author_name(post)}
+                </span>
               </p>
               <p class="line-clamp-2 text-sm">{excerpt(post.body_markdown)}</p>
             </.link>

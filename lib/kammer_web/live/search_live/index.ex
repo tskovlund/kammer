@@ -8,7 +8,7 @@ defmodule KammerWeb.SearchLive.Index do
 
   use KammerWeb, :live_view
 
-  import KammerWeb.FeedComponents, only: [relative_time: 1]
+  import KammerWeb.FeedComponents, only: [author_name: 1, relative_time: 1]
   import KammerWeb.KammerComponents
 
   alias Kammer.Search
@@ -52,9 +52,7 @@ defmodule KammerWeb.SearchLive.Index do
         >
           <p class="line-clamp-2 text-sm">{excerpt(post.body_markdown)}</p>
           <p class="pt-1 text-xs text-base-content/60">
-            {(post.author_user && post.author_user.display_name) || gettext("Deleted user")} · {post.group.name} · {relative_time(
-              post.published_at
-            )}
+            {author_name(post)} · {post.group.name} · {relative_time(post.published_at)}
           </p>
         </.link>
       </section>

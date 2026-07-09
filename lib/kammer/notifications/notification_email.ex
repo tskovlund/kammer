@@ -12,6 +12,7 @@ defmodule Kammer.Notifications.NotificationEmail do
   import Swoosh.Email
 
   alias Kammer.Accounts.User
+  alias Kammer.Feed.Post
   alias Kammer.Groups.Group
   alias Kammer.Mailer
 
@@ -48,17 +49,7 @@ defmodule Kammer.Notifications.NotificationEmail do
   """
   @spec summary_line(atom(), keyword()) :: String.t()
   def summary_line(kind, references) do
-    actor_name =
-      case Keyword.get(references, :actor_id) do
-        nil ->
-          gettext("Someone")
-
-        actor_id ->
-          case Kammer.Repo.get(User, actor_id) do
-            nil -> gettext("Someone")
-            actor -> actor.display_name
-          end
-      end
+    actor_name = actor_name(references)
 
     case kind do
       :mention ->
@@ -78,6 +69,35 @@ defmodule Kammer.Notifications.NotificationEmail do
 
       :post ->
         gettext("%{name} posted", name: actor_name)
+    end
+  end
+
+  # The displayed actor. A group-authored post (no comment involved —
+  # comments always have a human author) hides its human author by
+  # design, so the group is the actor (#167) — the same dispatch on
+  # `author_type` that digests and newsletters make.
+  defp actor_name(references) do
+    case {Keyword.get(references, :comment), Keyword.get(references, :post)} do
+      {nil, %Post{author_type: :group} = post} -> post_group_name(post)
+      _human_actor -> human_actor_name(Keyword.get(references, :actor_id))
+    end
+  end
+
+  defp post_group_name(%Post{group: %Group{name: name}}), do: name
+
+  defp post_group_name(%Post{group_id: group_id}) do
+    case Kammer.Repo.get(Group, group_id) do
+      nil -> gettext("The group")
+      group -> group.name
+    end
+  end
+
+  defp human_actor_name(nil), do: gettext("Someone")
+
+  defp human_actor_name(actor_id) do
+    case Kammer.Repo.get(User, actor_id) do
+      nil -> gettext("Someone")
+      actor -> actor.display_name
     end
   end
 
