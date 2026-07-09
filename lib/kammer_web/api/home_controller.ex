@@ -26,7 +26,7 @@ defmodule KammerWeb.Api.HomeController do
       recent_activity:
         Enum.map(Home.recent_activity(user), fn post ->
           post
-          |> Serializer.post()
+          |> Serializer.post(user)
           |> Map.put(:community, Serializer.community(post.group.community))
           |> Map.put(:group, %{id: post.group.id, name: post.group.name, slug: post.group.slug})
         end)

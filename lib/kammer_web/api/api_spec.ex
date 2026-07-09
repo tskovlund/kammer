@@ -193,19 +193,129 @@ defmodule KammerWeb.ApiSpec do
                 object(%{
                   body_markdown: %Schema{type: :string},
                   acknowledgment_required: %Schema{type: :boolean, nullable: true},
-                  poll: %Schema{type: :object, nullable: true}
+                  poll: Schemas.PollParams,
+                  stored_file_ids: %Schema{
+                    type: :array,
+                    nullable: true,
+                    items: %Schema{type: :string, format: :uuid},
+                    description:
+                      "Ids from the uploads endpoint, in display order — " <>
+                        "must be the caller's own uploads into this group"
+                  }
                 })
               ),
             response: single_response(Schemas.Post)
           )
       },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/uploads" => %PathItem{
+        post:
+          operation(
+            "Upload a feed attachment (multipart)",
+            :uploads_create,
+            [path_param(:community_slug), path_param(:group_slug)],
+            status: 201,
+            request_body: multipart_body(),
+            # 413: file over UPLOAD_MAX_MB or the group's storage quota.
+            extra_errors: [413],
+            response: single_response(Schemas.StoredFile)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}" => %PathItem{
+        put:
+          operation(
+            "Edit a post's body (author)",
+            :posts_update,
+            post_params(),
+            request_body: body(object(%{body_markdown: %Schema{type: :string}})),
+            response: single_response(Schemas.Post)
+          ),
+        delete:
+          operation(
+            "Delete a post — soft/tombstone (author) or `?hard=true` (moderator)",
+            :posts_delete,
+            post_params() ++ [query_param(:hard, "true for a moderator hard delete")],
+            response: single_response(Schemas.Post)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/pin" => %PathItem{
+        put:
+          operation("Pin a post (moderator)", :posts_pin, post_params(),
+            response: single_response(Schemas.Post)
+          ),
+        delete:
+          operation("Unpin a post (moderator)", :posts_unpin, post_params(),
+            response: single_response(Schemas.Post)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/reactions" =>
+        %PathItem{
+          post:
+            operation(
+              "Toggle my emoji reaction on a post",
+              :posts_react,
+              post_params(),
+              request_body: body(object(%{emoji: %Schema{type: :string}})),
+              response: single_response(Schemas.Post)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/poll/votes" =>
+        %PathItem{
+          put:
+            operation(
+              "Set my poll selection (empty list to unvote)",
+              :poll_vote,
+              post_params(),
+              request_body:
+                body(
+                  object(%{
+                    option_ids: %Schema{
+                      type: :array,
+                      items: %Schema{type: :string, format: :uuid},
+                      description:
+                        "The full selection: single-choice polls keep the " <>
+                          "first id, multiple-choice polls keep them all"
+                    }
+                  })
+                ),
+              response: single_response(Schemas.Poll)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgment" =>
+        %PathItem{
+          put:
+            operation(
+              "Acknowledge a post (idempotent)",
+              :posts_acknowledge,
+              post_params(),
+              extra_errors: [422],
+              response: single_response(Schemas.Post)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgments" =>
+        %PathItem{
+          get:
+            operation(
+              "Who has and hasn't acknowledged (author/admins)",
+              :posts_acknowledgments,
+              post_params(),
+              response:
+                single_response(%Schema{
+                  type: :object,
+                  properties: %{
+                    acknowledged: %Schema{type: :array, items: Schemas.Author},
+                    pending: %Schema{type: :array, items: Schemas.Author}
+                  },
+                  required: [:acknowledged, :pending]
+                })
+            )
+        },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments" =>
         %PathItem{
           post:
             operation(
               "Comment on a post",
               :comments_create,
-              [path_param(:community_slug), path_param(:group_slug), path_param(:post_id)],
+              post_params(),
               status: 201,
               request_body:
                 body(
@@ -217,6 +327,62 @@ defmodule KammerWeb.ApiSpec do
               response: single_response(Schemas.Comment)
             )
         },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}" =>
+        %PathItem{
+          put:
+            operation(
+              "Edit a comment's body (author)",
+              :comments_update,
+              comment_params(),
+              request_body: body(object(%{body_markdown: %Schema{type: :string}})),
+              response: single_response(Schemas.Comment)
+            ),
+          delete:
+            operation(
+              "Delete a comment — soft (author) or hard (moderator); answers the tombstone",
+              :comments_delete,
+              comment_params(),
+              response: single_response(Schemas.Comment)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/reactions" =>
+        %PathItem{
+          post:
+            operation(
+              "Toggle my emoji reaction on a comment",
+              :comments_react,
+              comment_params(),
+              request_body: body(object(%{emoji: %Schema{type: :string}})),
+              response: single_response(Schemas.Comment)
+            )
+        },
+      "/api/v1/files/{file_id}" => %PathItem{
+        get:
+          operation(
+            "A stored file's display bytes (inline images, downloads otherwise)",
+            :files_show,
+            [path_param(:file_id)],
+            response: binary_response("The file — served with its own content type")
+          )
+      },
+      "/api/v1/files/{file_id}/thumbnail" => %PathItem{
+        get:
+          operation(
+            "An image's thumbnail (WebP)",
+            :files_thumbnail,
+            [path_param(:file_id)],
+            response: binary_response("The thumbnail bytes")
+          )
+      },
+      "/api/v1/files/{file_id}/download" => %PathItem{
+        get:
+          operation(
+            "A stored file as a forced download",
+            :files_download,
+            [path_param(:file_id)],
+            response: binary_response("The file bytes as an attachment")
+          )
+      },
       "/api/v1/communities/{community_slug}/events" => %PathItem{
         get:
           operation("Upcoming events", :events_index, [path_param(:community_slug)],
@@ -322,9 +488,13 @@ defmodule KammerWeb.ApiSpec do
     # Every operation can answer 401/403/404 with the one error
     # envelope; writes (anything with a request body) can also reject
     # the payload as malformed (400) or invalid (422), or rate-limit
-    # the caller (429).
+    # the caller (429). Bodyless writes that can still refuse the
+    # resource's state (e.g. acknowledging a post that doesn't require
+    # it) declare those via `:extra_errors`.
     error_statuses =
       if request_body, do: [400, 401, 403, 404, 422, 429], else: [401, 403, 404]
+
+    error_statuses = Enum.uniq(error_statuses ++ Keyword.get(opts, :extra_errors, []))
 
     responses =
       error_statuses
@@ -384,6 +554,44 @@ defmodule KammerWeb.ApiSpec do
       content: %{"application/json" => %MediaType{schema: schema}}
     }
   end
+
+  # The one non-JSON request in the API: the feed-attachment upload.
+  defp multipart_body do
+    %RequestBody{
+      required: true,
+      content: %{
+        "multipart/form-data" => %MediaType{
+          schema:
+            object(%{
+              file: %Schema{type: :string, format: :binary},
+              transient: %Schema{
+                type: :boolean,
+                nullable: true,
+                description: "Skip the group file space; auto-expires in 30 days"
+              }
+            })
+        }
+      }
+    }
+  end
+
+  # The non-JSON responses: stored-file bytes.
+  defp binary_response(description) do
+    %Response{
+      description: description,
+      content: %{
+        "application/octet-stream" => %MediaType{
+          schema: %Schema{type: :string, format: :binary}
+        }
+      }
+    }
+  end
+
+  defp post_params do
+    [path_param(:community_slug), path_param(:group_slug), path_param(:post_id)]
+  end
+
+  defp comment_params, do: post_params() ++ [path_param(:comment_id)]
 
   defp object(properties \\ %{}) do
     %Schema{type: :object, properties: properties}

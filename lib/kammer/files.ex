@@ -73,13 +73,24 @@ defmodule Kammer.Files do
       "transient_expires_at" => transient_expires_at
     }
 
-    with :ok <- check_upload_rate_limit(uploader.id),
+    # Feed uploads exist to be attached to a post, so posting rights
+    # are the gate. The LiveView composer only renders for posters;
+    # the API takes raw requests, so the context enforces it for both.
+    relationship = Authorization.relationship(uploader, group)
+
+    with true <-
+           Authorization.can?(uploader, :post_in_group, group, relationship) || :unauthorized,
+         :ok <- check_upload_rate_limit(uploader.id),
+         :ok <- check_upload_size(source_path),
          :ok <- check_quota(group, source_path) do
       if Media.image_content_type?(declared_content_type) do
         store_image(source_path, base_attrs)
       else
         store_plain_file(source_path, declared_content_type, base_attrs)
       end
+    else
+      :unauthorized -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -799,6 +810,19 @@ defmodule Kammer.Files do
     case RateLimit.hit_upload(uploader_id) do
       {:allow, _count} -> :ok
       {:deny, _retry} -> {:error, :rate_limited}
+    end
+  end
+
+  # SPEC §7 per-file size limit (UPLOAD_MAX_MB). The LiveView composer
+  # enforces this client-side via allow_upload; the API takes raw
+  # multipart, so the context enforces it for both transports (#178
+  # review). The endpoint's Plug.Parsers :length is the coarse outer
+  # bound; this is the configured, per-file one.
+  defp check_upload_size(source_path) do
+    if File.stat!(source_path).size > upload_limit_bytes() do
+      {:error, :file_too_large}
+    else
+      :ok
     end
   end
 

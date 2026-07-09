@@ -197,9 +197,33 @@ defmodule KammerWeb.Router do
     get "/communities/:community_slug/groups/:group_slug/posts", PostController, :index
     post "/communities/:community_slug/groups/:group_slug/posts", PostController, :create
 
-    post "/communities/:community_slug/groups/:group_slug/posts/:post_id/comments",
-         PostController,
-         :create_comment
+    # Feed write parity (issue #178). Scoped so the long shared prefix
+    # is written once; the scope adds no alias of its own.
+    scope "/communities/:community_slug/groups/:group_slug" do
+      post "/uploads", UploadController, :create
+
+      scope "/posts/:post_id" do
+        put "/", PostController, :update
+        delete "/", PostController, :delete
+        put "/pin", PostController, :pin
+        delete "/pin", PostController, :unpin
+        post "/reactions", PostController, :react
+        put "/poll/votes", PostController, :vote
+        put "/acknowledgment", PostController, :acknowledge
+        get "/acknowledgments", PostController, :acknowledgments
+
+        post "/comments", PostController, :create_comment
+        put "/comments/:comment_id", PostController, :update_comment
+        delete "/comments/:comment_id", PostController, :delete_comment
+        post "/comments/:comment_id/reactions", PostController, :react_comment
+      end
+    end
+
+    # Post attachments (and any stored file the caller may see) over
+    # Bearer auth — the API twin of the browser /files routes.
+    get "/files/:file_id", FileController, :show
+    get "/files/:file_id/thumbnail", FileController, :thumbnail
+    get "/files/:file_id/download", FileController, :download
 
     get "/communities/:community_slug/events", EventController, :index
     get "/communities/:community_slug/events/:event_id", EventController, :show

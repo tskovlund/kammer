@@ -82,9 +82,16 @@ defmodule KammerWeb.Endpoint do
   # before setting any header.
   plug KammerWeb.Plugs.ApiCors
 
+  # length is the coarse DoS bound on the whole request body; it must
+  # sit above the configurable per-file upload limit (UPLOAD_MAX_MB,
+  # SPEC §7, default 100 MB) or that limit could never be raised past
+  # Plug's 8 MB default. The precise per-file limit is enforced in
+  # Kammer.Files.create_from_upload. Operators raising UPLOAD_MAX_MB
+  # above ~120 MB must raise this too (documented in .env.example).
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
+    length: 128_000_000,
     json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride

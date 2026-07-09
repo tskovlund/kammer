@@ -60,6 +60,29 @@ defmodule Kammer.FilesTest do
     end
   end
 
+  describe "feed-upload authorization" do
+    test "refuses uploaders who cannot post in the group", %{
+      community: community,
+      group: group,
+      tmp_dir: tmp_dir
+    } do
+      file_path = Path.join(tmp_dir, "drive-by.txt")
+      File.write!(file_path, "nope")
+
+      # A community member outside the group can view a community-
+      # visible group but cannot post — so they cannot upload feed
+      # attachments either (the composer never renders for them; the
+      # API takes raw requests, so the context enforces it).
+      onlooker = member_fixture(community)
+
+      assert {:error, :unauthorized} =
+               Files.create_from_upload(onlooker, group, file_path, %{
+                 filename: "drive-by.txt",
+                 content_type: "text/plain"
+               })
+    end
+  end
+
   describe "plain file uploads" do
     test "stores non-images with sanitized names", %{
       group: group,

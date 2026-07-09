@@ -49,7 +49,7 @@ defmodule KammerWeb.Api.FeedChannel do
   defp push_visible_post(socket, event, post_id) do
     case Feed.fetch_visible_post(socket.assigns.current_user, socket.assigns.group, post_id) do
       # Same wire shape as the REST feed page — one serializer.
-      {:ok, post} -> push(socket, event, Serializer.post(post))
+      {:ok, post} -> push(socket, event, Serializer.post(post, socket.assigns.current_user))
       {:error, :not_found} -> :ok
     end
 

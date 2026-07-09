@@ -59,6 +59,10 @@ defmodule Kammer.FeedTest do
       # Nonexistent ids read the same as hidden ones.
       assert {:error, :not_found} =
                Feed.fetch_visible_post(other_member, group, Ecto.UUID.generate())
+
+      # As do malformed ones — the API passes raw path segments in.
+      assert {:error, :not_found} =
+               Feed.fetch_visible_post(other_member, group, "not-a-uuid")
     end
   end
 
@@ -566,6 +570,120 @@ defmodule Kammer.FeedTest do
 
       assert {:error, :rate_limited} =
                Feed.create_comment(member, post, %{"body_markdown" => "One too many"})
+    end
+  end
+
+  describe "comment editing" do
+    setup do
+      group_with_members()
+    end
+
+    test "author edits with an edited marker; nobody else may rewrite", %{
+      group: group,
+      member: member,
+      group_owner: group_owner
+    } do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+      {:ok, comment} = Feed.create_comment(member, post, %{"body_markdown" => "first"})
+
+      assert {:ok, edited} = Feed.edit_comment(member, comment, %{"body_markdown" => "revised"})
+      assert edited.body_markdown == "revised"
+      assert edited.edited_at
+
+      # Admins moderate (delete) but never rewrite someone's words —
+      # the same rule as posts.
+      assert {:error, :unauthorized} =
+               Feed.edit_comment(group_owner, edited, %{"body_markdown" => "hijacked"})
+
+      other_member = group_member_fixture(group)
+
+      assert {:error, :unauthorized} =
+               Feed.edit_comment(other_member, edited, %{"body_markdown" => "hijacked"})
+    end
+
+    test "a deleted comment cannot be edited", %{group: group, member: member} do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+      {:ok, comment} = Feed.create_comment(member, post, %{"body_markdown" => "oops"})
+      {:ok, deleted} = Feed.delete_comment(member, comment)
+
+      assert {:error, :unauthorized} =
+               Feed.edit_comment(member, deleted, %{"body_markdown" => "resurrect"})
+    end
+  end
+
+  defp stored_file_fixture(group, uploader) do
+    Kammer.Repo.insert!(%Kammer.Files.StoredFile{
+      filename: "file-#{System.unique_integer([:positive])}.txt",
+      content_type: "text/plain",
+      byte_size: 7,
+      storage_key: "test/#{Ecto.UUID.generate()}.txt",
+      kind: :file,
+      community_id: group.community_id,
+      group_id: group.id,
+      uploader_user_id: uploader.id
+    })
+  end
+
+  describe "post attachments" do
+    setup do
+      group_with_members()
+    end
+
+    test "create_post links the author's own uploads in order", %{
+      group: group,
+      member: member
+    } do
+      first = stored_file_fixture(group, member)
+      second = stored_file_fixture(group, member)
+
+      {:ok, post} =
+        Feed.create_post(member, group, %{
+          "body_markdown" => "with files",
+          "stored_file_ids" => [first.id, second.id]
+        })
+
+      assert [%{position: 0} = a, %{position: 1} = b] =
+               Enum.sort_by(post.attachments, & &1.position)
+
+      assert a.stored_file_id == first.id
+      assert b.stored_file_id == second.id
+    end
+
+    test "rejects files the author didn't upload into this group", %{
+      community: community,
+      group: group,
+      member: member
+    } do
+      someone_else = group_member_fixture(group)
+      not_yours = stored_file_fixture(group, someone_else)
+
+      assert {:error, :invalid_attachment} =
+               Feed.create_post(member, group, %{
+                 "body_markdown" => "sneaky",
+                 "stored_file_ids" => [not_yours.id]
+               })
+
+      other_group = group_fixture(community)
+      group_membership_fixture(other_group, member)
+      elsewhere = stored_file_fixture(other_group, member)
+
+      assert {:error, :invalid_attachment} =
+               Feed.create_post(member, group, %{
+                 "body_markdown" => "cross-group",
+                 "stored_file_ids" => [elsewhere.id]
+               })
+
+      assert {:error, :invalid_attachment} =
+               Feed.create_post(member, group, %{
+                 "body_markdown" => "malformed",
+                 "stored_file_ids" => ["not-a-uuid"]
+               })
+
+      assert {:error, :invalid_attachment} =
+               Feed.create_post(member, group, %{
+                 "body_markdown" => "not a list",
+                 "stored_file_ids" => "nope"
+               })
     end
   end
 

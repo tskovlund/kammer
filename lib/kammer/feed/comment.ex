@@ -58,6 +58,19 @@ defmodule Kammer.Feed.Comment do
     |> validate_length(:body_markdown, min: 1, max: 2_000)
   end
 
+  @doc """
+  Changeset for editing the body (author only; comments carry an edited
+  marker but no separate edit history, unlike posts).
+  """
+  @spec edit_changeset(t(), map()) :: Ecto.Changeset.t()
+  def edit_changeset(comment, attrs) do
+    comment
+    |> cast(attrs, [:body_markdown])
+    |> validate_required([:body_markdown])
+    |> validate_length(:body_markdown, min: 1, max: 10_000)
+    |> put_change(:edited_at, DateTime.utc_now(:second))
+  end
+
   @doc "Whether the comment is soft-deleted (renders as a stub)."
   @spec deleted?(t()) :: boolean()
   def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
