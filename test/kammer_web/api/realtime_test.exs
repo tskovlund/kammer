@@ -103,6 +103,36 @@ defmodule KammerWeb.Api.RealtimeTest do
       {:ok, pending} = Feed.create_post(author, group, %{"body_markdown" => "Held back"})
       assert pending.pending_approval
 
+      # Ordering proof, not just a timing window: an admin post
+      # published AFTER the pending one arrives as the FIRST push —
+      # so the pending post's broadcast was genuinely filtered, not
+      # merely slower than refute_push's patience.
+      admin = group_member_fixture(group, :admin)
+      {:ok, visible} = Feed.create_post(admin, group, %{"body_markdown" => "Public"})
+      visible_id = visible.id
+
+      assert_push "post_created", %{id: ^visible_id}
+      refute_push "post_created", %{}
+    end
+
+    test "a removed member's channel stops pushing on the next event" do
+      %{community: community, group: group, author: author, member: member} = realtime_context()
+
+      {:ok, _reply, _socket} =
+        member |> connect_as() |> subscribe_and_join("feed:group:#{group.id}")
+
+      membership =
+        Kammer.Repo.get_by!(Kammer.Communities.CommunityMembership,
+          community_id: community.id,
+          user_id: member.id
+        )
+
+      {:ok, _removed} = Kammer.Communities.remove_member(member, community, membership)
+
+      {:ok, _post} = Feed.create_post(author, group, %{"body_markdown" => "After removal"})
+
+      # The join-time grant doesn't outlive access: the per-push
+      # re-fetch re-authorizes :view_group against fresh state.
       refute_push "post_created", %{}
     end
   end

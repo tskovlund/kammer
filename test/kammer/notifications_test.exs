@@ -266,6 +266,25 @@ defmodule Kammer.NotificationsTest do
   end
 
   describe "notification center" do
+    test "insert_notification!/1 broadcasts on the owner's topic" do
+      %{group: group, reader: reader} = notification_context()
+
+      # The event-reminder worker inserts through this helper; a bare
+      # Repo.insert! would leave realtime subscribers blind.
+      Notifications.subscribe(reader)
+
+      notification =
+        Notifications.insert_notification!(%{
+          user_id: reader.id,
+          community_id: group.community_id,
+          group_id: group.id,
+          kind: :event_reminder
+        })
+
+      notification_id = notification.id
+      assert_receive {Notifications, {:notification_created, ^notification_id}}
+    end
+
     test "unread counting and marking read" do
       %{group: group, author: author, reader: reader} = notification_context()
 

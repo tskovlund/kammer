@@ -64,7 +64,7 @@ defmodule Kammer.Workers.EventReminderWorker do
       end
 
       if :in_app in channels do
-        Repo.insert!(%Kammer.Notifications.Notification{
+        Kammer.Notifications.insert_notification!(%{
           user_id: user.id,
           community_id: event.community_id,
           group_id: event.group_id,

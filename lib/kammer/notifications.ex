@@ -97,8 +97,24 @@ defmodule Kammer.Notifications do
     Phoenix.PubSub.subscribe(Kammer.PubSub, user_topic(user))
   end
 
-  defp broadcast(%User{} = user, event) do
-    Phoenix.PubSub.broadcast(Kammer.PubSub, user_topic(user), {__MODULE__, event})
+  @doc """
+  The one insert path for in-app notifications: inserts the row and
+  broadcasts it on the owner's topic, so realtime subscribers never
+  miss one. Anything creating a `%Notification{}` goes through here —
+  a bare `Repo.insert!` would silently skip the broadcast (that's how
+  event reminders were invisible to Channels clients until fetched).
+  """
+  @spec insert_notification!(map()) :: Notification.t()
+  def insert_notification!(attrs) when is_map(attrs) do
+    notification = Repo.insert!(struct!(Notification, attrs))
+
+    Phoenix.PubSub.broadcast(
+      Kammer.PubSub,
+      user_topic(notification.user_id),
+      {__MODULE__, {:notification_created, notification.id}}
+    )
+
+    notification
   end
 
   ## In-app center
@@ -376,19 +392,16 @@ defmodule Kammer.Notifications do
     channels = channels_for(kind, level)
 
     if :in_app in channels do
-      notification =
-        Repo.insert!(%Notification{
-          user_id: recipient.id,
-          community_id: group.community_id,
-          group_id: group.id,
-          actor_user_id: Keyword.get(references, :actor_id),
-          kind: kind,
-          post_id: get_reference_id(references, :post),
-          comment_id: get_reference_id(references, :comment),
-          event_id: get_reference_id(references, :event)
-        })
-
-      broadcast(recipient, {:notification_created, notification.id})
+      insert_notification!(%{
+        user_id: recipient.id,
+        community_id: group.community_id,
+        group_id: group.id,
+        actor_user_id: Keyword.get(references, :actor_id),
+        kind: kind,
+        post_id: get_reference_id(references, :post),
+        comment_id: get_reference_id(references, :comment),
+        event_id: get_reference_id(references, :event)
+      })
     end
 
     if :email in channels do

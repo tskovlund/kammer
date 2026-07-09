@@ -81,6 +81,16 @@ defmodule KammerWeb.Api.AuthController do
       token -> Accounts.revoke_device_token(token)
     end
 
+    # Sever live sockets too — deleting the token row alone would
+    # leave an already-open websocket streaming for as long as it
+    # stays connected. The socket id is per user, so sibling devices
+    # just reconnect with their still-valid tokens.
+    KammerWeb.Endpoint.broadcast(
+      "api_user_socket:#{conn.assigns.current_scope.user.id}",
+      "disconnect",
+      %{}
+    )
+
     json(conn, %{status: "revoked"})
   end
 end

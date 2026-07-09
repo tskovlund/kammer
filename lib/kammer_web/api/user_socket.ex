@@ -3,9 +3,15 @@ defmodule KammerWeb.Api.UserSocket do
   Realtime entry point for API clients (ADR 0014: Phoenix Channels).
   Connects with the same device token the REST API takes as a Bearer
   header — passed as the `token` connect param, resolved through the
-  same `Kammer.Accounts` lookup, so a revoked device loses both
-  transports at once. Anonymous connections are refused outright;
-  per-topic authorization lives in each channel's `join/3`.
+  same `Kammer.Accounts` lookup; the API revoke endpoint also
+  broadcasts a disconnect on this socket's id, so a revoked device
+  loses both transports at once. Anonymous connections are refused
+  outright; per-topic authorization lives in each channel's `join/3`.
+
+  Known trade-off: connect params travel in the websocket URL, so a
+  fronting proxy that logs full request paths captures the token
+  (Phoenix's own logger filters it). A short-lived socket-only token
+  minted over REST would close that; tracked as a follow-up issue.
   """
 
   use Phoenix.Socket

@@ -37,6 +37,9 @@ defmodule KammerWeb.Api.FeedChannel do
     do: push_visible_post(socket, "post_updated", post_id)
 
   def handle_info({Kammer.Feed, {:post_deleted, post_id}}, socket) do
+    # Deliberately unconditional: hard deletes leave nothing to
+    # re-fetch, and the payload is a bare id — a subscriber who never
+    # saw the post learns only that some post ceased to exist.
     push(socket, "post_deleted", %{id: post_id})
     {:noreply, socket}
   end
