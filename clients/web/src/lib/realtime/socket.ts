@@ -1,18 +1,21 @@
-import type { Instance } from '$lib/instances/types.js';
-
 /**
- * The seam where Phoenix Channels will plug in — types only for now, so
- * the data layer's shape is settled before any socket code exists. Like
- * the REST client (client.ts), realtime is per instance: one socket per
- * added instance, authenticated with that instance's device token, never
- * a merged connection.
+ * Public surface of the realtime layer (ADR 0014, #173). One socket per
+ * added instance, authenticated with that instance's device token — never a
+ * merged connection. The transport (Phoenix) sits behind an interface so the
+ * manager's reconnect/backoff and channel wiring stay testable with a fake.
  */
-export interface InstanceSocket {
-	readonly instance: Instance;
-	connect(): void;
-	disconnect(): void;
-	/** Subscribe to a server-pushed event; returns an unsubscribe function. */
-	on(event: string, handler: (payload: unknown) => void): () => void;
-}
-
-export type CreateInstanceSocket = (instance: Instance) => InstanceSocket;
+export { InstanceSocketManager } from './manager.js';
+export type {
+	SocketStatus,
+	FeedHandlers,
+	NotificationHandlers,
+	SocketManagerOptions
+} from './manager.js';
+export type {
+	Transport,
+	TransportChannel,
+	TransportJoin,
+	TransportClose,
+	CreateTransport
+} from './transport.js';
+export { createPhoenixTransport } from './phoenix.js';
