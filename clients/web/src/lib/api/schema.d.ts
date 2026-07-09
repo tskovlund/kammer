@@ -72,6 +72,41 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/invites/{invite_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Revoke an invite (community- or group-scoped; requires the right to create it) */
+		delete: operations['invites_revoke'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/membership': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Join per the group's policy: open joins, request_approval files a request, invite_only 403s */
+		put: operations['group_join'];
+		post?: never;
+		/** Leave the group (owners must transfer ownership first — 422 owner_cannot_leave) */
+		delete: operations['group_leave'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/events': {
 		parameters: {
 			query?: never;
@@ -83,6 +118,40 @@ export interface paths {
 		put?: never;
 		/** Create an event, or a recurring series */
 		post: operations['events_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/members': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The group's members (group viewers) */
+		get: operations['group_members_index'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/members': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The member directory (SPEC §4), redacted per viewer; filterable by visible custom fields */
+		get: operations['members_index'];
+		put?: never;
+		post?: never;
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -137,6 +206,40 @@ export interface paths {
 		put: operations['file_library_update_folder'];
 		post?: never;
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/members/{user_id}/role': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Change a member's group role (group admins; owner transitions need owner powers) */
+		put: operations['group_members_update_role'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Deny a join request */
+		delete: operations['join_requests_deny'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -245,6 +348,41 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/invites/{token}/accept': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Accept an invite: join the community (and group), learn any required fields still missing */
+		post: operations['invites_accept'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/me': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's own profile */
+		get: operations['me_show'];
+		/** Update the caller's profile and preferences */
+		put: operations['me_update'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/files/{file_id}': {
 		parameters: {
 			query?: never;
@@ -293,6 +431,24 @@ export interface paths {
 		post?: never;
 		/** Delete an event comment — soft (author) or hard (moderator) */
 		delete: operations['events_delete_comment'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/notification-level': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's notification level for this group (SPEC §9) */
+		get: operations['notification_level_show'];
+		/** Set the caller's notification level for this group */
+		put: operations['notification_level_update'];
+		post?: never;
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -350,6 +506,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/members/{user_id}/role': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Change a member's community role (admins; owner transitions need the owner) */
+		put: operations['members_update_role'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/files': {
 		parameters: {
 			query?: never;
@@ -378,6 +551,23 @@ export interface paths {
 		get?: never;
 		/** Acknowledge a post (idempotent) */
 		put: operations['posts_acknowledge'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Pending join requests (approvers only) */
+		get: operations['join_requests_index'];
+		put?: never;
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -419,6 +609,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}/approval': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Approve a join request, creating the membership (422 when the person is banned) */
+		put: operations['join_requests_approve'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/events/{event_id}/slots': {
 		parameters: {
 			query?: never;
@@ -430,6 +637,41 @@ export interface paths {
 		put?: never;
 		/** Add a signup slot (creator/moderator) */
 		post: operations['events_create_slot'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/me/devices': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's devices: browser sessions and API device tokens (issue #174) */
+		get: operations['devices_index'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/invites': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Active community-wide invites (admins) */
+		get: operations['community_invites_index'];
+		put?: never;
+		/** Create a community-wide invite; invited_email delivers it and binds redemption to that address */
+		post: operations['community_invites_create'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -470,6 +712,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/members/{user_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Remove a member from the group (group admins; owners can't be removed) */
+		delete: operations['group_members_remove'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/files/{file_id}/thumbnail': {
 		parameters: {
 			query?: never;
@@ -499,6 +758,23 @@ export interface paths {
 		put: operations['poll_vote'];
 		post?: never;
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/membership': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Leave the community (owners must transfer ownership first — 422 owner_cannot_leave) */
+		delete: operations['community_leave'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -626,6 +902,24 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/invites': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Active invites into a group (group admins) */
+		get: operations['group_invites_index'];
+		put?: never;
+		/** Create a group invite (joining also joins the community) */
+		post: operations['group_invites_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/notifications/read-all': {
 		parameters: {
 			query?: never;
@@ -638,6 +932,23 @@ export interface paths {
 		put: operations['notifications_mark_all_read'];
 		post?: never;
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/me/devices/{device_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Revoke a device by id — revoking an API device also severs its live sockets */
+		delete: operations['devices_revoke'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -672,6 +983,23 @@ export interface paths {
 		/** Verify a passkey assertion for a device token */
 		post: operations['auth_passkey_verify'];
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/members/{user_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Remove a member from the community and all its groups (admins; owners can't be removed) */
+		delete: operations['members_remove'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -729,6 +1057,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/invites/{token}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Preview what an invite opens (public — the token is the credential) */
+		get: operations['invites_preview'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/events/{event_id}/cancellation': {
 		parameters: {
 			query?: never;
@@ -742,6 +1087,24 @@ export interface paths {
 		post?: never;
 		/** Reinstate a cancelled occurrence */
 		delete: operations['events_uncancel'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/profile': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's custom-field answers in this community (ADR 0020) */
+		get: operations['community_profile_show'];
+		/** Set custom-field answers (blank clears; unknown fields are ignored) */
+		put: operations['community_profile_update'];
+		post?: never;
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -820,6 +1183,186 @@ export type webhooks = Record<string, never>;
 export interface components {
 	schemas: {
 		/**
+		 * Folder
+		 * @description A file-space folder (ADR 0009). Overrides can only restrict, never widen; `system` folders (e.g. Feed uploads) can't be renamed or deleted.
+		 */
+		Folder: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			/** Format: uuid */
+			parent_folder_id?: string | null;
+			/** @enum {string} */
+			read_override: 'inherit' | 'admins_only';
+			system: boolean;
+			/** @enum {string} */
+			write_override: 'inherit' | 'admins_only';
+		};
+		/** StatusResponse */
+		StatusResponse: {
+			status: string;
+		};
+		/**
+		 * Profile
+		 * @description The caller's own account and base profile (SPEC §4) — contact visibilities included because it is theirs. Email changes stay on the web flow.
+		 */
+		Profile: {
+			bio?: string | null;
+			contact_email?: string | null;
+			/** @enum {string} */
+			contact_email_visibility: 'hidden' | 'members' | 'admins';
+			contact_note?: string | null;
+			/** @enum {string} */
+			contact_note_visibility: 'hidden' | 'members' | 'admins';
+			contact_phone?: string | null;
+			/** @enum {string} */
+			contact_phone_visibility: 'hidden' | 'members' | 'admins';
+			/** @enum {string} */
+			digest_frequency: 'off' | 'daily' | 'weekly';
+			display_name: string;
+			/** Format: email */
+			email: string;
+			/** @enum {string} */
+			feed_sort: 'chronological' | 'activity';
+			/** Format: uuid */
+			id: string;
+			locale: string;
+			pronouns?: string | null;
+			timezone: string;
+		};
+		/**
+		 * PasskeyChallengeResponse
+		 * @description WebAuthn assertion options (ADR 0018, usernameless): feed `challenge` and `rp_id` to navigator.credentials.get, then send the assertion together with `challenge_token` (opaque, short-lived) to the verify operation.
+		 */
+		PasskeyChallengeResponse: {
+			/** @description base64url, no padding */
+			challenge: string;
+			challenge_token: string;
+			rp_id: string;
+		};
+		/** Post */
+		Post: {
+			acknowledged_count: number;
+			acknowledgment_required: boolean;
+			attachments: components['schemas']['Attachment'][];
+			author?: components['schemas']['Author'];
+			body_markdown?: string | null;
+			comment_count?: number | null;
+			comments?: components['schemas']['Comment'][];
+			deleted: boolean;
+			/** Format: date-time */
+			edited_at?: string | null;
+			/** Format: uuid */
+			group_id: string;
+			/** Format: uuid */
+			id: string;
+			/** @description Whether the caller has acknowledged this post */
+			my_acknowledged: boolean;
+			/** @description Emoji the caller has reacted with */
+			my_reactions: string[];
+			/** @description Awaiting moderation (approval-queue groups) — visible only to the author and moderators */
+			pending_approval: boolean;
+			pinned: boolean;
+			poll?: components['schemas']['Poll'];
+			/** Format: date-time */
+			published_at: string;
+			/** @description Emoji → count */
+			reactions: {
+				[key: string]: number;
+			};
+			/** @description Actions the calling viewer may take on this post (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `edit`/`delete` are the author's; `pin`/`moderate` are a moderator's. Empty when the viewer's rights weren't resolved. */
+			viewer_can: ('edit' | 'delete' | 'pin' | 'moderate')[];
+		};
+		/**
+		 * EventParams
+		 * @description Create or edit an event. On create, an optional `recurrence` object materializes a series (ADR 0019) and the response is the first occurrence carrying its series_id. On edit, changes apply to this occurrence only.
+		 */
+		EventParams: {
+			all_day?: boolean | null;
+			description_markdown?: string | null;
+			/** Format: date-time */
+			ends_at?: string | null;
+			location_name?: string | null;
+			location_url?: string | null;
+			/** @description Create only — turns the event into a bounded recurring series */
+			recurrence?: {
+				/** @enum {string} */
+				frequency: 'weekly' | 'biweekly' | 'monthly';
+				/**
+				 * Format: date
+				 * @description Last date the series may run
+				 */
+				until: string;
+			} | null;
+			/** Format: date-time */
+			starts_at: string;
+			timezone?: string | null;
+			title: string;
+		};
+		/**
+		 * Device
+		 * @description A revocable credential (SPEC §2, issue #174): a browser session or a long-lived API device token. `device_name` is the user agent for sessions and the client-chosen name for API devices.
+		 */
+		Device: {
+			/** Format: date-time */
+			created_at: string;
+			/** @description The credential making this request */
+			current: boolean;
+			device_name?: string | null;
+			/** Format: uuid */
+			id: string;
+			/** @enum {string} */
+			kind: 'session' | 'api_device';
+		};
+		/** GroupMember */
+		GroupMember: {
+			/** Format: date-time */
+			joined_at: string;
+			/** @enum {string} */
+			role: 'owner' | 'admin' | 'member';
+			user: components['schemas']['MemberUser'];
+		};
+		/**
+		 * Error
+		 * @description The one error envelope: stable code, human message.
+		 */
+		Error: {
+			error: {
+				/** @example not_found */
+				code: string;
+				details?: Record<string, never> | null;
+				message: string;
+			};
+		};
+		/**
+		 * File
+		 * @description A library file entry (ADR 0017): its current version's bytes plus placement and history. `versions` is present on detail, empty on listings; `mine` marks the caller's own upload.
+		 */
+		File: {
+			byte_size: number;
+			content_type: string;
+			download_url: string;
+			/** Format: uuid */
+			file_entry_id?: string | null;
+			filename: string;
+			/** Format: uuid */
+			folder_id?: string | null;
+			height?: number | null;
+			/** Format: uuid */
+			id: string;
+			/** @enum {string} */
+			kind: 'image' | 'file';
+			mine: boolean;
+			thumbnail_url?: string | null;
+			/** Format: date-time */
+			uploaded_at?: string | null;
+			uploaded_by?: components['schemas']['Author'];
+			url: string;
+			version_seq?: number | null;
+			versions: components['schemas']['FileVersion'][];
+			width?: number | null;
+		};
+		/**
 		 * Attachment
 		 * @description A stored file attached to a post, in display order.
 		 */
@@ -840,33 +1383,6 @@ export interface components {
 			url: string;
 			width?: number | null;
 		};
-		/** AuthExchangeResponse */
-		AuthExchangeResponse: {
-			device_token: string;
-			user: components['schemas']['AuthUser'];
-		};
-		/** AuthRegisterResponse */
-		AuthRegisterResponse: {
-			/** @enum {string} */
-			status: 'confirmation_sent';
-			user: components['schemas']['AuthUser'];
-		};
-		/** AuthUser */
-		AuthUser: {
-			display_name: string | null;
-			/** Format: email */
-			email: string;
-			/** Format: uuid */
-			id: string;
-		};
-		/** Author */
-		Author: {
-			display_name: string;
-			/** Format: uuid */
-			id: string;
-			/** @enum {string} */
-			type: 'user' | 'group' | 'guest';
-		} | null;
 		/** Comment */
 		Comment: {
 			author?: components['schemas']['Author'];
@@ -889,27 +1405,109 @@ export interface components {
 				[key: string]: number;
 			};
 		};
+		/** AuthUser */
+		AuthUser: {
+			display_name: string | null;
+			/** Format: email */
+			email: string;
+			/** Format: uuid */
+			id: string;
+		};
+		/** Instance */
+		Instance: {
+			api_versions: string[];
+			default_locale: string;
+			features: {
+				guest_rsvp: boolean;
+				/** @enum {string} */
+				registration: 'open' | 'web_only';
+				web_push: boolean;
+			};
+			instance_name: string;
+			/** @description Advisory SemVer floor for the native-app handshake (#203): clients below it should fence themselves — the server does not reject them. Null means any client is fine. */
+			min_client_version: string | null;
+			version: string;
+		};
+		/** Group */
+		Group: {
+			archived: boolean;
+			description?: string | null;
+			features: string[];
+			/** Format: uuid */
+			id: string;
+			/** @enum {string} */
+			join_policy: 'invite_only' | 'request_approval' | 'open';
+			/**
+			 * @description The calling viewer's group role — null for non-members, and when the viewer's rights weren't resolved
+			 * @enum {string|null}
+			 */
+			my_role?: 'owner' | 'admin' | 'member' | null;
+			name: string;
+			sealed: boolean;
+			slug: string;
+			/** @description Actions the calling viewer may take in this group (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `create_event`/`upload_file` also reflect the group's feature toggles. Empty when the viewer's rights weren't resolved. */
+			viewer_can: (
+				| 'join'
+				| 'request_to_join'
+				| 'post'
+				| 'moderate'
+				| 'manage_group'
+				| 'manage_members'
+				| 'create_event'
+				| 'upload_file'
+			)[];
+			/** @enum {string} */
+			visibility: 'private' | 'community' | 'public_link' | 'public_listed';
+		};
+		/**
+		 * JoinRequest
+		 * @description A pending request to join a request-approval group (SPEC §3).
+		 */
+		JoinRequest: {
+			/** Format: uuid */
+			id: string;
+			message?: string | null;
+			/** Format: date-time */
+			requested_at: string;
+			user: components['schemas']['MemberUser'];
+		};
 		/** Community */
 		Community: {
 			description?: string | null;
 			/** Format: uuid */
 			id: string;
+			/**
+			 * @description The calling viewer's community role — null for non-members, and when the viewer's rights weren't resolved
+			 * @enum {string|null}
+			 */
+			my_role?: 'owner' | 'admin' | 'member' | null;
 			name: string;
 			slug: string;
 			/** @description Actions the calling viewer may take on this community (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. Empty when the viewer's rights weren't resolved (e.g. an embedded community reference). */
 			viewer_can: ('manage_community' | 'create_group' | 'view_member_directory')[];
 		};
 		/**
-		 * Error
-		 * @description The one error envelope: stable code, human message.
+		 * NotificationLevel
+		 * @description The caller's per-group notification level (SPEC §9). `level` is the effective one (the preference, or the group default when none is set); `default_level` is what the group defaults to.
 		 */
-		Error: {
-			error: {
-				/** @example not_found */
-				code: string;
-				details?: Record<string, never> | null;
-				message: string;
-			};
+		NotificationLevel: {
+			/** @enum {string} */
+			default_level: 'everything' | 'highlights' | 'mentions_only' | 'muted';
+			/** @enum {string} */
+			level: 'everything' | 'highlights' | 'mentions_only' | 'muted';
+		};
+		/**
+		 * FileListing
+		 * @description One folder's contents: its subfolders and files, the breadcrumb chain (root-first, inclusive), and the caller's write/manage capabilities here (advisory — the context still enforces).
+		 */
+		FileListing: {
+			can_manage: boolean;
+			can_write: boolean;
+			chain: components['schemas']['Folder'][];
+			files: components['schemas']['File'][];
+			/** @description null at the space root */
+			folder?: components['schemas']['Folder'] | null;
+			folders: components['schemas']['Folder'][];
 		};
 		/** Event */
 		Event: {
@@ -962,164 +1560,59 @@ export interface components {
 			title: string;
 		};
 		/**
-		 * EventParams
-		 * @description Create or edit an event. On create, an optional `recurrence` object materializes a series (ADR 0019) and the response is the first occurrence carrying its series_id. On edit, changes apply to this occurrence only.
+		 * StoredFile
+		 * @description An uploaded file. `id` is what create-post's `stored_file_ids` takes; the URLs are Bearer-authorized API routes.
 		 */
-		EventParams: {
-			all_day?: boolean | null;
-			description_markdown?: string | null;
-			/** Format: date-time */
-			ends_at?: string | null;
-			location_name?: string | null;
-			location_url?: string | null;
-			/** @description Create only — turns the event into a bounded recurring series */
-			recurrence?: {
-				/** @enum {string} */
-				frequency: 'weekly' | 'biweekly' | 'monthly';
-				/**
-				 * Format: date
-				 * @description Last date the series may run
-				 */
-				until: string;
-			} | null;
-			/** Format: date-time */
-			starts_at: string;
-			timezone?: string | null;
-			title: string;
-		};
-		/**
-		 * File
-		 * @description A library file entry (ADR 0017): its current version's bytes plus placement and history. `versions` is present on detail, empty on listings; `mine` marks the caller's own upload.
-		 */
-		File: {
+		StoredFile: {
 			byte_size: number;
 			content_type: string;
 			download_url: string;
-			/** Format: uuid */
-			file_entry_id?: string | null;
 			filename: string;
-			/** Format: uuid */
-			folder_id?: string | null;
 			height?: number | null;
 			/** Format: uuid */
 			id: string;
 			/** @enum {string} */
 			kind: 'image' | 'file';
-			mine: boolean;
 			thumbnail_url?: string | null;
-			/** Format: date-time */
-			uploaded_at?: string | null;
-			uploaded_by?: components['schemas']['Author'];
 			url: string;
-			version_seq?: number | null;
-			versions: components['schemas']['FileVersion'][];
 			width?: number | null;
 		};
 		/**
-		 * FileListing
-		 * @description One folder's contents: its subfolders and files, the breadcrumb chain (root-first, inclusive), and the caller's write/manage capabilities here (advisory — the context still enforces).
+		 * InvitePreview
+		 * @description What an invite opens, before acceptance — the API twin of the public /invite/{token} landing page.
 		 */
-		FileListing: {
-			can_manage: boolean;
-			can_write: boolean;
-			chain: components['schemas']['Folder'][];
-			files: components['schemas']['File'][];
-			/** @description null at the space root */
-			folder?: components['schemas']['Folder'] | null;
-			folders: components['schemas']['Folder'][];
-		};
-		/**
-		 * FileVersion
-		 * @description One stored version of a file entry (ADR 0017), newest first.
-		 */
-		FileVersion: {
-			byte_size: number;
-			content_type: string;
-			/** @description The version the entry points at */
-			current: boolean;
-			download_url: string;
-			filename: string;
-			/** Format: uuid */
-			id: string;
-			/** @enum {string} */
-			kind: 'image' | 'file';
-			/** @description Uploaded by the caller */
-			mine: boolean;
-			thumbnail_url?: string | null;
-			/** Format: date-time */
-			uploaded_at: string;
-			uploaded_by?: components['schemas']['Author'];
-			url: string;
-			version_seq: number;
-		};
-		/**
-		 * Folder
-		 * @description A file-space folder (ADR 0009). Overrides can only restrict, never widen; `system` folders (e.g. Feed uploads) can't be renamed or deleted.
-		 */
-		Folder: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			/** Format: uuid */
-			parent_folder_id?: string | null;
-			/** @enum {string} */
-			read_override: 'inherit' | 'admins_only';
-			system: boolean;
-			/** @enum {string} */
-			write_override: 'inherit' | 'admins_only';
-		};
-		/** Group */
-		Group: {
-			archived: boolean;
-			description?: string | null;
-			features: string[];
-			/** Format: uuid */
-			id: string;
-			name: string;
-			sealed: boolean;
-			slug: string;
-			/** @description Actions the calling viewer may take in this group (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `create_event`/`upload_file` also reflect the group's feature toggles. Empty when the viewer's rights weren't resolved. */
-			viewer_can: (
-				'post' | 'moderate' | 'manage_group' | 'manage_members' | 'create_event' | 'upload_file'
-			)[];
-			/** @enum {string} */
-			visibility: 'private' | 'community' | 'public_link' | 'public_listed';
-		};
-		/** HomeGroupSummary */
-		HomeGroupSummary: {
-			/** Format: uuid */
-			id: string;
-			name: string;
-			slug: string;
-		};
-		/**
-		 * HomeResponse
-		 * @description Upcoming events and recent activity across all the device owner's communities
-		 */
-		HomeResponse: {
-			recent_activity: (components['schemas']['Post'] & {
-				community: components['schemas']['Community'];
-				group: components['schemas']['HomeGroupSummary'];
-			})[];
-			upcoming_events: (components['schemas']['Event'] & {
-				community: components['schemas']['Community'];
-				group: components['schemas']['HomeGroupSummary'];
-			})[];
-		};
-		/** Instance */
-		Instance: {
-			api_versions: string[];
-			default_locale: string;
-			features: {
-				guest_rsvp: boolean;
-				/** @enum {string} */
-				registration: 'open' | 'web_only';
-				web_push: boolean;
+		InvitePreview: {
+			community: {
+				description?: string | null;
+				/** Format: uuid */
+				id: string;
+				name: string;
+				require_real_names: boolean;
+				slug: string;
 			};
-			instance_name: string;
-			/** @description Advisory SemVer floor for the native-app handshake (#203): clients below it should fence themselves — the server does not reject them. Null means any client is fine. */
-			min_client_version: string | null;
-			version: string;
+			group?: {
+				/** Format: uuid */
+				id: string;
+				name: string;
+				slug: string;
+			} | null;
+			token: string;
+		};
+		/**
+		 * CustomField
+		 * @description A community-defined profile field (ADR 0020) — the roster's columns and the profile form's inputs. `visibility` is who may see answers in the directory; the owner always sees and answers their own.
+		 */
+		CustomField: {
+			/** @enum {string} */
+			field_type: 'text' | 'single_select';
+			/** Format: uuid */
+			id: string;
+			label: string;
+			options: string[];
+			position: number;
+			required: boolean;
+			/** @enum {string} */
+			visibility: 'members' | 'admins';
 		};
 		/**
 		 * Notification
@@ -1156,15 +1649,157 @@ export interface components {
 			/** Format: date-time */
 			read_at?: string | null;
 		};
+		/** HomeGroupSummary */
+		HomeGroupSummary: {
+			/** Format: uuid */
+			id: string;
+			name: string;
+			slug: string;
+		};
 		/**
-		 * PasskeyChallengeResponse
-		 * @description WebAuthn assertion options (ADR 0018, usernameless): feed `challenge` and `rp_id` to navigator.credentials.get, then send the assertion together with `challenge_token` (opaque, short-lived) to the verify operation.
+		 * HomeResponse
+		 * @description Upcoming events and recent activity across all the device owner's communities
 		 */
-		PasskeyChallengeResponse: {
-			/** @description base64url, no padding */
-			challenge: string;
-			challenge_token: string;
-			rp_id: string;
+		HomeResponse: {
+			recent_activity: (components['schemas']['Post'] & {
+				community: components['schemas']['Community'];
+				group: components['schemas']['HomeGroupSummary'];
+			})[];
+			upcoming_events: (components['schemas']['Event'] & {
+				community: components['schemas']['Community'];
+				group: components['schemas']['HomeGroupSummary'];
+			})[];
+		};
+		/**
+		 * MemberUser
+		 * @description A member's public identity: name plus the opt-in bio and pronouns.
+		 */
+		MemberUser: {
+			bio?: string | null;
+			display_name: string;
+			/** Format: uuid */
+			id: string;
+			pronouns?: string | null;
+		};
+		/** AuthExchangeResponse */
+		AuthExchangeResponse: {
+			device_token: string;
+			user: components['schemas']['AuthUser'];
+		};
+		/**
+		 * FileVersion
+		 * @description One stored version of a file entry (ADR 0017), newest first.
+		 */
+		FileVersion: {
+			byte_size: number;
+			content_type: string;
+			/** @description The version the entry points at */
+			current: boolean;
+			download_url: string;
+			filename: string;
+			/** Format: uuid */
+			id: string;
+			/** @enum {string} */
+			kind: 'image' | 'file';
+			/** @description Uploaded by the caller */
+			mine: boolean;
+			thumbnail_url?: string | null;
+			/** Format: date-time */
+			uploaded_at: string;
+			uploaded_by?: components['schemas']['Author'];
+			url: string;
+			version_seq: number;
+		};
+		/** AuthRegisterResponse */
+		AuthRegisterResponse: {
+			/** @enum {string} */
+			status: 'confirmation_sent';
+			user: components['schemas']['AuthUser'];
+		};
+		/**
+		 * Invite
+		 * @description An invite link as its managers see it (SPEC §3). `token` is the shareable secret — the web accept URL is /invite/{token}.
+		 */
+		Invite: {
+			/** Format: date-time */
+			created_at: string;
+			/** Format: date-time */
+			expires_at?: string | null;
+			/**
+			 * Format: uuid
+			 * @description Null for community-wide invites
+			 */
+			group_id?: string | null;
+			/** Format: uuid */
+			id: string;
+			invited_email?: string | null;
+			max_uses?: number | null;
+			revoked: boolean;
+			token: string;
+			use_count: number;
+		};
+		/**
+		 * PollParams
+		 * @description A poll to create with a post. The post body is the question; options keep the order they are sent in.
+		 */
+		PollParams: {
+			anonymous?: boolean | null;
+			/** Format: date-time */
+			closes_at?: string | null;
+			multiple_choice?: boolean | null;
+			options: {
+				text: string;
+			}[];
+		} | null;
+		/**
+		 * InviteAcceptResponse
+		 * @description The joined target plus any required custom profile fields still unanswered — collect those next via the community profile operation (the API sibling of the complete-profile page).
+		 */
+		InviteAcceptResponse: {
+			community: components['schemas']['Community'];
+			group?: components['schemas']['Group'] | null;
+			missing_required_fields: components['schemas']['CustomField'][];
+		};
+		/**
+		 * CommunityProfile
+		 * @description The caller's custom-field answers in one community (ADR 0020): every field the community defines, the caller's current values keyed by field id, and which required fields still need answers (a nag, never a lockout).
+		 */
+		CommunityProfile: {
+			fields: components['schemas']['CustomField'][];
+			missing_required_field_ids: string[];
+			/** @description Field id → the caller's answer */
+			values: {
+				[key: string]: string;
+			};
+		};
+		/** Author */
+		Author: {
+			display_name: string;
+			/** Format: uuid */
+			id: string;
+			/** @enum {string} */
+			type: 'user' | 'group' | 'guest';
+		} | null;
+		/**
+		 * Member
+		 * @description A member-directory row (SPEC §4). `contact` and `custom_field_values` are already redacted for the calling viewer's role (ADR 0020) — hidden fields simply don't appear.
+		 */
+		Member: {
+			/** @description The visible contact fields: phone / email / note */
+			contact: {
+				email?: string;
+				note?: string;
+				phone?: string;
+			};
+			/** @description Field id → this member's visible answer */
+			custom_field_values: {
+				[key: string]: string;
+			};
+			/** Format: date-time */
+			joined_at: string;
+			/** @enum {string} */
+			role: 'owner' | 'admin' | 'member';
+			user: components['schemas']['MemberUser'];
 		};
 		/** Poll */
 		Poll: {
@@ -1183,74 +1818,6 @@ export interface components {
 				votes: number;
 			}[];
 		} | null;
-		/**
-		 * PollParams
-		 * @description A poll to create with a post. The post body is the question; options keep the order they are sent in.
-		 */
-		PollParams: {
-			anonymous?: boolean | null;
-			/** Format: date-time */
-			closes_at?: string | null;
-			multiple_choice?: boolean | null;
-			options: {
-				text: string;
-			}[];
-		} | null;
-		/** Post */
-		Post: {
-			acknowledged_count: number;
-			acknowledgment_required: boolean;
-			attachments: components['schemas']['Attachment'][];
-			author?: components['schemas']['Author'];
-			body_markdown?: string | null;
-			comment_count?: number | null;
-			comments?: components['schemas']['Comment'][];
-			deleted: boolean;
-			/** Format: date-time */
-			edited_at?: string | null;
-			/** Format: uuid */
-			group_id: string;
-			/** Format: uuid */
-			id: string;
-			/** @description Whether the caller has acknowledged this post */
-			my_acknowledged: boolean;
-			/** @description Emoji the caller has reacted with */
-			my_reactions: string[];
-			/** @description Awaiting moderation (approval-queue groups) — visible only to the author and moderators */
-			pending_approval: boolean;
-			pinned: boolean;
-			poll?: components['schemas']['Poll'];
-			/** Format: date-time */
-			published_at: string;
-			/** @description Emoji → count */
-			reactions: {
-				[key: string]: number;
-			};
-			/** @description Actions the calling viewer may take on this post (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `edit`/`delete` are the author's; `pin`/`moderate` are a moderator's. Empty when the viewer's rights weren't resolved. */
-			viewer_can: ('edit' | 'delete' | 'pin' | 'moderate')[];
-		};
-		/** StatusResponse */
-		StatusResponse: {
-			status: string;
-		};
-		/**
-		 * StoredFile
-		 * @description An uploaded file. `id` is what create-post's `stored_file_ids` takes; the URLs are Bearer-authorized API routes.
-		 */
-		StoredFile: {
-			byte_size: number;
-			content_type: string;
-			download_url: string;
-			filename: string;
-			height?: number | null;
-			/** Format: uuid */
-			id: string;
-			/** @enum {string} */
-			kind: 'image' | 'file';
-			thumbnail_url?: string | null;
-			url: string;
-			width?: number | null;
-		};
 	};
 	responses: never;
 	parameters: never;
@@ -1463,6 +2030,201 @@ export interface operations {
 			};
 		};
 	};
+	invites_revoke: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				invite_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Invite'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	group_join: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: {
+			content: {
+				'application/json': {
+					/** @description Optional note shown with a join request */
+					message?: string | null;
+				};
+			};
+		};
+		responses: {
+			/** @description status is `joined` or `requested` */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	group_leave: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Left */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	events_create: {
 		parameters: {
 			query?: never;
@@ -1537,6 +2299,114 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	group_members_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['GroupMember'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	members_index: {
+		parameters: {
+			query?: {
+				/** @description filter[<field_id>]=<value> pairs; only fields visible to the caller apply */
+				filter?: string;
+			};
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The roster and its visible field definitions */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Member'][];
+						fields: components['schemas']['CustomField'][];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1860,6 +2730,149 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	group_members_update_role: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @enum {string} */
+					role?: 'owner' | 'admin' | 'member';
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: {
+							/** @enum {string} */
+							role: 'owner' | 'admin' | 'member';
+							/** Format: uuid */
+							user_id: string;
+						};
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	join_requests_deny: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				request_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Denied */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -2346,6 +3359,205 @@ export interface operations {
 			};
 		};
 	};
+	invites_accept: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				token: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['InviteAcceptResponse'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	me_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Profile'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	me_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					bio?: string | null;
+					contact_email?: string | null;
+					/** @enum {string|null} */
+					contact_email_visibility?: 'hidden' | 'members' | 'admins' | null;
+					contact_note?: string | null;
+					/** @enum {string|null} */
+					contact_note_visibility?: 'hidden' | 'members' | 'admins' | null;
+					contact_phone?: string | null;
+					/** @enum {string|null} */
+					contact_phone_visibility?: 'hidden' | 'members' | 'admins' | null;
+					/** @enum {string|null} */
+					digest_frequency?: 'off' | 'daily' | 'weekly' | null;
+					display_name?: string | null;
+					/** @enum {string|null} */
+					feed_sort?: 'chronological' | 'activity' | null;
+					locale?: string | null;
+					pronouns?: string | null;
+					timezone?: string | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Profile'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	file_library_show: {
 		parameters: {
 			query?: never;
@@ -2640,6 +3852,144 @@ export interface operations {
 			};
 		};
 	};
+	notification_level_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['NotificationLevel'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	notification_level_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @enum {string} */
+					level?: 'everything' | 'highlights' | 'mentions_only' | 'muted';
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['NotificationLevel'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	posts_pin: {
 		parameters: {
 			query?: never;
@@ -2899,6 +4249,97 @@ export interface operations {
 			};
 		};
 	};
+	members_update_role: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @enum {string} */
+					role?: 'owner' | 'admin' | 'member';
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: {
+							/** @enum {string} */
+							role: 'owner' | 'admin' | 'member';
+							/** Format: uuid */
+							user_id: string;
+						};
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	file_library_index: {
 		parameters: {
 			query?: {
@@ -3116,6 +4557,59 @@ export interface operations {
 			};
 		};
 	};
+	join_requests_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['JoinRequest'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	groups_index: {
 		parameters: {
 			query?: never;
@@ -3269,6 +4763,66 @@ export interface operations {
 			};
 		};
 	};
+	join_requests_approve: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				request_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Approved */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	events_create_slot: {
 		parameters: {
 			query?: never;
@@ -3296,6 +4850,199 @@ export interface operations {
 				content: {
 					'application/json': {
 						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	devices_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Device'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	community_invites_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Invite'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	community_invites_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** Format: date-time */
+					expires_at?: string | null;
+					/**
+					 * Format: email
+					 * @description Delivers the invite by email and binds redemption to that address
+					 */
+					invited_email?: string | null;
+					max_uses?: number | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Invite'];
 					};
 				};
 			};
@@ -3454,6 +5201,66 @@ export interface operations {
 			};
 		};
 	};
+	group_members_remove: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Removed */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	files_thumbnail: {
 		parameters: {
 			query?: never;
@@ -3581,6 +5388,64 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	community_leave: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Left */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -4289,6 +6154,151 @@ export interface operations {
 			};
 		};
 	};
+	group_invites_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Invite'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	group_invites_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** Format: date-time */
+					expires_at?: string | null;
+					/**
+					 * Format: email
+					 * @description Delivers the invite by email and binds redemption to that address
+					 */
+					invited_email?: string | null;
+					max_uses?: number | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Invite'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	notifications_mark_all_read: {
 		parameters: {
 			query?: never;
@@ -4299,6 +6309,55 @@ export interface operations {
 		requestBody?: never;
 		responses: {
 			/** @description Marked read */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	devices_revoke: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				device_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Revoked */
 			200: {
 				headers: {
 					[name: string]: unknown;
@@ -4499,6 +6558,65 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	members_remove: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				user_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Removed */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -4815,6 +6933,57 @@ export interface operations {
 			};
 		};
 	};
+	invites_preview: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				token: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['InvitePreview'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	events_cancel: {
 		parameters: {
 			query?: never;
@@ -4910,6 +7079,144 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	community_profile_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CommunityProfile'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	community_profile_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description Field id → answer */
+					values?: {
+						[key: string]: string;
+					};
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CommunityProfile'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};

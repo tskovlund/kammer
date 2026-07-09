@@ -87,6 +87,16 @@
 						? ` · ${t('you.accounts.serverVersion', { version: serverVersions[instance.id] })}`
 						: ''}
 				</p>
+				<p class="mt-1 flex gap-3 text-sm">
+					<!-- eslint-disable svelte/no-navigation-without-resolve -->
+					<a href={resolve(`/you/${instance.id}/profile`)} class="text-accent hover:underline">
+						{t('you.accounts.profile')}
+					</a>
+					<a href={resolve(`/you/${instance.id}/devices`)} class="text-accent hover:underline">
+						{t('you.accounts.devices')}
+					</a>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
+				</p>
 				{#snippet trailing()}
 					<Button
 						variant="danger"

@@ -15,6 +15,13 @@
 	import type { Community } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
+	import {
+		fetchNotificationLevel,
+		joinGroup,
+		leaveGroup,
+		setNotificationLevel
+	} from '$lib/people/api.js';
+	import type { NotificationLevelValue } from '$lib/people/types.js';
 	import { socketStatus } from '$lib/realtime/registry.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -29,6 +36,11 @@
 	let community = $state<Community | null>(null);
 	let group = $state<Group | null>(null);
 	let metaError = $state<FeedErrorKind | null>(null);
+	// Membership controls (#182): the caller's per-group notification
+	// level (SPEC §9), and join/request/leave per `viewer_can`/`my_role`.
+	let notificationLevel = $state<NotificationLevelValue | null>(null);
+	let membershipBusy = $state(false);
+	let membershipNotice = $state<string | null>(null);
 	let heading = $state<HTMLHeadingElement>();
 	// Skip the very first load: only a client-side navigation between groups
 	// should pull focus to the new heading; the initial page load leaves focus
@@ -54,6 +66,8 @@
 		community = null;
 		group = null;
 		metaError = null;
+		notificationLevel = null;
+		membershipNotice = null;
 
 		(async () => {
 			try {
@@ -64,6 +78,16 @@
 				if (cancelled) return;
 				community = resolvedCommunity;
 				group = resolvedGroup;
+
+				if (resolvedGroup.my_role) {
+					// Best-effort: the bell selector simply stays hidden if the
+					// level can't be read.
+					void fetchNotificationLevel(inst, { community: communitySlug, group: groupSlug })
+						.then((level) => {
+							if (!cancelled) notificationLevel = level.level;
+						})
+						.catch(() => {});
+				}
 				localStore = createFeedStore(
 					inst,
 					{ community: communitySlug, group: groupSlug },
@@ -91,6 +115,64 @@
 			localStore?.stop();
 		};
 	});
+
+	async function refreshGroup(): Promise<void> {
+		if (!instance || !page.params.community || !page.params.group) return;
+		group = await fetchGroup(instance, page.params.community, page.params.group);
+	}
+
+	async function join(): Promise<void> {
+		if (!instance) return;
+		membershipBusy = true;
+		membershipNotice = null;
+		try {
+			const outcome = await joinGroup(instance, ref);
+			if (outcome === 'requested') {
+				membershipNotice = t('group.joinRequested');
+			} else {
+				const level = await fetchNotificationLevel(instance, ref);
+				notificationLevel = level.level;
+			}
+			await refreshGroup();
+		} catch (error) {
+			membershipNotice = error instanceof FeedApiError ? error.message : t('feed.error.body');
+		} finally {
+			membershipBusy = false;
+		}
+	}
+
+	async function leave(): Promise<void> {
+		if (!instance || !window.confirm(t('group.leaveConfirm'))) return;
+		membershipBusy = true;
+		membershipNotice = null;
+		try {
+			await leaveGroup(instance, ref);
+			notificationLevel = null;
+			membershipNotice = t('group.left');
+			await refreshGroup();
+		} catch (error) {
+			membershipNotice = error instanceof FeedApiError ? error.message : t('feed.error.body');
+		} finally {
+			membershipBusy = false;
+		}
+	}
+
+	async function changeLevel(level: NotificationLevelValue): Promise<void> {
+		if (!instance) return;
+		try {
+			const next = await setNotificationLevel(instance, ref, level);
+			notificationLevel = next.level;
+		} catch {
+			// Keep showing the last known level; the next load rereads it.
+		}
+	}
+
+	const notificationLevels: NotificationLevelValue[] = [
+		'everything',
+		'highlights',
+		'mentions_only',
+		'muted'
+	];
 
 	const homeHref = resolve('/');
 	const filesHref = $derived(
@@ -155,6 +237,52 @@
 						{t('files.link')}
 					</a>
 				{/if}
+
+				<!-- Membership controls (#182), shown only when `viewer_can` /
+				     `my_role` say they'd succeed — never a 403 on click. -->
+				<div class="mt-2 flex flex-wrap items-center gap-3">
+					{#if group && !group.my_role && (group.viewer_can.includes('join') || group.viewer_can.includes('request_to_join'))}
+						<Button
+							id="group-join"
+							size="sm"
+							variant="primary"
+							disabled={membershipBusy}
+							onclick={() => void join()}
+						>
+							{group.viewer_can.includes('join') ? t('group.join') : t('group.requestToJoin')}
+						</Button>
+					{/if}
+					{#if group?.my_role && notificationLevel}
+						<label class="flex items-center gap-2 text-sm text-ink-muted">
+							<span>{t('group.notifications.label')}</span>
+							<select
+								id="group-notification-level"
+								value={notificationLevel}
+								onchange={(changeEvent) =>
+									void changeLevel(changeEvent.currentTarget.value as NotificationLevelValue)}
+								class="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-ink"
+							>
+								{#each notificationLevels as level (level)}
+									<option value={level}>{t(`group.notifications.${level}`)}</option>
+								{/each}
+							</select>
+						</label>
+					{/if}
+					{#if group?.my_role && group.my_role !== 'owner'}
+						<Button
+							id="group-leave"
+							size="sm"
+							variant="ghost"
+							disabled={membershipBusy}
+							onclick={() => void leave()}
+						>
+							{t('group.leave')}
+						</Button>
+					{/if}
+					{#if membershipNotice}
+						<p class="text-sm text-ink-muted" role="status">{membershipNotice}</p>
+					{/if}
+				</div>
 			</div>
 			{#if store}
 				<div
