@@ -347,6 +347,24 @@ and this project adheres to
 
 ### Fixed
 
+- The moderation ban guards checked the target's protected status
+  (admin/owner role for `Moderation.ban_member/4`, operator flag and
+  community ownership for `Moderation.ban_instance/3`) before their
+  transactions rather than inside them (issue #129, found by
+  independent review of #128) — a concurrent promotion or ownership
+  transfer landing in that window could let a ban proceed against a
+  freshly protected target, in the instance-ban case reintroducing
+  the owner-purge bug #122 fixed, via a race instead of a stale
+  guard. Both guards now run inside the ban transaction against
+  row-locked (`FOR UPDATE`) user/membership rows, making check and
+  act atomic, and `Communities.remove_member/3` now deletes the
+  community-membership row before the group rows so every
+  membership-removing transaction acquires locks in the same order
+  (the reverse order could deadlock a concurrent ban + remove of the
+  same member). The race window itself isn't reproducible under the
+  test sandbox; the new context tests cover the observable contract
+  around it (current-role reads, no-partial-purge refusal, rollback
+  of the membership removal when the ban insert fails).
 - Group-authored posts no longer leak the human author's identity
   through the API (issue #153): the feed queries never preloaded
   `:group`, so the serializer fell through to the user clause and

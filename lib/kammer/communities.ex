@@ -281,8 +281,16 @@ defmodule Kammer.Communities do
 
         with {:ok, removed} <-
                Repo.transact(fn ->
-                 Groups.remove_memberships_in_community(community, membership.user_id)
-                 Repo.delete(membership)
+                 # Community-membership row before group rows — the
+                 # global lock order every membership-removing
+                 # transaction follows (Moderation's ban paths lock the
+                 # community row first, #129); the reverse order here
+                 # would deadlock a concurrent ban + remove of the same
+                 # member.
+                 with {:ok, removed} <- Repo.delete(membership) do
+                   Groups.remove_memberships_in_community(community, membership.user_id)
+                   {:ok, removed}
+                 end
                end) do
           if actor.id != target.id do
             Audit.record(
