@@ -109,6 +109,7 @@ defmodule Kammer.Files do
          true <-
            Authorization.can_write_folder?(uploader, scope, folder_chain, relationship) ||
              :unauthorized,
+         :ok <- check_upload_size(source_path),
          :ok <- check_quota(scope, source_path) do
       declared_content_type = Map.get(file_info, :content_type, "application/octet-stream")
 

@@ -220,6 +220,110 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.StoredFile)
           )
       },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/files" => %PathItem{
+        get:
+          operation(
+            "Browse a folder: its subfolders, files, and breadcrumb chain",
+            :file_library_index,
+            group_params() ++ [query_param(:folder_id, "The folder to open; omit for the root")],
+            response: single_response(Schemas.FileListing)
+          ),
+        post:
+          operation(
+            "Upload a new file into a folder (multipart)",
+            :file_library_upload,
+            group_params(),
+            status: 201,
+            request_body: file_multipart_body(),
+            # 413: file over UPLOAD_MAX_MB or the space's storage quota.
+            extra_errors: [413],
+            response: single_response(Schemas.LibraryFile)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/files/{file_id}" => %PathItem{
+        get:
+          operation(
+            "A file with its version history (ADR 0017)",
+            :file_library_show,
+            file_params(),
+            response: single_response(Schemas.LibraryFile)
+          ),
+        delete:
+          operation(
+            "Delete a file and all its versions (uploader or manager)",
+            :file_library_delete,
+            file_params(),
+            response: single_response(Schemas.LibraryFile)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/files/{file_id}/versions" =>
+        %PathItem{
+          post:
+            operation(
+              "Upload a new version of an existing file (multipart)",
+              :file_library_upload_version,
+              file_params(),
+              status: 201,
+              request_body: file_multipart_body(),
+              extra_errors: [413],
+              response: single_response(Schemas.LibraryFile)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/files/{file_id}/versions/{version_id}" =>
+        %PathItem{
+          delete:
+            operation(
+              "Delete one version (uploader or manager; never the last)",
+              :file_library_delete_version,
+              file_params() ++ [path_param(:version_id)],
+              # 422 last_version when it's the only remaining version.
+              extra_errors: [422],
+              response: single_response(Schemas.FileVersion)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/folders" => %PathItem{
+        post:
+          operation(
+            "Create a folder (writers; depth-limited)",
+            :file_library_create_folder,
+            group_params(),
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  name: %Schema{type: :string},
+                  parent_folder_id: %Schema{type: :string, format: :uuid, nullable: true}
+                })
+              ),
+            response: single_response(Schemas.Folder)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/folders/{folder_id}/overrides" =>
+        %PathItem{
+          put:
+            operation(
+              "Set a folder's read/write preset overrides (managers)",
+              :file_library_update_folder,
+              folder_params(),
+              request_body:
+                body(
+                  object(%{
+                    read_override: %Schema{type: :string, enum: ["inherit", "admins_only"]},
+                    write_override: %Schema{type: :string, enum: ["inherit", "admins_only"]}
+                  })
+                ),
+              response: single_response(Schemas.Folder)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/folders/{folder_id}" => %PathItem{
+        delete:
+          operation(
+            "Delete a folder (managers; files fall back to the root)",
+            :file_library_delete_folder,
+            folder_params(),
+            response: single_response(Schemas.Folder)
+          )
+      },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}" => %PathItem{
         put:
           operation(
@@ -687,6 +791,27 @@ defmodule KammerWeb.ApiSpec do
     }
   end
 
+  # The file-library uploads: bytes plus an optional target folder.
+  defp file_multipart_body do
+    %RequestBody{
+      required: true,
+      content: %{
+        "multipart/form-data" => %MediaType{
+          schema:
+            object(%{
+              file: %Schema{type: :string, format: :binary},
+              folder_id: %Schema{
+                type: :string,
+                format: :uuid,
+                nullable: true,
+                description: "Target folder; omit for the space root (upload only)"
+              }
+            })
+        }
+      }
+    }
+  end
+
   # The non-JSON responses: stored-file bytes.
   defp binary_response(description) do
     %Response{
@@ -710,6 +835,12 @@ defmodule KammerWeb.ApiSpec do
   defp event_slot_params, do: event_params() ++ [path_param(:slot_id)]
 
   defp event_comment_params, do: event_params() ++ [path_param(:comment_id)]
+
+  defp group_params, do: [path_param(:community_slug), path_param(:group_slug)]
+
+  defp file_params, do: group_params() ++ [path_param(:file_id)]
+
+  defp folder_params, do: group_params() ++ [path_param(:folder_id)]
 
   defp object(properties \\ %{}) do
     %Schema{type: :object, properties: properties}

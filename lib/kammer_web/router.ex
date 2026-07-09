@@ -202,6 +202,22 @@ defmodule KammerWeb.Router do
     scope "/communities/:community_slug/groups/:group_slug" do
       post "/uploads", UploadController, :create
 
+      # Group file library (issue #181): folders, file entries + versions
+      # (ADR 0017), upload/download, and manager folder/override tools —
+      # the folder-permission invariant (ADR 0009) is enforced in the
+      # context. Literal `/files` and `/folders` segments never collide
+      # with `/posts`, so ordering is unconstrained here.
+      get "/files", FileLibraryController, :index
+      post "/files", FileLibraryController, :upload
+      get "/files/:file_id", FileLibraryController, :show
+      delete "/files/:file_id", FileLibraryController, :delete
+      post "/files/:file_id/versions", FileLibraryController, :upload_version
+      delete "/files/:file_id/versions/:version_id", FileLibraryController, :delete_version
+
+      post "/folders", FileLibraryController, :create_folder
+      put "/folders/:folder_id/overrides", FileLibraryController, :update_folder
+      delete "/folders/:folder_id", FileLibraryController, :delete_folder
+
       scope "/posts/:post_id" do
         put "/", PostController, :update
         delete "/", PostController, :delete

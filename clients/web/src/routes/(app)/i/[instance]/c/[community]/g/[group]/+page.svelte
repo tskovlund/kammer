@@ -93,6 +93,9 @@
 	});
 
 	const homeHref = resolve('/');
+	const filesHref = $derived(
+		resolve(`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/files`)
+	);
 </script>
 
 <svelte:head>
@@ -129,6 +132,28 @@
 				</h1>
 				{#if group?.description}
 					<p class="mt-0.5 line-clamp-2 text-sm text-ink-muted">{group.description}</p>
+				{/if}
+				{#if group?.features?.includes('files')}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a
+						href={filesHref}
+						class="mt-1.5 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							class="size-4"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
+							/>
+						</svg>
+						{t('files.link')}
+					</a>
 				{/if}
 			</div>
 			{#if store}

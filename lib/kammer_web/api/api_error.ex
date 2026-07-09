@@ -67,6 +67,15 @@ defmodule KammerWeb.ApiError do
   def from_result(conn, {:error, :quota_exceeded}),
     do: send(conn, :quota_exceeded, "This group's file storage is full.")
 
+  def from_result(conn, {:error, :too_deep}),
+    do: send(conn, :unprocessable, "This folder can't hold another level of subfolders.")
+
+  def from_result(conn, {:error, :system_folder}),
+    do: send(conn, :unprocessable, "System folders can't be deleted.")
+
+  def from_result(conn, {:error, :last_version}),
+    do: send(conn, :unprocessable, "That's the only version — delete the file itself instead.")
+
   def from_result(conn, {:error, %Ecto.Changeset{} = changeset}) do
     details =
       Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
