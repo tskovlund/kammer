@@ -212,18 +212,27 @@ defmodule KammerWeb.ApiSpec do
 
   defp operation(summary, operation_id, parameters, opts) do
     status = Keyword.get(opts, :status, 200)
+    request_body = Keyword.get(opts, :request_body)
+
+    error = %Reference{"$ref": "#/components/schemas/Error"} |> error_response()
+
+    # Every operation can answer 401/403/404 with the one error
+    # envelope; writes (anything with a request body) can also reject
+    # the payload (422) or rate-limit the caller (429).
+    error_statuses = if request_body, do: [401, 403, 404, 422, 429], else: [401, 403, 404]
+
+    responses =
+      error_statuses
+      |> Map.new(&{&1, error})
+      |> Map.put(status, Keyword.fetch!(opts, :response))
 
     %Operation{
       summary: summary,
       operationId: to_string(operation_id),
       parameters: parameters,
       security: Keyword.get(opts, :security),
-      requestBody: Keyword.get(opts, :request_body),
-      responses: %{
-        status => Keyword.fetch!(opts, :response),
-        401 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response(),
-        404 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response()
-      }
+      requestBody: request_body,
+      responses: responses
     }
   end
 

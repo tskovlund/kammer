@@ -342,7 +342,10 @@ and this project adheres to
   as arrays (issue #154): `posts_create`, `comments_create`, and
   `events_show` now use a single-object envelope, the RSVP response
   documents its actual `{event_id, status}` shape, and
-  `acknowledgment_required` is a boolean, not a string. The generated
+  `acknowledgment_required` is a boolean, not a string. Error
+  documentation is also truthful now: every operation documents
+  401/403/404, and writes additionally 422/429 — previously only
+  401/404 appeared despite 403s being designed behavior. The generated
   TypeScript client (`clients/web/src/lib/api/schema.d.ts`) is
   regenerated — its types were actively wrong for these operations.
 - A malformed post id in API comment creation is a 404, not a 500
@@ -350,8 +353,10 @@ and this project adheres to
   `Ecto.Query.CastError`.
 - Comments can no longer target unpublished posts (issue #156):
   `Feed.create_comment` now enforces the same visibility rule as the
-  feed queries — pending-approval or scheduled posts take comments
-  only from their author or a moderator. Previously any member who
+  feed queries — a pending-approval post takes comments only from its
+  author or a moderator, a scheduled post only from its author, and
+  the refusal is a 404 (an invisible post answers exactly like a
+  nonexistent one, no existence oracle). Previously any member who
   learned a post UUID could comment on a moderation-queued post
   through the API before it was visible. The created comment also
   returns its author populated instead of `"author": null`.

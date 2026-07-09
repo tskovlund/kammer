@@ -327,7 +327,7 @@ defmodule Kammer.FeedTest do
       {:ok, pending} = Feed.create_post(poster, approval_group, %{"body_markdown" => "queued"})
       assert pending.pending_approval
 
-      assert {:error, :unauthorized} =
+      assert {:error, :not_found} =
                Feed.create_comment(onlooker, pending, %{"body_markdown" => "sneaky"})
 
       assert {:ok, _comment} = Feed.create_comment(poster, pending, %{"body_markdown" => "own"})
@@ -342,12 +342,14 @@ defmodule Kammer.FeedTest do
 
       other_member = group_member_fixture(group)
 
-      assert {:error, :unauthorized} =
+      assert {:error, :not_found} =
                Feed.create_comment(other_member, scheduled, %{"body_markdown" => "early"})
 
       # Moderators don't see others' scheduled posts (visible_posts/4),
-      # so they can't comment on them either — only the author can.
-      assert {:error, :unauthorized} =
+      # so they can't comment on them either — only the author can. The
+      # error is :not_found, not :unauthorized: an invisible post must
+      # answer like a nonexistent one.
+      assert {:error, :not_found} =
                Feed.create_comment(group_owner, scheduled, %{"body_markdown" => "mod note"})
 
       assert {:ok, _comment} =

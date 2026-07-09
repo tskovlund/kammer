@@ -469,6 +469,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
 				headers: {
 					[name: string]: unknown;
@@ -514,7 +523,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -560,7 +596,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -605,7 +668,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -631,13 +721,22 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Community'][];
+						data: components['schemas']['Community'][];
 						next_cursor?: string | null;
 					};
 				};
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -674,13 +773,22 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Event'][];
+						data: components['schemas']['Event'][];
 						next_cursor?: string | null;
 					};
 				};
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -724,6 +832,15 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -787,7 +904,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -815,13 +959,22 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Group'][];
+						data: components['schemas']['Group'][];
 						next_cursor?: string | null;
 					};
 				};
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -864,13 +1017,22 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Post'][];
+						data: components['schemas']['Post'][];
 						next_cursor?: string | null;
 					};
 				};
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -930,7 +1092,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -981,7 +1170,34 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1011,6 +1227,15 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1057,6 +1282,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			404: {
 				headers: {
 					[name: string]: unknown;
@@ -1087,6 +1321,15 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
 				headers: {
 					[name: string]: unknown;
 				};

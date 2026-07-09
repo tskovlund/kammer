@@ -236,12 +236,10 @@ defmodule Kammer.Feed do
   """
   @spec get_post!(Group.t(), Ecto.UUID.t(), keyword()) :: Post.t()
   def get_post!(%Group{} = group, post_id, opts \\ []) do
-    Repo.one!(
-      from(post in Post,
-        where: post.id == ^post_id and post.group_id == ^group.id,
-        preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
-      )
-    )
+    case fetch_post(group, post_id, opts) do
+      {:ok, post} -> post
+      {:error, :not_found} -> raise Ecto.NoResultsError, queryable: Post
+    end
   end
 
   @doc """
@@ -665,13 +663,16 @@ defmodule Kammer.Feed do
       not Authorization.can?(author, :comment_in_group, group, relationship) ->
         {:error, :unauthorized}
 
+      # A post the caller can't see must answer exactly like a post
+      # that doesn't exist — a 403 here would confirm the hidden post's
+      # existence, which every read path denies.
+      not post_commentable_by?(author, post, group, relationship) ->
+        {:error, :not_found}
+
       Post.comments_locked?(post) ->
         {:error, :comments_locked}
 
       Post.deleted?(post) ->
-        {:error, :unauthorized}
-
-      not post_commentable_by?(author, post, group, relationship) ->
         {:error, :unauthorized}
 
       true ->

@@ -155,12 +155,12 @@ defmodule KammerWeb.Api.ResourcesTest do
       %{"data" => [post]} = poster |> api_conn() |> get(path) |> json_response(200)
       assert post["pending_approval"] == true
 
-      # Another member can't see it — and can't comment on it either,
-      # even knowing the id.
+      # Another member can't see it — and commenting on it answers 404,
+      # exactly like a post that doesn't exist, even knowing the id.
       member
       |> api_conn()
       |> post(path <> "/#{pending.id}/comments", %{"body_markdown" => "sneaky"})
-      |> json_response(403)
+      |> json_response(404)
 
       # The author can comment on their own queued post.
       poster
