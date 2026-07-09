@@ -8,6 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- The last owner of a community can no longer demote themselves into
+  an unrecoverable ownerless state (found by the #182 people-API
+  review): `PUT .../members/{id}/role` refuses it with `422 last_owner`.
+
+- Membership, profiles, and the member directory over the API (#182,
+  part of the #165 parity ladder): invite issue/list/revoke and a
+  public preview + accept flow that reports required custom profile
+  fields still missing (ADR 0020); community and group membership
+  lifecycle (leave, policy-aware group join, join-request queue, role
+  changes, removals); the member directory with per-viewer field
+  redaction and custom-field filters; own profile and per-community
+  custom-field answers read/update; per-group notification levels; and
+  device management — listing and revoking browser sessions and API
+  device tokens by id, with revocation severing the device's live
+  sockets (closes #174: API device tokens were invisible to their
+  owner, and the devices page now lists and revokes them too). Group
+  and community payloads gained `my_role`, `join_policy`, and
+  join/request-to-join capabilities in `viewer_can`.
+
 ### Changed
 
 - Test-suite prune (T2 of the #208 overhaul, per the #207 standard):

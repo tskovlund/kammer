@@ -99,6 +99,21 @@ defmodule Kammer.Invitations do
   end
 
   @doc """
+  Fetches an invite by id with community and group preloaded, or
+  `nil`. Invalid ids read as `nil`; callers own the authorization
+  decision (`revoke_invite/2` re-checks).
+  """
+  @spec get_invite(String.t()) :: Invite.t() | nil
+  def get_invite(invite_id) do
+    with {:ok, uuid} <- Ecto.UUID.cast(invite_id),
+         %Invite{} = invite <- Repo.get(Invite, uuid) do
+      Repo.preload(invite, [:community, :group])
+    else
+      _missing -> nil
+    end
+  end
+
+  @doc """
   Looks up an invite by token with community and group preloaded, or `nil`.
   """
   @spec get_invite_by_token(String.t()) :: Invite.t() | nil

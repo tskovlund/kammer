@@ -45,6 +45,14 @@ defmodule KammerWeb.Api.Schemas do
         name: %Schema{type: :string},
         slug: %Schema{type: :string},
         description: %Schema{type: :string, nullable: true},
+        my_role: %Schema{
+          type: :string,
+          enum: ["owner", "admin", "member"],
+          nullable: true,
+          description:
+            "The calling viewer's community role — null for non-members, " <>
+              "and when the viewer's rights weren't resolved"
+        },
         viewer_can: %Schema{
           type: :array,
           items: %Schema{
@@ -78,14 +86,28 @@ defmodule KammerWeb.Api.Schemas do
           type: :string,
           enum: ["private", "community", "public_link", "public_listed"]
         },
+        join_policy: %Schema{
+          type: :string,
+          enum: ["invite_only", "request_approval", "open"]
+        },
         features: %Schema{type: :array, items: %Schema{type: :string}},
         sealed: %Schema{type: :boolean},
         archived: %Schema{type: :boolean},
+        my_role: %Schema{
+          type: :string,
+          enum: ["owner", "admin", "member"],
+          nullable: true,
+          description:
+            "The calling viewer's group role — null for non-members, and " <>
+              "when the viewer's rights weren't resolved"
+        },
         viewer_can: %Schema{
           type: :array,
           items: %Schema{
             type: :string,
             enum: [
+              "join",
+              "request_to_join",
               "post",
               "moderate",
               "manage_group",
@@ -102,7 +124,17 @@ defmodule KammerWeb.Api.Schemas do
               "rights weren't resolved."
         }
       },
-      required: [:id, :name, :slug, :visibility, :features, :sealed, :archived, :viewer_can]
+      required: [
+        :id,
+        :name,
+        :slug,
+        :visibility,
+        :join_policy,
+        :features,
+        :sealed,
+        :archived,
+        :viewer_can
+      ]
     })
   end
 
@@ -790,6 +822,323 @@ defmodule KammerWeb.Api.Schemas do
         slug: %Schema{type: :string}
       },
       required: [:id, :name, :slug]
+    })
+  end
+
+  defmodule CustomField do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "CustomField",
+      description:
+        "A community-defined profile field (ADR 0020) — the roster's " <>
+          "columns and the profile form's inputs. `visibility` is who may " <>
+          "see answers in the directory; the owner always sees and " <>
+          "answers their own.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        label: %Schema{type: :string},
+        field_type: %Schema{type: :string, enum: ["text", "single_select"]},
+        options: %Schema{type: :array, items: %Schema{type: :string}},
+        required: %Schema{type: :boolean},
+        visibility: %Schema{type: :string, enum: ["members", "admins"]},
+        position: %Schema{type: :integer}
+      },
+      required: [:id, :label, :field_type, :options, :required, :visibility, :position]
+    })
+  end
+
+  defmodule MemberUser do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "MemberUser",
+      description: "A member's public identity: name plus the opt-in bio and pronouns.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        display_name: %Schema{type: :string},
+        bio: %Schema{type: :string, nullable: true},
+        pronouns: %Schema{type: :string, nullable: true}
+      },
+      required: [:id, :display_name]
+    })
+  end
+
+  defmodule Member do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Member",
+      description:
+        "A member-directory row (SPEC §4). `contact` and " <>
+          "`custom_field_values` are already redacted for the calling " <>
+          "viewer's role (ADR 0020) — hidden fields simply don't appear.",
+      type: :object,
+      properties: %{
+        user: MemberUser,
+        role: %Schema{type: :string, enum: ["owner", "admin", "member"]},
+        joined_at: %Schema{type: :string, format: :"date-time"},
+        contact: %Schema{
+          type: :object,
+          description: "The visible contact fields: phone / email / note",
+          properties: %{
+            phone: %Schema{type: :string},
+            email: %Schema{type: :string},
+            note: %Schema{type: :string}
+          }
+        },
+        custom_field_values: %Schema{
+          type: :object,
+          additionalProperties: %Schema{type: :string},
+          description: "Field id → this member's visible answer"
+        }
+      },
+      required: [:user, :role, :joined_at, :contact, :custom_field_values]
+    })
+  end
+
+  defmodule GroupMember do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GroupMember",
+      type: :object,
+      properties: %{
+        user: MemberUser,
+        role: %Schema{type: :string, enum: ["owner", "admin", "member"]},
+        joined_at: %Schema{type: :string, format: :"date-time"}
+      },
+      required: [:user, :role, :joined_at]
+    })
+  end
+
+  defmodule JoinRequest do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "JoinRequest",
+      description: "A pending request to join a request-approval group (SPEC §3).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        user: MemberUser,
+        message: %Schema{type: :string, nullable: true},
+        requested_at: %Schema{type: :string, format: :"date-time"}
+      },
+      required: [:id, :user, :requested_at]
+    })
+  end
+
+  defmodule Invite do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Invite",
+      description:
+        "An invite link as its managers see it (SPEC §3). `token` is the " <>
+          "shareable secret — the web accept URL is /invite/{token}.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        token: %Schema{type: :string},
+        group_id: %Schema{
+          type: :string,
+          format: :uuid,
+          nullable: true,
+          description: "Null for community-wide invites"
+        },
+        invited_email: %Schema{type: :string, nullable: true},
+        expires_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        max_uses: %Schema{type: :integer, nullable: true},
+        use_count: %Schema{type: :integer},
+        revoked: %Schema{type: :boolean},
+        created_at: %Schema{type: :string, format: :"date-time"}
+      },
+      required: [:id, :token, :use_count, :revoked, :created_at]
+    })
+  end
+
+  defmodule InvitePreview do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "InvitePreview",
+      description:
+        "What an invite opens, before acceptance — the API twin of the " <>
+          "public /invite/{token} landing page.",
+      type: :object,
+      properties: %{
+        token: %Schema{type: :string},
+        community: %Schema{
+          type: :object,
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            name: %Schema{type: :string},
+            slug: %Schema{type: :string},
+            description: %Schema{type: :string, nullable: true},
+            require_real_names: %Schema{type: :boolean}
+          },
+          required: [:id, :name, :slug, :require_real_names]
+        },
+        group: %Schema{
+          type: :object,
+          nullable: true,
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            name: %Schema{type: :string},
+            slug: %Schema{type: :string}
+          },
+          required: [:id, :name, :slug]
+        }
+      },
+      required: [:token, :community]
+    })
+  end
+
+  defmodule InviteAcceptResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "InviteAcceptResponse",
+      description:
+        "The joined target plus any required custom profile fields still " <>
+          "unanswered — collect those next via the community profile " <>
+          "operation (the API sibling of the complete-profile page).",
+      type: :object,
+      properties: %{
+        community: Community,
+        group: %Schema{oneOf: [Group], nullable: true},
+        missing_required_fields: %Schema{type: :array, items: CustomField}
+      },
+      required: [:community, :missing_required_fields]
+    })
+  end
+
+  defmodule Profile do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Profile",
+      description:
+        "The caller's own account and base profile (SPEC §4) — contact " <>
+          "visibilities included because it is theirs. Email changes stay " <>
+          "on the web flow.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        email: %Schema{type: :string, format: :email},
+        display_name: %Schema{type: :string},
+        locale: %Schema{type: :string},
+        timezone: %Schema{type: :string},
+        digest_frequency: %Schema{type: :string, enum: ["off", "daily", "weekly"]},
+        feed_sort: %Schema{type: :string, enum: ["chronological", "activity"]},
+        bio: %Schema{type: :string, nullable: true},
+        pronouns: %Schema{type: :string, nullable: true},
+        contact_phone: %Schema{type: :string, nullable: true},
+        contact_phone_visibility: %Schema{type: :string, enum: ["hidden", "members", "admins"]},
+        contact_email: %Schema{type: :string, nullable: true},
+        contact_email_visibility: %Schema{type: :string, enum: ["hidden", "members", "admins"]},
+        contact_note: %Schema{type: :string, nullable: true},
+        contact_note_visibility: %Schema{type: :string, enum: ["hidden", "members", "admins"]}
+      },
+      required: [
+        :id,
+        :email,
+        :display_name,
+        :locale,
+        :timezone,
+        :digest_frequency,
+        :feed_sort,
+        :contact_phone_visibility,
+        :contact_email_visibility,
+        :contact_note_visibility
+      ]
+    })
+  end
+
+  defmodule CommunityProfile do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "CommunityProfile",
+      description:
+        "The caller's custom-field answers in one community (ADR 0020): " <>
+          "every field the community defines, the caller's current values " <>
+          "keyed by field id, and which required fields still need answers " <>
+          "(a nag, never a lockout).",
+      type: :object,
+      properties: %{
+        fields: %Schema{type: :array, items: CustomField},
+        values: %Schema{
+          type: :object,
+          additionalProperties: %Schema{type: :string},
+          description: "Field id → the caller's answer"
+        },
+        missing_required_field_ids: %Schema{
+          type: :array,
+          items: %Schema{type: :string, format: :uuid}
+        }
+      },
+      required: [:fields, :values, :missing_required_field_ids]
+    })
+  end
+
+  defmodule Device do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Device",
+      description:
+        "A revocable credential (SPEC §2, issue #174): a browser session " <>
+          "or a long-lived API device token. `device_name` is the user " <>
+          "agent for sessions and the client-chosen name for API devices.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        kind: %Schema{type: :string, enum: ["session", "api_device"]},
+        device_name: %Schema{type: :string, nullable: true},
+        created_at: %Schema{type: :string, format: :"date-time"},
+        current: %Schema{type: :boolean, description: "The credential making this request"}
+      },
+      required: [:id, :kind, :created_at, :current]
+    })
+  end
+
+  defmodule NotificationLevel do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "NotificationLevel",
+      description:
+        "The caller's per-group notification level (SPEC §9). `level` is " <>
+          "the effective one (the preference, or the group default when " <>
+          "none is set); `default_level` is what the group defaults to.",
+      type: :object,
+      properties: %{
+        level: %Schema{
+          type: :string,
+          enum: ["everything", "highlights", "mentions_only", "muted"]
+        },
+        default_level: %Schema{
+          type: :string,
+          enum: ["everything", "highlights", "mentions_only", "muted"]
+        }
+      },
+      required: [:level, :default_level]
     })
   end
 

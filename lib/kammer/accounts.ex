@@ -193,33 +193,54 @@ defmodule Kammer.Accounts do
     Repo.one(query)
   end
 
+  # The revocable-credential contexts a user manages on the devices
+  # surface (issue #174): browser sessions and long-lived API device
+  # tokens. Single-use exchange tokens (magic links, login codes,
+  # passkey handoffs) are not devices.
+  @device_contexts ["session", "api-device"]
+
   @doc """
-  Lists the user's active sessions ("devices", SPEC §2) newest first.
+  Lists every credential that can act as this account — browser
+  sessions and API device tokens alike (SPEC §2, issue #174) — newest
+  first. Both the devices page and the API device listing read from
+  here, so an api-device token can never be invisible to its owner.
   """
-  @spec list_user_sessions(User.t()) :: [UserToken.t()]
-  def list_user_sessions(%User{} = user) do
+  @spec list_user_devices(User.t()) :: [UserToken.t()]
+  def list_user_devices(%User{} = user) do
     Repo.all(
       from(token in UserToken,
-        where: token.user_id == ^user.id and token.context == "session",
+        where: token.user_id == ^user.id and token.context in ^@device_contexts,
         order_by: [desc: token.inserted_at]
       )
     )
   end
 
   @doc """
-  Revokes one of the user's sessions by token id — the devices page action.
-
-  Scoped to the given user so one user can never revoke another's session.
+  Revokes one of the user's devices (browser session or API device
+  token) by token id. Scoped to the given user so one user can never
+  revoke another's; a foreign or unknown id reads as `{:error,
+  :not_found}`. Returns the deleted token so the web layer can sever
+  live sockets riding it (issue #174).
   """
-  @spec revoke_user_session(User.t(), Ecto.UUID.t()) :: :ok
-  def revoke_user_session(%User{} = user, token_id) do
-    Repo.delete_all(
-      from(token in UserToken,
-        where: token.id == ^token_id and token.user_id == ^user.id and token.context == "session"
-      )
-    )
-
-    :ok
+  @spec revoke_user_device(User.t(), Ecto.UUID.t()) ::
+          {:ok, UserToken.t()} | {:error, :not_found}
+  def revoke_user_device(%User{} = user, token_id) do
+    with {:ok, uuid} <- Ecto.UUID.cast(token_id),
+         %UserToken{} = token <-
+           Repo.one(
+             from(token in UserToken,
+               where:
+                 token.id == ^uuid and token.user_id == ^user.id and
+                   token.context in ^@device_contexts
+             )
+           ),
+         # Concurrent revokes race on this delete; the loser reads as
+         # already-gone rather than a StaleEntryError 500.
+         {1, _deleted} <- Repo.delete_all(from(t in UserToken, where: t.id == ^token.id)) do
+      {:ok, token}
+    else
+      _missing -> {:error, :not_found}
+    end
   end
 
   ## Passkeys (ADR 0018, SPEC §16): WebAuthn credentials, registered
@@ -487,6 +508,20 @@ defmodule Kammer.Accounts do
     {encoded_token, user_token} = UserToken.build_device_token(user, device_name)
     Repo.insert!(user_token)
     encoded_token
+  end
+
+  @doc """
+  The token row behind a valid API device token, or `nil` — lets the
+  device listing mark which entry is the caller's own credential.
+  """
+  @spec get_device_token(String.t()) :: UserToken.t() | nil
+  def get_device_token(token) do
+    with {:ok, query} <- UserToken.verify_device_token_query(token),
+         {_user, user_token} <- Repo.one(query) do
+      user_token
+    else
+      _invalid -> nil
+    end
   end
 
   @doc """

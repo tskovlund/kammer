@@ -57,7 +57,7 @@ msgstr "Allerede registreret?"
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr "En e-mail er sendt til %{email} — åbn den for at bekræfte din konto."
 
-#: lib/kammer_web/live/user_live/devices.ex:280
+#: lib/kammer_web/live/user_live/devices.ex:306
 #, elixir-autogen, elixir-format
 msgid "Browser"
 msgstr "Browser"
@@ -119,12 +119,12 @@ msgstr "Opretter konto..."
 msgid "Danish"
 msgstr "Dansk"
 
-#: lib/kammer_web/live/user_live/devices.ex:197
+#: lib/kammer_web/live/user_live/devices.ex:213
 #, elixir-autogen, elixir-format
 msgid "Device signed out."
 msgstr "Enheden er logget ud."
 
-#: lib/kammer_web/live/user_live/devices.ex:19
+#: lib/kammer_web/live/user_live/devices.ex:21
 #, elixir-autogen, elixir-format
 msgid "Devices"
 msgstr "Enheder"
@@ -256,7 +256,7 @@ msgid "Profile updated."
 msgstr "Profil opdateret."
 
 #: lib/kammer_web/components/kammer_components.ex:163
-#: lib/kammer_web/live/user_live/devices.ex:48
+#: lib/kammer_web/live/user_live/devices.ex:53
 #, elixir-autogen, elixir-format
 msgid "Revoke"
 msgstr "Log ud"
@@ -273,7 +273,7 @@ msgstr "Gem profil"
 msgid "Saving..."
 msgstr "Gemmer..."
 
-#: lib/kammer_web/live/user_live/devices.ex:21
+#: lib/kammer_web/live/user_live/devices.ex:23
 #, elixir-autogen, elixir-format
 msgid "Sessions signed in to your account. Revoke any you don't recognize."
 msgstr "Sessioner logget ind på din konto. Log dem ud, du ikke genkender."
@@ -294,12 +294,12 @@ msgstr "Log ind"
 msgid "Sign me in only this time"
 msgstr "Log mig kun ind denne gang"
 
-#: lib/kammer_web/live/user_live/devices.ex:45
+#: lib/kammer_web/live/user_live/devices.ex:50
 #, elixir-autogen, elixir-format
 msgid "Sign this device out?"
 msgstr "Log denne enhed ud?"
 
-#: lib/kammer_web/live/user_live/devices.ex:38
+#: lib/kammer_web/live/user_live/devices.ex:43
 #, elixir-autogen, elixir-format
 msgid "Signed in %{timestamp}"
 msgstr "Logget ind %{timestamp}"
@@ -321,7 +321,7 @@ msgstr "Linket er ugyldigt eller udløbet."
 msgid "The link is valid for 15 minutes and can be used once."
 msgstr "Linket er gyldigt i 15 minutter og kan bruges én gang."
 
-#: lib/kammer_web/live/user_live/devices.ex:34
+#: lib/kammer_web/live/user_live/devices.ex:39
 #, elixir-autogen, elixir-format
 msgid "This device"
 msgstr "Denne enhed"
@@ -336,12 +336,12 @@ msgstr "Tidszone"
 msgid "To see sent emails, visit"
 msgstr "For at se afsendte e-mails, besøg"
 
-#: lib/kammer_web/live/user_live/devices.ex:54
+#: lib/kammer_web/live/user_live/devices.ex:59
 #, elixir-autogen, elixir-format
 msgid "To sign out this device, use the sign-out button in the menu."
 msgstr "For at logge denne enhed ud skal du bruge log ud-knappen i menuen."
 
-#: lib/kammer_web/live/user_live/devices.ex:271
+#: lib/kammer_web/live/user_live/devices.ex:297
 #, elixir-autogen, elixir-format
 msgid "Unknown device"
 msgstr "Ukendt enhed"
@@ -985,7 +985,7 @@ msgstr "Prøver, møder, fester — de dukker op her."
 #: lib/kammer_web/components/feed_components.ex:644
 #: lib/kammer_web/live/community_live/members.ex:92
 #: lib/kammer_web/live/user_live/bookmarks.ex:42
-#: lib/kammer_web/live/user_live/devices.ex:160
+#: lib/kammer_web/live/user_live/devices.ex:165
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Fjern"
@@ -3428,47 +3428,47 @@ msgstr "Handlingslog"
 msgid "No audit events yet"
 msgstr "Ingen handlinger endnu"
 
-#: lib/kammer_web/live/user_live/devices.ex:82
+#: lib/kammer_web/live/user_live/devices.ex:87
 #, elixir-autogen, elixir-format
 msgid "Add a passkey"
 msgstr "Tilføj en adgangsnøgle"
 
-#: lib/kammer_web/live/user_live/devices.ex:146
+#: lib/kammer_web/live/user_live/devices.ex:151
 #, elixir-autogen, elixir-format
 msgid "Added %{timestamp}"
 msgstr "Tilføjet %{timestamp}"
 
-#: lib/kammer_web/live/user_live/devices.ex:219
+#: lib/kammer_web/live/user_live/devices.ex:235
 #, elixir-autogen, elixir-format
 msgid "Couldn't add that passkey. Please try again."
 msgstr "Kunne ikke tilføje adgangsnøglen. Prøv igen."
 
-#: lib/kammer_web/live/user_live/devices.ex:166
+#: lib/kammer_web/live/user_live/devices.ex:171
 #, elixir-autogen, elixir-format
 msgid "No passkeys yet."
 msgstr "Ingen adgangsnøgler endnu."
 
-#: lib/kammer_web/live/user_live/devices.ex:144
+#: lib/kammer_web/live/user_live/devices.ex:149
 #, elixir-autogen, elixir-format
 msgid "Passkey"
 msgstr "Adgangsnøgle"
 
-#: lib/kammer_web/live/user_live/devices.ex:213
+#: lib/kammer_web/live/user_live/devices.ex:229
 #, elixir-autogen, elixir-format
 msgid "Passkey added."
 msgstr "Adgangsnøgle tilføjet."
 
-#: lib/kammer_web/live/user_live/devices.ex:228
+#: lib/kammer_web/live/user_live/devices.ex:244
 #, elixir-autogen, elixir-format
 msgid "Passkey removed."
 msgstr "Adgangsnøgle fjernet."
 
-#: lib/kammer_web/live/user_live/devices.ex:58
+#: lib/kammer_web/live/user_live/devices.ex:63
 #, elixir-autogen, elixir-format
 msgid "Passkeys"
 msgstr "Adgangsnøgler"
 
-#: lib/kammer_web/live/user_live/devices.ex:157
+#: lib/kammer_web/live/user_live/devices.ex:162
 #, elixir-autogen, elixir-format
 msgid "Remove this passkey?"
 msgstr "Fjern denne adgangsnøgle?"
@@ -3478,7 +3478,7 @@ msgstr "Fjern denne adgangsnøgle?"
 msgid "Sign in with a passkey"
 msgstr "Log ind med en adgangsnøgle"
 
-#: lib/kammer_web/live/user_live/devices.ex:60
+#: lib/kammer_web/live/user_live/devices.ex:65
 #, elixir-autogen, elixir-format
 msgid "Sign in with your device's fingerprint, face, or screen lock — no email hop."
 msgstr "Log ind med enhedens fingeraftryk, ansigt eller skærmlås — ingen e-mail nødvendig."
@@ -3493,13 +3493,13 @@ msgstr "Den adgangsnøgle virkede ikke. Prøv igen."
 msgid "The passkey sign-in expired. Please try again."
 msgstr "Login med adgangsnøgle udløb. Prøv igen."
 
-#: lib/kammer_web/live/user_live/devices.ex:233
+#: lib/kammer_web/live/user_live/devices.ex:249
 #: lib/kammer_web/live/user_live/login.ex:219
 #, elixir-autogen, elixir-format
 msgid "This browser doesn't support passkeys."
 msgstr "Denne browser understøtter ikke adgangsnøgler."
 
-#: lib/kammer_web/live/user_live/devices.ex:148
+#: lib/kammer_web/live/user_live/devices.ex:153
 #, elixir-autogen, elixir-format
 msgid "last used %{timestamp}"
 msgstr "sidst brugt %{timestamp}"
@@ -4092,3 +4092,13 @@ msgstr "Linket og koden er gyldige i 15 minutter og kan hver bruges én gang."
 #, elixir-autogen, elixir-format
 msgid "Delete this folder? Files move to the root and become visible to everyone who can see this space."
 msgstr "Slet denne mappe? Filerne flyttes til roden og bliver synlige for alle, der kan se dette område."
+
+#: lib/kammer_web/live/user_live/devices.ex:277
+#, elixir-autogen, elixir-format
+msgid "API device"
+msgstr "API-enhed"
+
+#: lib/kammer_web/live/user_live/devices.ex:36
+#, elixir-autogen, elixir-format
+msgid "App"
+msgstr "App"

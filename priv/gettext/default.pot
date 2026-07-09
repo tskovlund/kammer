@@ -57,7 +57,7 @@ msgstr ""
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:280
+#: lib/kammer_web/live/user_live/devices.ex:306
 #, elixir-autogen, elixir-format
 msgid "Browser"
 msgstr ""
@@ -119,12 +119,12 @@ msgstr ""
 msgid "Danish"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:197
+#: lib/kammer_web/live/user_live/devices.ex:213
 #, elixir-autogen, elixir-format
 msgid "Device signed out."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:19
+#: lib/kammer_web/live/user_live/devices.ex:21
 #, elixir-autogen, elixir-format
 msgid "Devices"
 msgstr ""
@@ -256,7 +256,7 @@ msgid "Profile updated."
 msgstr ""
 
 #: lib/kammer_web/components/kammer_components.ex:163
-#: lib/kammer_web/live/user_live/devices.ex:48
+#: lib/kammer_web/live/user_live/devices.ex:53
 #, elixir-autogen, elixir-format
 msgid "Revoke"
 msgstr ""
@@ -273,7 +273,7 @@ msgstr ""
 msgid "Saving..."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:21
+#: lib/kammer_web/live/user_live/devices.ex:23
 #, elixir-autogen, elixir-format
 msgid "Sessions signed in to your account. Revoke any you don't recognize."
 msgstr ""
@@ -294,12 +294,12 @@ msgstr ""
 msgid "Sign me in only this time"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:45
+#: lib/kammer_web/live/user_live/devices.ex:50
 #, elixir-autogen, elixir-format
 msgid "Sign this device out?"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:38
+#: lib/kammer_web/live/user_live/devices.ex:43
 #, elixir-autogen, elixir-format
 msgid "Signed in %{timestamp}"
 msgstr ""
@@ -321,7 +321,7 @@ msgstr ""
 msgid "The link is valid for 15 minutes and can be used once."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:34
+#: lib/kammer_web/live/user_live/devices.ex:39
 #, elixir-autogen, elixir-format
 msgid "This device"
 msgstr ""
@@ -336,12 +336,12 @@ msgstr ""
 msgid "To see sent emails, visit"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:54
+#: lib/kammer_web/live/user_live/devices.ex:59
 #, elixir-autogen, elixir-format
 msgid "To sign out this device, use the sign-out button in the menu."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:271
+#: lib/kammer_web/live/user_live/devices.ex:297
 #, elixir-autogen, elixir-format
 msgid "Unknown device"
 msgstr ""
@@ -985,7 +985,7 @@ msgstr ""
 #: lib/kammer_web/components/feed_components.ex:644
 #: lib/kammer_web/live/community_live/members.ex:92
 #: lib/kammer_web/live/user_live/bookmarks.ex:42
-#: lib/kammer_web/live/user_live/devices.ex:160
+#: lib/kammer_web/live/user_live/devices.ex:165
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr ""
@@ -3397,47 +3397,47 @@ msgstr ""
 msgid "No audit events yet"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:82
+#: lib/kammer_web/live/user_live/devices.ex:87
 #, elixir-autogen, elixir-format
 msgid "Add a passkey"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:146
+#: lib/kammer_web/live/user_live/devices.ex:151
 #, elixir-autogen, elixir-format
 msgid "Added %{timestamp}"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:219
+#: lib/kammer_web/live/user_live/devices.ex:235
 #, elixir-autogen, elixir-format
 msgid "Couldn't add that passkey. Please try again."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:166
+#: lib/kammer_web/live/user_live/devices.ex:171
 #, elixir-autogen, elixir-format
 msgid "No passkeys yet."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:144
+#: lib/kammer_web/live/user_live/devices.ex:149
 #, elixir-autogen, elixir-format
 msgid "Passkey"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:213
+#: lib/kammer_web/live/user_live/devices.ex:229
 #, elixir-autogen, elixir-format
 msgid "Passkey added."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:228
+#: lib/kammer_web/live/user_live/devices.ex:244
 #, elixir-autogen, elixir-format
 msgid "Passkey removed."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:58
+#: lib/kammer_web/live/user_live/devices.ex:63
 #, elixir-autogen, elixir-format
 msgid "Passkeys"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:157
+#: lib/kammer_web/live/user_live/devices.ex:162
 #, elixir-autogen, elixir-format
 msgid "Remove this passkey?"
 msgstr ""
@@ -3447,7 +3447,7 @@ msgstr ""
 msgid "Sign in with a passkey"
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:60
+#: lib/kammer_web/live/user_live/devices.ex:65
 #, elixir-autogen, elixir-format
 msgid "Sign in with your device's fingerprint, face, or screen lock — no email hop."
 msgstr ""
@@ -3462,13 +3462,13 @@ msgstr ""
 msgid "The passkey sign-in expired. Please try again."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:233
+#: lib/kammer_web/live/user_live/devices.ex:249
 #: lib/kammer_web/live/user_live/login.ex:219
 #, elixir-autogen, elixir-format
 msgid "This browser doesn't support passkeys."
 msgstr ""
 
-#: lib/kammer_web/live/user_live/devices.ex:148
+#: lib/kammer_web/live/user_live/devices.ex:153
 #, elixir-autogen, elixir-format
 msgid "last used %{timestamp}"
 msgstr ""
@@ -4060,4 +4060,14 @@ msgstr ""
 #: lib/kammer_web/live/file_live/index.ex:128
 #, elixir-autogen, elixir-format
 msgid "Delete this folder? Files move to the root and become visible to everyone who can see this space."
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:277
+#, elixir-autogen, elixir-format
+msgid "API device"
+msgstr ""
+
+#: lib/kammer_web/live/user_live/devices.ex:36
+#, elixir-autogen, elixir-format
+msgid "App"
 msgstr ""

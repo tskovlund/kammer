@@ -13,11 +13,15 @@ defmodule KammerWeb.UserLive.DevicesTest do
       %{conn: log_in_user(conn, user), user: user}
     end
 
-    test "lists the current session marked as this device", %{conn: conn} do
+    test "lists the current session marked as this device — and API device tokens (#174)",
+         %{conn: conn, user: user} do
+      _api_token = Accounts.create_device_token(user, "Kammer på telefonen")
+
       {:ok, _lv, html} = live(conn, ~p"/users/settings/devices")
 
       assert html =~ "Devices"
       assert html =~ "This device"
+      assert html =~ "Kammer på telefonen"
     end
 
     test "revokes another session", %{conn: conn, user: user} do
@@ -26,7 +30,7 @@ defmodule KammerWeb.UserLive.DevicesTest do
       {:ok, lv, _html} = live(conn, ~p"/users/settings/devices")
 
       other_session =
-        Enum.find(Accounts.list_user_sessions(user), fn session ->
+        Enum.find(Accounts.list_user_devices(user), fn session ->
           session.token == other_token
         end)
 
@@ -35,6 +39,23 @@ defmodule KammerWeb.UserLive.DevicesTest do
       |> render_click()
 
       refute Accounts.get_user_by_session_token(other_token)
+    end
+
+    test "revoking an API device token severs its sockets too (#174)", %{conn: conn, user: user} do
+      api_token = Accounts.create_device_token(user, "Telefonen")
+      KammerWeb.Endpoint.subscribe("api_user_socket:#{user.id}")
+
+      {:ok, lv, _html} = live(conn, ~p"/users/settings/devices")
+
+      device =
+        Enum.find(Accounts.list_user_devices(user), &(&1.context == "api-device"))
+
+      lv
+      |> element(~s(button[phx-value-id="#{device.id}"]))
+      |> render_click()
+
+      refute Accounts.get_user_by_device_token(api_token)
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
     end
 
     test "redirects if user is not logged in" do

@@ -17,6 +17,8 @@ defmodule KammerWeb.ApiError do
     comments_locked: {422, "comments_locked"},
     poll_closed: {422, "poll_closed"},
     slot_full: {422, "slot_full"},
+    owner_cannot_leave: {422, "owner_cannot_leave"},
+    last_owner: {422, "last_owner"},
     payload_too_large: {413, "payload_too_large"},
     quota_exceeded: {413, "quota_exceeded"},
     rate_limited: {429, "rate_limited"}
@@ -51,6 +53,23 @@ defmodule KammerWeb.ApiError do
 
   def from_result(conn, {:error, :slot_full}),
     do: send(conn, :slot_full, "This signup slot is full.")
+
+  def from_result(conn, {:error, :owner_cannot_leave}),
+    do: send(conn, :owner_cannot_leave, "Owners can't leave — transfer ownership first.")
+
+  def from_result(conn, {:error, :last_owner}),
+    do:
+      send(
+        conn,
+        :last_owner,
+        "The last owner can't be demoted — promote another owner first."
+      )
+
+  def from_result(conn, {:error, :not_a_member}),
+    do: send(conn, :not_found, "Not found.")
+
+  def from_result(conn, {:error, reason}) when reason in [:banned, :instance_banned],
+    do: send(conn, :unprocessable, "That person is banned from this community.")
 
   def from_result(conn, {:error, :not_acknowledgment_post}),
     do: send(conn, :unprocessable, "This post does not require acknowledgment.")

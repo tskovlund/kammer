@@ -353,33 +353,43 @@ defmodule Kammer.AccountsTest do
   end
 
   describe "sessions and devices" do
-    test "list_user_sessions/1 returns only the user's session tokens" do
+    test "list_user_devices/1 returns the user's sessions and API device tokens (#174)" do
       user = user_fixture()
       other_user = user_fixture()
-      token = Accounts.generate_user_session_token(user, "AgentSmith/1.0")
+      session_token = Accounts.generate_user_session_token(user, "AgentSmith/1.0")
+      _api_token = Accounts.create_device_token(user, "Telefonen")
       _other_token = Accounts.generate_user_session_token(other_user)
 
-      assert [session] = Accounts.list_user_sessions(user)
-      assert session.token == token
+      devices = Accounts.list_user_devices(user)
+
+      assert [%{context: "api-device", user_agent: "Telefonen"}, %{context: "session"} = session] =
+               Enum.sort_by(devices, & &1.context)
+
+      assert session.token == session_token
       assert session.user_agent == "AgentSmith/1.0"
     end
 
-    test "revoke_user_session/2 deletes the session" do
+    test "revoke_user_device/2 kills either kind of credential" do
       user = user_fixture()
-      token = Accounts.generate_user_session_token(user)
-      [session] = Accounts.list_user_sessions(user)
+      session_token = Accounts.generate_user_session_token(user)
+      api_token = Accounts.create_device_token(user, "Telefonen")
 
-      assert :ok = Accounts.revoke_user_session(user, session.id)
-      refute Accounts.get_user_by_session_token(token)
+      for device <- Accounts.list_user_devices(user) do
+        assert {:ok, %{id: revoked_id}} = Accounts.revoke_user_device(user, device.id)
+        assert revoked_id == device.id
+      end
+
+      refute Accounts.get_user_by_session_token(session_token)
+      refute Accounts.get_user_by_device_token(api_token)
     end
 
-    test "revoke_user_session/2 cannot revoke another user's session" do
+    test "revoke_user_device/2 cannot revoke another user's credential" do
       user = user_fixture()
       other_user = user_fixture()
       token = Accounts.generate_user_session_token(user)
-      [session] = Accounts.list_user_sessions(user)
+      [session] = Accounts.list_user_devices(user)
 
-      assert :ok = Accounts.revoke_user_session(other_user, session.id)
+      assert {:error, :not_found} = Accounts.revoke_user_device(other_user, session.id)
       assert Accounts.get_user_by_session_token(token)
     end
   end

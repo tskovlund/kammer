@@ -171,6 +171,9 @@ defmodule KammerWeb.Router do
     pipe_through :api
 
     get "/instance", InstanceController, :show
+    # Invite preview is public like the /invite/:token landing page —
+    # the 24-byte token is the whole credential.
+    get "/invites/:token", InviteController, :show
     post "/auth/register", AuthController, :register
     post "/auth/request-link", AuthController, :request_link
     post "/auth/exchange", AuthController, :exchange
@@ -192,8 +195,54 @@ defmodule KammerWeb.Router do
     delete "/auth/device-token", AuthController, :revoke
 
     get "/home", HomeController, :show
+
+    # The caller's own account (issue #182): profile, and devices (#174).
+    get "/me", ProfileController, :show
+    put "/me", ProfileController, :update
+    get "/me/devices", ProfileController, :devices
+    delete "/me/devices/:device_id", ProfileController, :revoke_device
+
+    post "/invites/:token/accept", InviteController, :accept
+
     get "/communities", CommunityController, :index
     get "/communities/:community_slug/groups", CommunityController, :groups
+
+    # The people rung (issue #182): directory/roster, membership
+    # lifecycle, invites, per-community profile, group membership
+    # management, and the per-group notification level. The scope
+    # writes the shared prefix once and adds no alias of its own.
+    scope "/communities/:community_slug" do
+      get "/members", MemberController, :index
+      put "/members/:user_id/role", MemberController, :update_role
+      delete "/members/:user_id", MemberController, :remove
+      delete "/membership", MemberController, :leave
+
+      get "/profile", ProfileController, :community_profile
+      put "/profile", ProfileController, :update_community_profile
+
+      get "/invites", InviteController, :index
+      post "/invites", InviteController, :create
+      delete "/invites/:invite_id", InviteController, :revoke
+
+      scope "/groups/:group_slug" do
+        get "/invites", InviteController, :index
+        post "/invites", InviteController, :create
+
+        get "/members", GroupMemberController, :index
+        put "/members/:user_id/role", GroupMemberController, :update_role
+        delete "/members/:user_id", GroupMemberController, :remove
+        put "/membership", GroupMemberController, :join
+        delete "/membership", GroupMemberController, :leave
+
+        get "/join-requests", GroupMemberController, :index_join_requests
+        put "/join-requests/:request_id/approval", GroupMemberController, :approve_join_request
+        delete "/join-requests/:request_id", GroupMemberController, :deny_join_request
+
+        get "/notification-level", GroupMemberController, :show_notification_level
+        put "/notification-level", GroupMemberController, :update_notification_level
+      end
+    end
+
     get "/communities/:community_slug/groups/:group_slug/posts", PostController, :index
     post "/communities/:community_slug/groups/:group_slug/posts", PostController, :create
 

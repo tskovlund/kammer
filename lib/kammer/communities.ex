@@ -187,6 +187,26 @@ defmodule Kammer.Communities do
   end
 
   @doc """
+  The membership of the given user id in the community, with the user
+  preloaded, or `nil`. Invalid ids read as `nil`.
+  """
+  @spec get_membership_by_user_id(Community.t(), String.t()) :: CommunityMembership.t() | nil
+  def get_membership_by_user_id(%Community{} = community, user_id) do
+    case Ecto.UUID.cast(user_id) do
+      {:ok, uuid} ->
+        Repo.one(
+          from(membership in CommunityMembership,
+            where: membership.community_id == ^community.id and membership.user_id == ^uuid,
+            preload: :user
+          )
+        )
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   Adds a user to a community with the given role. Idempotent: an existing
   membership is returned unchanged. Intended for invite redemption and
   internal flows — there is no open "join community" in v1 (communities are
@@ -258,9 +278,13 @@ defmodule Kammer.Communities do
   @doc """
   Changes a member's community role. Requires `:manage_community`; granting
   or revoking the Owner role additionally requires the actor to be Owner.
+  Demoting the last remaining owner is refused (`:last_owner`) — unlike a
+  group, an ownerless community can't be recovered without DB surgery,
+  since promoting a new owner itself requires an owner.
   """
   @spec update_member_role(User.t(), Community.t(), CommunityMembership.t(), atom()) ::
-          {:ok, CommunityMembership.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, CommunityMembership.t()}
+          | {:error, Ecto.Changeset.t() | :unauthorized | :last_owner}
   def update_member_role(
         %User{} = actor,
         %Community{} = community,
@@ -275,26 +299,40 @@ defmodule Kammer.Communities do
       Authorization.can?(actor, :manage_community, community, actor_relationship) and
         (not owner_transition? or actor_relationship.community_role == :owner)
 
-    if authorized? do
-      previous_role = membership.role
+    cond do
+      not authorized? ->
+        {:error, :unauthorized}
 
-      with {:ok, updated} <-
-             membership |> CommunityMembership.changeset(%{role: new_role}) |> Repo.update() do
-        target = Repo.get!(User, membership.user_id)
+      membership.role == :owner and new_role != :owner and last_owner?(community) ->
+        {:error, :last_owner}
 
-        Audit.record(
-          community,
-          actor,
-          "member.role_changed",
-          "#{actor.display_name} changed #{target.display_name}'s role from " <>
-            "#{previous_role} to #{new_role}"
-        )
+      true ->
+        previous_role = membership.role
 
-        {:ok, updated}
-      end
-    else
-      {:error, :unauthorized}
+        with {:ok, updated} <-
+               membership |> CommunityMembership.changeset(%{role: new_role}) |> Repo.update() do
+          target = Repo.get!(User, membership.user_id)
+
+          Audit.record(
+            community,
+            actor,
+            "member.role_changed",
+            "#{actor.display_name} changed #{target.display_name}'s role from " <>
+              "#{previous_role} to #{new_role}"
+          )
+
+          {:ok, updated}
+        end
     end
+  end
+
+  defp last_owner?(%Community{} = community) do
+    Repo.aggregate(
+      from(membership in CommunityMembership,
+        where: membership.community_id == ^community.id and membership.role == :owner
+      ),
+      :count
+    ) <= 1
   end
 
   @doc """
