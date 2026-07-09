@@ -64,10 +64,7 @@ defmodule KammerWeb.UserLive.Registration do
     changeset = Accounts.change_user_registration(%User{}, %{}, validate_unique: false)
 
     client_ip =
-      case get_connect_info(socket, :peer_data) do
-        %{address: address} -> address
-        _other -> nil
-      end
+      KammerWeb.ClientIp.client_ip_from_socket(socket)
 
     {:ok, assign(assign_form(socket, changeset), :client_ip, client_ip),
      temporary_assigns: [form: nil]}

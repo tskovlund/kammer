@@ -11,9 +11,13 @@ defmodule KammerWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  # :x_headers rides along with :peer_data so LiveViews can resolve
+  # the real client IP behind a trusted reverse proxy (issue #162) —
+  # socket upgrades bypass the plug pipeline, so KammerWeb.ClientIp's
+  # policy is applied in mount via client_ip_from_socket/1.
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [:peer_data, :user_agent, session: @session_options]],
-    longpoll: [connect_info: [:peer_data, :user_agent, session: @session_options]]
+    websocket: [connect_info: [:peer_data, :x_headers, :user_agent, session: @session_options]],
+    longpoll: [connect_info: [:peer_data, :x_headers, :user_agent, session: @session_options]]
 
   # Realtime for API clients (ADR 0014). No origin check for the same
   # reason /api gets CORS `*` (issue #150): auth is the device token in
@@ -75,6 +79,13 @@ defmodule KammerWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug Plug.RequestId
+
+  # Rewrites conn.remote_ip from X-Forwarded-For when — and only
+  # when — the peer is a TRUSTED_PROXIES-listed proxy (issue #162:
+  # rate limits key on the client IP). Before Telemetry so request
+  # logs carry the real client too.
+  plug KammerWeb.ClientIp
+
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   # CORS for /api only (issue #150). Endpoint-level on purpose: OPTIONS

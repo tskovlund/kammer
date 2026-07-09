@@ -145,10 +145,7 @@ defmodule KammerWeb.UserLive.Login do
     form = to_form(%{"email" => email}, as: "user")
 
     client_ip =
-      case get_connect_info(socket, :peer_data) do
-        %{address: address} -> address
-        _other -> nil
-      end
+      KammerWeb.ClientIp.client_ip_from_socket(socket)
 
     socket =
       socket

@@ -38,7 +38,16 @@ defmodule Kammer.Storage do
     "#{date_prefix}/#{Ecto.UUID.generate()}#{extension}"
   end
 
-  defp adapter do
+  @doc """
+  The configured storage adapter module — unset config means local
+  disk (SPEC §1's default). Callers branching on the adapter must ask
+  here instead of reading the config key, so "unset" cannot mean
+  different things at different call sites (issue #98: backups read
+  the raw key without the default and mistook dev's unset config
+  for S3).
+  """
+  @spec adapter() :: module()
+  def adapter do
     Application.get_env(:kammer, :storage_adapter, Kammer.Storage.Local)
   end
 end

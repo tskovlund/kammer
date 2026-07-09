@@ -77,11 +77,16 @@ defmodule Kammer.Backups do
 
   # Local uploads only: with the S3 adapter the object store carries
   # its own durability story, so the tarball is skipped (and said so).
+  # Asks Kammer.Storage.adapter/0 rather than reading the config key:
+  # :storage_adapter is only set in prod's runtime.exs, and unset must
+  # mean Local here exactly as it does for uploads themselves —
+  # `mix kammer.backup` in dev used to skip the tarball with a
+  # misleading "S3" message (issue #98).
   defp archive_uploads(target_dir, timestamp, opts) do
     uploads_dir = Application.get_env(:kammer, :uploads_path)
 
     cond do
-      Application.get_env(:kammer, :storage_adapter) != Kammer.Storage.Local ->
+      Kammer.Storage.adapter() != Kammer.Storage.Local ->
         Logger.info("backup: S3 storage adapter — skipping uploads tarball")
         {:ok, nil}
 
