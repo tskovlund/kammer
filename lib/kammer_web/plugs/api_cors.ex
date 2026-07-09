@@ -28,9 +28,11 @@ defmodule KammerWeb.Plugs.ApiCors do
   @max_age_seconds "86400"
 
   @impl true
+  @spec init(keyword()) :: keyword()
   def init(opts), do: opts
 
   @impl true
+  @spec call(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
   def call(%Plug.Conn{path_info: ["api" | _]} = conn, _opts) do
     if preflight?(conn) do
       conn
@@ -54,16 +56,20 @@ defmodule KammerWeb.Plugs.ApiCors do
 
   defp put_origin_header(conn) do
     case Application.get_env(:kammer, :api_allowed_origins) do
-      nil ->
+      # An empty list means "nothing configured", not "deny everyone" —
+      # runtime.exs never sets one, but a stray empty env value must not
+      # silently flip the API from open to fully blocked.
+      empty when empty in [nil, []] ->
         put_resp_header(conn, "access-control-allow-origin", "*")
 
       allowed_origins when is_list(allowed_origins) ->
         # The response now depends on the Origin request header, so
-        # caches must key on it.
-        conn = put_resp_header(conn, "vary", "origin")
+        # caches must key on it. Prepend rather than put: a later Vary
+        # writer must not clobber this, nor this an earlier one.
+        conn = prepend_resp_headers(conn, [{"vary", "origin"}])
 
         with [origin] <- get_req_header(conn, "origin"),
-             true <- origin in allowed_origins do
+             true <- normalize(origin) in Enum.map(allowed_origins, &normalize/1) do
           put_resp_header(conn, "access-control-allow-origin", origin)
         else
           # No Origin header or an origin outside the list: no CORS
@@ -73,10 +79,17 @@ defmodule KammerWeb.Plugs.ApiCors do
     end
   end
 
+  # Browsers serialize Origin as lowercase scheme://host[:port] with no
+  # path; a hand-configured allow-list entry habitually arrives with a
+  # trailing slash or mixed case, which would otherwise never match.
+  defp normalize(origin) do
+    origin |> String.trim() |> String.trim_trailing("/") |> String.downcase()
+  end
+
   defp requested_headers(conn) do
     case get_req_header(conn, "access-control-request-headers") do
-      [headers] -> headers
-      _ -> @default_allowed_headers
+      [] -> @default_allowed_headers
+      headers -> Enum.join(headers, ", ")
     end
   end
 end

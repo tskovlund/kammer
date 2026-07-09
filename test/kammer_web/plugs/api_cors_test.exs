@@ -15,8 +15,15 @@ defmodule KammerWeb.Plugs.ApiCorsTest do
   alias KammerWeb.Plugs.ApiCors
 
   defp restrict_origins(origins) do
+    previous = Application.fetch_env(:kammer, :api_allowed_origins)
     Application.put_env(:kammer, :api_allowed_origins, origins)
-    on_exit(fn -> Application.delete_env(:kammer, :api_allowed_origins) end)
+
+    on_exit(fn ->
+      case previous do
+        {:ok, value} -> Application.put_env(:kammer, :api_allowed_origins, value)
+        :error -> Application.delete_env(:kammer, :api_allowed_origins)
+      end
+    end)
   end
 
   test "wildcard by default on API paths" do
@@ -91,6 +98,26 @@ defmodule KammerWeb.Plugs.ApiCorsTest do
 
     assert get_resp_header(conn, "access-control-allow-origin") == ["https://app.example.org"]
     assert get_resp_header(conn, "vary") == ["origin"]
+  end
+
+  test "an empty configured list means unset, not deny-all" do
+    restrict_origins([])
+
+    conn = :get |> conn("/api/v1/home") |> ApiCors.call([])
+
+    assert get_resp_header(conn, "access-control-allow-origin") == ["*"]
+  end
+
+  test "matching survives trailing slashes and case differences in the configured list" do
+    restrict_origins(["https://App.Example.org/"])
+
+    conn =
+      :get
+      |> conn("/api/v1/home")
+      |> put_req_header("origin", "https://app.example.org")
+      |> ApiCors.call([])
+
+    assert get_resp_header(conn, "access-control-allow-origin") == ["https://app.example.org"]
   end
 
   test "restricted mode grants nothing to other origins or origin-less requests" do

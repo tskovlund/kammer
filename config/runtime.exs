@@ -26,10 +26,20 @@ config :kammer, KammerWeb.Endpoint,
 # CORS for the JSON API (issue #150): wildcard unless restricted to a
 # comma-separated origin list, e.g.
 # API_ALLOWED_ORIGINS=https://app.example.org,https://club.example.org
-if allowed_origins = System.get_env("API_ALLOWED_ORIGINS") do
-  config :kammer,
-         :api_allowed_origins,
-         allowed_origins |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+# Skipped in test: the suite asserts both modes and must not inherit
+# whatever the developer's shell happens to export.
+if config_env() != :test do
+  allowed_origins =
+    "API_ALLOWED_ORIGINS"
+    |> System.get_env("")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+
+  # An empty/blank value stays unset (wildcard) — never deny-all.
+  if allowed_origins != [] do
+    config :kammer, :api_allowed_origins, allowed_origins
+  end
 end
 
 if config_env() == :prod do
