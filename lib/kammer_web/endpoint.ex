@@ -43,6 +43,11 @@ defmodule KammerWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  # CORS for /api only (issue #150). Endpoint-level on purpose: OPTIONS
+  # preflights match no route, so a router-pipeline plug would 404
+  # before setting any header.
+  plug KammerWeb.Plugs.ApiCors
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
