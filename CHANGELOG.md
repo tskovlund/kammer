@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- CORS on the JSON API (issue #150): `/api/v1` now answers cross-origin
+  requests and preflights with `Access-Control-Allow-Origin: *` by
+  default — required for the multi-instance Svelte client (any web
+  client at any domain) and safe because API auth is a Bearer device
+  token, never a cookie. Instances that want a tighter policy can set
+  `API_ALLOWED_ORIGINS` to a comma-separated origin allow-list. The
+  browser-facing LiveView app keeps the same-origin default.
 - Svelte PWA client scaffold at `clients/web/` (issue #32, ADR 0001):
   SvelteKit + TypeScript, static adapter in SPA mode (`ssr = false` —
   the client is a pure session-holder talking to remote instances,

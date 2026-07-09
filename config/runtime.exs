@@ -23,6 +23,15 @@ end
 config :kammer, KammerWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# CORS for the JSON API (issue #150): wildcard unless restricted to a
+# comma-separated origin list, e.g.
+# API_ALLOWED_ORIGINS=https://app.example.org,https://club.example.org
+if allowed_origins = System.get_env("API_ALLOWED_ORIGINS") do
+  config :kammer,
+         :api_allowed_origins,
+         allowed_origins |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
