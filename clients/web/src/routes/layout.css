@@ -1,1 +1,114 @@
 @import 'tailwindcss';
+
+/*
+ * Kammer design tokens — "Warm Scandinavian Minimal" (SPEC.md §21).
+ * Paper-white surfaces (never pure #fff), near-black warm ink (never pure
+ * #000), hairline borders over shadows, exactly one accent. Every text/
+ * background pair below holds WCAG AA (≥ 4.5:1) in both themes.
+ *
+ * Theme switching: light is the default; dark applies via
+ * prefers-color-scheme unless the user forced a theme, which is stamped
+ * on <html data-theme="…"> (see $lib/ui/theme.svelte.ts and the tiny
+ * pre-hydration script in app.html that prevents a flash).
+ */
+:root {
+	--paper: #f6f4f0;
+	--surface: #fcfbf8;
+	--ink: #211d18;
+	--ink-muted: #5c564d;
+	--ink-faint: #736c60;
+	--line: #e7e2da;
+	--accent: #8a4b24;
+	--accent-ink: #fcfbf8;
+	--danger: #9e3b2b;
+	color-scheme: light;
+}
+
+/* Dark twin — a first-class palette, not an inversion. Duplicated across
+ * the media query and the manual override because plain CSS cannot union
+ * a media query with an attribute selector. Keep the two blocks in sync. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--paper: #181512;
+		--surface: #201c18;
+		--ink: #ece7df;
+		--ink-muted: #a69e92;
+		--ink-faint: #8a8276;
+		--line: #322d27;
+		--accent: #d99a66;
+		--accent-ink: #241505;
+		--danger: #e08a79;
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme='dark'] {
+	--paper: #181512;
+	--surface: #201c18;
+	--ink: #ece7df;
+	--ink-muted: #a69e92;
+	--ink-faint: #8a8276;
+	--line: #322d27;
+	--accent: #d99a66;
+	--accent-ink: #241505;
+	--danger: #e08a79;
+	color-scheme: dark;
+}
+
+@theme inline {
+	--color-paper: var(--paper);
+	--color-surface: var(--surface);
+	--color-ink: var(--ink);
+	--color-ink-muted: var(--ink-muted);
+	--color-ink-faint: var(--ink-faint);
+	--color-line: var(--line);
+	--color-accent: var(--accent);
+	--color-accent-ink: var(--accent-ink);
+	--color-danger: var(--danger);
+	--font-sans:
+		'InterVariable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+		'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+	html {
+		background-color: var(--paper);
+		color: var(--ink);
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	body {
+		min-height: 100dvh;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+
+	::selection {
+		background-color: color-mix(in oklab, var(--accent) 25%, transparent);
+	}
+}
+
+/* Calm skeleton shimmer — collapsed by the reduced-motion block below. */
+@keyframes kammer-skeleton {
+	50% {
+		opacity: 0.45;
+	}
+}
+
+/* Motion is minimal and purposeful; for those who ask for none, collapse
+ * every transition and animation app-wide. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

@@ -10,6 +10,26 @@ and this project adheres to
 
 ### Added
 
+- Svelte client foundation (issue #32, ADR 0024): the design system in
+  SPEC §21's language (warm neutral palette, hairline borders, typed
+  UI primitives) with first-class light/dark themes (system-following
+  plus a persisted manual override, no flash on load) and global
+  `prefers-reduced-motion` support; the app shell — bottom tab bar on
+  mobile, sidebar on desktop, five tabs with calm empty states and a
+  route guard back to sign-in; EN + DA i18n from day one (typed
+  message catalogs — a missing Danish key is a compile error); the
+  full sign-in flow (instance URL probe → request link → paste the
+  link/token or follow a `/sign-in/{token}` deep link → exchange),
+  per-account sign-out from the You tab, plus theme and language
+  controls. Hardening from review findings: the instance store gets a
+  versioned envelope with per-element validation and v0 migration
+  (issue #158), merged-home failures carry an `auth`/`network`/
+  `server` kind so screens can tell "sign in again" from "retry"
+  (issue #159), and the vacuous client tests were replaced with real
+  ones — including Authorization-header and store-migration coverage
+  (issue #160). Installability lands too: a geometric "K" mark (any +
+  maskable SVG) and a completed manifest close issue #145.
+
 - Realtime and notifications for the JSON API (issue #30, ADR 0014):
   Phoenix Channels at `/api/socket` authenticated with the same device
   token as REST — `feed:group:<id>` re-exposes the live feed events

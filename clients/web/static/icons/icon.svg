@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-	<title>Kammer</title>
-	<rect width="512" height="512" rx="112" fill="#f6f4f0"/>
+	<!-- Kammer mark: a calm geometric K — warm paper ground, clay accent
+	     strokes, round terminals. Palette from the client design tokens. -->
+	<rect width="512" height="512" rx="96" fill="#f6f4f0"/>
 	<g fill="none" stroke="#8a4b24" stroke-width="56" stroke-linecap="round">
 		<path d="M166 128v256"/>
 		<path d="M346 128 166 302"/>
