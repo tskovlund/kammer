@@ -49,6 +49,7 @@ defmodule KammerWeb.Api.Serializer do
       deleted: deleted?,
       published_at: post.published_at,
       edited_at: post.edited_at,
+      pending_approval: post.pending_approval,
       pinned: post.pinned_at != nil,
       acknowledgment_required: post.acknowledgment_required,
       comment_count: if(is_list(post.comments), do: length(post.comments)),

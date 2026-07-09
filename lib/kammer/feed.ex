@@ -44,6 +44,10 @@ defmodule Kammer.Feed do
 
     [
       :author_user,
+      # Group-authored posts serialize the group as the author (the whole
+      # point of posting "as the group"); without this preload the API
+      # serializer would fall through to the human author. See #153.
+      :group,
       :attachments,
       poll: [options: :votes],
       attachments: :stored_file,
@@ -643,11 +647,24 @@ defmodule Kammer.Feed do
       Post.deleted?(post) ->
         {:error, :unauthorized}
 
+      not post_commentable_by?(author, post, group, relationship) ->
+        {:error, :unauthorized}
+
       true ->
         author
         |> create_engine_comment(group, relationship, %Comment{post_id: post.id}, attrs)
         |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
     end
+  end
+
+  # Mirrors `visible_posts/4`: a pending-approval or scheduled post can
+  # be commented on only by its author or a moderator. The UI never
+  # offers a comment form on an invisible post, but the API takes a raw
+  # post id, so the context must enforce it (see #156).
+  defp post_commentable_by?(%User{} = author, %Post{} = post, group, relationship) do
+    post.author_user_id == author.id or
+      Authorization.can?(author, :moderate_group, group, relationship) or
+      (not post.pending_approval and not Post.scheduled?(post, DateTime.utc_now(:second)))
   end
 
   @doc """
@@ -690,8 +707,15 @@ defmodule Kammer.Feed do
       })
       |> Repo.insert()
       |> tap_fanout_comment()
+      |> put_comment_author(author)
     end
   end
+
+  # The caller is the author, so the association is known without a
+  # query — the API serializes the created comment directly and must
+  # not emit `"author": null` (see #156).
+  defp put_comment_author({:ok, comment}, author), do: {:ok, %{comment | author_user: author}}
+  defp put_comment_author(other_result, _author), do: other_result
 
   defp tap_fanout_comment({:ok, comment} = result) do
     enqueue_fanout("comment", comment.id)

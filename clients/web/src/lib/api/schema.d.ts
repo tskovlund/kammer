@@ -417,6 +417,8 @@ export interface components {
 			group_id: string;
 			/** Format: uuid */
 			id: string;
+			/** @description Awaiting moderation (approval-queue groups) — visible only to the author and moderators */
+			pending_approval: boolean;
 			pinned: boolean;
 			poll?: components['schemas']['Poll'];
 			/** Format: date-time */
@@ -716,8 +718,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Event'][];
-						next_cursor?: string | null;
+						data: components['schemas']['Event'];
 					};
 				};
 			};
@@ -760,13 +761,20 @@ export interface operations {
 			};
 		};
 		responses: {
-			/** @description The recorded status */
+			/** @description Data envelope */
 			200: {
 				headers: {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': Record<string, never>;
+					'application/json': {
+						data: {
+							/** Format: uuid */
+							event_id: string;
+							/** @enum {string} */
+							status: 'yes' | 'no' | 'maybe';
+						};
+					};
 				};
 			};
 			/** @description Error envelope */
@@ -894,7 +902,7 @@ export interface operations {
 		requestBody: {
 			content: {
 				'application/json': {
-					acknowledgment_required?: string | null;
+					acknowledgment_required?: boolean | null;
 					body_markdown?: string;
 					poll?: Record<string, never> | null;
 				};
@@ -908,8 +916,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Post'][];
-						next_cursor?: string | null;
+						data: components['schemas']['Post'];
 					};
 				};
 			};
@@ -960,8 +967,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data?: components['schemas']['Comment'][];
-						next_cursor?: string | null;
+						data: components['schemas']['Comment'];
 					};
 				};
 			};

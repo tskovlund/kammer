@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- OpenAPI schema-conformance tests (issue #151, audit-driven): every
+  API operation's real response is now validated against its
+  documented schema (`schema_conformance_test.exs`), closing the gap
+  where the route-level drift test couldn't see field-level lies —
+  which is exactly how #154 went unnoticed. Also extracts the shared
+  `api_conn/1` test helper (`KammerWeb.ApiHelpers`).
+
 - CORS on the JSON API (issue #150): `/api/v1` now answers cross-origin
   requests and preflights with `Access-Control-Allow-Origin: *` by
   default — required for the multi-instance Svelte client (any web
@@ -326,6 +333,31 @@ and this project adheres to
 
 ### Fixed
 
+- Group-authored posts no longer leak the human author's identity
+  through the API (issue #153): the feed queries never preloaded
+  `:group`, so the serializer fell through to the user clause and
+  exposed the real name/id that posting "as the group" exists to
+  hide. `/home` and the group feed now serialize the same author.
+- The OpenAPI document no longer misdescribes single-object responses
+  as arrays (issue #154): `posts_create`, `comments_create`, and
+  `events_show` now use a single-object envelope, the RSVP response
+  documents its actual `{event_id, status}` shape, and
+  `acknowledgment_required` is a boolean, not a string. The generated
+  TypeScript client (`clients/web/src/lib/api/schema.d.ts`) is
+  regenerated — its types were actively wrong for these operations.
+- A malformed post id in API comment creation is a 404, not a 500
+  (issue #155): the id is UUID-cast before querying instead of raising
+  `Ecto.Query.CastError`.
+- Comments can no longer target unpublished posts (issue #156):
+  `Feed.create_comment` now enforces the same visibility rule as the
+  feed queries — pending-approval or scheduled posts take comments
+  only from their author or a moderator. Previously any member who
+  learned a post UUID could comment on a moderation-queued post
+  through the API before it was visible. The created comment also
+  returns its author populated instead of `"author": null`.
+- Posts now serialize `pending_approval` (issue #157), so a member's
+  own moderation-queued post is distinguishable from a published one
+  in API clients — the field existed on comments but not posts.
 - `.prettierignore` excluded `SPEC.md`, `BUILDLOG.md`, and
   `CHANGELOG.md` from formatting with no real reason — they're
   ordinary markdown, not legal text like `LICENSE` (the one entry

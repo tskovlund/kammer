@@ -313,6 +313,49 @@ defmodule Kammer.FeedTest do
       group_with_members()
     end
 
+    test "pending and scheduled posts take comments only from their author or moderators", %{
+      community: community,
+      group: group,
+      group_owner: group_owner,
+      member: member
+    } do
+      approval_group = group_fixture(community, approval_queue: true)
+      poster = group_member_fixture(approval_group)
+      onlooker = group_member_fixture(approval_group)
+      moderator = group_member_fixture(approval_group, :owner)
+
+      {:ok, pending} = Feed.create_post(poster, approval_group, %{"body_markdown" => "queued"})
+      assert pending.pending_approval
+
+      assert {:error, :unauthorized} =
+               Feed.create_comment(onlooker, pending, %{"body_markdown" => "sneaky"})
+
+      assert {:ok, _comment} = Feed.create_comment(poster, pending, %{"body_markdown" => "own"})
+
+      assert {:ok, _comment} =
+               Feed.create_comment(moderator, pending, %{"body_markdown" => "review note"})
+
+      future = DateTime.add(DateTime.utc_now(:second), 3600, :second)
+
+      {:ok, scheduled} =
+        Feed.create_post(member, group, %{"body_markdown" => "later", "published_at" => future})
+
+      other_member = group_member_fixture(group)
+
+      assert {:error, :unauthorized} =
+               Feed.create_comment(other_member, scheduled, %{"body_markdown" => "early"})
+
+      assert {:ok, _comment} =
+               Feed.create_comment(group_owner, scheduled, %{"body_markdown" => "mod note"})
+    end
+
+    test "a created comment carries its author preloaded", %{group: group, member: member} do
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
+      {:ok, comment} = Feed.create_comment(member, post, %{"body_markdown" => "hello"})
+
+      assert comment.author_user.id == member.id
+    end
+
     test "one reply level is enforced by reparenting", %{group: group, member: member} do
       {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
 

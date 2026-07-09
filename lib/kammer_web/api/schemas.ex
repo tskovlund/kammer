@@ -2,8 +2,10 @@ defmodule KammerWeb.Api.Schemas do
   @moduledoc """
   OpenAPI schemas for the JSON API (issue #30): these mirror
   `KammerWeb.Api.Serializer` field for field — the serializer is the
-  wire truth, this is its published description, and the drift test in
-  `test/kammer_web/api/openapi_test.exs` keeps the two honest.
+  wire truth, this is its published description. Two tests keep the
+  two honest: `openapi_test.exs` (route coverage) and
+  `schema_conformance_test.exs` (real responses validate against these
+  schemas, issue #151).
   """
 
   alias OpenApiSpex.Schema
@@ -157,6 +159,11 @@ defmodule KammerWeb.Api.Schemas do
         deleted: %Schema{type: :boolean},
         published_at: %Schema{type: :string, format: :"date-time"},
         edited_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        pending_approval: %Schema{
+          type: :boolean,
+          description:
+            "Awaiting moderation (approval-queue groups) — visible only to the author and moderators"
+        },
         pinned: %Schema{type: :boolean},
         acknowledgment_required: %Schema{type: :boolean},
         comment_count: %Schema{type: :integer, nullable: true},
@@ -168,7 +175,15 @@ defmodule KammerWeb.Api.Schemas do
         poll: Poll,
         comments: %Schema{type: :array, items: Comment}
       },
-      required: [:id, :group_id, :deleted, :published_at, :pinned, :acknowledgment_required]
+      required: [
+        :id,
+        :group_id,
+        :deleted,
+        :published_at,
+        :pending_approval,
+        :pinned,
+        :acknowledgment_required
+      ]
     })
   end
 
