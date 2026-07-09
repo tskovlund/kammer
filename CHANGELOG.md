@@ -27,7 +27,16 @@ and this project adheres to
   sockets (closes #174: API device tokens were invisible to their
   owner, and the devices page now lists and revokes them too). Group
   and community payloads gained `my_role`, `join_policy`, and
-  join/request-to-join capabilities in `viewer_can`.
+  join/request-to-join capabilities in `viewer_can`. In the PWA: the
+  Groups tab became a per-community directory hub (visible groups with
+  roles, plus Members/Invites links gated by `viewer_can`); a member
+  roster screen with custom-field filters and admin role/removal
+  controls; an admin invite screen (shareable links, email invites,
+  revocation); the group page gained join/request-to-join, leave, and
+  a per-group notification-level selector; and the You tab gained
+  per-account Profile (base profile, contact visibilities, and each
+  community's custom fields with the required-fields nag) and Devices
+  (list + revoke) screens. EN+DA throughout.
 
 ### Changed
 
