@@ -10,6 +10,10 @@ and this project adheres to
 
 ### Added
 
+- The last owner of a community can no longer demote themselves into
+  an unrecoverable ownerless state (found by the #182 people-API
+  review): `PUT .../members/{id}/role` refuses it with `422 last_owner`.
+
 - Membership, profiles, and the member directory over the API (#182,
   part of the #165 parity ladder): invite issue/list/revoke and a
   public preview + accept flow that reports required custom profile

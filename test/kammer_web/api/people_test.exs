@@ -381,6 +381,36 @@ defmodule KammerWeb.Api.PeopleTest do
       |> json_response(404)
     end
 
+    test "the sole owner cannot self-demote into an ownerless community", %{
+      community: community,
+      owner: owner
+    } do
+      # An ownerless community is unrecoverable (promoting a new owner
+      # itself needs an owner), so the last owner's demotion is refused
+      # with a stable code rather than silently succeeding.
+      %{"error" => %{"code" => "last_owner"}} =
+        owner
+        |> api_conn()
+        |> put(
+          ~p"/api/v1/communities/#{community.slug}/members/#{owner.id}/role",
+          %{"role" => "admin"}
+        )
+        |> json_response(422)
+
+      # A second owner makes the demotion safe again.
+      second = member_fixture(community)
+      second_membership = Communities.get_membership(community, second)
+      {:ok, _} = Communities.update_member_role(owner, community, second_membership, :owner)
+
+      owner
+      |> api_conn()
+      |> put(
+        ~p"/api/v1/communities/#{community.slug}/members/#{owner.id}/role",
+        %{"role" => "admin"}
+      )
+      |> json_response(200)
+    end
+
     test "admins remove members (groups included); members leave; owners can do neither", %{
       community: community,
       owner: owner,
