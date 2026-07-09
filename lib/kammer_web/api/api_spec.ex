@@ -200,6 +200,58 @@ defmodule KammerWeb.ApiSpec do
               })
           )
       },
+      "/api/v1/notifications" => %PathItem{
+        get:
+          operation(
+            "The device owner's notifications (cursor-paginated, newest first)",
+            :notifications_index,
+            [
+              query_param(:after, "Opaque cursor from next_cursor"),
+              query_param(:limit, "1..100, default 25")
+            ],
+            response: data_response(Schemas.Notification)
+          )
+      },
+      "/api/v1/notifications/read-all" => %PathItem{
+        put:
+          operation("Mark all notifications read", :notifications_mark_all_read, [],
+            response: json_response("Marked read", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/notifications/{notification_id}/read" => %PathItem{
+        put:
+          operation(
+            "Mark one notification read",
+            :notifications_mark_read,
+            [path_param(:notification_id)],
+            response: json_response("Marked read", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/push-subscriptions" => %PathItem{
+        post:
+          operation("Register a Web Push subscription", :push_subscriptions_create, [],
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  endpoint: %Schema{type: :string},
+                  keys:
+                    object(%{
+                      p256dh: %Schema{type: :string},
+                      auth: %Schema{type: :string}
+                    })
+                })
+              ),
+            response: json_response("Subscribed (idempotent upsert)", Schemas.StatusResponse)
+          ),
+        delete:
+          operation(
+            "Remove a Web Push subscription by endpoint",
+            :push_subscriptions_delete,
+            [query_param(:endpoint, "The subscription's endpoint URL")],
+            response: json_response("Deleted (idempotent)", Schemas.StatusResponse)
+          )
+      },
       "/api/v1/openapi.json" => %PathItem{
         get:
           operation("This document", :openapi, [],

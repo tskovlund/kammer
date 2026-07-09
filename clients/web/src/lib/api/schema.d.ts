@@ -226,6 +226,57 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/notifications': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The device owner's notifications (cursor-paginated, newest first) */
+		get: operations['notifications_index'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/notifications/read-all': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Mark all notifications read */
+		put: operations['notifications_mark_all_read'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/notifications/{notification_id}/read': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Mark one notification read */
+		put: operations['notifications_mark_read'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/openapi.json': {
 		parameters: {
 			query?: never;
@@ -238,6 +289,24 @@ export interface paths {
 		put?: never;
 		post?: never;
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/push-subscriptions': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Register a Web Push subscription */
+		post: operations['push_subscriptions_create'];
+		/** Remove a Web Push subscription by endpoint */
+		delete: operations['push_subscriptions_delete'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -388,6 +457,41 @@ export interface components {
 			instance_name: string;
 			version: string;
 		};
+		/**
+		 * Notification
+		 * @description An in-app notification. Navigate via community.slug + group.slug plus whichever of post_id/comment_id/event_id is set.
+		 */
+		Notification: {
+			actor?: components['schemas']['Author'];
+			/** Format: uuid */
+			comment_id?: string | null;
+			community?: components['schemas']['Community'];
+			/** Format: uuid */
+			event_id?: string | null;
+			group?: {
+				/** Format: uuid */
+				id: string;
+				name: string;
+				slug: string;
+			} | null;
+			/** Format: uuid */
+			id: string;
+			/** Format: date-time */
+			inserted_at: string;
+			/** @enum {string} */
+			kind:
+				| 'post'
+				| 'mention'
+				| 'reply'
+				| 'acknowledgment_required'
+				| 'event_created'
+				| 'event_reminder';
+			/** Format: uuid */
+			post_id?: string | null;
+			read: boolean;
+			/** Format: date-time */
+			read_at?: string | null;
+		};
 		/** Poll */
 		Poll: {
 			anonymous: boolean;
@@ -514,6 +618,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			401: {
 				headers: {
 					[name: string]: unknown;
@@ -587,6 +700,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			401: {
 				headers: {
 					[name: string]: unknown;
@@ -656,6 +778,15 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
 				};
 			};
 			/** @description Error envelope */
@@ -895,6 +1026,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			401: {
 				headers: {
 					[name: string]: unknown;
@@ -1083,6 +1223,15 @@ export interface operations {
 				};
 			};
 			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
 			401: {
 				headers: {
 					[name: string]: unknown;
@@ -1158,6 +1307,15 @@ export interface operations {
 					'application/json': {
 						data: components['schemas']['Comment'];
 					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
 				};
 			};
 			/** @description Error envelope */
@@ -1301,6 +1459,157 @@ export interface operations {
 			};
 		};
 	};
+	notifications_index: {
+		parameters: {
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 25 */
+				limit?: string;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Notification'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	notifications_mark_all_read: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Marked read */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	notifications_mark_read: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				notification_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Marked read */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	openapi: {
 		parameters: {
 			query?: never;
@@ -1317,6 +1626,140 @@ export interface operations {
 				};
 				content: {
 					'application/json': Record<string, never>;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	push_subscriptions_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					endpoint?: string;
+					keys?: {
+						auth?: string;
+						p256dh?: string;
+					};
+				};
+			};
+		};
+		responses: {
+			/** @description Subscribed (idempotent upsert) */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	push_subscriptions_delete: {
+		parameters: {
+			query?: {
+				/** @description The subscription's endpoint URL */
+				endpoint?: string;
+			};
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Deleted (idempotent) */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */

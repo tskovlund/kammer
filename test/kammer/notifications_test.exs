@@ -285,11 +285,89 @@ defmodule Kammer.NotificationsTest do
                perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => second_post.id})
 
       [unread] = Enum.filter(Notifications.list_notifications(reader), &is_nil(&1.read_at))
-      :ok = Notifications.mark_read(author, unread.id)
+      assert {:error, :not_found} = Notifications.mark_read(author, unread.id)
       assert Notifications.unread_count(reader) == 1
 
       :ok = Notifications.mark_all_read(reader)
       assert Notifications.unread_count(reader) == 0
+    end
+
+    test "mark_read is idempotent for the owner and rejects garbage ids" do
+      %{group: group, author: author, reader: reader} = notification_context()
+
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "once"})
+      assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+
+      [notification] = Notifications.list_notifications(reader)
+      assert :ok = Notifications.mark_read(reader, notification.id)
+      assert :ok = Notifications.mark_read(reader, notification.id)
+
+      assert {:error, :not_found} = Notifications.mark_read(reader, "not-a-uuid")
+      assert {:error, :not_found} = Notifications.mark_read(reader, Ecto.UUID.generate())
+    end
+
+    test "list_notifications_page paginates newest first with an opaque-able cursor" do
+      %{group: group, author: author, reader: reader} = notification_context()
+
+      for body <- ["one", "two", "three"] do
+        {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => body})
+        assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+      end
+
+      {first_page, cursor} = Notifications.list_notifications_page(reader, nil, 2)
+      assert length(first_page) == 2
+      assert cursor
+
+      {second_page, nil} = Notifications.list_notifications_page(reader, cursor, 2)
+      assert length(second_page) == 1
+
+      ids = Enum.map(first_page ++ second_page, & &1.id)
+      assert ids == Enum.uniq(ids)
+
+      # The pages cover everything the center shows, exactly once …
+      all_ids = Notifications.list_notifications(reader) |> Enum.map(& &1.id)
+      assert Enum.sort(ids) == Enum.sort(all_ids)
+
+      # … strictly descending by the cursor key across the page boundary.
+      cursor_keys =
+        Enum.map(first_page ++ second_page, fn notification ->
+          {DateTime.to_iso8601(notification.inserted_at), notification.id}
+        end)
+
+      assert cursor_keys == Enum.sort(cursor_keys, :desc)
+
+      # Scoped to the owner: the author has no notifications.
+      assert {[], nil} = Notifications.list_notifications_page(author, nil, 10)
+    end
+
+    test "get_notification is owner-scoped and preloads what the serializer shapes" do
+      %{group: group, author: author, reader: reader} = notification_context()
+
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "hello"})
+      assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+
+      [%{id: notification_id}] = Notifications.list_notifications(reader)
+
+      notification = Notifications.get_notification(reader, notification_id)
+      assert notification.actor_user.id == author.id
+      assert notification.community.id == group.community_id
+      assert notification.group.id == group.id
+
+      assert Notifications.get_notification(author, notification_id) == nil
+      assert Notifications.get_notification(reader, "not-a-uuid") == nil
+    end
+
+    test "delivering an in-app notification broadcasts on the user's topic" do
+      %{group: group, author: author, reader: reader} = notification_context()
+
+      :ok = Notifications.subscribe(reader)
+
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "ping"})
+      assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
+
+      assert_receive {Kammer.Notifications, {:notification_created, notification_id}}
+      assert %{user_id: user_id} = Repo.get!(Kammer.Notifications.Notification, notification_id)
+      assert user_id == reader.id
     end
   end
 
@@ -306,6 +384,40 @@ defmodule Kammer.NotificationsTest do
       assert {:ok, _duplicate} = Notifications.register_push_subscription(reader, params)
 
       assert Kammer.Repo.aggregate(Kammer.Notifications.PushSubscription, :count) == 1
+    end
+
+    test "register rejects anything but the PushSubscription.toJSON() shape" do
+      %{reader: reader} = notification_context()
+
+      assert {:error, :invalid_subscription} =
+               Notifications.register_push_subscription(reader, %{"endpoint" => "https://x"})
+
+      assert {:error, :invalid_subscription} =
+               Notifications.register_push_subscription(reader, %{
+                 "endpoint" => "https://x",
+                 "keys" => %{"p256dh" => "only-half"}
+               })
+    end
+
+    test "delete_push_subscription removes only the owner's endpoint, idempotently" do
+      %{author: author, reader: reader} = notification_context()
+
+      params = %{
+        "endpoint" => "https://push.example.org/send/def",
+        "keys" => %{"p256dh" => "key-material", "auth" => "auth-material"}
+      }
+
+      assert {:ok, _subscription} = Notifications.register_push_subscription(reader, params)
+
+      # Another user "deleting" the same endpoint touches nothing.
+      assert :ok = Notifications.delete_push_subscription(author, params["endpoint"])
+      assert Kammer.Repo.aggregate(Kammer.Notifications.PushSubscription, :count) == 1
+
+      assert :ok = Notifications.delete_push_subscription(reader, params["endpoint"])
+      assert Kammer.Repo.aggregate(Kammer.Notifications.PushSubscription, :count) == 0
+
+      # Idempotent: a second delete is still :ok.
+      assert :ok = Notifications.delete_push_subscription(reader, params["endpoint"])
     end
 
     test "push is disabled without VAPID configuration" do

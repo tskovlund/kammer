@@ -10,13 +10,25 @@ and this project adheres to
 
 ### Added
 
+- Realtime and notifications for the JSON API (issue #30, ADR 0014):
+  Phoenix Channels at `/api/socket` authenticated with the same device
+  token as REST — `feed:group:<id>` re-exposes the live feed events
+  LiveViews already react to (join gated by the same `:view_group`
+  decision, every payload re-fetched per viewer so pending/scheduled
+  posts never leak) and `notifications:user:<id>` streams the owner's
+  notifications, both shaped by the one REST serializer. New endpoints:
+  `GET /api/v1/notifications` (cursor-paginated, newest first),
+  `PUT .../notifications/{id}/read` and `.../notifications/read-all`
+  (foreign ids answer 404 — no existence oracle), and
+  `POST`/`DELETE /api/v1/push-subscriptions` mirroring the browser's
+  Web Push registration flow, upsert semantics included. All operations
+  documented in the OpenAPI contract with response-conformance tests.
 - OpenAPI schema-conformance tests (issue #151, audit-driven): every
   API operation's real response is now validated against its
   documented schema (`schema_conformance_test.exs`), closing the gap
   where the route-level drift test couldn't see field-level lies —
   which is exactly how #154 went unnoticed. Also extracts the shared
   `api_conn/1` test helper (`KammerWeb.ApiHelpers`).
-
 - CORS on the JSON API (issue #150): `/api/v1` now answers cross-origin
   requests and preflights with `Access-Control-Allow-Origin: *` by
   default — required for the multi-instance Svelte client (any web

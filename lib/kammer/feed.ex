@@ -267,6 +267,34 @@ defmodule Kammer.Feed do
   end
 
   @doc """
+  Fetches one post exactly as the actor sees it in the feed: the same
+  visibility rules (scheduled posts only to their author, pending
+  posts only to their author and moderators) and the same preloads.
+  Built for realtime consumers, which re-fetch per viewer so a
+  broadcast can never leak what the feed itself hides.
+  """
+  @spec fetch_visible_post(User.t() | nil, Group.t(), Ecto.UUID.t()) ::
+          {:ok, Post.t()} | {:error, :not_found}
+  def fetch_visible_post(actor, %Group{} = group, post_id) do
+    now = DateTime.utc_now(:second)
+    relationship = Authorization.relationship(actor, group)
+    moderator? = Authorization.can?(actor, :moderate_group, group, relationship)
+
+    post =
+      from(post in Post,
+        where: post.id == ^post_id and post.group_id == ^group.id,
+        preload: ^preloads(moderator?)
+      )
+      |> visible_posts(actor_id(actor), moderator?, now)
+      |> Repo.one()
+
+    case post do
+      nil -> {:error, :not_found}
+      %Post{} = visible -> {:ok, visible}
+    end
+  end
+
+  @doc """
   Fetches a post by id, or `nil` if it doesn't exist. Unauthenticated —
   callers pass the result to an authorization-checked mutator below.
   """

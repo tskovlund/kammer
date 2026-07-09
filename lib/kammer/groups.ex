@@ -59,6 +59,25 @@ defmodule Kammer.Groups do
   end
 
   @doc """
+  Fetches a group the actor may view by id (with the community
+  preloaded), or an error tuple. The id-addressed twin of
+  `fetch_viewable_group/3` for callers that hold no slugs — realtime
+  topics carry group ids. Invalid ids read as `{:error, :not_found}`.
+  """
+  @spec fetch_viewable_group_by_id(User.t() | nil, Ecto.UUID.t()) ::
+          {:ok, Group.t()} | {:error, :not_found | :unauthorized}
+  def fetch_viewable_group_by_id(actor, group_id) do
+    with {:ok, uuid} <- Ecto.UUID.cast(group_id),
+         %Group{} = group <- Repo.one(from(group in Group, where: group.id == ^uuid)),
+         :ok <- Authorization.authorize(actor, :view_group, group) do
+      {:ok, Repo.preload(group, :community)}
+    else
+      {:error, :unauthorized} -> {:error, :unauthorized}
+      _missing -> {:error, :not_found}
+    end
+  end
+
+  @doc """
   Active (non-archived) groups the actor should see in the community's
   group list. Visibility filtering lives in `Kammer.Authorization`.
   """

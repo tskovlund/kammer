@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.SchemaConformanceTest do
 
   alias Kammer.Events
   alias Kammer.Feed
+  alias Kammer.Notifications
 
   setup do
     {community, _owner} = community_with_owner_fixture()
@@ -107,5 +108,43 @@ defmodule KammerWeb.Api.SchemaConformanceTest do
     |> api_conn()
     |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}")
     |> assert_operation_response("events_show")
+  end
+
+  test "notification responses match their schemas", %{group: group, member: member} do
+    author = group_member_fixture(group)
+    {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Conformance"})
+    :ok = Notifications.fanout_post(post)
+
+    member
+    |> api_conn()
+    |> get(~p"/api/v1/notifications")
+    |> assert_operation_response("notifications_index")
+
+    [notification | _] = Notifications.list_notifications(member)
+
+    member
+    |> api_conn()
+    |> put(~p"/api/v1/notifications/#{notification.id}/read")
+    |> assert_operation_response("notifications_mark_read")
+
+    member
+    |> api_conn()
+    |> put(~p"/api/v1/notifications/read-all")
+    |> assert_operation_response("notifications_mark_all_read")
+  end
+
+  test "push-subscription responses match their schemas", %{member: member} do
+    member
+    |> api_conn()
+    |> post(~p"/api/v1/push-subscriptions", %{
+      "endpoint" => "https://push.example.org/send/conformance",
+      "keys" => %{"p256dh" => "key-material", "auth" => "auth-material"}
+    })
+    |> assert_operation_response("push_subscriptions_create")
+
+    member
+    |> api_conn()
+    |> delete(~p"/api/v1/push-subscriptions?endpoint=https://push.example.org/send/x")
+    |> assert_operation_response("push_subscriptions_delete")
   end
 end

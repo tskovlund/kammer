@@ -176,6 +176,14 @@ defmodule KammerWeb.Router do
     get "/communities/:community_slug/events", EventController, :index
     get "/communities/:community_slug/events/:event_id", EventController, :show
     put "/communities/:community_slug/events/:event_id/rsvp", EventController, :rsvp
+
+    get "/notifications", NotificationController, :index
+    # Literal before wildcard, same reason as the browser routes above.
+    put "/notifications/read-all", NotificationController, :mark_all_read
+    put "/notifications/:notification_id/read", NotificationController, :mark_read
+
+    post "/push-subscriptions", PushSubscriptionController, :create
+    delete "/push-subscriptions", PushSubscriptionController, :delete
   end
 
   # Guest links (SPEC §6/§11): signed, expiring tokens are the whole
