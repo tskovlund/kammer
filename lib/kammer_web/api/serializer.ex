@@ -153,11 +153,13 @@ defmodule KammerWeb.Api.Serializer do
     |> Map.merge(%{id: attachment.id, stored_file_id: file.id, position: attachment.position})
   end
 
-  @spec event(Event.t(), Kammer.Events.EventRsvp.t() | nil) :: map()
-  def event(%Event{} = event, my_rsvp \\ nil) do
+  @spec event(Event.t(), Kammer.Events.EventRsvp.t() | nil, User.t() | nil) :: map()
+  def event(%Event{} = event, my_rsvp \\ nil, viewer \\ nil) do
     %{
       id: event.id,
       group_id: event.group_id,
+      group: event_group(event),
+      series_id: event.series_id,
       title: event.title,
       description_markdown: event.description_markdown,
       starts_at: event.starts_at,
@@ -166,9 +168,16 @@ defmodule KammerWeb.Api.Serializer do
       timezone: event.timezone,
       location_name: event.location_name,
       location_url: event.location_url,
+      cancelled: event.cancelled_at != nil,
+      comments_locked: event.comment_locked_at != nil,
       rsvp_counts: rsvp_counts(event),
       my_rsvp: my_rsvp && my_rsvp.status,
-      slots: slots(event)
+      slots: slots(event),
+      comments:
+        if(is_list(event.comments),
+          do: Enum.map(event.comments, &comment(&1, viewer)),
+          else: []
+        )
     }
   end
 
@@ -234,6 +243,11 @@ defmodule KammerWeb.Api.Serializer do
     do: %{type: "guest", id: guest.id, display_name: guest.display_name}
 
   defp comment_author(_comment), do: nil
+
+  defp event_group(%Event{group: %Group{} = group}),
+    do: %{id: group.id, name: group.name, slug: group.slug}
+
+  defp event_group(_event), do: nil
 
   defp slots(%Event{slots: slot_list}) when is_list(slot_list) do
     Enum.map(slot_list, fn slot ->

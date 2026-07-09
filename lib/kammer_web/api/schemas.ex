@@ -320,6 +320,23 @@ defmodule KammerWeb.Api.Schemas do
       properties: %{
         id: %Schema{type: :string, format: :uuid},
         group_id: %Schema{type: :string, format: :uuid},
+        group: %Schema{
+          type: :object,
+          nullable: true,
+          description: "The host group's summary, for provenance without a second fetch",
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            name: %Schema{type: :string},
+            slug: %Schema{type: :string}
+          },
+          required: [:id, :name, :slug]
+        },
+        series_id: %Schema{
+          type: :string,
+          format: :uuid,
+          nullable: true,
+          description: "Set when this event is one occurrence of a recurring series (ADR 0019)"
+        },
         title: %Schema{type: :string},
         description_markdown: %Schema{type: :string, nullable: true},
         starts_at: %Schema{type: :string, format: :"date-time"},
@@ -328,6 +345,11 @@ defmodule KammerWeb.Api.Schemas do
         timezone: %Schema{type: :string},
         location_name: %Schema{type: :string, nullable: true},
         location_url: %Schema{type: :string, nullable: true},
+        cancelled: %Schema{
+          type: :boolean,
+          description: "A cancelled occurrence stays viewable but leaves listings and feeds"
+        },
+        comments_locked: %Schema{type: :boolean},
         rsvp_counts: %Schema{
           type: :object,
           properties: %{
@@ -352,9 +374,66 @@ defmodule KammerWeb.Api.Schemas do
             },
             required: [:id, :title, :capacity, :taken]
           }
+        },
+        comments: %Schema{
+          type: :array,
+          description: "Present on event detail, empty on lists",
+          items: Comment
         }
       },
-      required: [:id, :group_id, :title, :starts_at, :all_day, :timezone, :rsvp_counts]
+      required: [
+        :id,
+        :group_id,
+        :title,
+        :starts_at,
+        :all_day,
+        :timezone,
+        :cancelled,
+        :comments_locked,
+        :rsvp_counts,
+        :slots,
+        :comments
+      ]
+    })
+  end
+
+  defmodule EventParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "EventParams",
+      description:
+        "Create or edit an event. On create, an optional `recurrence` " <>
+          "object materializes a series (ADR 0019) and the response is the " <>
+          "first occurrence carrying its series_id. On edit, changes apply " <>
+          "to this occurrence only.",
+      type: :object,
+      properties: %{
+        title: %Schema{type: :string},
+        description_markdown: %Schema{type: :string, nullable: true},
+        starts_at: %Schema{type: :string, format: :"date-time"},
+        ends_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        all_day: %Schema{type: :boolean, nullable: true},
+        timezone: %Schema{type: :string, nullable: true},
+        location_name: %Schema{type: :string, nullable: true},
+        location_url: %Schema{type: :string, nullable: true},
+        recurrence: %Schema{
+          type: :object,
+          nullable: true,
+          description: "Create only — turns the event into a bounded recurring series",
+          properties: %{
+            frequency: %Schema{type: :string, enum: ["weekly", "biweekly", "monthly"]},
+            until: %Schema{
+              type: :string,
+              format: :date,
+              description: "Last date the series may run"
+            }
+          },
+          required: [:frequency, :until]
+        }
+      },
+      required: [:title, :starts_at]
     })
   end
 

@@ -55,7 +55,11 @@ function event(overrides: {
 		starts_at: overrides.starts_at,
 		all_day: false,
 		timezone: 'UTC',
+		cancelled: false,
+		comments_locked: false,
 		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
+		slots: [],
+		comments: [],
 		community: { ...overrides.community, description: null },
 		group: { id: 'g1', name: 'Group', slug: 'group' },
 		instance: overrides.instance

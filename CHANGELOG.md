@@ -10,6 +10,30 @@ and this project adheres to
 
 ### Added
 
+- Events over the API and in the Svelte PWA (issue #180, part of the
+  #165 parity ladder). API: full write parity under `/api/v1` —
+  create an event or a bounded recurring series
+  (`POST .../groups/{group}/events`, ADR 0019; the response is the
+  first occurrence carrying its `series_id`), edit this occurrence and
+  delete (creator/moderator), per-occurrence cancel/reinstate
+  (`.../cancellation`), signup slots (add/delete for managers, claim
+  and release for members — a full slot refuses with `422 slot_full`,
+  never overbooking), and the shared comment engine on events
+  (create/edit/delete/react). The `Event` serializer now carries
+  `series_id`, `cancelled`, `comments_locked`, and its `comments`. PWA:
+  an Events tab (merged upcoming events across every account, bucketed
+  by community with filter chips and a calm agenda view) and an
+  addressable event detail screen (RSVP with counts, signup slots,
+  comments, an "add to calendar" ICS link) with a create/edit form for
+  authorized roles. EN + DA, dark mode, reduced-motion, AA. Every event
+  write is genuinely no-oracle (issues #156/#161): an event the caller
+  can't see answers `404` to every verb, never `403`, so a hidden event
+  is indistinguishable from a nonexistent one.
+- Reacting to a comment that hangs off an event or an assignment no
+  longer crashes (`Kammer.Feed.toggle_reaction/3` resolved the host
+  group only for post comments); it now resolves the group for every
+  comment kind via `comment_context/1`, and only post reactions
+  broadcast a feed update.
 - Home and group feed screens in the Svelte PWA (issue #179, part of
   the #165 parity ladder): the merged, community-first Home (recent
   activity and upcoming events across every added account, bucketed by

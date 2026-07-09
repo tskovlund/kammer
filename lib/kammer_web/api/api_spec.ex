@@ -389,12 +389,38 @@ defmodule KammerWeb.ApiSpec do
             response: data_response(Schemas.Event)
           )
       },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/events" => %PathItem{
+        post:
+          operation(
+            "Create an event, or a recurring series",
+            :events_create,
+            [path_param(:community_slug), path_param(:group_slug)],
+            status: 201,
+            request_body: body(Schemas.EventParams),
+            response: single_response(Schemas.Event)
+          )
+      },
       "/api/v1/communities/{community_slug}/events/{event_id}" => %PathItem{
         get:
           operation(
             "Event details with my_rsvp",
             :events_show,
-            [path_param(:community_slug), path_param(:event_id)],
+            event_params(),
+            response: single_response(Schemas.Event)
+          ),
+        put:
+          operation(
+            "Edit this occurrence (creator/moderator)",
+            :events_update,
+            event_params(),
+            request_body: body(Schemas.EventParams),
+            response: single_response(Schemas.Event)
+          ),
+        delete:
+          operation(
+            "Delete an event (creator/moderator)",
+            :events_delete,
+            event_params(),
             response: single_response(Schemas.Event)
           )
       },
@@ -403,7 +429,7 @@ defmodule KammerWeb.ApiSpec do
           operation(
             "Set my RSVP",
             :events_rsvp,
-            [path_param(:community_slug), path_param(:event_id)],
+            event_params(),
             request_body:
               body(object(%{status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}})),
             response:
@@ -417,6 +443,92 @@ defmodule KammerWeb.ApiSpec do
               })
           )
       },
+      "/api/v1/communities/{community_slug}/events/{event_id}/cancellation" => %PathItem{
+        put:
+          operation("Cancel this occurrence (ADR 0019)", :events_cancel, event_params(),
+            response: single_response(Schemas.Event)
+          ),
+        delete:
+          operation("Reinstate a cancelled occurrence", :events_uncancel, event_params(),
+            response: single_response(Schemas.Event)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/slots" => %PathItem{
+        post:
+          operation("Add a signup slot (creator/moderator)", :events_create_slot, event_params(),
+            request_body:
+              body(
+                object(%{
+                  title: %Schema{type: :string},
+                  capacity: %Schema{type: :integer, minimum: 1}
+                })
+              ),
+            response: single_response(Schemas.Event)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/slots/{slot_id}" => %PathItem{
+        delete:
+          operation(
+            "Delete a slot and its claims (creator/moderator)",
+            :events_delete_slot,
+            event_slot_params(),
+            response: single_response(Schemas.Event)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/slots/{slot_id}/claim" => %PathItem{
+        put:
+          operation("Claim a slot", :events_claim_slot, event_slot_params(),
+            # 422 slot_full when capacity is reached (never overbooks).
+            extra_errors: [422],
+            response: single_response(Schemas.Event)
+          ),
+        delete:
+          operation("Release my claim on a slot", :events_unclaim_slot, event_slot_params(),
+            response: single_response(Schemas.Event)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/comments" => %PathItem{
+        post:
+          operation("Comment on an event", :events_create_comment, event_params(),
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  body_markdown: %Schema{type: :string},
+                  parent_comment_id: %Schema{type: :string, nullable: true}
+                })
+              ),
+            response: single_response(Schemas.Comment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}" => %PathItem{
+        put:
+          operation(
+            "Edit an event comment (author)",
+            :events_update_comment,
+            event_comment_params(),
+            request_body: body(object(%{body_markdown: %Schema{type: :string}})),
+            response: single_response(Schemas.Comment)
+          ),
+        delete:
+          operation(
+            "Delete an event comment — soft (author) or hard (moderator)",
+            :events_delete_comment,
+            event_comment_params(),
+            response: single_response(Schemas.Comment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}/reactions" =>
+        %PathItem{
+          post:
+            operation(
+              "Toggle my emoji reaction on an event comment",
+              :events_react_comment,
+              event_comment_params(),
+              request_body: body(object(%{emoji: %Schema{type: :string}})),
+              response: single_response(Schemas.Comment)
+            )
+        },
       "/api/v1/notifications" => %PathItem{
         get:
           operation(
@@ -592,6 +704,12 @@ defmodule KammerWeb.ApiSpec do
   end
 
   defp comment_params, do: post_params() ++ [path_param(:comment_id)]
+
+  defp event_params, do: [path_param(:community_slug), path_param(:event_id)]
+
+  defp event_slot_params, do: event_params() ++ [path_param(:slot_id)]
+
+  defp event_comment_params, do: event_params() ++ [path_param(:comment_id)]
 
   defp object(properties \\ %{}) do
     %Schema{type: :object, properties: properties}
