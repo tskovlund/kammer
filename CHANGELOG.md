@@ -10,6 +10,22 @@ and this project adheres to
 
 ### Added
 
+- Files over the API and in the Svelte PWA (issue #181, part of the
+  #165 parity ladder): a group's file library — browse folders and
+  files with breadcrumb navigation, upload new files, re-upload the
+  same name as a new version (ADR 0017), view version history and
+  download any version, and — for managers — create/delete folders,
+  set the read/write preset overrides (ADR 0009), and delete files and
+  versions. New `/api/v1/communities/{c}/groups/{g}/files` and
+  `/folders` endpoints (list/detail/upload/version-upload/delete plus
+  folder create/override/delete), all through the existing
+  `Kammer.Files` context so the folder-permission invariant is enforced
+  in one place; genuinely no-oracle (a folder or file the caller can't
+  see 404s to every verb, never 403), the per-file size/quota 413 is
+  honored on this path too, and the group file space stays behind the
+  files feature toggle (ADR 0016). A files screen inside each group in
+  the PWA — folder browsing, upload, version history, download — with
+  EN + DA, dark mode, reduced-motion, and AA contrast.
 - Events over the API and in the Svelte PWA (issue #180, part of the
   #165 parity ladder). API: full write parity under `/api/v1` —
   create an event or a bounded recurring series

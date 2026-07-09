@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Feed.Poll
   alias Kammer.Feed.Post
   alias Kammer.Feed.PostAttachment
+  alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
   alias Kammer.Notifications.Notification
@@ -152,6 +153,95 @@ defmodule KammerWeb.Api.Serializer do
     |> stored_file()
     |> Map.merge(%{id: attachment.id, stored_file_id: file.id, position: attachment.position})
   end
+
+  @doc """
+  A file-space folder (SPEC §7, ADR 0009): its placement and the two
+  read/write preset overrides. `system` marks the auto-created folders
+  (e.g. "Feed uploads") that can't be renamed or deleted.
+  """
+  @spec folder(Folder.t()) :: map()
+  def folder(%Folder{} = folder) do
+    %{
+      id: folder.id,
+      name: folder.name,
+      parent_folder_id: folder.parent_folder_id,
+      read_override: folder.read_override,
+      write_override: folder.write_override,
+      system: folder.system_key != nil
+    }
+  end
+
+  @doc """
+  A library file entry (ADR 0017): the current version's stored-file
+  shape, plus its entry/folder placement, uploader, and — on detail —
+  the full version history (newest first, `current` flagging the head).
+  `mine` marks the caller's own uploads so the client can offer a delete
+  affordance the context still enforces; `versions` is empty on listings.
+  """
+  @spec file(StoredFile.t(), User.t() | nil, [StoredFile.t()] | nil) :: map()
+  def file(stored_file, viewer \\ nil, versions \\ nil)
+
+  def file(%StoredFile{} = stored_file, viewer, versions) do
+    current_id = current_version_id(versions)
+
+    stored_file
+    |> stored_file()
+    |> Map.merge(%{
+      file_entry_id: stored_file.file_entry_id,
+      folder_id: stored_file.folder_id,
+      version_seq: stored_file.version_seq,
+      uploaded_at: stored_file.inserted_at,
+      uploaded_by: uploader(stored_file),
+      mine: mine?(stored_file, viewer),
+      versions:
+        if(is_list(versions),
+          do: Enum.map(versions, &file_version(&1, current_id, viewer)),
+          else: []
+        )
+    })
+  end
+
+  @doc """
+  One stored version of a file entry (ADR 0017). `current` marks the
+  version the entry currently points at; the byte URLs are the same
+  Bearer-authorized routes every stored file exposes.
+  """
+  @spec file_version(StoredFile.t(), Ecto.UUID.t() | nil, User.t() | nil) :: map()
+  def file_version(version, current_id \\ nil, viewer \\ nil)
+
+  def file_version(%StoredFile{} = version, current_id, viewer) do
+    %{
+      id: version.id,
+      filename: version.filename,
+      content_type: version.content_type,
+      byte_size: version.byte_size,
+      kind: version.kind,
+      version_seq: version.version_seq,
+      uploaded_at: version.inserted_at,
+      uploaded_by: uploader(version),
+      mine: mine?(version, viewer),
+      current: version.id == current_id,
+      url: "/api/v1/files/#{version.id}",
+      thumbnail_url: if(version.thumbnail_key, do: "/api/v1/files/#{version.id}/thumbnail"),
+      download_url: "/api/v1/files/#{version.id}/download"
+    }
+  end
+
+  # Versions come newest-first (desc version_seq), and an entry's current
+  # version is always its newest surviving one — uploads set it, and a
+  # deleted current repoints to the newest remaining — so the head is it.
+  defp current_version_id([%StoredFile{id: id} | _rest]), do: id
+  defp current_version_id(_versions), do: nil
+
+  defp uploader(%StoredFile{uploader_user: %User{id: id, display_name: name}}),
+    do: %{type: "user", id: id, display_name: name}
+
+  defp uploader(_stored_file), do: nil
+
+  defp mine?(%StoredFile{uploader_user_id: uploader_id}, %User{id: viewer_id}),
+    do: uploader_id == viewer_id
+
+  defp mine?(_stored_file, _viewer), do: false
 
   @spec event(Event.t(), Kammer.Events.EventRsvp.t() | nil, User.t() | nil) :: map()
   def event(%Event{} = event, my_rsvp \\ nil, viewer \\ nil) do

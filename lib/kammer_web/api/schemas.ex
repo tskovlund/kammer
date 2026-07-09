@@ -215,6 +215,135 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule Folder do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Folder",
+      description:
+        "A file-space folder (ADR 0009). Overrides can only restrict, " <>
+          "never widen; `system` folders (e.g. Feed uploads) can't be " <>
+          "renamed or deleted.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        name: %Schema{type: :string},
+        parent_folder_id: %Schema{type: :string, format: :uuid, nullable: true},
+        read_override: %Schema{type: :string, enum: ["inherit", "admins_only"]},
+        write_override: %Schema{type: :string, enum: ["inherit", "admins_only"]},
+        system: %Schema{type: :boolean}
+      },
+      required: [:id, :name, :read_override, :write_override, :system]
+    })
+  end
+
+  defmodule FileVersion do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "FileVersion",
+      description: "One stored version of a file entry (ADR 0017), newest first.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        filename: %Schema{type: :string},
+        content_type: %Schema{type: :string},
+        byte_size: %Schema{type: :integer},
+        kind: %Schema{type: :string, enum: ["image", "file"]},
+        version_seq: %Schema{type: :integer},
+        uploaded_at: %Schema{type: :string, format: :"date-time"},
+        uploaded_by: Author,
+        mine: %Schema{type: :boolean, description: "Uploaded by the caller"},
+        current: %Schema{type: :boolean, description: "The version the entry points at"},
+        url: %Schema{type: :string},
+        thumbnail_url: %Schema{type: :string, nullable: true},
+        download_url: %Schema{type: :string}
+      },
+      required: [
+        :id,
+        :filename,
+        :content_type,
+        :byte_size,
+        :kind,
+        :version_seq,
+        :uploaded_at,
+        :mine,
+        :current,
+        :url,
+        :download_url
+      ]
+    })
+  end
+
+  defmodule LibraryFile do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "File",
+      description:
+        "A library file entry (ADR 0017): its current version's bytes " <>
+          "plus placement and history. `versions` is present on detail, " <>
+          "empty on listings; `mine` marks the caller's own upload.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        file_entry_id: %Schema{type: :string, format: :uuid, nullable: true},
+        folder_id: %Schema{type: :string, format: :uuid, nullable: true},
+        filename: %Schema{type: :string},
+        content_type: %Schema{type: :string},
+        byte_size: %Schema{type: :integer},
+        kind: %Schema{type: :string, enum: ["image", "file"]},
+        width: %Schema{type: :integer, nullable: true},
+        height: %Schema{type: :integer, nullable: true},
+        version_seq: %Schema{type: :integer, nullable: true},
+        uploaded_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        uploaded_by: Author,
+        mine: %Schema{type: :boolean},
+        url: %Schema{type: :string},
+        thumbnail_url: %Schema{type: :string, nullable: true},
+        download_url: %Schema{type: :string},
+        versions: %Schema{type: :array, items: FileVersion}
+      },
+      required: [
+        :id,
+        :filename,
+        :content_type,
+        :byte_size,
+        :kind,
+        :mine,
+        :url,
+        :download_url,
+        :versions
+      ]
+    })
+  end
+
+  defmodule FileListing do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "FileListing",
+      description:
+        "One folder's contents: its subfolders and files, the breadcrumb " <>
+          "chain (root-first, inclusive), and the caller's write/manage " <>
+          "capabilities here (advisory — the context still enforces).",
+      type: :object,
+      properties: %{
+        folder: %Schema{oneOf: [Folder], nullable: true, description: "null at the space root"},
+        chain: %Schema{type: :array, items: Folder},
+        folders: %Schema{type: :array, items: Folder},
+        files: %Schema{type: :array, items: LibraryFile},
+        can_write: %Schema{type: :boolean},
+        can_manage: %Schema{type: :boolean}
+      },
+      required: [:chain, :folders, :files, :can_write, :can_manage]
+    })
+  end
+
   defmodule Attachment do
     @moduledoc false
     require OpenApiSpex
