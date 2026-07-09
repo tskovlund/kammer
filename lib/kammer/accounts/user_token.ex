@@ -19,6 +19,15 @@ defmodule Kammer.Accounts.UserToken do
   # It is very important to keep the magic link token expiry short,
   # since someone with access to the email may take over the account.
   @magic_link_validity_in_minutes 15
+  # Short sign-in codes (issue #177) ride in the same email as the
+  # magic link and share its lifetime — one email, one expiry story
+  # for the user. Codes carry only 40 bits of entropy, so unlike the
+  # 32-byte tokens they are additionally scoped to the email they
+  # were sent to and rate-limited at the exchange endpoint.
+  @login_code_validity_in_minutes 15
+  # Crockford base32 without lookalikes: no I, L, O (mapped from user
+  # input by normalize_login_code/1) and no U (transcription safety).
+  @login_code_alphabet ~c"0123456789ABCDEFGHJKMNPQRSTVWXYZ"
   @change_email_validity_in_days 7
   @session_validity_in_days 14
   # API device tokens (ADR 0014) live long — they are the API sibling
@@ -165,6 +174,67 @@ defmodule Kammer.Accounts.UserToken do
        sent_to: sent_to,
        user_id: user.id
      }}
+  end
+
+  @doc """
+  Builds a short single-use sign-in code (issue #177): #{length(@login_code_alphabet)}
+  symbols × 8 characters = 40 bits, hashed at rest like every other
+  emailed token so a database leak cannot mint credentials. The
+  cleartext code goes into the same email as the magic link, for
+  typing into the PWA on another device.
+  """
+  @spec build_login_code(Kammer.Accounts.User.t()) :: {String.t(), t()}
+  def build_login_code(user) do
+    code = generate_login_code()
+
+    {code,
+     %UserToken{
+       token: :crypto.hash(@hash_algorithm, code),
+       context: "login-code",
+       sent_to: user.email,
+       user_id: user.id
+     }}
+  end
+
+  # 5 random bytes are exactly eight 5-bit groups — no partial symbol.
+  defp generate_login_code do
+    for <<symbol_index::5 <- :crypto.strong_rand_bytes(5)>>, into: "" do
+      <<Enum.at(@login_code_alphabet, symbol_index)>>
+    end
+  end
+
+  @doc """
+  Verification query for a short sign-in code. Valid only when the
+  hash matches, the code was sent to exactly the email the caller
+  supplies (a code cannot be guessed against every account at once),
+  the account email hasn't changed since issuance, and it is younger
+  than #{@login_code_validity_in_minutes} minutes. Returns `{user, token}`.
+
+  Input is normalized per Crockford base32 (case-insensitive; I/L read
+  as 1, O as 0; separators dropped) so a hand-typed code survives the
+  usual transcription slips.
+  """
+  @spec verify_login_code_query(String.t(), String.t()) :: {:ok, Ecto.Query.t()}
+  def verify_login_code_query(email, code) do
+    hashed_code = :crypto.hash(@hash_algorithm, normalize_login_code(code))
+
+    query =
+      from token in by_token_and_context_query(hashed_code, "login-code"),
+        join: user in assoc(token, :user),
+        where: token.inserted_at > ago(^@login_code_validity_in_minutes, "minute"),
+        where: token.sent_to == ^email,
+        where: token.sent_to == user.email,
+        select: {user, token}
+
+    {:ok, query}
+  end
+
+  defp normalize_login_code(code) do
+    code
+    |> String.upcase()
+    |> String.replace(["-", " "], "")
+    |> String.replace("O", "0")
+    |> String.replace(["I", "L"], "1")
   end
 
   @doc """

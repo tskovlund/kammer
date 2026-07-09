@@ -353,6 +353,26 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule PasskeyChallengeResponse do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "PasskeyChallengeResponse",
+      description:
+        "WebAuthn assertion options (ADR 0018, usernameless): feed `challenge` and " <>
+          "`rp_id` to navigator.credentials.get, then send the assertion together " <>
+          "with `challenge_token` (opaque, short-lived) to the verify operation.",
+      type: :object,
+      properties: %{
+        challenge: %Schema{type: :string, description: "base64url, no padding"},
+        rp_id: %Schema{type: :string},
+        challenge_token: %Schema{type: :string}
+      },
+      required: [:challenge, :rp_id, :challenge_token]
+    })
+  end
+
   defmodule StatusResponse do
     @moduledoc false
     require OpenApiSpex

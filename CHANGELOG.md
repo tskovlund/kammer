@@ -10,6 +10,23 @@ and this project adheres to
 
 ### Added
 
+- PWA-native sign-in, server side (issue #177, ADR 0024): API-initiated
+  sign-in emails now deep-link into the instance-served PWA
+  (`/app/sign-in/{token}`) and carry a short single-use sign-in code
+  (8 characters, Crockford base32 without lookalikes, 15-minute
+  lifetime, hashed at rest) for cross-device sign-in —
+  `POST /api/v1/auth/exchange` accepts `email` + `code` as an
+  alternative to `magic_token`, with per-email and per-IP attempt
+  rate limits so the short code cannot be brute-forced. Passkey
+  sign-in lands in the API too: `POST /api/v1/auth/passkey/challenge`
+  (usernameless WebAuthn assertion options with a signed, short-lived
+  challenge token — no account-enumeration surface) and
+  `POST /api/v1/auth/passkey/verify` (assertion → device token, same
+  response shape as exchange). The web-initiated LiveView flow is
+  unchanged (bugfix-frozen per ADR 0024); passkey _registration_
+  stays web-only until the You-tab arc (#182). All new operations are
+  in the OpenAPI document with conformance tests; sign-in emails are
+  localized EN + DA.
 - Instance-served PWA (issue #176, ADR 0024): the release image now
   builds the Svelte client (new Dockerfile client stage — node/pnpm,
   `pnpm build`) and serves it at `/app` on the instance's own domain,

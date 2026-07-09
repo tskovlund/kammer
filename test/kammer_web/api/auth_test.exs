@@ -8,6 +8,7 @@ defmodule KammerWeb.Api.AuthTest do
   use KammerWeb.ConnCase, async: true
 
   import Kammer.AccountsFixtures
+  import Kammer.WebauthnHelper
   import Swoosh.TestAssertions
 
   alias Kammer.Accounts
@@ -80,8 +81,10 @@ defmodule KammerWeb.Api.AuthTest do
       |> post(~p"/api/v1/auth/request-link", %{"email" => user.email})
       |> json_response(200)
 
+      # ADR 0024: API-initiated sign-in emails deep-link into the
+      # instance-served PWA, not the LiveView landing page.
       assert_email_sent(fn email ->
-        case Regex.run(~r{users/log-in/([\w-]+)}, email.text_body, capture: :all_but_first) do
+        case Regex.run(~r{/app/sign-in/([\w-]+)}, email.text_body, capture: :all_but_first) do
           [token] ->
             send(self(), {:magic_token, token})
             true
@@ -136,6 +139,106 @@ defmodule KammerWeb.Api.AuthTest do
       refute_email_sent()
     end
 
+    test "the sign-in email also carries a code that exchanges for a device token", %{conn: conn} do
+      user = user_fixture()
+      drain_delivered_emails()
+
+      conn
+      |> json_conn()
+      |> post(~p"/api/v1/auth/request-link", %{"email" => user.email})
+      |> json_response(200)
+
+      assert_email_sent(fn email ->
+        case Regex.run(~r/sign-in code in the app:\n\n([0-9A-Z]{8})/, email.text_body,
+               capture: :all_but_first
+             ) do
+          [code] ->
+            send(self(), {:sign_in_code, code})
+            true
+
+          nil ->
+            false
+        end
+      end)
+
+      assert_received {:sign_in_code, code}
+
+      %{"device_token" => device_token, "user" => user_body} =
+        build_conn()
+        |> json_conn()
+        |> post(~p"/api/v1/auth/exchange", %{
+          "email" => user.email,
+          "code" => code,
+          "device_name" => "Other device"
+        })
+        |> json_response(200)
+
+      assert user_body["email"] == user.email
+      assert Accounts.get_user_by_device_token(device_token).id == user.id
+
+      # The code was single-use.
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => code})
+               |> json_response(401)
+    end
+
+    test "a wrong code and an unknown email are indistinguishable", %{conn: conn} do
+      user = user_fixture()
+
+      wrong_code_body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => "WRONGWRO"})
+        |> json_response(401)
+
+      unknown_email_body =
+        build_conn()
+        |> json_conn()
+        |> post(~p"/api/v1/auth/exchange", %{
+          "email" => "nobody-here@example.org",
+          "code" => "WRONGWRO"
+        })
+        |> json_response(401)
+
+      assert wrong_code_body == unknown_email_body
+    end
+
+    test "repeated wrong codes trip the rate limit", %{conn: conn} do
+      user = user_fixture()
+
+      for _attempt <- 1..5 do
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => "WRONGWRO"})
+        |> json_response(401)
+      end
+
+      assert %{"error" => %{"code" => "rate_limited"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => "WRONGWRO"})
+               |> json_response(429)
+    end
+
+    test "registration emails deep-link into the PWA too", %{conn: conn} do
+      drain_delivered_emails()
+
+      conn
+      |> json_conn()
+      |> post(~p"/api/v1/auth/register", %{
+        "email" => "pwa-signup@example.org",
+        "display_name" => "PWA Signup"
+      })
+      |> json_response(201)
+
+      assert_email_sent(fn email ->
+        email.text_body =~ ~r{/app/sign-in/[\w-]+} and
+          email.text_body =~ ~r/sign-in code in the app:/
+      end)
+    end
+
     test "authenticated routes refuse garbage and missing tokens", %{conn: conn} do
       assert %{"error" => %{"code" => "unauthorized"}} =
                conn
@@ -150,5 +253,121 @@ defmodule KammerWeb.Api.AuthTest do
                |> delete(~p"/api/v1/auth/device-token")
                |> json_response(401)
     end
+  end
+
+  describe "passkey sign-in (issue #177, ADR 0018)" do
+    setup do
+      user = user_fixture()
+      origin = KammerWeb.Endpoint.url()
+      challenge = Accounts.new_passkey_registration_challenge(user, origin)
+      ceremony = registration_ceremony(challenge, origin)
+
+      {:ok, _passkey} =
+        Accounts.register_passkey(
+          user,
+          ceremony.attestation_object,
+          ceremony.client_data_json,
+          challenge
+        )
+
+      %{
+        user: user,
+        origin: origin,
+        credential_id: ceremony.credential_id,
+        key_pair: ceremony.key_pair
+      }
+    end
+
+    test "challenge → assertion → device token", %{conn: conn} = context do
+      challenge_body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/passkey/challenge")
+        |> json_response(200)
+
+      assert %{
+               "challenge" => _challenge,
+               "rp_id" => _rp_id,
+               "challenge_token" => _challenge_token
+             } = challenge_body
+
+      %{"device_token" => device_token, "user" => user_body} =
+        build_conn()
+        |> json_conn()
+        |> post(~p"/api/v1/auth/passkey/verify", verify_params(challenge_body, context))
+        |> json_response(200)
+
+      assert user_body["id"] == context.user.id
+      assert Accounts.get_user_by_device_token(device_token).id == context.user.id
+    end
+
+    test "an assertion signed with the wrong key gets a neutral 401", %{conn: conn} = context do
+      challenge_body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/passkey/challenge")
+        |> json_response(200)
+
+      params = verify_params(challenge_body, %{context | key_pair: generate_key_pair()})
+
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/passkey/verify", params)
+               |> json_response(401)
+    end
+
+    test "a tampered challenge token gets a neutral 401", %{conn: conn} = context do
+      challenge_body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/passkey/challenge")
+        |> json_response(200)
+
+      params =
+        challenge_body
+        |> verify_params(context)
+        |> Map.put("challenge_token", "tampered-token")
+
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/passkey/verify", params)
+               |> json_response(401)
+    end
+
+    test "verify without a challenge token is a bad request", %{conn: conn} do
+      assert %{"error" => %{"code" => "bad_request"}} =
+               conn
+               |> json_conn()
+               |> post(~p"/api/v1/auth/passkey/verify", %{"credential_id" => "abc"})
+               |> json_response(400)
+    end
+  end
+
+  # Builds the JSON verify payload a browser-side client would send
+  # for the assertion options the challenge endpoint returned.
+  defp verify_params(challenge_body, context) do
+    client_challenge = %{
+      bytes: Base.url_decode64!(challenge_body["challenge"], padding: false),
+      rp_id: challenge_body["rp_id"]
+    }
+
+    assertion =
+      authentication_ceremony(
+        client_challenge,
+        context.origin,
+        context.credential_id,
+        context.key_pair
+      )
+
+    %{
+      "challenge_token" => challenge_body["challenge_token"],
+      "credential_id" => Base.url_encode64(assertion.credential_id, padding: false),
+      "authenticator_data" => Base.url_encode64(assertion.authenticator_data, padding: false),
+      "signature" => Base.url_encode64(assertion.signature, padding: false),
+      "client_data_json" => Base.url_encode64(assertion.client_data_json, padding: false),
+      "device_name" => "Passkey device"
+    }
   end
 end
