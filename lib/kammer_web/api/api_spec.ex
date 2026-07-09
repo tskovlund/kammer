@@ -318,7 +318,7 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/communities/{community_slug}/groups/{group_slug}/folders/{folder_id}" => %PathItem{
         delete:
           operation(
-            "Delete a folder (managers; files fall back to the root)",
+            "Delete a folder (managers). Files fall back to the root and take its visibility — a restrictive read override does not follow them",
             :file_library_delete_folder,
             folder_params(),
             response: single_response(Schemas.Folder)

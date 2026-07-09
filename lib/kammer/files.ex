@@ -174,7 +174,15 @@ defmodule Kammer.Files do
           where: entry.community_id == ^community_id,
           where: ^scope_group_condition(group_id),
           where: ^entry_folder_condition(folder_id),
-          where: entry.name == ^name
+          where: entry.name == ^name,
+          # Same-name entries can coexist in one place after a deleted
+          # folder released its contents to the space root — version onto
+          # the most recently *versioned* one (updated_at bumps on every
+          # current_version_id repoint), never raise on the ambiguity.
+          # Recently-active beats recently-created: the file people are
+          # using wins over a released stale sibling.
+          order_by: [desc: entry.updated_at, desc: entry.id],
+          limit: 1
         )
       )
 
@@ -534,6 +542,13 @@ defmodule Kammer.Files do
   @doc """
   Deletes a folder (admins only). Subfolders are removed; files fall back
   to the space root (never deleted — files outlive their folders).
+
+  Security consequence, deliberate (ADR 0009 — overrides only restrict,
+  and the override dies with its folder): released files take the ROOT's
+  visibility. Contents of an `admins_only`-read folder become visible to
+  every scope member the moment the folder is deleted — the confirm
+  surfaces this, and only an admin who could have cleared the override
+  anyway can trigger it.
   """
   @spec delete_folder(User.t(), Community.t() | Group.t(), Folder.t()) ::
           {:ok, Folder.t()} | {:error, term()}

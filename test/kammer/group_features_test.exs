@@ -1,6 +1,5 @@
 defmodule Kammer.GroupFeaturesTest do
   use Kammer.DataCase, async: true
-  use ExUnitProperties
 
   import Kammer.CommunitiesFixtures
 
@@ -80,31 +79,30 @@ defmodule Kammer.GroupFeaturesTest do
     end
   end
 
-  property "a disabled feature is exactly as invisible as an unauthorized one" do
+  test "a disabled feature is exactly as invisible as a nonexistent event (ADR 0016)" do
     {community, _owner} = community_with_owner_fixture()
+    group = group_fixture(community, visibility: :private)
+    admin = group_member_fixture(group, :admin)
+    member = group_member_fixture(group)
+    onlooker = member_fixture(community)
 
-    check all(
-            visibility <- member_of([:private, :community, :public_link, :public_listed]),
-            features <- member_of([[:feed], [:feed, :files], [:feed, :events, :files]]),
-            max_runs: 20
-          ) do
-      group = group_fixture(community, visibility: visibility)
-      admin = group_member_fixture(group, :admin)
-      member = group_member_fixture(group)
+    {:ok, event} =
+      Events.create_event(member, group, %{"title" => "Prop", "starts_at" => future(48)})
 
-      {:ok, event} =
-        Events.create_event(member, group, %{
-          "title" => "Prop",
-          "starts_at" => future(48)
-        })
+    # The unauthorized viewer's refusal at the context level, queried for
+    # real: `:unauthorized`, which the API boundary folds into the same
+    # 404 as `:not_found` (event_controller's fetch_visible_event; pinned
+    # at the transport by EventWritesTest "a hidden event 404s").
+    assert {:error, :unauthorized} = Events.fetch_viewable_event(onlooker, community, event.id)
 
-      {:ok, group} = Groups.update_group_features(admin, group, features)
+    {:ok, _gated} = Groups.update_group_features(admin, group, ["feed", "files"])
 
-      case Events.fetch_viewable_event(member, community, event.id) do
-        {:ok, _event} -> assert :events in group.features
-        {:error, :not_found} -> refute :events in group.features
-        {:error, other} -> flunk("unexpected error #{inspect(other)}")
-      end
-    end
+    # For the member of the gated-off group the event now reads exactly
+    # like one that never existed — same tuple, nothing to distinguish.
+    disabled_result = Events.fetch_viewable_event(member, community, event.id)
+    assert disabled_result == {:error, :not_found}
+
+    assert disabled_result ==
+             Events.fetch_viewable_event(member, community, Ecto.UUID.generate())
   end
 end

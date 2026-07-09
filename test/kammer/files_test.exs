@@ -122,6 +122,36 @@ defmodule Kammer.FilesTest do
     end
   end
 
+  describe "deletion authorization" do
+    test "a fellow plain member cannot delete someone else's file", %{
+      group: group,
+      member: member,
+      tmp_dir: tmp_dir
+    } do
+      file_path = Path.join(tmp_dir, "setlist.txt")
+      File.write!(file_path, "setlist")
+
+      assert {:ok, stored_file} =
+               Files.upload_to_space(member, group, nil, file_path, %{
+                 filename: "setlist.txt",
+                 content_type: "text/plain"
+               })
+
+      # Uploader-or-file-manager only (SPEC §7): a plain group member who
+      # is neither must be refused — deleting a file destroys the blob and
+      # every version, the highest-consequence write in this context.
+      fellow_member = group_member_fixture(group)
+
+      assert {:error, :unauthorized} = Files.delete_file(fellow_member, stored_file)
+
+      # The record, its entry, and the stored bytes all survive the attempt.
+      assert Kammer.Repo.get(Kammer.Files.StoredFile, stored_file.id)
+      assert Kammer.Repo.get(Kammer.Files.FileEntry, stored_file.file_entry_id)
+      assert {:ok, blob_path} = Storage.path_for(stored_file.storage_key)
+      assert File.exists?(blob_path)
+    end
+  end
+
   describe "access control (visibility baseline)" do
     test "group files inherit group visibility", %{
       community: community,

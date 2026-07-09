@@ -459,8 +459,16 @@ defmodule Kammer.AccountsTest do
 
   describe "inspect/2 for the User module" do
     test "does not include tokens or other redacted data" do
-      user = %User{email: "someone@example.com", display_name: "Someone"}
-      assert inspect(user) =~ "someone@example.com"
+      secret_token = "very-secret-calendar-token"
+      user = %User{email: "someone@example.com", display_name: "Someone", ics_token: secret_token}
+
+      rendered = inspect(user)
+
+      # The one redacted field must actually be set to catch a redaction
+      # regression — the email doubles as proof the assertion isn't
+      # trivially matching an empty struct dump.
+      assert rendered =~ "someone@example.com"
+      refute rendered =~ secret_token
     end
   end
 end
