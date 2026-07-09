@@ -10,6 +10,18 @@ and this project adheres to
 
 ### Added
 
+- Client test additions from the test-suite audit (#208): XSS
+  assertions for `renderInlineMarkdown` — the comment-body route into
+  the PWA's single `{@html}` sink previously had zero sanitization
+  tests (raw-HTML escape, `javascript:`/`data:` link refusal, image
+  downgrade, no block elements); the untested rollback mirrors —
+  `feed-store.reactComment`'s conditional rollback (clean and
+  echo-intervened branches) and the event store's optimistic RSVP
+  snapshot rollback (new `event-store.spec.ts`); the feed store's
+  load-401 → `noteInstanceAuthFailure` socket bridge (mock was wired
+  but never asserted); and the one no-observable-assertion test
+  (`requestLink` "resolves on success") strengthened to assert the
+  POSTed endpoint, method, and body.
 - Per-viewer capabilities on the API (issue #199, groundwork for the
   #165 parity ladder): serialized posts, groups, and communities now
   carry a `viewer_can` array naming the action-oriented rights the

@@ -33,6 +33,7 @@ vi.mock('./api.js', async (importActual) => {
 
 import * as api from './api.js';
 import { FeedApiError } from './api.js';
+import { noteInstanceAuthFailure } from '$lib/realtime/registry.svelte.js';
 import { createFeedStore } from './feed-store.svelte.js';
 
 function instance(): Instance {
@@ -167,6 +168,55 @@ describe('optimistic reaction rollback vs. concurrent reaction (finding 2)', () 
 
 		expect(store.items[0].reactions).toEqual({});
 		expect(store.items[0].my_reactions).toEqual([]);
+	});
+});
+
+describe('optimistic comment-reaction rollback vs. concurrent echo (reactComment mirrors react)', () => {
+	const withComment = (c: Comment) => post({ comments: [c], comment_count: 1 });
+
+	it('keeps a concurrent reaction that arrived mid-flight when our reactComment fails', async () => {
+		const store = await readyStore(withComment(comment({ reactions: {}, my_reactions: [] })));
+
+		// Our request will fail; before it does, an echo lands carrying another
+		// viewer's reaction on the same comment (server truth without ours).
+		vi.mocked(api.reactToComment).mockImplementation(async () => {
+			pushEcho(withComment(comment({ reactions: { '👍': 1 }, my_reactions: [] })));
+			throw new FeedApiError('server', 'nope', 500);
+		});
+
+		await store.reactComment('p1', 'c1', '❤️');
+
+		const result = store.items[0].comments![0];
+		// The other viewer's reaction survives; ours is not resurrected on top.
+		expect(result.reactions).toEqual({ '👍': 1 });
+		expect(result.my_reactions).toEqual([]);
+	});
+
+	it('rolls our comment reaction back cleanly when no echo intervenes', async () => {
+		const store = await readyStore(withComment(comment({ reactions: {}, my_reactions: [] })));
+		vi.mocked(api.reactToComment).mockRejectedValue(new FeedApiError('server', 'nope', 500));
+
+		await store.reactComment('p1', 'c1', '❤️');
+
+		const result = store.items[0].comments![0];
+		expect(result.reactions).toEqual({});
+		expect(result.my_reactions).toEqual([]);
+	});
+});
+
+describe('load auth failure → socket auth bridge', () => {
+	it('marks the instance auth-failed when the initial load is rejected as unauthorized', async () => {
+		// The REST→socket bridge: a 401 on load must tell the realtime registry
+		// so the socket layer stops retrying with the same dead credentials.
+		vi.mocked(api.fetchFeedPage).mockRejectedValue(new FeedApiError('auth', 'unauthorized', 401));
+		const inst = instance();
+		const store = createFeedStore(inst, ref, 'g1');
+
+		await store.load();
+
+		expect(store.loadState).toBe('error');
+		expect(store.loadErrorKind).toBe('auth');
+		expect(noteInstanceAuthFailure).toHaveBeenCalledWith(inst);
 	});
 });
 

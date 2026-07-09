@@ -43,6 +43,48 @@ describe('renderMarkdown sanitization', () => {
 	});
 });
 
+describe('renderInlineMarkdown sanitization', () => {
+	// Comment bodies are the second route into the app's single `{@html}` sink
+	// (Markdown.svelte's inline mode), so the inline renderer needs the same
+	// attack-class proof as the block renderer — same parser, but the guarantee
+	// deserves assertions, not inference.
+	it('escapes raw HTML so scripts and event-handler attributes never go live', () => {
+		const script = renderInlineMarkdown('Hello <script>alert(1)</script> world');
+		expect(script).not.toContain('<script>');
+		expect(script).toContain('&lt;script&gt;');
+
+		const handler = renderInlineMarkdown('<img src=x onerror="alert(1)">');
+		expect(handler).not.toContain('<img');
+		expect(handler).toContain('&lt;img');
+	});
+
+	it('never emits a link whose href is a javascript: or data: URL', () => {
+		const js = renderInlineMarkdown('[click me](javascript:alert(document.cookie))');
+		expect(js).not.toContain('href="javascript:');
+		expect(js).not.toContain('<a ');
+
+		const data = renderInlineMarkdown('[x](data:text/html;base64,PHNjcmlwdD4=)');
+		expect(data).not.toContain('href="data:text/html');
+		expect(data).not.toContain('<a ');
+	});
+
+	it('downgrades images to links and refuses a javascript: image entirely', () => {
+		const remote = renderInlineMarkdown('![tracker](https://evil.example/pixel.gif)');
+		expect(remote).not.toContain('<img');
+		expect(remote).toContain('href="https://evil.example/pixel.gif"');
+
+		const js = renderInlineMarkdown('![x](javascript:alert(1))');
+		expect(js).not.toContain('<img');
+		expect(js).not.toContain('src="javascript:');
+		expect(js).not.toContain('href="javascript:');
+	});
+
+	it('emits no block elements — block syntax stays literal text', () => {
+		expect(renderInlineMarkdown('# not a heading')).toBe('# not a heading');
+		expect(renderInlineMarkdown('- not a list item')).toBe('- not a list item');
+	});
+});
+
 describe('renderMarkdown formatting', () => {
 	it('renders standard Markdown to the expected safe tag set', () => {
 		expect(renderMarkdown('**bold** and _em_')).toBe(
