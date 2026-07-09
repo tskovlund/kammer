@@ -298,7 +298,8 @@ defmodule Kammer.Groups do
   members; that invariant is enforced here.
   """
   @spec add_member(Group.t(), User.t(), GroupMembership.role()) ::
-          {:ok, GroupMembership.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, GroupMembership.t()}
+          | {:error, Ecto.Changeset.t() | :banned | :instance_banned}
   def add_member(%Group{} = group, %User{} = user, role \\ :member) do
     group = Repo.preload(group, :community)
 
@@ -458,7 +459,8 @@ defmodule Kammer.Groups do
   Approves a pending join request, creating the membership.
   """
   @spec approve_join_request(User.t(), Group.t(), GroupJoinRequest.t()) ::
-          {:ok, GroupMembership.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, GroupMembership.t()}
+          | {:error, Ecto.Changeset.t() | :unauthorized | :banned | :instance_banned}
   def approve_join_request(%User{} = actor, %Group{} = group, %GroupJoinRequest{} = request) do
     with :ok <- Authorization.authorize(actor, :approve_group_members, group) do
       Repo.transact(fn ->

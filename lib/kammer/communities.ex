@@ -206,10 +206,14 @@ defmodule Kammer.Communities do
       # before this lock was granted (the checks below see it) or
       # blocks on it until this membership commits (its purge then
       # removes the membership). Deadlock-safe: no transaction locks a
-      # membership row before a user row, and this one takes no lock at
-      # all before the user row. The locked re-read also keeps the ban
-      # checks keyed on the user's current email, not the caller's
-      # possibly stale struct.
+      # membership row before a user row, and the locks callers may
+      # already hold when they reach this (the invite row in
+      # redeem_invite, the join-request row in approve_join_request —
+      # Ecto flattens nested transactions) are only ever acquired
+      # BEFORE user locks, never after, so no cycle exists through
+      # them either. The locked re-read also keeps the ban checks
+      # keyed on the user's current email, not the caller's possibly
+      # stale struct.
       email = Kammer.Accounts.lock_user_email(user) || user.email
 
       cond do
