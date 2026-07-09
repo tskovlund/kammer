@@ -16,6 +16,8 @@ defmodule KammerWeb.ApiError do
     unprocessable: {422, "invalid_params"},
     comments_locked: {422, "comments_locked"},
     poll_closed: {422, "poll_closed"},
+    payload_too_large: {413, "payload_too_large"},
+    quota_exceeded: {413, "quota_exceeded"},
     rate_limited: {429, "rate_limited"}
   }
 
@@ -54,6 +56,12 @@ defmodule KammerWeb.ApiError do
 
   def from_result(conn, {:error, :invalid_poll}),
     do: send(conn, :bad_request, "poll must be an object.")
+
+  def from_result(conn, {:error, :file_too_large}),
+    do: send(conn, :payload_too_large, "That file is larger than this instance allows.")
+
+  def from_result(conn, {:error, :quota_exceeded}),
+    do: send(conn, :quota_exceeded, "This group's file storage is full.")
 
   def from_result(conn, {:error, %Ecto.Changeset{} = changeset}) do
     details =

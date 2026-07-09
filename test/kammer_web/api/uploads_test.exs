@@ -111,6 +111,30 @@ defmodule KammerWeb.Api.UploadsTest do
     |> json_response(403)
   end
 
+  test "a file over the configured size limit is refused (413)", %{
+    member: member,
+    base_path: base_path,
+    tmp_dir: tmp_dir
+  } do
+    # Enforced app-side (Files.create_from_upload), so it holds on the
+    # API path regardless of the parser's coarser body ceiling (#178
+    # review). Drop the per-file limit to make an oversize file cheap.
+    Application.put_env(:kammer, :upload_max_megabytes, 1)
+    on_exit(fn -> Application.delete_env(:kammer, :upload_max_megabytes) end)
+
+    path = Path.join(tmp_dir, "big.txt")
+    File.write!(path, :binary.copy("x", 2 * 1024 * 1024))
+    oversize = %Plug.Upload{path: path, filename: "big.txt", content_type: "text/plain"}
+
+    body =
+      member
+      |> api_conn()
+      |> post("#{base_path}/uploads", %{"file" => oversize})
+      |> json_response(413)
+
+    assert body["error"]["code"] == "payload_too_large"
+  end
+
   test "a missing file part is a 400", %{member: member, base_path: base_path} do
     member
     |> api_conn()

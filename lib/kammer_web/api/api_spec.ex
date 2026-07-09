@@ -215,6 +215,8 @@ defmodule KammerWeb.ApiSpec do
             [path_param(:community_slug), path_param(:group_slug)],
             status: 201,
             request_body: multipart_body(),
+            # 413: file over UPLOAD_MAX_MB or the group's storage quota.
+            extra_errors: [413],
             response: single_response(Schemas.StoredFile)
           )
       },
