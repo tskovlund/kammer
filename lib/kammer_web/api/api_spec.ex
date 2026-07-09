@@ -141,11 +141,11 @@ defmodule KammerWeb.ApiSpec do
               body(
                 object(%{
                   body_markdown: %Schema{type: :string},
-                  acknowledgment_required: %Schema{type: :string, nullable: true},
+                  acknowledgment_required: %Schema{type: :boolean, nullable: true},
                   poll: %Schema{type: :object, nullable: true}
                 })
               ),
-            response: data_response(Schemas.Post)
+            response: single_response(Schemas.Post)
           )
       },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments" =>
@@ -163,7 +163,7 @@ defmodule KammerWeb.ApiSpec do
                     parent_comment_id: %Schema{type: :string, nullable: true}
                   })
                 ),
-              response: data_response(Schemas.Comment)
+              response: single_response(Schemas.Comment)
             )
         },
       "/api/v1/communities/{community_slug}/events" => %PathItem{
@@ -178,7 +178,7 @@ defmodule KammerWeb.ApiSpec do
             "Event details with my_rsvp",
             :events_show,
             [path_param(:community_slug), path_param(:event_id)],
-            response: data_response(Schemas.Event)
+            response: single_response(Schemas.Event)
           )
       },
       "/api/v1/communities/{community_slug}/events/{event_id}/rsvp" => %PathItem{
@@ -189,7 +189,15 @@ defmodule KammerWeb.ApiSpec do
             [path_param(:community_slug), path_param(:event_id)],
             request_body:
               body(object(%{status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}})),
-            response: json_response("The recorded status", object())
+            response:
+              single_response(%Schema{
+                type: :object,
+                properties: %{
+                  event_id: %Schema{type: :string, format: :uuid},
+                  status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}
+                },
+                required: [:event_id, :status]
+              })
           )
       },
       "/api/v1/openapi.json" => %PathItem{
@@ -204,18 +212,29 @@ defmodule KammerWeb.ApiSpec do
 
   defp operation(summary, operation_id, parameters, opts) do
     status = Keyword.get(opts, :status, 200)
+    request_body = Keyword.get(opts, :request_body)
+
+    error = %Reference{"$ref": "#/components/schemas/Error"} |> error_response()
+
+    # Every operation can answer 401/403/404 with the one error
+    # envelope; writes (anything with a request body) can also reject
+    # the payload as malformed (400) or invalid (422), or rate-limit
+    # the caller (429).
+    error_statuses =
+      if request_body, do: [400, 401, 403, 404, 422, 429], else: [401, 403, 404]
+
+    responses =
+      error_statuses
+      |> Map.new(&{&1, error})
+      |> Map.put(status, Keyword.fetch!(opts, :response))
 
     %Operation{
       summary: summary,
       operationId: to_string(operation_id),
       parameters: parameters,
       security: Keyword.get(opts, :security),
-      requestBody: Keyword.get(opts, :request_body),
-      responses: %{
-        status => Keyword.fetch!(opts, :response),
-        401 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response(),
-        404 => %Reference{"$ref": "#/components/schemas/Error"} |> error_response()
-      }
+      requestBody: request_body,
+      responses: responses
     }
   end
 
@@ -239,7 +258,20 @@ defmodule KammerWeb.ApiSpec do
       properties: %{
         data: %Schema{type: :array, items: item_schema},
         next_cursor: %Schema{type: :string, nullable: true}
-      }
+      },
+      required: [:data]
+    })
+  end
+
+  # A single created/fetched resource: `data` is one object, never an
+  # array, never cursored (issue #154 — describing these with the list
+  # envelope steered the generated TypeScript client toward `data[0]`
+  # on non-arrays).
+  defp single_response(item_schema) do
+    json_response("Data envelope", %Schema{
+      type: :object,
+      properties: %{data: item_schema},
+      required: [:data]
     })
   end
 

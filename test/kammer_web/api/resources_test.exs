@@ -10,20 +10,10 @@ defmodule KammerWeb.Api.ResourcesTest do
   use ExUnitProperties
 
   import Kammer.CommunitiesFixtures
+  import KammerWeb.ApiHelpers
 
-  alias Kammer.Accounts.UserToken
   alias Kammer.Events
   alias Kammer.Feed
-  alias Kammer.Repo
-
-  defp api_conn(user) do
-    {token, user_token} = UserToken.build_device_token(user, "test device")
-    Repo.insert!(user_token)
-
-    build_conn()
-    |> put_req_header("accept", "application/json")
-    |> put_req_header("authorization", "Bearer #{token}")
-  end
 
   defp context(_tags) do
     {community, _owner} = community_with_owner_fixture()
@@ -101,6 +91,82 @@ defmodule KammerWeb.Api.ResourcesTest do
         |> json_response(201)
 
       assert comment["body_markdown"] == "First!"
+      assert comment["author"]["type"] == "user"
+      assert comment["author"]["display_name"]
+    end
+
+    test "a group-authored post serializes the group as author, not the human", %{
+      community: community,
+      group: group,
+      member: member
+    } do
+      admin = group_member_fixture(group, :admin)
+
+      {:ok, _post} =
+        Feed.create_post(admin, group, %{
+          "body_markdown" => "Fra bestyrelsen",
+          "author_type" => "group"
+        })
+
+      %{"data" => [post]} =
+        member
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/posts")
+        |> json_response(200)
+
+      assert post["author"] == %{
+               "type" => "group",
+               "id" => group.id,
+               "display_name" => group.name
+             }
+    end
+
+    test "a malformed post id in comment creation is a 404, not a 500", %{
+      community: community,
+      group: group,
+      member: member
+    } do
+      body =
+        member
+        |> api_conn()
+        |> post(
+          ~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/posts/not-a-uuid/comments",
+          %{"body_markdown" => "x"}
+        )
+        |> json_response(404)
+
+      assert body["error"]["code"]
+    end
+
+    test "a moderation-queued post is marked pending and rejects others' comments", %{
+      community: community,
+      member: member
+    } do
+      approval_group = group_fixture(community, approval_queue: true)
+      poster = group_member_fixture(approval_group)
+      group_membership_fixture(approval_group, member)
+
+      {:ok, pending} = Feed.create_post(poster, approval_group, %{"body_markdown" => "Venter"})
+      assert pending.pending_approval
+
+      path = ~p"/api/v1/communities/#{community.slug}/groups/#{approval_group.slug}/posts"
+
+      # The author sees their own queued post, explicitly marked.
+      %{"data" => [post]} = poster |> api_conn() |> get(path) |> json_response(200)
+      assert post["pending_approval"] == true
+
+      # Another member can't see it — and commenting on it answers 404,
+      # exactly like a post that doesn't exist, even knowing the id.
+      member
+      |> api_conn()
+      |> post(path <> "/#{pending.id}/comments", %{"body_markdown" => "sneaky"})
+      |> json_response(404)
+
+      # The author can comment on their own queued post.
+      poster
+      |> api_conn()
+      |> post(path <> "/#{pending.id}/comments", %{"body_markdown" => "note"})
+      |> json_response(201)
     end
   end
 

@@ -44,6 +44,10 @@ defmodule Kammer.Feed do
 
     [
       :author_user,
+      # Group-authored posts serialize the group as the author (the whole
+      # point of posting "as the group"); without this preload the API
+      # serializer would fall through to the human author. See #153.
+      :group,
       :attachments,
       poll: [options: :votes],
       attachments: :stored_file,
@@ -198,7 +202,7 @@ defmodule Kammer.Feed do
         where: post.pending_approval == false,
         order_by: ^feed_order_by(sort),
         limit: 50,
-        preload: ^[:group | preloads(false)]
+        preload: ^preloads(false)
       )
     )
   end
@@ -232,12 +236,34 @@ defmodule Kammer.Feed do
   """
   @spec get_post!(Group.t(), Ecto.UUID.t(), keyword()) :: Post.t()
   def get_post!(%Group{} = group, post_id, opts \\ []) do
-    Repo.one!(
-      from(post in Post,
-        where: post.id == ^post_id and post.group_id == ^group.id,
-        preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
-      )
-    )
+    case fetch_post(group, post_id, opts) do
+      {:ok, post} -> post
+      {:error, :not_found} -> raise Ecto.NoResultsError, queryable: Post
+    end
+  end
+
+  @doc """
+  Fetches a post in a group by (possibly malformed) id: `{:ok, post}`
+  or `{:error, :not_found}` — the same shape the other
+  `fetch_viewable_*` context functions use, so API controllers stay a
+  thin `with`. Unauthenticated — callers pass the result to an
+  authorization-checked mutator below.
+  """
+  @spec fetch_post(Group.t(), String.t(), keyword()) ::
+          {:ok, Post.t()} | {:error, :not_found}
+  def fetch_post(%Group{} = group, post_id, opts \\ []) do
+    with {:ok, post_id} <- Ecto.UUID.cast(post_id),
+         %Post{} = post <-
+           Repo.one(
+             from(post in Post,
+               where: post.id == ^post_id and post.group_id == ^group.id,
+               preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
+             )
+           ) do
+      {:ok, post}
+    else
+      _ -> {:error, :not_found}
+    end
   end
 
   @doc """
@@ -628,12 +654,21 @@ defmodule Kammer.Feed do
   a reply attaches to the parent's top-level comment.
   """
   @spec create_comment(User.t(), Post.t(), map()) ::
-          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :comments_locked}
+          {:ok, Comment.t()}
+          | {:error,
+             Ecto.Changeset.t() | :unauthorized | :comments_locked | :not_found | :rate_limited}
   def create_comment(%User{} = author, %Post{} = post, attrs) do
     group = get_group(post)
     relationship = Authorization.relationship(author, group)
 
     cond do
+      # Visibility answers first: a post the caller can't see must
+      # respond exactly like a post that doesn't exist, for *every*
+      # caller — checking comment permission first would leak a 403
+      # "exists but hidden" to viewers who can't comment.
+      not post_commentable_by?(author, post, group, relationship) ->
+        {:error, :not_found}
+
       not Authorization.can?(author, :comment_in_group, group, relationship) ->
         {:error, :unauthorized}
 
@@ -647,6 +682,21 @@ defmodule Kammer.Feed do
         author
         |> create_engine_comment(group, relationship, %Comment{post_id: post.id}, attrs)
         |> tap_broadcast(group, fn _comment -> {:post_updated, post.id} end)
+    end
+  end
+
+  # Mirrors `visible_posts/4` exactly: anyone comments on a published,
+  # approved post; a pending post takes comments from its author or a
+  # moderator; a scheduled post only from its author — moderators don't
+  # see others' scheduled posts, so they don't comment on them either.
+  # The UI never offers a comment form on an invisible post, but the
+  # API takes a raw post id, so the context must enforce it (see #156).
+  defp post_commentable_by?(%User{} = author, %Post{} = post, group, relationship) do
+    cond do
+      post.author_user_id == author.id -> true
+      Post.scheduled?(post, DateTime.utc_now(:second)) -> false
+      post.pending_approval -> Authorization.can?(author, :moderate_group, group, relationship)
+      true -> true
     end
   end
 
@@ -690,8 +740,15 @@ defmodule Kammer.Feed do
       })
       |> Repo.insert()
       |> tap_fanout_comment()
+      |> put_comment_author(author)
     end
   end
+
+  # The caller is the author, so the association is known without a
+  # query — the API serializes the created comment directly and must
+  # not emit `"author": null` (see #156).
+  defp put_comment_author({:ok, comment}, author), do: {:ok, %{comment | author_user: author}}
+  defp put_comment_author(other_result, _author), do: other_result
 
   defp tap_fanout_comment({:ok, comment} = result) do
     enqueue_fanout("comment", comment.id)
