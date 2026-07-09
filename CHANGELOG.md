@@ -28,6 +28,25 @@ and this project adheres to
   `openapi-fetch`-based wrapper (`client.ts`) creating one typed
   client per added instance, per ADR 0001's multi-instance model.
 
+- Multi-instance session-holder core for the Svelte PWA (issue #32, ADR
+  0001): `clients/web/src/lib/instances/` — `instanceStore` (localStorage-
+  backed, dedupes by instance+account so re-authenticating replaces
+  rather than duplicates), `probeInstance`/`requestLink`/
+  `exchangeAndAddInstance`/`revokeAndRemoveInstance` (the sign-in and
+  device-token lifecycle), and `fetchMergedHome` (client-side merging of
+  `GET /home` across every added instance, timing out per-instance so one
+  unresponsive server can't hang the whole merged view). No screens yet —
+  this is the session/data layer they'll be built on.
+
+- OpenAPI response schemas for `/api/v1/instance`, `/api/v1/auth/*`, and
+  `/api/v1/home` (previously untyped `object()` placeholders generating
+  `Record<string, never>` in the TypeScript client — silently defeating
+  the "generated, not hand-written" client for exactly the endpoints a
+  multi-instance client needs first). New `Schemas.Instance`,
+  `Schemas.AuthUser`, `Schemas.AuthRegisterResponse`,
+  `Schemas.AuthExchangeResponse`, `Schemas.StatusResponse`,
+  `Schemas.HomeGroupSummary`, `Schemas.HomeResponse`.
+
 - `POST /api/v1/auth/register` (issue #30): the API can now create
   accounts, not just authenticate existing ones — mirrors
   `UserLive.Registration` exactly (same changeset, same per-IP rate
