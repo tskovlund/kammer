@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
-	import { revokeAndRemoveInstance } from '$lib/instances/api.js';
+	import { fetchServerVersion, revokeAndRemoveInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { theme, type ThemePreference } from '$lib/ui/theme.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -9,6 +9,29 @@
 	import ListItem from '$lib/ui/ListItem.svelte';
 
 	let signingOutId = $state<string | null>(null);
+
+	// Each account's server version for the about line (#204) — fetched
+	// best-effort; a server that doesn't answer simply shows no version.
+	// One batch per change to the instance list, written back in a
+	// single assignment: the effect must not read serverVersions, or
+	// each resolving fetch would rerun it and refire the in-flight ones.
+	let serverVersions = $state<Record<string, string>>({});
+
+	$effect(() => {
+		const list = instances.list;
+		void Promise.all(
+			list.map(async (instance) => ({
+				id: instance.id,
+				version: await fetchServerVersion(instance.baseUrl)
+			}))
+		).then((results) => {
+			const next: Record<string, string> = {};
+			for (const { id, version } of results) {
+				if (version) next[id] = version;
+			}
+			serverVersions = next;
+		});
+	});
 
 	async function signOut(id: string): Promise<void> {
 		signingOutId = id;
@@ -59,7 +82,11 @@
 				<p class="truncate text-sm text-ink-muted">
 					{t('you.accounts.signedInAs', { email: instance.user.email })}
 				</p>
-				<p class="truncate text-xs text-ink-faint">{host(instance.baseUrl)}</p>
+				<p class="truncate text-xs text-ink-faint">
+					{host(instance.baseUrl)}{serverVersions[instance.id]
+						? ` · ${t('you.accounts.serverVersion', { version: serverVersions[instance.id] })}`
+						: ''}
+				</p>
 				{#snippet trailing()}
 					<Button
 						variant="danger"

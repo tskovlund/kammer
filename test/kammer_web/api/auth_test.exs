@@ -33,6 +33,12 @@ defmodule KammerWeb.Api.AuthTest do
 
       assert body["api_versions"] == ["v1"]
       assert body["features"]["registration"] == "open"
+
+      # mix.exs is the single source of truth (issue #204) — the API
+      # must report exactly what the project was built from — and the
+      # min-client floor is present-but-null until a release sets it.
+      assert body["version"] == Mix.Project.config()[:version]
+      assert %{"min_client_version" => nil} = body
     end
   end
 

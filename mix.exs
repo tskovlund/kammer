@@ -4,7 +4,13 @@ defmodule Kammer.MixProject do
   def project do
     [
       app: :kammer,
-      version: "0.1.0",
+      # The single source of truth for the product version (issue
+      # #204). Runtime code reads it via `Kammer.version/0`; the PWA
+      # reports it by fetching `GET /api/v1/instance`. Kept as an
+      # inline quoted literal on this line — release.yml greps for it
+      # to verify the tag. The `-dev` marker drops at the first tagged
+      # release (`v0.1.0`, docs/release.md).
+      version: "0.1.0-dev",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       elixirc_options: [warnings_as_errors: true],

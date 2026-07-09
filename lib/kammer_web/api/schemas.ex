@@ -669,6 +669,14 @@ defmodule KammerWeb.Api.Schemas do
         instance_name: %Schema{type: :string},
         version: %Schema{type: :string},
         api_versions: %Schema{type: :array, items: %Schema{type: :string}},
+        min_client_version: %Schema{
+          type: :string,
+          nullable: true,
+          description:
+            "Advisory SemVer floor for the native-app handshake (#203): " <>
+              "clients below it should fence themselves — the server does " <>
+              "not reject them. Null means any client is fine."
+        },
         default_locale: %Schema{type: :string},
         features: %Schema{
           type: :object,
@@ -680,7 +688,14 @@ defmodule KammerWeb.Api.Schemas do
           required: [:guest_rsvp, :web_push, :registration]
         }
       },
-      required: [:instance_name, :version, :api_versions, :default_locale, :features]
+      required: [
+        :instance_name,
+        :version,
+        :api_versions,
+        :min_client_version,
+        :default_locale,
+        :features
+      ]
     })
   end
 

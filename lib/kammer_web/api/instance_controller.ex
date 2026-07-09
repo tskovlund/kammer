@@ -15,8 +15,9 @@ defmodule KammerWeb.Api.InstanceController do
 
     json(conn, %{
       instance_name: settings.instance_name || "Kammer",
-      version: Application.spec(:kammer, :vsn) |> to_string(),
+      version: Kammer.version(),
       api_versions: ["v1"],
+      min_client_version: Kammer.min_client_version(),
       default_locale: settings.default_locale,
       features: %{
         guest_rsvp: true,
