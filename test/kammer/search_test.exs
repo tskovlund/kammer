@@ -3,12 +3,11 @@ defmodule Kammer.SearchTest do
   Global search (SPEC §16): matching, feed-rule filtering (pending,
   scheduled, deleted, locked-away content stays hidden), feature
   gating, and THE invariant — search never returns content from a
-  group the viewer couldn't already see listed (property-tested across
-  visibilities and viewer kinds).
+  group the viewer couldn't already see listed (swept deterministically
+  across all visibilities and viewer kinds).
   """
 
   use Kammer.DataCase, async: true
-  use ExUnitProperties
 
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
@@ -96,7 +95,7 @@ defmodule Kammer.SearchTest do
 
     @visibilities [:private, :community, :public_link, :public_listed]
 
-    property "search never surfaces content from a group the viewer can't see listed", %{
+    test "search never surfaces content from a group the viewer can't see listed", %{
       community: community,
       owner: owner
     } do
@@ -131,9 +130,9 @@ defmodule Kammer.SearchTest do
 
       viewers = [nil, non_member, community_member, owner | Enum.map(groups, &elem(&1, 1))]
 
-      check all(viewer_index <- integer(0..(length(viewers) - 1)), max_runs: 25) do
-        viewer = Enum.at(viewers, viewer_index)
-
+      # Deterministic sweep over every viewer kind — the space is small
+      # and fixed, so full enumeration beats random sampling.
+      for viewer <- viewers do
         listable_ids =
           viewer
           |> Authorization.listable_groups_query(community)

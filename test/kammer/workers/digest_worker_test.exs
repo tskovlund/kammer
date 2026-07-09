@@ -31,7 +31,10 @@ defmodule Kammer.Workers.DigestWorkerTest do
     end
   end
 
-  test "no-op when nobody is due" do
+  test "no-op when nobody is due — a user with digests off never appears" do
+    user_fixture() |> set_frequency(:off)
+    drain_delivered_emails()
+
     assert :ok = perform_job(DigestWorker, %{})
     refute_email_sent()
   end
@@ -53,13 +56,5 @@ defmodule Kammer.Workers.DigestWorkerTest do
     end)
 
     assert Repo.reload!(me).last_digest_at
-  end
-
-  test "one user off never appears" do
-    user_fixture() |> set_frequency(:off)
-    drain_delivered_emails()
-
-    assert :ok = perform_job(DigestWorker, %{})
-    refute_email_sent()
   end
 end

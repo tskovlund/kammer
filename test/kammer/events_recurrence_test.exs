@@ -7,7 +7,6 @@ defmodule Kammer.EventsRecurrenceTest do
   use Kammer.DataCase, async: true
   use Oban.Testing, repo: Kammer.Repo
 
-  import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
   alias Kammer.Events
@@ -172,10 +171,12 @@ defmodule Kammer.EventsRecurrenceTest do
     end
 
     test "only the creator or a moderator may cancel", %{
+      group: group,
       occurrences: [first | _rest]
     } do
-      outsider = user_fixture()
-      assert {:error, :unauthorized} = Events.cancel_occurrence(outsider, first)
+      # The realistic attacker is a fellow group member, not a stranger.
+      fellow_member = group_member_fixture(group)
+      assert {:error, :unauthorized} = Events.cancel_occurrence(fellow_member, first)
     end
 
     test "uncancelling restores it", %{member: member, occurrences: [first | _rest]} do

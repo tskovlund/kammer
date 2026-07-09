@@ -2,7 +2,10 @@ defmodule KammerWeb.NewsletterFlowsTest do
   @moduledoc """
   The newsletter subscription journey end to end (SPEC §8): anonymous
   visitor on a public group → email confirm link → active subscription
-  → management link that changes cadence and unsubscribes.
+  → management link that changes cadence and unsubscribes. The RFC
+  8058 one-click unsubscribe POST is covered in
+  `KammerWeb.NewsletterControllerTest` — it survives the LiveView
+  removal cut (#187); this file does not.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -12,7 +15,6 @@ defmodule KammerWeb.NewsletterFlowsTest do
   import Swoosh.TestAssertions
 
   alias Kammer.Guests.GuestIdentity
-  alias Kammer.Newsletters
   alias Kammer.Newsletters.NewsletterSubscription
   alias Kammer.Repo
 
@@ -103,38 +105,6 @@ defmodule KammerWeb.NewsletterFlowsTest do
       assert Repo.reload!(subscription).cadence == :weekly
 
       manage_lv |> element("#unsubscribe-#{subscription.id}") |> render_click()
-      assert Repo.aggregate(NewsletterSubscription, :count) == 0
-    end
-
-    test "one-click unsubscribe (RFC 8058): a bare POST with no session or CSRF token still works",
-         %{group: group} do
-      assert :ok =
-               Newsletters.request_subscription(
-                 group,
-                 %{
-                   "email" => "engangsklik@example.org",
-                   "display_name" => "Klikker",
-                   "cadence" => "per_post"
-                 },
-                 client_ip: nil,
-                 confirm_url_fun: fn token -> "http://test/confirm/#{token}" end
-               )
-
-      confirm_token = email_link(~r{http://test/confirm/(\S+)})
-
-      assert {:ok, _group, subscription} =
-               Newsletters.confirm_subscription(confirm_token, fn manage_token ->
-                 "http://test/manage/#{manage_token}"
-               end)
-
-      manage_token = email_link(~r{http://test/manage/(\S+)})
-
-      conn =
-        build_conn()
-        |> post(~p"/newsletter/unsubscribe/#{manage_token}/#{subscription.id}")
-
-      assert conn.status == 200
-      assert conn.resp_body == "Unsubscribed."
       assert Repo.aggregate(NewsletterSubscription, :count) == 0
     end
   end

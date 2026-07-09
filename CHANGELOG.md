@@ -8,6 +8,35 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Test-suite prune (T2 of the #208 overhaul, per the #207 standard):
+  ~30 ceremony/duplicate tests removed or merged across the LiveView,
+  core-context, worker, and API suites — presentation trivia on the
+  feature-frozen LiveView UI (empty states, link-visibility checks,
+  "renders page" smokes, nav-click tests, `layouts_test.exs` and
+  `error_html_test.exs` wholesale), phx.gen.auth Ecto boilerplate, the
+  third/fourth duplicates of the #167 provenance rule, and the
+  unfalsifiable `update_check_worker_test`. Defused the #187 coverage
+  time bomb: tests for surviving HTTP endpoints (ICS calendar feeds,
+  file download incl. anonymous denial, RFC 8058 one-click
+  unsubscribe) moved out of death-row LiveView flow files into new
+  `calendar_controller_test.exs`, `file_controller_test.exs`, and
+  `newsletter_controller_test.exs`. The API conformance suite was
+  restructured to the inline-tap idiom: `assert_operation_response`
+  now taps the real interaction tests (posts/comments, events,
+  notifications, push subscriptions, auth incl. the passkey ceremony —
+  adding previously missing taps for `auth_register`,
+  `auth_request_link`, and `auth_revoke`), and
+  `schema_conformance_test.exs` shrank to the read-only operations
+  with no other home. Several half-asserted tests were sharpened
+  rather than deleted: the event-reminder test now proves the no-RSVP
+  member got nothing, the reschedule test proves the new job carries
+  the new start time and no stale email went out, the guest-RSVP token
+  test now exercises a genuinely expired token, the recurrence
+  cancel-authz test probes a fellow member instead of a stranger, and
+  the User inspect test now actually sets the redacted `ics_token`.
+
 ### Fixed
 
 - The test suite no longer deadlocks intermittently on the

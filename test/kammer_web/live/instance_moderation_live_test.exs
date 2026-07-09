@@ -41,36 +41,10 @@ defmodule KammerWeb.InstanceModerationLiveTest do
       refute render(lv) =~ "troublemaker@example.com"
     end
 
-    test "an empty email is rejected with a validation error", %{conn: conn} do
-      operator = instance_operator_fixture()
-      conn = log_in_user(conn, operator)
-
-      {:ok, lv, _html} = live(conn, ~p"/instance/moderation")
-
-      html =
-        lv
-        |> form("#instance-ban-form", instance_ban: %{email: "", reason: ""})
-        |> render_submit()
-
-      assert html =~ "can&#39;t be blank"
-      assert Moderation.list_instance_bans(operator) == []
-    end
-
     test "non-operators are turned away", %{conn: conn} do
       conn = log_in_user(conn, user_fixture())
 
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/instance/moderation")
-    end
-
-    test "the link is only shown to operators on the instance home", %{conn: conn} do
-      operator = instance_operator_fixture()
-      conn = log_in_user(conn, operator)
-      {:ok, _lv, html} = live(conn, ~p"/")
-      assert html =~ "Instance moderation"
-
-      conn = log_in_user(build_conn(), user_fixture())
-      {:ok, _lv, html} = live(conn, ~p"/")
-      refute html =~ "Instance moderation"
     end
   end
 end

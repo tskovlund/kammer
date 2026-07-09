@@ -404,19 +404,6 @@ defmodule Kammer.NotificationsTest do
       assert Notifications.get_notification(author, notification_id) == nil
       assert Notifications.get_notification(reader, "not-a-uuid") == nil
     end
-
-    test "delivering an in-app notification broadcasts on the user's topic" do
-      %{group: group, author: author, reader: reader} = notification_context()
-
-      :ok = Notifications.subscribe(reader)
-
-      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "ping"})
-      assert :ok = perform_job(NotificationFanoutWorker, %{"type" => "post", "id" => post.id})
-
-      assert_receive {Kammer.Notifications, {:notification_created, notification_id}}
-      assert %{user_id: user_id} = Repo.get!(Kammer.Notifications.Notification, notification_id)
-      assert user_id == reader.id
-    end
   end
 
   describe "push subscriptions" do

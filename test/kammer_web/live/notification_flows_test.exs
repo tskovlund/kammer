@@ -66,9 +66,4 @@ defmodule KammerWeb.NotificationFlowsTest do
     assert has_element?(lv, "li p", "#{group.name} posted")
     refute has_element?(lv, "li", group_owner.display_name)
   end
-
-  test "unread badge shows in the tab bar", %{conn: conn, community: community} do
-    {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}")
-    assert html =~ "Unread notifications"
-  end
 end
