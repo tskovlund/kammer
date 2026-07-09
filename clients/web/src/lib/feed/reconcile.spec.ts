@@ -25,6 +25,7 @@ function post(overrides: Partial<Post> = {}): Post {
 		reactions: {},
 		my_reactions: [],
 		attachments: [],
+		viewer_can: [],
 		comments: [],
 		...overrides
 	};

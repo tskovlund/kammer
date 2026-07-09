@@ -12,6 +12,7 @@ defmodule KammerWeb.Api.FeedChannel do
 
   use Phoenix.Channel
 
+  alias Kammer.Authorization
   alias Kammer.Feed
   alias Kammer.Groups
   alias KammerWeb.Api.Serializer
@@ -20,7 +21,11 @@ defmodule KammerWeb.Api.FeedChannel do
   def join("feed:group:" <> group_id, _payload, socket) do
     case Groups.fetch_viewable_group_by_id(socket.assigns.current_user, group_id) do
       {:ok, group} ->
-        {:ok, assign(socket, :group, group)}
+        # The subscriber and group are fixed for the channel's life, so
+        # resolve the relationship once here and reuse it for every
+        # pushed post's `viewer_can`.
+        relationship = Authorization.relationship(socket.assigns.current_user, group)
+        {:ok, socket |> assign(:group, group) |> assign(:relationship, relationship)}
 
       {:error, _not_viewable} ->
         # One answer for "doesn't exist" and "not yours to see" — the
@@ -49,8 +54,15 @@ defmodule KammerWeb.Api.FeedChannel do
   defp push_visible_post(socket, event, post_id) do
     case Feed.fetch_visible_post(socket.assigns.current_user, socket.assigns.group, post_id) do
       # Same wire shape as the REST feed page — one serializer.
-      {:ok, post} -> push(socket, event, Serializer.post(post, socket.assigns.current_user))
-      {:error, :not_found} -> :ok
+      {:ok, post} ->
+        push(
+          socket,
+          event,
+          Serializer.post(post, socket.assigns.current_user, socket.assigns.relationship)
+        )
+
+      {:error, :not_found} ->
+        :ok
     end
 
     {:noreply, socket}

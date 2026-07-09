@@ -8,6 +8,7 @@ defmodule KammerWeb.Api.HomeController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Authorization
   alias Kammer.Home
   alias KammerWeb.Api.Serializer
 
@@ -27,8 +28,10 @@ defmodule KammerWeb.Api.HomeController do
         end),
       recent_activity:
         Enum.map(Home.recent_activity(user), fn post ->
+          # Home aggregates across groups, so each post's `viewer_can`
+          # needs its own group relationship.
           post
-          |> Serializer.post(user)
+          |> Serializer.post(user, Authorization.relationship(user, post.group))
           |> Map.put(:community, Serializer.community(post.group.community))
           |> Map.put(:group, %{id: post.group.id, name: post.group.name, slug: post.group.slug})
         end)

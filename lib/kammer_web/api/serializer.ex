@@ -10,8 +10,20 @@ defmodule KammerWeb.Api.Serializer do
   `my_acknowledged`) come from the same preloads the feed already
   carries — passing the viewer adds no queries, it only filters what
   is already loaded.
+
+  The `viewer_can` capability list (issue #199) is the one field that
+  reads authorization rather than data: it names the actions
+  `Kammer.Authorization` would permit this viewer, so clients can hide
+  controls they'd otherwise only be `403`ed on. It's computed from the
+  pure `can?/4` decision core — the same rules the controllers enforce,
+  so the signal can't drift from enforcement — and takes no database
+  access here. Callers thread in the viewer's `relationship` (loaded
+  once, e.g. per feed page) exactly as they already thread the viewer;
+  without one the list is empty, so unknown rights read as "no special
+  controls" rather than ever leaking one.
   """
 
+  alias Kammer.Authorization
   alias Kammer.Accounts.User
   alias Kammer.Communities.Community
   alias Kammer.Events.Event
@@ -24,18 +36,23 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Groups.Group
   alias Kammer.Notifications.Notification
 
-  @spec community(Community.t()) :: map()
-  def community(%Community{} = community) do
+  @spec community(Community.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
+  def community(community, viewer \\ nil, relationship \\ nil)
+
+  def community(%Community{} = community, viewer, relationship) do
     %{
       id: community.id,
       name: community.name,
       slug: community.slug,
-      description: community.description
+      description: community.description,
+      viewer_can: community_capabilities(viewer, community, relationship)
     }
   end
 
-  @spec group(Group.t()) :: map()
-  def group(%Group{} = group) do
+  @spec group(Group.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
+  def group(group, viewer \\ nil, relationship \\ nil)
+
+  def group(%Group{} = group, viewer, relationship) do
     %{
       id: group.id,
       name: group.name,
@@ -44,12 +61,15 @@ defmodule KammerWeb.Api.Serializer do
       visibility: group.visibility,
       features: group.features,
       sealed: group.sealed,
-      archived: Group.archived?(group)
+      archived: Group.archived?(group),
+      viewer_can: group_capabilities(viewer, group, relationship)
     }
   end
 
-  @spec post(Post.t(), User.t() | nil) :: map()
-  def post(%Post{} = post, viewer \\ nil) do
+  @spec post(Post.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
+  def post(post, viewer \\ nil, relationship \\ nil)
+
+  def post(%Post{} = post, viewer, relationship) do
     deleted? = Post.deleted?(post)
 
     %{
@@ -70,6 +90,7 @@ defmodule KammerWeb.Api.Serializer do
       my_reactions: my_reactions(post.reactions, viewer),
       attachments: attachments(post),
       poll: poll(post.poll, viewer),
+      viewer_can: post_capabilities(post, viewer, relationship),
       comments:
         if(is_list(post.comments),
           do: Enum.map(post.comments, &comment(&1, viewer)),
@@ -405,6 +426,63 @@ defmodule KammerWeb.Api.Serializer do
   end
 
   defp attachments(_post), do: []
+
+  ## Viewer capabilities (issue #199)
+  ##
+  ## The action-oriented subset clients actually branch on — not every
+  ## internal permission atom. Each entry maps to the exact same pure
+  ## `Kammer.Authorization` decision the controllers enforce, so a
+  ## capability is present here IFF the corresponding write would
+  ## succeed. Without a relationship (the caller didn't load one) the
+  ## list is empty rather than guessed.
+
+  defp community_capabilities(_viewer, _community, nil), do: []
+
+  defp community_capabilities(viewer, community, relationship) do
+    capabilities([
+      {"manage_community",
+       Authorization.can?(viewer, :manage_community, community, relationship)},
+      {"create_group", Authorization.can?(viewer, :create_group, community, relationship)},
+      {"view_member_directory",
+       Authorization.can?(viewer, :view_member_directory, community, relationship)}
+    ])
+  end
+
+  defp group_capabilities(_viewer, _group, nil), do: []
+
+  defp group_capabilities(viewer, group, relationship) do
+    capabilities([
+      {"post", Authorization.can?(viewer, :post_in_group, group, relationship)},
+      {"moderate", Authorization.can?(viewer, :moderate_group, group, relationship)},
+      {"manage_group", Authorization.can?(viewer, :manage_group, group, relationship)},
+      {"manage_members", Authorization.can?(viewer, :approve_group_members, group, relationship)},
+      {"create_event",
+       Group.feature_enabled?(group, :events) and
+         Authorization.can?(viewer, :post_in_group, group, relationship)},
+      {"upload_file",
+       Group.feature_enabled?(group, :files) and
+         Authorization.can_write_folder?(viewer, group, [], relationship)}
+    ])
+  end
+
+  defp post_capabilities(_post, _viewer, nil), do: []
+
+  defp post_capabilities(%Post{group: %Group{} = group} = post, viewer, relationship) do
+    capabilities([
+      {"edit", Authorization.can_edit_post?(viewer, post, group, relationship)},
+      {"delete",
+       Authorization.can_soft_delete_post?(viewer, post, group, relationship) or
+         Authorization.can_hard_delete_post?(viewer, post, group, relationship)},
+      {"pin", Authorization.can_pin_post?(viewer, post, group, relationship)},
+      {"moderate", Authorization.can?(viewer, :moderate_group, group, relationship)}
+    ])
+  end
+
+  # A post without its group preloaded can't be reasoned about — leave
+  # the capabilities empty rather than query for the group here.
+  defp post_capabilities(_post, _viewer, _relationship), do: []
+
+  defp capabilities(pairs), do: for({name, true} <- pairs, do: name)
 
   defp rsvp_counts(%Event{rsvps: rsvps}) when is_list(rsvps) do
     Map.merge(

@@ -35,8 +35,9 @@ function post(overrides: {
 		reactions: {},
 		my_reactions: [],
 		attachments: [],
+		viewer_can: [],
 		comments: [],
-		community: { ...overrides.community, description: null },
+		community: { ...overrides.community, description: null, viewer_can: [] },
 		group: { id: 'g1', name: 'Group', slug: 'group' },
 		instance: overrides.instance
 	};
@@ -60,7 +61,7 @@ function event(overrides: {
 		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
 		slots: [],
 		comments: [],
-		community: { ...overrides.community, description: null },
+		community: { ...overrides.community, description: null, viewer_can: [] },
 		group: { id: 'g1', name: 'Group', slug: 'group' },
 		instance: overrides.instance
 	};

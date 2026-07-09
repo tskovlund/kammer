@@ -24,7 +24,7 @@ function instance(id: string, name: string): Instance {
 }
 
 function community(id: string, slug: string, name: string): Community {
-	return { id, slug, name, description: null };
+	return { id, slug, name, description: null, viewer_can: [] };
 }
 
 function event(id: string, startsAt: string, groupId = 'g'): Event {

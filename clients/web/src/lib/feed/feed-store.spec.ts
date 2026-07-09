@@ -62,6 +62,7 @@ function post(overrides: Partial<Post> = {}): Post {
 		pinned: false,
 		published_at: '2026-01-01T00:00:00Z',
 		reactions: {},
+		viewer_can: [],
 		comment_count: 0,
 		comments: [],
 		...overrides

@@ -28,7 +28,13 @@ function event(overrides: Partial<MergedEvent> & { id: string; starts_at: string
 			user: { id: 'u1', email: 'a@a', displayName: 'A' },
 			addedAt: '2026-01-01T00:00:00Z'
 		},
-		community: { id: 'c1', name: 'Community', slug: 'community', description: null },
+		community: {
+			id: 'c1',
+			name: 'Community',
+			slug: 'community',
+			description: null,
+			viewer_can: []
+		},
 		...overrides
 	};
 }

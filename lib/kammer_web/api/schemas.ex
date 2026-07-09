@@ -44,9 +44,21 @@ defmodule KammerWeb.Api.Schemas do
         id: %Schema{type: :string, format: :uuid},
         name: %Schema{type: :string},
         slug: %Schema{type: :string},
-        description: %Schema{type: :string, nullable: true}
+        description: %Schema{type: :string, nullable: true},
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :string,
+            enum: ["manage_community", "create_group", "view_member_directory"]
+          },
+          description:
+            "Actions the calling viewer may take on this community (issue " <>
+              "#199) — advisory, so clients hide controls the viewer lacks; " <>
+              "the server still enforces. Empty when the viewer's rights " <>
+              "weren't resolved (e.g. an embedded community reference)."
+        }
       },
-      required: [:id, :name, :slug]
+      required: [:id, :name, :slug, :viewer_can]
     })
   end
 
@@ -68,9 +80,29 @@ defmodule KammerWeb.Api.Schemas do
         },
         features: %Schema{type: :array, items: %Schema{type: :string}},
         sealed: %Schema{type: :boolean},
-        archived: %Schema{type: :boolean}
+        archived: %Schema{type: :boolean},
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :string,
+            enum: [
+              "post",
+              "moderate",
+              "manage_group",
+              "manage_members",
+              "create_event",
+              "upload_file"
+            ]
+          },
+          description:
+            "Actions the calling viewer may take in this group (issue " <>
+              "#199) — advisory, so clients hide controls the viewer lacks; " <>
+              "the server still enforces. `create_event`/`upload_file` also " <>
+              "reflect the group's feature toggles. Empty when the viewer's " <>
+              "rights weren't resolved."
+        }
       },
-      required: [:id, :name, :slug, :visibility, :features, :sealed, :archived]
+      required: [:id, :name, :slug, :visibility, :features, :sealed, :archived, :viewer_can]
     })
   end
 
@@ -420,6 +452,19 @@ defmodule KammerWeb.Api.Schemas do
         },
         attachments: %Schema{type: :array, items: Attachment},
         poll: Poll,
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :string,
+            enum: ["edit", "delete", "pin", "moderate"]
+          },
+          description:
+            "Actions the calling viewer may take on this post (issue " <>
+              "#199) — advisory, so clients hide controls the viewer lacks; " <>
+              "the server still enforces. `edit`/`delete` are the author's; " <>
+              "`pin`/`moderate` are a moderator's. Empty when the viewer's " <>
+              "rights weren't resolved."
+        },
         comments: %Schema{type: :array, items: Comment}
       },
       required: [
@@ -434,7 +479,8 @@ defmodule KammerWeb.Api.Schemas do
         :my_acknowledged,
         :reactions,
         :my_reactions,
-        :attachments
+        :attachments,
+        :viewer_can
       ]
     })
   end

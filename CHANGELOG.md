@@ -10,6 +10,20 @@ and this project adheres to
 
 ### Added
 
+- Per-viewer capabilities on the API (issue #199, groundwork for the
+  #165 parity ladder): serialized posts, groups, and communities now
+  carry a `viewer_can` array naming the action-oriented rights the
+  calling viewer actually has — `edit`/`delete`/`pin`/`moderate` on a
+  post; `post`/`moderate`/`manage_group`/`manage_members`/`create_event`/
+  `upload_file` on a group; `manage_community`/`create_group`/
+  `view_member_directory` on a community — so clients can hide controls
+  a viewer would only be `403`ed on click, instead of offering them to
+  everyone. Each capability is computed from the same pure
+  `Kammer.Authorization` decision the controllers enforce (present IFF
+  the action would succeed) and adds no queries: controllers thread the
+  viewer's already-loaded relationship into the serializer. Consumed by
+  the #179/#182/#183 client screens (client wiring is a follow-up; the
+  API field is the enabler).
 - Files over the API and in the Svelte PWA (issue #181, part of the
   #165 parity ladder): a group's file library — browse folders and
   files with breadcrumb navigation, upload new files, re-upload the
