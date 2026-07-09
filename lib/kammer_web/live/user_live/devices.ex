@@ -1,7 +1,9 @@
 defmodule KammerWeb.UserLive.Devices do
   @moduledoc """
-  Devices page (SPEC §2): lists the account's long-lived sessions with
-  device information and lets the user revoke any of them individually.
+  Devices page (SPEC §2): lists the account's revocable credentials —
+  browser sessions and long-lived API device tokens alike (issue
+  #174) — with device information, and lets the user revoke any of
+  them individually.
   """
 
   use KammerWeb, :live_view
@@ -29,7 +31,10 @@ defmodule KammerWeb.UserLive.Devices do
           >
             <div class="min-w-0">
               <p class="truncate font-medium">
-                {device_description(session.user_agent)}
+                {session.description}
+                <span :if={session.api_device?} class="badge badge-ghost badge-sm ml-2">
+                  {gettext("App")}
+                </span>
                 <span :if={session.current?} class="badge badge-primary badge-sm ml-2">
                   {gettext("This device")}
                 </span>
@@ -190,7 +195,18 @@ defmodule KammerWeb.UserLive.Devices do
   @impl Phoenix.LiveView
   def handle_event("revoke", %{"id" => token_id}, socket) do
     user = socket.assigns.current_scope.user
-    :ok = Accounts.revoke_user_session(user, token_id)
+
+    case Accounts.revoke_user_device(user, token_id) do
+      {:ok, %Kammer.Accounts.UserToken{context: "api-device"}} ->
+        # Sever live sockets riding the revoked token (issue #174) —
+        # the same broadcast the API revoke endpoint sends; sibling
+        # devices reconnect with their still-valid tokens.
+        KammerWeb.Endpoint.broadcast("api_user_socket:#{user.id}", "disconnect", %{})
+        :ok
+
+      _revoked_or_gone ->
+        :ok
+    end
 
     {:noreply,
      socket
@@ -236,13 +252,18 @@ defmodule KammerWeb.UserLive.Devices do
   defp load_sessions(socket, current_session_token) do
     sessions =
       socket.assigns.current_scope.user
-      |> Accounts.list_user_sessions()
+      |> Accounts.list_user_devices()
       |> Enum.map(fn user_token ->
+        api_device? = user_token.context == "api-device"
+
         %{
           id: user_token.id,
-          user_agent: user_token.user_agent,
+          api_device?: api_device?,
+          description: describe(user_token, api_device?),
           inserted_at: user_token.inserted_at,
-          current?: Plug.Crypto.secure_compare(user_token.token, current_session_token || <<>>)
+          current?:
+            not api_device? and
+              Plug.Crypto.secure_compare(user_token.token, current_session_token || <<>>)
         }
       end)
 
@@ -250,6 +271,11 @@ defmodule KammerWeb.UserLive.Devices do
     |> assign(:current_session_token, current_session_token)
     |> assign(:sessions, sessions)
   end
+
+  # An API device's user_agent field carries the client-chosen device
+  # name, not a browser UA string — show it verbatim (issue #174).
+  defp describe(user_token, true), do: user_token.user_agent || gettext("API device")
+  defp describe(user_token, false), do: device_description(user_token.user_agent)
 
   defp load_passkeys(socket) do
     assign(socket, :passkeys, Accounts.list_passkeys(socket.assigns.current_scope.user))

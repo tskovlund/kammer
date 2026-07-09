@@ -282,6 +282,26 @@ defmodule Kammer.Groups do
   end
 
   @doc """
+  The membership of the given user id in the group, with the user
+  preloaded, or `nil`. Invalid ids read as `nil`.
+  """
+  @spec get_membership_by_user_id(Group.t(), String.t()) :: GroupMembership.t() | nil
+  def get_membership_by_user_id(%Group{} = group, user_id) do
+    case Ecto.UUID.cast(user_id) do
+      {:ok, uuid} ->
+        Repo.one(
+          from(membership in GroupMembership,
+            where: membership.group_id == ^group.id and membership.user_id == ^uuid,
+            preload: :user
+          )
+        )
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   Joins an open group directly. Requires `:join_group`.
   """
   @spec join_group(User.t(), Group.t()) ::
@@ -322,6 +342,40 @@ defmodule Kammer.Groups do
       nil -> {:error, :not_a_member}
       %GroupMembership{role: :owner} -> {:error, :owner_cannot_leave}
       %GroupMembership{} = membership -> Repo.delete(membership)
+    end
+  end
+
+  @doc """
+  Removes a member from the group. Owners cannot be removed (transfer
+  ownership first); members may remove themselves (same as leaving);
+  otherwise requires `:manage_group`.
+  """
+  @spec remove_member(User.t(), Group.t(), GroupMembership.t()) ::
+          {:ok, GroupMembership.t()} | {:error, :unauthorized | :owner_cannot_leave}
+  def remove_member(%User{} = actor, %Group{} = group, %GroupMembership{} = membership) do
+    cond do
+      membership.role == :owner ->
+        {:error, :owner_cannot_leave}
+
+      membership.user_id == actor.id ->
+        Repo.delete(membership)
+
+      Authorization.can?(actor, :manage_group, group) ->
+        with {:ok, removed} <- Repo.delete(membership) do
+          target = Repo.get!(User, membership.user_id)
+
+          audit_group_action(
+            actor,
+            group,
+            "group_member.removed",
+            "removed #{target.display_name} from"
+          )
+
+          {:ok, removed}
+        end
+
+      true ->
+        {:error, :unauthorized}
     end
   end
 
@@ -434,6 +488,29 @@ defmodule Kammer.Groups do
             join_request.status == :pending
       )
     )
+  end
+
+  @doc """
+  One of the group's pending join requests by id, with the requesting
+  user preloaded, or `nil`. Invalid or foreign ids read as `nil`;
+  callers own the authorization decision (approve/deny re-check).
+  """
+  @spec get_pending_join_request(Group.t(), String.t()) :: GroupJoinRequest.t() | nil
+  def get_pending_join_request(%Group{} = group, request_id) do
+    case Ecto.UUID.cast(request_id) do
+      {:ok, uuid} ->
+        Repo.one(
+          from(join_request in GroupJoinRequest,
+            where:
+              join_request.id == ^uuid and join_request.group_id == ^group.id and
+                join_request.status == :pending,
+            preload: :user
+          )
+        )
+
+      :error ->
+        nil
+    end
   end
 
   @doc """

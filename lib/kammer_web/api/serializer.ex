@@ -25,7 +25,10 @@ defmodule KammerWeb.Api.Serializer do
 
   alias Kammer.Authorization
   alias Kammer.Accounts.User
+  alias Kammer.Accounts.UserToken
   alias Kammer.Communities.Community
+  alias Kammer.Communities.CommunityMembership
+  alias Kammer.Communities.CustomField
   alias Kammer.Events.Event
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Poll
@@ -34,6 +37,9 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
+  alias Kammer.Groups.GroupJoinRequest
+  alias Kammer.Groups.GroupMembership
+  alias Kammer.Invitations.Invite
   alias Kammer.Notifications.Notification
 
   @spec community(Community.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
@@ -45,6 +51,7 @@ defmodule KammerWeb.Api.Serializer do
       name: community.name,
       slug: community.slug,
       description: community.description,
+      my_role: relationship && relationship.community_role,
       viewer_can: community_capabilities(viewer, community, relationship)
     }
   end
@@ -59,9 +66,11 @@ defmodule KammerWeb.Api.Serializer do
       slug: group.slug,
       description: group.description,
       visibility: group.visibility,
+      join_policy: group.join_policy,
       features: group.features,
       sealed: group.sealed,
       archived: Group.archived?(group),
+      my_role: relationship && relationship.group_role,
       viewer_can: group_capabilities(viewer, group, relationship)
     }
   end
@@ -427,6 +436,166 @@ defmodule KammerWeb.Api.Serializer do
 
   defp attachments(_post), do: []
 
+  ## People (issue #182): invites, roster rows, memberships, profile,
+  ## devices. Redaction (ADR 0020) happens in the contexts —
+  ## `visible_contact_fields`, `list_visible_custom_fields` — the
+  ## controller feeds the already-redacted pieces in; these only shape.
+
+  @doc """
+  An invite link as its managers see it (SPEC §3). `token` is the
+  shareable secret — this shape only ever answers callers who hold
+  `create_*_invite` on the target.
+  """
+  @spec invite(Invite.t()) :: map()
+  def invite(%Invite{} = invite) do
+    %{
+      id: invite.id,
+      token: invite.token,
+      group_id: invite.group_id,
+      invited_email: invite.invited_email,
+      expires_at: invite.expires_at,
+      max_uses: invite.max_uses,
+      use_count: invite.use_count,
+      revoked: invite.revoked_at != nil,
+      created_at: invite.inserted_at
+    }
+  end
+
+  @doc """
+  What an invite landing page shows before acceptance: the target, not
+  the invite's management fields — the token is the whole credential,
+  so this is the API twin of the public `/invite/:token` page.
+  """
+  @spec invite_preview(Invite.t()) :: map()
+  def invite_preview(%Invite{community: %Community{} = community} = invite) do
+    %{
+      token: invite.token,
+      community: %{
+        id: community.id,
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        require_real_names: community.require_real_names
+      },
+      group: invite_group(invite)
+    }
+  end
+
+  defp invite_group(%Invite{group: %Group{id: id, name: name, slug: slug}}),
+    do: %{id: id, name: name, slug: slug}
+
+  defp invite_group(_invite), do: nil
+
+  @doc """
+  A community-defined profile field (ADR 0020) — the roster's columns
+  and the profile form's inputs.
+  """
+  @spec custom_field(CustomField.t()) :: map()
+  def custom_field(%CustomField{} = field) do
+    %{
+      id: field.id,
+      label: field.label,
+      field_type: field.field_type,
+      options: field.options,
+      required: field.required,
+      visibility: field.visibility,
+      position: field.position
+    }
+  end
+
+  @doc """
+  A member-directory row (SPEC §4). `contact` and
+  `custom_field_values` arrive already redacted for the viewer's role
+  (ADR 0020) — the controller runs the visibility predicates, this
+  only shapes.
+  """
+  @spec member(CommunityMembership.t(), [{atom(), String.t()}], map()) :: map()
+  def member(%CommunityMembership{user: %User{} = user} = membership, contact_fields, values) do
+    %{
+      user: member_user(user),
+      role: membership.role,
+      joined_at: membership.inserted_at,
+      contact: Map.new(contact_fields),
+      custom_field_values: values
+    }
+  end
+
+  @doc """
+  A group-membership row: who and with which role.
+  """
+  @spec group_member(GroupMembership.t()) :: map()
+  def group_member(%GroupMembership{user: %User{} = user} = membership) do
+    %{
+      user: member_user(user),
+      role: membership.role,
+      joined_at: membership.inserted_at
+    }
+  end
+
+  @doc """
+  A pending request to join a group (SPEC §3, `request_approval`).
+  """
+  @spec join_request(GroupJoinRequest.t()) :: map()
+  def join_request(%GroupJoinRequest{user: %User{} = user} = request) do
+    %{
+      id: request.id,
+      user: member_user(user),
+      message: request.message,
+      requested_at: request.inserted_at
+    }
+  end
+
+  defp member_user(%User{} = user) do
+    %{
+      id: user.id,
+      display_name: user.display_name,
+      bio: user.bio,
+      pronouns: user.pronouns
+    }
+  end
+
+  @doc """
+  The caller's own account and base profile (SPEC §4) — email and the
+  per-field contact visibilities included, because it is theirs.
+  """
+  @spec profile(User.t()) :: map()
+  def profile(%User{} = user) do
+    %{
+      id: user.id,
+      email: user.email,
+      display_name: user.display_name,
+      locale: user.locale,
+      timezone: user.timezone,
+      digest_frequency: user.digest_frequency,
+      feed_sort: user.feed_sort,
+      bio: user.bio,
+      pronouns: user.pronouns,
+      contact_phone: user.contact_phone,
+      contact_phone_visibility: user.contact_phone_visibility,
+      contact_email: user.contact_email,
+      contact_email_visibility: user.contact_email_visibility,
+      contact_note: user.contact_note,
+      contact_note_visibility: user.contact_note_visibility
+    }
+  end
+
+  @doc """
+  One of the caller's revocable credentials (issue #174): a browser
+  session or an API device token. `device_name` is the user agent for
+  sessions and the client-chosen name for API devices; `current` marks
+  the credential making this request.
+  """
+  @spec device(UserToken.t(), Ecto.UUID.t() | nil) :: map()
+  def device(%UserToken{} = token, current_id \\ nil) do
+    %{
+      id: token.id,
+      kind: if(token.context == "api-device", do: "api_device", else: "session"),
+      device_name: token.user_agent,
+      created_at: token.inserted_at,
+      current: token.id == current_id
+    }
+  end
+
   ## Viewer capabilities (issue #199)
   ##
   ## The action-oriented subset clients actually branch on — not every
@@ -452,6 +621,9 @@ defmodule KammerWeb.Api.Serializer do
 
   defp group_capabilities(viewer, group, relationship) do
     capabilities([
+      {"join", Authorization.can?(viewer, :join_group, group, relationship)},
+      {"request_to_join",
+       Authorization.can?(viewer, :request_to_join_group, group, relationship)},
       {"post", Authorization.can?(viewer, :post_in_group, group, relationship)},
       {"moderate", Authorization.can?(viewer, :moderate_group, group, relationship)},
       {"manage_group", Authorization.can?(viewer, :manage_group, group, relationship)},

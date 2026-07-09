@@ -187,6 +187,26 @@ defmodule Kammer.Communities do
   end
 
   @doc """
+  The membership of the given user id in the community, with the user
+  preloaded, or `nil`. Invalid ids read as `nil`.
+  """
+  @spec get_membership_by_user_id(Community.t(), String.t()) :: CommunityMembership.t() | nil
+  def get_membership_by_user_id(%Community{} = community, user_id) do
+    case Ecto.UUID.cast(user_id) do
+      {:ok, uuid} ->
+        Repo.one(
+          from(membership in CommunityMembership,
+            where: membership.community_id == ^community.id and membership.user_id == ^uuid,
+            preload: :user
+          )
+        )
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   Adds a user to a community with the given role. Idempotent: an existing
   membership is returned unchanged. Intended for invite redemption and
   internal flows — there is no open "join community" in v1 (communities are

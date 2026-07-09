@@ -14,6 +14,9 @@ defmodule KammerWeb.ApiSpec do
 
   @behaviour OpenApi
 
+  @role_values ["owner", "admin", "member"]
+  @contact_visibilities ["hidden", "members", "admins"]
+
   @impl OpenApi
   def spec do
     OpenApiSpex.resolve_schema_modules(%OpenApi{
@@ -152,6 +155,290 @@ defmodule KammerWeb.ApiSpec do
         delete:
           operation("Revoke this device token", :auth_revoke, [],
             response: json_response("Revoked", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/me" => %PathItem{
+        get:
+          operation("The caller's own profile", :me_show, [],
+            response: single_response(Schemas.Profile)
+          ),
+        put:
+          operation("Update the caller's profile and preferences", :me_update, [],
+            request_body: body(profile_params()),
+            response: single_response(Schemas.Profile)
+          )
+      },
+      "/api/v1/me/devices" => %PathItem{
+        get:
+          operation(
+            "The caller's devices: browser sessions and API device tokens (issue #174)",
+            :devices_index,
+            [],
+            response: data_response(Schemas.Device)
+          )
+      },
+      "/api/v1/me/devices/{device_id}" => %PathItem{
+        delete:
+          operation(
+            "Revoke a device by id — revoking an API device also severs its live sockets",
+            :devices_revoke,
+            [path_param(:device_id)],
+            response: json_response("Revoked", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/invites/{token}" => %PathItem{
+        get:
+          operation(
+            "Preview what an invite opens (public — the token is the credential)",
+            :invites_preview,
+            [path_param(:token)],
+            security: [],
+            response: single_response(Schemas.InvitePreview)
+          )
+      },
+      "/api/v1/invites/{token}/accept" => %PathItem{
+        post:
+          operation(
+            "Accept an invite: join the community (and group), learn any required fields still missing",
+            :invites_accept,
+            [path_param(:token)],
+            response: single_response(Schemas.InviteAcceptResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/members" => %PathItem{
+        get:
+          operation(
+            "The member directory (SPEC §4), redacted per viewer; filterable by visible custom fields",
+            :members_index,
+            [
+              path_param(:community_slug),
+              query_param(
+                :filter,
+                "filter[<field_id>]=<value> pairs; only fields visible to the caller apply"
+              )
+            ],
+            response:
+              json_response("The roster and its visible field definitions", %Schema{
+                type: :object,
+                properties: %{
+                  data: %Schema{type: :array, items: Schemas.Member},
+                  fields: %Schema{type: :array, items: Schemas.CustomField}
+                },
+                required: [:data, :fields]
+              })
+          )
+      },
+      "/api/v1/communities/{community_slug}/members/{user_id}/role" => %PathItem{
+        put:
+          operation(
+            "Change a member's community role (admins; owner transitions need the owner)",
+            :members_update_role,
+            [path_param(:community_slug), path_param(:user_id)],
+            request_body: body(object(%{role: %Schema{type: :string, enum: @role_values}})),
+            response: single_response(role_change_schema())
+          )
+      },
+      "/api/v1/communities/{community_slug}/members/{user_id}" => %PathItem{
+        delete:
+          operation(
+            "Remove a member from the community and all its groups (admins; owners can't be removed)",
+            :members_remove,
+            [path_param(:community_slug), path_param(:user_id)],
+            extra_errors: [422],
+            response: json_response("Removed", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/membership" => %PathItem{
+        delete:
+          operation(
+            "Leave the community (owners must transfer ownership first — 422 owner_cannot_leave)",
+            :community_leave,
+            [path_param(:community_slug)],
+            extra_errors: [422],
+            response: json_response("Left", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/profile" => %PathItem{
+        get:
+          operation(
+            "The caller's custom-field answers in this community (ADR 0020)",
+            :community_profile_show,
+            [path_param(:community_slug)],
+            response: single_response(Schemas.CommunityProfile)
+          ),
+        put:
+          operation(
+            "Set custom-field answers (blank clears; unknown fields are ignored)",
+            :community_profile_update,
+            [path_param(:community_slug)],
+            request_body:
+              body(
+                object(%{
+                  values: %Schema{
+                    type: :object,
+                    additionalProperties: %Schema{type: :string},
+                    description: "Field id → answer"
+                  }
+                })
+              ),
+            response: single_response(Schemas.CommunityProfile)
+          )
+      },
+      "/api/v1/communities/{community_slug}/invites" => %PathItem{
+        get:
+          operation(
+            "Active community-wide invites (admins)",
+            :community_invites_index,
+            [path_param(:community_slug)],
+            response: data_response(Schemas.Invite)
+          ),
+        post:
+          operation(
+            "Create a community-wide invite; invited_email delivers it and binds redemption to that address",
+            :community_invites_create,
+            [path_param(:community_slug)],
+            status: 201,
+            request_body: body(invite_params()),
+            response: single_response(Schemas.Invite)
+          )
+      },
+      "/api/v1/communities/{community_slug}/invites/{invite_id}" => %PathItem{
+        delete:
+          operation(
+            "Revoke an invite (community- or group-scoped; requires the right to create it)",
+            :invites_revoke,
+            [path_param(:community_slug), path_param(:invite_id)],
+            response: single_response(Schemas.Invite)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/invites" => %PathItem{
+        get:
+          operation(
+            "Active invites into a group (group admins)",
+            :group_invites_index,
+            group_params(),
+            response: data_response(Schemas.Invite)
+          ),
+        post:
+          operation(
+            "Create a group invite (joining also joins the community)",
+            :group_invites_create,
+            group_params(),
+            status: 201,
+            request_body: body(invite_params()),
+            response: single_response(Schemas.Invite)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/members" => %PathItem{
+        get:
+          operation(
+            "The group's members (group viewers)",
+            :group_members_index,
+            group_params(),
+            response: data_response(Schemas.GroupMember)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/members/{user_id}/role" =>
+        %PathItem{
+          put:
+            operation(
+              "Change a member's group role (group admins; owner transitions need owner powers)",
+              :group_members_update_role,
+              group_params() ++ [path_param(:user_id)],
+              request_body: body(object(%{role: %Schema{type: :string, enum: @role_values}})),
+              response: single_response(role_change_schema())
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/members/{user_id}" => %PathItem{
+        delete:
+          operation(
+            "Remove a member from the group (group admins; owners can't be removed)",
+            :group_members_remove,
+            group_params() ++ [path_param(:user_id)],
+            extra_errors: [422],
+            response: json_response("Removed", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/membership" => %PathItem{
+        put:
+          operation(
+            "Join per the group's policy: open joins, request_approval files a request, invite_only 403s",
+            :group_join,
+            group_params(),
+            request_body:
+              optional_body(
+                object(%{
+                  message: %Schema{
+                    type: :string,
+                    nullable: true,
+                    description: "Optional note shown with a join request"
+                  }
+                })
+              ),
+            response: json_response("status is `joined` or `requested`", Schemas.StatusResponse)
+          ),
+        delete:
+          operation(
+            "Leave the group (owners must transfer ownership first — 422 owner_cannot_leave)",
+            :group_leave,
+            group_params(),
+            extra_errors: [422],
+            response: json_response("Left", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests" => %PathItem{
+        get:
+          operation(
+            "Pending join requests (approvers only)",
+            :join_requests_index,
+            group_params(),
+            response: data_response(Schemas.JoinRequest)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}/approval" =>
+        %PathItem{
+          put:
+            operation(
+              "Approve a join request, creating the membership (422 when the person is banned)",
+              :join_requests_approve,
+              group_params() ++ [path_param(:request_id)],
+              extra_errors: [422],
+              response: json_response("Approved", Schemas.StatusResponse)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}" =>
+        %PathItem{
+          delete:
+            operation(
+              "Deny a join request",
+              :join_requests_deny,
+              group_params() ++ [path_param(:request_id)],
+              response: json_response("Denied", Schemas.StatusResponse)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/notification-level" => %PathItem{
+        get:
+          operation(
+            "The caller's notification level for this group (SPEC §9)",
+            :notification_level_show,
+            group_params(),
+            response: single_response(Schemas.NotificationLevel)
+          ),
+        put:
+          operation(
+            "Set the caller's notification level for this group",
+            :notification_level_update,
+            group_params(),
+            request_body:
+              body(
+                object(%{
+                  level: %Schema{
+                    type: :string,
+                    enum: ["everything", "highlights", "mentions_only", "muted"]
+                  }
+                })
+              ),
+            response: single_response(Schemas.NotificationLevel)
           )
       },
       "/api/v1/home" => %PathItem{
@@ -773,6 +1060,78 @@ defmodule KammerWeb.ApiSpec do
       required: true,
       content: %{"application/json" => %MediaType{schema: schema}}
     }
+  end
+
+  # A body the operation works without — e.g. joining a group, where
+  # only the request-approval path carries an optional message.
+  defp optional_body(schema) do
+    %RequestBody{
+      required: false,
+      content: %{"application/json" => %MediaType{schema: schema}}
+    }
+  end
+
+  # The response to a role change: the target and their new role.
+  defp role_change_schema do
+    %Schema{
+      type: :object,
+      properties: %{
+        user_id: %Schema{type: :string, format: :uuid},
+        role: %Schema{type: :string, enum: @role_values}
+      },
+      required: [:user_id, :role]
+    }
+  end
+
+  defp invite_params do
+    object(%{
+      invited_email: %Schema{
+        type: :string,
+        format: :email,
+        nullable: true,
+        description: "Delivers the invite by email and binds redemption to that address"
+      },
+      expires_at: %Schema{type: :string, format: :"date-time", nullable: true},
+      max_uses: %Schema{type: :integer, minimum: 1, nullable: true}
+    })
+  end
+
+  defp profile_params do
+    object(%{
+      display_name: %Schema{type: :string, nullable: true},
+      locale: %Schema{type: :string, nullable: true},
+      timezone: %Schema{type: :string, nullable: true},
+      digest_frequency: %Schema{
+        type: :string,
+        enum: ["off", "daily", "weekly"],
+        nullable: true
+      },
+      feed_sort: %Schema{
+        type: :string,
+        enum: ["chronological", "activity"],
+        nullable: true
+      },
+      bio: %Schema{type: :string, nullable: true},
+      pronouns: %Schema{type: :string, nullable: true},
+      contact_phone: %Schema{type: :string, nullable: true},
+      contact_phone_visibility: %Schema{
+        type: :string,
+        enum: @contact_visibilities,
+        nullable: true
+      },
+      contact_email: %Schema{type: :string, nullable: true},
+      contact_email_visibility: %Schema{
+        type: :string,
+        enum: @contact_visibilities,
+        nullable: true
+      },
+      contact_note: %Schema{type: :string, nullable: true},
+      contact_note_visibility: %Schema{
+        type: :string,
+        enum: @contact_visibilities,
+        nullable: true
+      }
+    })
   end
 
   # The one non-JSON request in the API: the feed-attachment upload.
