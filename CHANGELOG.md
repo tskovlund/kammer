@@ -302,6 +302,20 @@ and this project adheres to
 
 ### Changed
 
+- Strategic pivot recorded (ADR 0024): the Svelte PWA —
+  instance-served by the Phoenix release at each instance's own
+  domain — is the product UI, and LiveView is a first-build stepping
+  stone to be removed from the repo entirely, not a permanent
+  companion (LiveView can't do offline mode or multi-instance
+  session-holding/merging, the two capabilities the product depends
+  on). LiveView is feature-frozen as of now (bugfixes only) while
+  the PWA climbs a surface-by-surface parity ladder — each surface
+  ships with full write parity, including its missing API
+  endpoints — with removal in one cut at full member+admin+guest
+  coverage. SPEC.md §1/§16/§21 corrected to stop describing LiveView
+  as the product UI (and §21 gains the community-first IA
+  principle); AGENTS.md now carries the freeze policy so future
+  sessions don't add LiveView features. Transition umbrella: #165.
 - SPEC.md §16's "explicit non-goals" list corrected: native apps,
   offline support (beyond v1 app-shell caching), chat/DMs, E2EE, event
   ticketing/capacity/waitlists, collaborative document editing, video

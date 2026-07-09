@@ -18,11 +18,11 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 ## 1. Stack (fixed decisions — do not substitute)
 
-- **Backend/UI**: Elixir + Phoenix (latest stable) + **Phoenix LiveView** as the v1 UI layer. Domain logic in Phoenix contexts — this is non-negotiable, because the decided long-term strategy (§16) adds a JSON API in v2 and migrates the UI to a multi-instance Svelte client; the contexts are the permanent asset, LiveView is the v1 vehicle.
+- **Backend/UI**: Elixir + Phoenix (latest stable). **Phoenix LiveView** is the interim UI only — feature-frozen (bugfixes only) and removed entirely once the multi-instance Svelte PWA reaches full parity (§16, ADR 0024). Domain logic in Phoenix contexts — this is non-negotiable; the contexts and the JSON API are the permanent asset, the Svelte client is the product UI.
 - **Database**: PostgreSQL via Ecto. UUID primary keys everywhere. Timestamps stored UTC; rendered in the user's timezone.
 - **Styling**: Tailwind CSS. Clean, warm, modern, mobile-first (most users are on phones). Designed empty/loading/error states — the app must feel finished, not scaffolded.
-- **PWA**: manifest, service worker (app-shell caching only; content online-only), installable on iOS/Android. **Web Push** via VAPID.
-- **Real-time**: LiveView sockets + Phoenix PubSub (live feeds, comments, RSVP counts).
+- **PWA**: manifest, service worker (app-shell caching only; content online-only), installable on iOS/Android. **Web Push** via VAPID. (This describes the interim LiveView shell; the instance-served Svelte client is the product PWA — §16, ADR 0024.)
+- **Real-time**: LiveView sockets (interim) and Phoenix Channels with device-token auth (API/PWA clients — §16, ADR 0024) + Phoenix PubSub (live feeds, comments, RSVP counts).
 - **Files/images**: `Storage` behaviour with two adapters: local disk (default) and S3-compatible (MinIO/Hetzner Object Storage). libvips (`image`/`vix`) for processing.
 - **Email**: Swoosh, configurable SMTP/provider adapters.
 - **i18n**: gettext from day 1; English and Danish complete for everything shipped. Per-user language; per-community default.
@@ -190,18 +190,35 @@ the sanctioned path to configurable comment mechanics, keeping raw
 per-group threading switches out of the product — that constraint
 still holds, only the "non-goal" framing changes).
 
-**UI architecture strategy:** LiveView is the v1 _vehicle_, not the
-end state. v2 = JSON API over the same Phoenix contexts (already
-shipped, ADR 0014), then a **Svelte PWA as the primary client — built
-multi-instance-capable from day one** (holds sessions on N instances,
-merges views client-side: merged calendar first, merged feed second;
-foreign items resolve naturally since the client is a session-holder,
-not a proxy). LiveView is then frozen and retired — no permanent
-dual-UI maintenance. This client-side model replaces any server-side
-"home instance" aggregation scheme; no inter-instance sync protocol is
-required. Native apps become API siblings of the Svelte client (#131,
-ADR 0022). Note: ICS and RSS already provide standards-based
-cross-instance merging.
+**UI architecture strategy:** the **Svelte PWA is the product UI**
+(ADR 0024); LiveView was the first-build vehicle and will be removed
+from the repo entirely — it cannot do offline mode or multi-instance
+session-holding/merging, the two capabilities the product depends
+on. The JSON API over the same Phoenix contexts is already shipped
+(ADR 0014). The PWA is **instance-served**: the Phoenix release
+bundles and serves the built client at the instance's own domain, so
+magic links land in the PWA (deep link to `/sign-in/{token}`, plus a
+short code in the email for cross-device sign-in; passkeys in client
+v1 via API challenge/verify endpoints) and multi-instance merging
+works from any deployed copy via CORS (#164). It is **built
+multi-instance-capable from day one** (holds sessions on N
+instances, merges views client-side; foreign items resolve naturally
+since the client is a session-holder, not a proxy), with
+community-first IA (§21) and Phoenix Channels realtime
+(device-token socket auth) from the client foundation onward.
+Sequencing: **freeze + parity ladder** — LiveView is feature-frozen
+(bugfixes only) while the PWA climbs surface-by-surface; each
+surface ships with full write parity, including the API endpoints it
+is missing; guest surfaces (guest RSVP/comment/claim links,
+newsletter unsubscribe, legal pages, setup wizard) move onto new
+public API endpoints as their turn comes, while RSS/iCal stay plain
+HTTP feeds; LiveView is removed in one cut at full
+member+admin+guest coverage (#165 is the transition umbrella). This
+client-side model replaces any server-side "home instance"
+aggregation scheme; no inter-instance sync protocol is required.
+Native apps come strictly after PWA parity, generated from the same
+OpenAPI document (#131, ADR 0022). Note: ICS and RSS already provide
+standards-based cross-instance merging.
 
 **Identity strategy:** email + synced passkeys is the identity layer
 for v1–v2 (email is the existing federated identifier; the
@@ -252,9 +269,10 @@ stubs are forbidden.
 - **Surfaces**: paper-white/off-white backgrounds (not pure #fff), near-black ink (not pure #000), warm neutral grays. Dark mode as a first-class twin, not an inversion afterthought.
 - **Accent**: exactly one accent color — the active community's configured accent. Branding is structural: switching communities re-tints the interface. Ensure computed contrast safety for any admin-chosen accent (derive tints/shades; enforce WCAG AA).
 - **Type**: Inter (variable) or system stack; generous line-height; restrained scale (4–5 sizes total). No decorative display fonts.
-- **Form**: whitespace over dividers; hairline borders over shadows; small consistent radii; no glassmorphism, no gradients, no visual noise. Motion minimal and purposeful (LiveView transitions subtle).
+- **Form**: whitespace over dividers; hairline borders over shadows; small consistent radii; no glassmorphism, no gradients, no visual noise. Motion minimal and purposeful — subtle transitions that respect `prefers-reduced-motion` (a client v1 requirement, ADR 0024).
 - **Density**: comfortable on mobile, denser on desktop. Feed cards quiet; content is the interface.
-- **Navigation**: mobile bottom tab bar — **Home · Events · Groups · Notifications · You** — stable within the active community; **community switcher** as an avatar-stack control in the top bar. Files, members, and settings live inside each group/community, not top-level. Desktop: left sidebar (communities + groups), same IA.
+- **Navigation**: mobile bottom tab bar — **Home · Events · Groups · Notifications · You** — stable within the active community; **community switcher** as an avatar-stack control in the top bar. Files, members, and settings live inside each group/community, not top-level. Desktop: left sidebar (communities + groups), same IA. (For the product client this is the starting IA, not a fixed constraint — the owner delegated IA evolution to the client design as long as the community-first principle below holds; ADR 0024.)
+- **Community-first IA** (ADR 0024): users shouldn't have to care about instances as an abstraction. Merged cross-community views and per-community views are both effortless to reach, and where provenance matters it is shown as the community, never the server it happens to live on.
 - The overall impression to aim for: calm, honest, durable — closer to a well-set book or an FDB catalogue than to a social app.
 
 ## 22. Prescribed dependencies (verify current versions before use; do not substitute without a CHANGELOG/PR note explaining why)

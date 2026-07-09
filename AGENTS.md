@@ -21,6 +21,13 @@ or be reconstructable. `decision`/`action`-labeled issues assigned to
 the owner are read-only for you (see Task & state tracking below);
 everything else open and unassigned is fair game.
 
+**LiveView is feature-frozen (ADR 0024).** The Svelte PWA is the
+product UI; LiveView is bugfix-only until it's removed in one cut at
+full PWA parity. Don't add LiveView features, polish passes, or new
+LiveView-only surfaces — new user-facing capability lands in the API
+and PWA instead (#165 is the transition umbrella). LiveView-only
+audit findings are deprioritized accordingly.
+
 ### PR lifecycle
 
 Full policy for Conventional Commits, Gettext EN/DA, and ADR triggers
@@ -308,10 +315,25 @@ asked for once and must never need to be asked for again.
 
 ## Kammer: remote container notes (Claude Code on the web)
 
-- `export PATH=/nix/var/nix/profiles/default/bin:$PATH` in every
-  shell; `pg_ctlcluster 16 main start` after container restarts (a
-  stale pid is normal — Postgres also drops mid-session sometimes,
-  same fix).
+- Nix may be **absent entirely** on a fresh container. Restore it
+  with the official installer: create the `nixbld` group and the
+  `nixbld1`..`nixbld10` users first, then run
+  `sh nix-install.sh --no-daemon` (the installer script fetched from
+  nixos.org). Binaries land at `/root/.nix-profile/bin` — so
+  `export PATH=/root/.nix-profile/bin:$PATH` in every shell
+  (`/nix/var/nix/profiles/default/bin` may be absent until the
+  reinstall; afterwards both resolve to the same store path), and
+  `export NIX_SSL_CERT_FILE=/root/.ccr/ca-bundle.crt` so Nix trusts
+  the network proxy's CA.
+- The proxy blocks GitHub release downloads, so `mdex_native`'s
+  precompiled NIF download 403s at compile time. Fix:
+  `export MDEX_NATIVE_BUILD=1` to build the NIF from source (cargo
+  is preinstalled at `/root/.cargo/bin`).
+- `pg_ctlcluster 16 main start` after container restarts (a stale
+  pid is normal — Postgres also drops mid-session sometimes, same
+  fix). A fresh container may additionally need
+  `su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres'\""`
+  once, so the app's dev config can authenticate.
 - Commit and push inside `nix develop --command` (git hooks need `mix`
   on `PATH`). Committer identity: `Claude <noreply@anthropic.com>`.
 - CSS cannot be built in this container (the network proxy blocks the
