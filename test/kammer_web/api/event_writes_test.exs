@@ -348,5 +348,29 @@ defmodule KammerWeb.Api.EventWritesTest do
       })
       |> json_response(404)
     end
+
+    test "a hidden event 404s to a write, not 403 (no existence oracle)", %{
+      community: community,
+      member: member
+    } do
+      # An event in a private group the caller isn't in: `member` can't see
+      # it, so a write must read as 404 — indistinguishable from a
+      # nonexistent event — never 403, which would confirm it exists.
+      private = group_fixture(community, visibility: :private)
+      insider = group_member_fixture(private)
+      %{event: event} = create_event(insider, community, private)
+
+      member
+      |> api_conn()
+      |> put(~p"/api/v1/communities/#{community.slug}/events/#{event.id}", %{"title" => "x"})
+      |> json_response(404)
+
+      member
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/comments", %{
+        "body_markdown" => "x"
+      })
+      |> json_response(404)
+    end
   end
 end

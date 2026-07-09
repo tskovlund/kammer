@@ -46,7 +46,7 @@ defmodule KammerWeb.Api.EventController do
     with_community(conn, slug, fn community ->
       user = conn.assigns.current_scope.user
 
-      case Events.fetch_viewable_event(user, community, event_id) do
+      case fetch_visible_event(user, community, event_id) do
         {:ok, event} ->
           json(conn, %{data: Serializer.event(event, Events.get_rsvp(event, user), user)})
 
@@ -62,7 +62,7 @@ defmodule KammerWeb.Api.EventController do
     with_community(conn, slug, fn community ->
       user = conn.assigns.current_scope.user
 
-      with {:ok, event} <- Events.fetch_viewable_event(user, community, event_id),
+      with {:ok, event} <- fetch_visible_event(user, community, event_id),
            {:ok, rsvp} <- Events.rsvp(user, event, String.to_existing_atom(status)) do
         json(conn, %{data: %{event_id: event.id, status: rsvp.status}})
       else
@@ -243,6 +243,19 @@ defmodule KammerWeb.Api.EventController do
 
   ## Internals
 
+  # Genuine no-oracle (#156/#161): `fetch_viewable_event`'s only
+  # `:unauthorized` comes from the `:view_group` gate — i.e. the event
+  # is hidden — so at the API boundary that reads as `:not_found`,
+  # indistinguishable from a nonexistent event. A visible-but-forbidden
+  # *write* still 403s: that check runs after this, on an event whose
+  # existence the caller already knows.
+  defp fetch_visible_event(user, community, event_id) do
+    case Events.fetch_viewable_event(user, community, event_id) do
+      {:error, :unauthorized} -> {:error, :not_found}
+      other -> other
+    end
+  end
+
   defp with_community(conn, slug, fun) do
     case Communities.get_community_by_slug(slug) do
       nil -> ApiError.send(conn, :not_found, "Not found.")
@@ -271,7 +284,7 @@ defmodule KammerWeb.Api.EventController do
     with_community(conn, slug, fn community ->
       user = conn.assigns.current_scope.user
 
-      with {:ok, event} <- Events.fetch_viewable_event(user, community, event_id),
+      with {:ok, event} <- fetch_visible_event(user, community, event_id),
            %Plug.Conn{} = responded <- fun.(community, event, user) do
         responded
       else
@@ -306,7 +319,7 @@ defmodule KammerWeb.Api.EventController do
   defp find_comment(_event, _comment_id), do: nil
 
   defp respond_created(conn, community, event_id, user) do
-    case Events.fetch_viewable_event(user, community, event_id) do
+    case fetch_visible_event(user, community, event_id) do
       {:ok, event} ->
         conn
         |> put_status(201)
@@ -318,7 +331,7 @@ defmodule KammerWeb.Api.EventController do
   end
 
   defp respond_with_event(conn, community, event_id, user) do
-    case Events.fetch_viewable_event(user, community, event_id) do
+    case fetch_visible_event(user, community, event_id) do
       {:ok, event} ->
         json(conn, %{data: Serializer.event(event, Events.get_rsvp(event, user), user)})
 
@@ -328,7 +341,7 @@ defmodule KammerWeb.Api.EventController do
   end
 
   defp respond_with_comment(conn, community, event_id, comment_id, user) do
-    with {:ok, event} <- Events.fetch_viewable_event(user, community, event_id),
+    with {:ok, event} <- fetch_visible_event(user, community, event_id),
          %Comment{} = comment <- find_comment(event, comment_id) || :gone do
       json(conn, %{data: Serializer.comment(comment, user)})
     else

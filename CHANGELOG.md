@@ -25,7 +25,10 @@ and this project adheres to
   by community with filter chips and a calm agenda view) and an
   addressable event detail screen (RSVP with counts, signup slots,
   comments, an "add to calendar" ICS link) with a create/edit form for
-  authorized roles. EN + DA, dark mode, reduced-motion, AA.
+  authorized roles. EN + DA, dark mode, reduced-motion, AA. Every event
+  write is genuinely no-oracle (issues #156/#161): an event the caller
+  can't see answers `404` to every verb, never `403`, so a hidden event
+  is indistinguishable from a nonexistent one.
 - Reacting to a comment that hangs off an event or an assignment no
   longer crashes (`Kammer.Feed.toggle_reaction/3` resolved the host
   group only for post comments); it now resolves the group for every
