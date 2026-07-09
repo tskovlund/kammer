@@ -37,6 +37,14 @@ describe('probeInstance', () => {
 		expect(result).toEqual({ instanceName: 'Example Club', registrationOpen: true });
 	});
 
+	it('rejects a server that answers 200 JSON without a Kammer shape', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ hello: 'world' }));
+
+		await expect(probeInstance('https://not-kammer.example.com')).rejects.toThrow(
+			"doesn't look like a Kammer instance"
+		);
+	});
+
 	it('throws for a URL that is not a Kammer instance', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(new Response('not found', { status: 404 }));
 		await expect(probeInstance('https://not-kammer.example.com')).rejects.toThrow(InstanceApiError);

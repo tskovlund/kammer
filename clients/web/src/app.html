@@ -2,11 +2,31 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
-		<meta name="theme-color" content="#ffffff" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f4f0" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#181512" />
 		<title>Kammer</title>
+		<script>
+			// Pre-hydration: stamp the persisted theme/locale before first paint
+			// so a forced dark theme never flashes light (and vice versa).
+			(function () {
+				try {
+					var theme = localStorage.getItem('kammer:theme');
+					if (theme === 'light' || theme === 'dark') {
+						document.documentElement.dataset.theme = theme;
+					}
+					var locale = localStorage.getItem('kammer:locale');
+					if (locale === 'en' || locale === 'da') {
+						document.documentElement.lang = locale;
+					}
+				} catch (error) {
+					// Storage unavailable (private mode etc.) — defaults apply.
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

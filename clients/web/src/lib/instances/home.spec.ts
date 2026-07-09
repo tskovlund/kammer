@@ -83,7 +83,7 @@ describe('fetchMergedHome', () => {
 		expect(result.failedInstances).toEqual([]);
 	});
 
-	it("surfaces an unreachable instance in failedInstances without dropping the others' data", async () => {
+	it("surfaces an erroring instance in failedInstances without dropping the others' data", async () => {
 		const ok = instance({ id: 'ok' });
 		const down = instance({ id: 'down' });
 
@@ -93,7 +93,7 @@ describe('fetchMergedHome', () => {
 
 		const result = await fetchMergedHome([ok, down]);
 
-		expect(result.failedInstances.map((instance) => instance.id)).toEqual(['down']);
+		expect(result.failedInstances.map(({ instance }) => instance.id)).toEqual(['down']);
 		expect(result.upcomingEvents).toEqual([]);
 	});
 
@@ -107,8 +107,42 @@ describe('fetchMergedHome', () => {
 
 		const result = await fetchMergedHome([ok, timedOut]);
 
-		expect(result.failedInstances.map((instance) => instance.id)).toEqual(['timed-out']);
+		expect(result.failedInstances.map(({ instance }) => instance.id)).toEqual(['timed-out']);
 		expect(result.upcomingEvents).toEqual([]);
+	});
+
+	describe('failure kinds (issue #159)', () => {
+		it('marks a 401 as an auth failure — the device token was revoked', async () => {
+			vi.mocked(fetch).mockResolvedValueOnce(
+				jsonResponse({ error: { code: 'unauthorized', message: 'Unauthorized' } }, 401)
+			);
+
+			const result = await fetchMergedHome([instance({ id: 'revoked' })]);
+
+			expect(result.failedInstances).toEqual([
+				{ instance: expect.objectContaining({ id: 'revoked' }), kind: 'auth' }
+			]);
+		});
+
+		it('marks a non-401 HTTP error as a server failure', async () => {
+			vi.mocked(fetch).mockResolvedValueOnce(new Response('boom', { status: 500 }));
+
+			const result = await fetchMergedHome([instance({ id: 'broken' })]);
+
+			expect(result.failedInstances).toEqual([
+				{ instance: expect.objectContaining({ id: 'broken' }), kind: 'server' }
+			]);
+		});
+
+		it('marks a rejected fetch as a network failure', async () => {
+			vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+			const result = await fetchMergedHome([instance({ id: 'unreachable' })]);
+
+			expect(result.failedInstances).toEqual([
+				{ instance: expect.objectContaining({ id: 'unreachable' }), kind: 'network' }
+			]);
+		});
 	});
 
 	it('passes an AbortSignal to each GET call so a hung instance eventually gives up', async () => {

@@ -7,11 +7,24 @@ type HomeResponse = components['schemas']['HomeResponse'];
 export type MergedEvent = HomeResponse['upcoming_events'][number] & { instance: Instance };
 export type MergedPost = HomeResponse['recent_activity'][number] & { instance: Instance };
 
+/**
+ * Why a `/home` call failed (issue #159) — the UI needs to react
+ * differently: `auth` means the device token was revoked (offer
+ * re-sign-in), `network` means the instance is unreachable (retry later),
+ * `server` means it responded but errored.
+ */
+export type InstanceFailureKind = 'auth' | 'network' | 'server';
+
+export interface FailedInstance {
+	instance: Instance;
+	kind: InstanceFailureKind;
+}
+
 export interface MergedHome {
 	upcomingEvents: MergedEvent[];
 	recentActivity: MergedPost[];
 	/** Instances whose `/home` call failed — surfaced, not silently dropped. */
-	failedInstances: Instance[];
+	failedInstances: FailedInstance[];
 }
 
 /**
@@ -22,31 +35,39 @@ export interface MergedHome {
  */
 const HOME_FETCH_TIMEOUT_MS = 10_000;
 
+type InstanceResult =
+	| { instance: Instance; data: HomeResponse }
+	| { instance: Instance; data: null; kind: InstanceFailureKind };
+
 export async function fetchMergedHome(instances: Instance[]): Promise<MergedHome> {
-	const results = await Promise.all(
-		instances.map(async (instance) => {
+	const results: InstanceResult[] = await Promise.all(
+		instances.map(async (instance): Promise<InstanceResult> => {
 			const client = createApiClient(instance.baseUrl, instance.deviceToken);
 			try {
 				// A hung (not erroring, just non-responding) instance must not
 				// block the merged view for every other instance forever.
-				const { data, error } = await client.GET('/api/v1/home', {
+				const { data, error, response } = await client.GET('/api/v1/home', {
 					signal: AbortSignal.timeout(HOME_FETCH_TIMEOUT_MS)
 				});
-				if (error || !data) return { instance, data: null };
+				if (error || !data) {
+					return { instance, data: null, kind: response.status === 401 ? 'auth' : 'server' };
+				}
 				return { instance, data };
 			} catch {
-				return { instance, data: null };
+				// fetch() itself rejected: DNS failure, refused connection,
+				// timeout — the instance never answered.
+				return { instance, data: null, kind: 'network' };
 			}
 		})
 	);
 
 	const upcomingEvents: MergedEvent[] = [];
 	const recentActivity: MergedPost[] = [];
-	const failedInstances: Instance[] = [];
+	const failedInstances: FailedInstance[] = [];
 
 	for (const result of results) {
 		if (!result.data) {
-			failedInstances.push(result.instance);
+			failedInstances.push({ instance: result.instance, kind: result.kind });
 			continue;
 		}
 		for (const event of result.data.upcoming_events) {

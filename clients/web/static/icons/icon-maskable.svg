@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+	<!-- Maskable variant: full-bleed ground, mark scaled to sit inside the
+	     safe zone (central 80% circle) so any platform mask keeps it whole. -->
+	<rect width="512" height="512" fill="#f6f4f0"/>
+	<g transform="translate(256 256) scale(0.78) translate(-256 -256)"
+		fill="none" stroke="#8a4b24" stroke-width="56" stroke-linecap="round">
+		<path d="M166 128v256"/>
+		<path d="M346 128 166 302"/>
+		<path d="M224 246l122 138"/>
+	</g>
+</svg>

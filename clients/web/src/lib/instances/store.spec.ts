@@ -62,10 +62,80 @@ describe('instanceStore', () => {
 		expect(instanceStore.get('missing')).toBeUndefined();
 	});
 
-	it('persists to the underlying localStorage key, not just in-memory state', () => {
+	it('persists a versioned envelope to the underlying localStorage key', () => {
 		instanceStore.add(fixture());
 		const raw = localStorage.getItem('kammer:instances');
 		expect(raw).not.toBeNull();
-		expect(JSON.parse(raw!)).toEqual([fixture()]);
+		expect(JSON.parse(raw!)).toEqual({ version: 1, instances: [fixture()] });
+	});
+
+	describe('migration and validation on read (issue #158)', () => {
+		it('reads a v0 bare-array payload written before the envelope existed', () => {
+			localStorage.setItem('kammer:instances', JSON.stringify([fixture()]));
+			expect(instanceStore.list()).toEqual([fixture()]);
+		});
+
+		it('rewrites a v0 payload as a v1 envelope on the next write', () => {
+			localStorage.setItem(
+				'kammer:instances',
+				JSON.stringify([fixture({ id: 'a', baseUrl: 'https://one.example.com' })])
+			);
+			instanceStore.add(fixture({ id: 'b', baseUrl: 'https://two.example.com' }));
+			expect(JSON.parse(localStorage.getItem('kammer:instances')!)).toEqual({
+				version: 1,
+				instances: [
+					fixture({ id: 'a', baseUrl: 'https://one.example.com' }),
+					fixture({ id: 'b', baseUrl: 'https://two.example.com' })
+				]
+			});
+		});
+
+		it('drops malformed elements instead of returning them', () => {
+			const valid = fixture();
+			localStorage.setItem(
+				'kammer:instances',
+				JSON.stringify({
+					version: 1,
+					instances: [
+						valid,
+						null,
+						'not-an-instance',
+						{ id: 'missing-everything-else' },
+						{ ...valid, deviceToken: 42 },
+						{ ...valid, user: { id: 'u', email: null, displayName: null } }
+					]
+				})
+			);
+			expect(instanceStore.list()).toEqual([valid]);
+		});
+
+		it('accepts a null displayName as valid', () => {
+			const instance = fixture({
+				user: { id: 'user-1', email: 'a@example.com', displayName: null }
+			});
+			localStorage.setItem(
+				'kammer:instances',
+				JSON.stringify({ version: 1, instances: [instance] })
+			);
+			expect(instanceStore.list()).toEqual([instance]);
+		});
+
+		it('returns empty for an envelope with an unknown version', () => {
+			localStorage.setItem(
+				'kammer:instances',
+				JSON.stringify({ version: 999, instances: [fixture()] })
+			);
+			expect(instanceStore.list()).toEqual([]);
+		});
+
+		it('returns empty for non-JSON garbage', () => {
+			localStorage.setItem('kammer:instances', 'not json at all');
+			expect(instanceStore.list()).toEqual([]);
+		});
+
+		it('returns empty for JSON that is neither an array nor an envelope', () => {
+			localStorage.setItem('kammer:instances', JSON.stringify({ some: 'object' }));
+			expect(instanceStore.list()).toEqual([]);
+		});
 	});
 });
