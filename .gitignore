@@ -28,6 +28,10 @@ kammer-*.tar
 # Ignore assets that are produced by build tools.
 /priv/static/assets/
 
+# The built Svelte PWA (issue #176) — produced by the Dockerfile's client
+# stage in releases, never committed.
+/priv/static/app/
+
 # Ignore digested assets cache.
 /priv/static/cache_manifest.json
 

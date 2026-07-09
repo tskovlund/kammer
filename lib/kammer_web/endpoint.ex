@@ -24,6 +24,25 @@ defmodule KammerWeb.Endpoint do
     websocket: [check_origin: false],
     longpoll: false
 
+  # The instance-served Svelte PWA (ADR 0024, issue #176): the release
+  # bundles the built client into priv/static/app (see Dockerfile), and
+  # this serves its real files — hashed assets, manifest, icons — under
+  # the base path. Anything that isn't a real file (client-side routes
+  # like /app/sign-in/{token}) falls through to the router's PwaController
+  # catch-all, which answers with index.html. When the directory is
+  # absent (plain `mix phx.server` without a client build) this plug
+  # simply never matches — the controller then explains instead of 500ing.
+  # Mounted before the "/" static plug on purpose: priv/static/app lives
+  # inside priv/static, so the root plug would otherwise raise in dev
+  # ("app" is deliberately not in static_paths — these files are the
+  # client build's, not the LiveView-era statics). Flip note (#187): the
+  # mount point comes from :pwa_base_path; see config/config.exs for what
+  # the flip to "/" involves.
+  plug Plug.Static,
+    at: Application.compile_env!(:kammer, :pwa_base_path),
+    from: {:kammer, "priv/static/app"},
+    gzip: not code_reloading?
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),

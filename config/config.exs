@@ -30,6 +30,14 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 # Display name is a single constant so renaming is one commit (SPEC §15).
 config :kammer, :product_name, "Kammer"
 
+# Where the instance-served Svelte PWA is mounted (ADR 0024, issue #176).
+# LiveView keeps "/" until the removal cut (#187); at that cut this flips
+# to "/" — together with `paths.base` in clients/web/vite.config.ts, which
+# must match (the client bakes the base into its asset URLs and router).
+# Compile-time: the endpoint's Plug.Static mount and the router scope both
+# read it at compile time.
+config :kammer, :pwa_base_path, "/app"
+
 # i18n: English and Danish complete for everything shipped (SPEC §1).
 config :kammer, KammerWeb.Gettext, allowed_locales: ["en", "da"], default_locale: "en"
 

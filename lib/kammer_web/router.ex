@@ -139,6 +139,30 @@ defmodule KammerWeb.Router do
     get "/healthz", HealthController, :index
   end
 
+  ## Instance-served PWA (ADR 0024, issue #176)
+
+  # The SPA is a static artifact: no session, no CSRF surface, no
+  # LiveView. It only needs HTML negotiation and the baseline secure
+  # headers (PwaController sets the page's own CSP — a static bundle
+  # can't take the nonce-based one the browser pipeline builds).
+  pipeline :pwa do
+    plug :accepts, ["html"]
+    plug :put_secure_browser_headers
+  end
+
+  # Wildcard fallback so client-side routes (e.g. /app/sign-in/{token})
+  # deep-link straight into the SPA: real files were already served by
+  # Plug.Static in the endpoint, so whatever reaches this route gets
+  # index.html and lets the client router take over. Scoped strictly
+  # under :pwa_base_path — it can never shadow /api, /live, /healthz,
+  # the RSS/iCal feeds, or the LiveView routes at "/". Flip note (#187):
+  # see config/config.exs.
+  scope Application.compile_env!(:kammer, :pwa_base_path), KammerWeb do
+    pipe_through :pwa
+
+    get "/*path", PwaController, :index
+  end
+
   ## JSON API v1 (ADR 0014 + RFC 0001)
 
   scope "/api/v1", KammerWeb.Api do

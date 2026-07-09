@@ -98,6 +98,32 @@ the same one:
 | Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                            |
 | Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                 |
 
+## The web client (Svelte PWA)
+
+The product UI (ADR 0024) lives in `clients/web` with its own
+toolchain (node/pnpm — versions pinned in `package.json`). In
+development it is **not** served by Phoenix; run it as its own dev
+server next to the Elixir one:
+
+```sh
+mix phx.server                 # the API, on localhost:4000
+cd clients/web && pnpm dev     # the client, on localhost:5173/app
+```
+
+Point the client at `http://localhost:4000` as its instance. The
+`/app` prefix is baked into the client (`paths.base` in
+`vite.config.ts`) and must match `:pwa_base_path` in
+`config/config.exs` — both flip to `/` at the LiveView removal cut
+(#187).
+
+In releases the client **is** served by Phoenix: the Dockerfile's
+client stage runs `pnpm build` and ships the output into the release
+at `priv/static/app`, which the endpoint serves under `/app` with an
+`index.html` fallback so client routes (e.g. `/app/sign-in/{token}`
+from a magic-link email) deep-link straight into the SPA. A dev
+server without a built bundle answers `/app` with a plain-text
+pointer to this section instead of a 500.
+
 ## The API contract
 
 `GET /api/v1/openapi.json` serves the OpenAPI 3 document, generated

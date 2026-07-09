@@ -12,7 +12,11 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter({ fallback: 'index.html' })
+			adapter: adapter({ fallback: 'index.html' }),
+			// Served by the Phoenix release under /app while LiveView still owns /
+			// (issue #176; flip to '' at the LiveView removal cut, #187, together
+			// with :pwa_base_path in config/config.exs).
+			paths: { base: '/app' }
 		})
 	],
 	test: {

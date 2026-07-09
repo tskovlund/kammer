@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Added
 
+- Instance-served PWA (issue #176, ADR 0024): the release image now
+  builds the Svelte client (new Dockerfile client stage — node/pnpm,
+  `pnpm build`) and serves it at `/app` on the instance's own domain,
+  from `priv/static/app`. Real files come off `Plug.Static`; everything
+  else under `/app` falls back to the client's `index.html`, so
+  client-side routes — most importantly the magic-link landing
+  `/app/sign-in/{token}` — deep-link straight into the SPA. LiveView
+  keeps `/` until the removal cut (#187); the mount point is a single
+  config key (`:pwa_base_path`) matched by the client's `paths.base`.
+  A dev server without a built bundle answers `/app` with a plain-text
+  pointer to the client dev workflow instead of a 500, and the Docker
+  workflow's boot check now asserts the shipped image serves the PWA
+  (base path and deep link both).
 - Svelte client foundation (issue #32, ADR 0024): the design system in
   SPEC §21's language (warm neutral palette, hairline borders, typed
   UI primitives) with first-class light/dark themes (system-following
