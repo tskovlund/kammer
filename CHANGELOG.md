@@ -25,6 +25,17 @@ and this project adheres to
 
 ### Added
 
+- Product-version surface (issue #204, implementing the ratified
+  versioning strategy #203): `mix.exs` is now the explicit single
+  source of truth (`0.1.0-dev` until the first tagged release),
+  exposed at runtime through `Kammer.version/0` so no code hardcodes
+  it, and the public `GET /api/v1/instance` capability endpoint —
+  already the RFC 0001 discovery surface carrying `version` and
+  `api_versions` — additionally reports `min_client_version` (null
+  until a release needs to fence out old clients), the foundation the
+  future native-app handshake (#131) negotiates against. The PWA's
+  You screen shows each signed-in instance's server version as a
+  small about line (EN + DA).
 - Client test additions from the test-suite audit (#208): XSS
   assertions for `renderInlineMarkdown` — the comment-body route into
   the PWA's single `{@html}` sink previously had zero sanitization

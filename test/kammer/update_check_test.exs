@@ -41,14 +41,14 @@ defmodule Kammer.UpdateCheckTest do
     end
 
     test "true when the recorded version is newer" do
-      newer = bump_patch(UpdateCheck.current_version())
+      newer = bump_patch(Kammer.version())
       settings = %Communities.InstanceSettings{latest_known_version: newer}
       assert UpdateCheck.update_available?(settings)
     end
 
     test "false when the recorded version is the same or older" do
       settings = %Communities.InstanceSettings{
-        latest_known_version: UpdateCheck.current_version()
+        latest_known_version: Kammer.version()
       }
 
       refute UpdateCheck.update_available?(settings)

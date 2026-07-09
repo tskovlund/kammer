@@ -12,7 +12,6 @@ defmodule KammerWeb.InstanceHomeTest do
   import Phoenix.LiveViewTest
 
   alias Kammer.Communities
-  alias Kammer.UpdateCheck
 
   test "an operator sees the notice once a newer version is recorded", %{conn: conn} do
     operator = instance_operator_fixture()
@@ -35,7 +34,7 @@ defmodule KammerWeb.InstanceHomeTest do
     operator = instance_operator_fixture()
 
     Communities.get_instance_settings()
-    |> Ecto.Changeset.change(latest_known_version: UpdateCheck.current_version())
+    |> Ecto.Changeset.change(latest_known_version: Kammer.version())
     |> Kammer.Repo.update!()
 
     {:ok, _lv, html} = conn |> log_in_user(operator) |> live(~p"/")

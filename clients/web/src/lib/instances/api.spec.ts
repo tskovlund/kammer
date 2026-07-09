@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	InstanceApiError,
 	exchangeAndAddInstance,
+	fetchServerVersion,
 	probeInstance,
 	requestLink,
 	revokeAndRemoveInstance
@@ -55,6 +56,25 @@ describe('probeInstance', () => {
 		await expect(probeInstance('https://unreachable.example.com')).rejects.toThrow(
 			InstanceApiError
 		);
+	});
+});
+
+describe('fetchServerVersion', () => {
+	beforeEach(() => {
+		vi.stubGlobal('fetch', vi.fn());
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('returns the instance version', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ instance_name: 'Example Club', version: '0.1.0-dev' })
+		);
+		await expect(fetchServerVersion('https://kammer.example.com')).resolves.toBe('0.1.0-dev');
+	});
+
+	it('returns null instead of throwing when the instance is unreachable', async () => {
+		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		await expect(fetchServerVersion('https://unreachable.example.com')).resolves.toBeNull();
 	});
 });
 

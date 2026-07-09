@@ -69,6 +69,7 @@
 	"you.accounts.signOut": "Log ud",
 	"you.accounts.signOutOf": "Log ud af {name}",
 	"you.accounts.add": "Tilføj et fællesskab",
+	"you.accounts.serverVersion": "Kører Kammer {version}",
 	"you.appearance.title": "Udseende",
 	"you.appearance.system": "Automatisk",
 	"you.appearance.light": "Lyst",

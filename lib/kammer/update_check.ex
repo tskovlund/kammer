@@ -48,22 +48,16 @@ defmodule Kammer.UpdateCheck do
     :ok
   end
 
-  @doc "The version this running instance is built from."
-  @spec current_version() :: String.t()
-  def current_version do
-    Application.spec(:kammer, :vsn) |> to_string()
-  end
-
   @doc """
   Whether the last recorded check found a release newer than the
-  running version. `false` if no check has run yet, or the recorded
-  version can't be compared.
+  running version (`Kammer.version/0`). `false` if no check has run
+  yet, or the recorded version can't be compared.
   """
   @spec update_available?(InstanceSettings.t()) :: boolean()
   def update_available?(%InstanceSettings{latest_known_version: nil}), do: false
 
   def update_available?(%InstanceSettings{latest_known_version: latest}) do
-    Version.compare(latest, current_version()) == :gt
+    Version.compare(latest, Kammer.version()) == :gt
   rescue
     Version.InvalidVersionError -> false
   end

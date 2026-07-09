@@ -69,6 +69,7 @@
 	"you.accounts.signOut": "Sign out",
 	"you.accounts.signOutOf": "Sign out of {name}",
 	"you.accounts.add": "Add a community",
+	"you.accounts.serverVersion": "Runs Kammer {version}",
 	"you.appearance.title": "Appearance",
 	"you.appearance.system": "System",
 	"you.appearance.light": "Light",
