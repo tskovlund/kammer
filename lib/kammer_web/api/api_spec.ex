@@ -247,7 +247,8 @@ defmodule KammerWeb.ApiSpec do
       properties: %{
         data: %Schema{type: :array, items: item_schema},
         next_cursor: %Schema{type: :string, nullable: true}
-      }
+      },
+      required: [:data]
     })
   end
 

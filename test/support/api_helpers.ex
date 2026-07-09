@@ -11,6 +11,9 @@ defmodule KammerWeb.ApiHelpers do
   alias Kammer.Accounts.UserToken
   alias Kammer.Repo
 
+  @doc """
+  A conn authenticated as `user` via a freshly minted device token.
+  """
   @spec api_conn(Kammer.Accounts.User.t()) :: Plug.Conn.t()
   def api_conn(user) do
     {token, user_token} = UserToken.build_device_token(user, "test device")

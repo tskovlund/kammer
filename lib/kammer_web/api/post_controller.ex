@@ -57,28 +57,17 @@ defmodule KammerWeb.Api.PostController do
         %{"community_slug" => slug, "group_slug" => group_slug, "post_id" => post_id} = params
       ) do
     with_group(conn, slug, group_slug, fn group ->
-      # Cast before querying: a malformed id is a plain 404, not a
-      # `Ecto.Query.CastError` 500 (see #155).
-      with {:ok, post_id} <- Ecto.UUID.cast(post_id) do
-        post = Feed.get_post!(group, post_id)
+      attrs = Map.take(params, ["body_markdown", "parent_comment_id"])
 
-        attrs = Map.take(params, ["body_markdown", "parent_comment_id"])
-
-        case Feed.create_comment(conn.assigns.current_scope.user, post, attrs) do
-          {:ok, comment} ->
-            conn
-            |> put_status(201)
-            |> json(%{data: Serializer.comment(comment)})
-
-          error ->
-            ApiError.from_result(conn, error)
-        end
+      with {:ok, post} <- Feed.fetch_post(group, post_id),
+           {:ok, comment} <- Feed.create_comment(conn.assigns.current_scope.user, post, attrs) do
+        conn
+        |> put_status(201)
+        |> json(%{data: Serializer.comment(comment)})
       else
-        :error -> ApiError.send(conn, :not_found, "Not found.")
+        error -> ApiError.from_result(conn, error)
       end
     end)
-  rescue
-    Ecto.NoResultsError -> ApiError.send(conn, :not_found, "Not found.")
   end
 
   defp with_group(conn, community_slug, group_slug, fun) do

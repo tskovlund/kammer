@@ -202,7 +202,7 @@ defmodule Kammer.Feed do
         where: post.pending_approval == false,
         order_by: ^feed_order_by(sort),
         limit: 50,
-        preload: ^[:group | preloads(false)]
+        preload: ^preloads(false)
       )
     )
   end
@@ -242,6 +242,30 @@ defmodule Kammer.Feed do
         preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
       )
     )
+  end
+
+  @doc """
+  Fetches a post in a group by (possibly malformed) id: `{:ok, post}`
+  or `{:error, :not_found}` — the same shape the other
+  `fetch_viewable_*` context functions use, so API controllers stay a
+  thin `with`. Unauthenticated — callers pass the result to an
+  authorization-checked mutator below.
+  """
+  @spec fetch_post(Group.t(), String.t(), keyword()) ::
+          {:ok, Post.t()} | {:error, :not_found}
+  def fetch_post(%Group{} = group, post_id, opts \\ []) do
+    with {:ok, post_id} <- Ecto.UUID.cast(post_id),
+         %Post{} = post <-
+           Repo.one(
+             from(post in Post,
+               where: post.id == ^post_id and post.group_id == ^group.id,
+               preload: ^preloads(Keyword.get(opts, :include_pending_comments, false))
+             )
+           ) do
+      {:ok, post}
+    else
+      _ -> {:error, :not_found}
+    end
   end
 
   @doc """
@@ -657,14 +681,19 @@ defmodule Kammer.Feed do
     end
   end
 
-  # Mirrors `visible_posts/4`: a pending-approval or scheduled post can
-  # be commented on only by its author or a moderator. The UI never
-  # offers a comment form on an invisible post, but the API takes a raw
-  # post id, so the context must enforce it (see #156).
+  # Mirrors `visible_posts/4` exactly: anyone comments on a published,
+  # approved post; a pending post takes comments from its author or a
+  # moderator; a scheduled post only from its author — moderators don't
+  # see others' scheduled posts, so they don't comment on them either.
+  # The UI never offers a comment form on an invisible post, but the
+  # API takes a raw post id, so the context must enforce it (see #156).
   defp post_commentable_by?(%User{} = author, %Post{} = post, group, relationship) do
-    post.author_user_id == author.id or
-      Authorization.can?(author, :moderate_group, group, relationship) or
-      (not post.pending_approval and not Post.scheduled?(post, DateTime.utc_now(:second)))
+    cond do
+      post.author_user_id == author.id -> true
+      Post.scheduled?(post, DateTime.utc_now(:second)) -> false
+      post.pending_approval -> Authorization.can?(author, :moderate_group, group, relationship)
+      true -> true
+    end
   end
 
   @doc """

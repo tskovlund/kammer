@@ -345,8 +345,13 @@ defmodule Kammer.FeedTest do
       assert {:error, :unauthorized} =
                Feed.create_comment(other_member, scheduled, %{"body_markdown" => "early"})
 
-      assert {:ok, _comment} =
+      # Moderators don't see others' scheduled posts (visible_posts/4),
+      # so they can't comment on them either — only the author can.
+      assert {:error, :unauthorized} =
                Feed.create_comment(group_owner, scheduled, %{"body_markdown" => "mod note"})
+
+      assert {:ok, _comment} =
+               Feed.create_comment(member, scheduled, %{"body_markdown" => "own note"})
     end
 
     test "a created comment carries its author preloaded", %{group: group, member: member} do

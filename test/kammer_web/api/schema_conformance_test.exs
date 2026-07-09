@@ -3,9 +3,12 @@ defmodule KammerWeb.Api.SchemaConformanceTest do
   Field-level drift guard (issue #151): real controller responses are
   validated against the OpenAPI document's response schema for their
   operation. The bijection test in `openapi_test.exs` proves every
-  route is documented; this proves the documentation tells the truth
-  about the bytes — issue #154 (single objects documented as arrays)
-  was structurally invisible without it.
+  route is documented; this catches documented fields with the wrong
+  shape or type and missing required fields — issue #154 (single
+  objects documented as arrays) was structurally invisible without it.
+  One direction stays open: a serializer field the schema doesn't
+  mention passes silently (schemas don't set `additionalProperties:
+  false`), so new serializer fields still need a schema entry by hand.
   """
 
   use KammerWeb.ConnCase, async: true
