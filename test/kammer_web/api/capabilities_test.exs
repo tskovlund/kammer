@@ -137,6 +137,34 @@ defmodule KammerWeb.Api.CapabilitiesTest do
       assert "post" in can
     end
 
+    test "community-admin override grants group powers — except on a sealed group", %{
+      community: community,
+      owner: owner,
+      group: group
+    } do
+      # The two non-obvious branches of the admin-override rule (ADR 0005):
+      # a community owner who is NOT a group member still gets the
+      # management set on a normal group — but on a sealed group even a
+      # community owner who IS a plain member gets no admin powers at all.
+      sealed =
+        community
+        |> group_fixture()
+        |> Ecto.Changeset.change(sealed: true)
+        |> Kammer.Repo.update!()
+
+      group_membership_fixture(sealed, owner)
+
+      normal_can = find_group(groups(owner, community), group)["viewer_can"]
+      assert "moderate" in normal_can
+      assert "manage_group" in normal_can
+
+      sealed_can = find_group(groups(owner, community), sealed)["viewer_can"]
+      assert "post" in sealed_can
+      refute "moderate" in sealed_can
+      refute "manage_group" in sealed_can
+      refute "manage_members" in sealed_can
+    end
+
     test "feature toggles gate create_event and upload_file", %{
       community: community,
       member: member
@@ -194,6 +222,22 @@ defmodule KammerWeb.Api.CapabilitiesTest do
       assert Serializer.community(community, member)[:viewer_can] == []
       assert Serializer.group(group, member)[:viewer_can] == []
       assert Serializer.post(post, member)[:viewer_can] == []
+    end
+
+    test "an anonymous viewer with a loaded relationship gets nothing", %{
+      community: community,
+      group: group
+    } do
+      # `relationship(nil, group)` returns a real (non-nil) all-roles-nil
+      # map, so this path bypasses the nil-relationship guard — the
+      # leak-prone branch: every predicate must still withhold.
+      relationship = Authorization.relationship(nil, group)
+
+      assert Serializer.group(group, nil, relationship)[:viewer_can] == []
+
+      assert Serializer.community(community, nil, Authorization.relationship(nil, community))[
+               :viewer_can
+             ] == []
     end
   end
 

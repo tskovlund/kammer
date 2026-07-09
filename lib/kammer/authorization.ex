@@ -577,6 +577,45 @@ defmodule Kammer.Authorization do
     end
   end
 
+  @doc """
+  Loads the actor's relationship to every group of one community in two
+  indexed lookups total (one per membership table), where calling
+  `relationship/2` per group would re-run the identical community-role
+  query N times. Returns the relationships keyed by group id.
+  """
+  @spec group_relationships(actor(), Community.t(), [Group.t()]) ::
+          %{Ecto.UUID.t() => relationship()}
+  def group_relationships(actor, %Community{} = community, groups) do
+    case unwrap_user(actor) do
+      nil ->
+        stranger = %{instance_operator?: false, community_role: nil, group_role: nil}
+        Map.new(groups, &{&1.id, stranger})
+
+      %User{} = user ->
+        community_role = lookup_community_role(user.id, community.id)
+
+        group_roles =
+          Repo.all(
+            from(membership in GroupMembership,
+              where:
+                membership.user_id == ^user.id and
+                  membership.group_id in ^Enum.map(groups, & &1.id),
+              select: {membership.group_id, membership.role}
+            )
+          )
+          |> Map.new()
+
+        Map.new(groups, fn group ->
+          {group.id,
+           %{
+             instance_operator?: user.instance_operator,
+             community_role: community_role,
+             group_role: Map.get(group_roles, group.id)
+           }}
+        end)
+    end
+  end
+
   defp lookup_community_role(user_id, community_id) do
     Repo.one(
       from(membership in CommunityMembership,

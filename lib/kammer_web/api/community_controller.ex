@@ -36,13 +36,17 @@ defmodule KammerWeb.Api.CommunityController do
         ApiError.send(conn, :not_found, "Not found.")
 
       community ->
-        active = Groups.list_active_groups(user, community)
-        archived = Groups.list_archived_groups(user, community)
+        groups =
+          Groups.list_active_groups(user, community) ++
+            Groups.list_archived_groups(user, community)
+
+        # Batched: two lookups for the whole list, not two per group.
+        relationships = Authorization.group_relationships(user, community, groups)
 
         json(conn, %{
           data:
-            Enum.map(active ++ archived, fn group ->
-              Serializer.group(group, user, Authorization.relationship(user, group))
+            Enum.map(groups, fn group ->
+              Serializer.group(group, user, relationships[group.id])
             end)
         })
     end
