@@ -64,11 +64,19 @@ describe('requestLink', () => {
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
-	it('resolves on success', async () => {
+	it('POSTs the email to the request-link endpoint of the given instance', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ status: 'sent' }));
-		await expect(
-			requestLink('https://kammer.example.com', 'a@example.com')
-		).resolves.toBeUndefined();
+
+		await requestLink('https://kammer.example.com', 'a@example.com');
+
+		// openapi-fetch may hand the underlying fetch either (url, init) or a
+		// single Request it constructed — normalize both shapes.
+		const [input, init] = vi.mocked(fetch).mock.calls[0];
+		const request =
+			input instanceof Request ? input : new Request(String(input), init as RequestInit);
+		expect(request.url).toBe('https://kammer.example.com/api/v1/auth/request-link');
+		expect(request.method).toBe('POST');
+		expect(await request.json()).toEqual({ email: 'a@example.com' });
 	});
 });
 
