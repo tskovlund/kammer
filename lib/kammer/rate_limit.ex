@@ -37,6 +37,43 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
+  Rate limit for redeeming a short sign-in code (issue #177), keyed by
+  the email the attempt targets: 5 attempts per address per 15 minutes.
+
+  This is the brute-force backstop: codes carry 40 bits of entropy, so
+  5 guesses per code lifetime leaves a worst-case success chance of
+  about 5 in 2^40. Every attempt counts — valid or not — so guessing
+  burns the budget before a later correct guess can land.
+  """
+  @spec hit_login_code_email(String.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_login_code_email(email) when is_binary(email) do
+    # String.downcase and citext's lower() can disagree on exotic
+    hit(
+      # Unicode, giving such an address a marginally fresh limiter key —
+      # the handful of variants keeps the guess budget far below the
+      # 40-bit code space, so this matches hit_magic_link_email's
+      # existing normalization rather than chasing exact citext folding.
+      "login_code:email:#{String.downcase(email)}",
+      @fifteen_minutes_in_milliseconds,
+      5
+    )
+  end
+
+  @doc """
+  Rate limit for redeeming a short sign-in code, keyed by client IP:
+  20 attempts per 15 minutes — looser than the email limit for shared
+  venue networks, but still stops one address from spraying codes
+  across many emails.
+  """
+  @spec hit_login_code_ip(:inet.ip_address() | String.t() | nil) ::
+          {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_login_code_ip(nil), do: {:allow, 0}
+
+  def hit_login_code_ip(ip_address) do
+    hit("login_code:ip:#{format_ip(ip_address)}", @fifteen_minutes_in_milliseconds, 20)
+  end
+
+  @doc """
   Rate limit for guest interaction requests (RSVP confirmations and the
   like), keyed by email. Same budget as magic links — both send email.
   """

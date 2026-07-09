@@ -81,12 +81,63 @@ defmodule KammerWeb.ApiSpec do
       },
       "/api/v1/auth/exchange" => %PathItem{
         post:
-          operation("Exchange magic token for device token", :auth_exchange, [],
+          operation(
+            "Exchange a magic token, or an emailed sign-in code, for a device token",
+            :auth_exchange,
+            [],
             security: [],
             request_body:
               body(
                 object(%{
-                  magic_token: %Schema{type: :string},
+                  magic_token: %Schema{
+                    type: :string,
+                    nullable: true,
+                    description: "The emailed magic-link token. Either this, or email + code."
+                  },
+                  email: %Schema{type: :string, format: :email, nullable: true},
+                  code: %Schema{
+                    type: :string,
+                    nullable: true,
+                    description: "The 8-character sign-in code from the email (case-insensitive)"
+                  },
+                  device_name: %Schema{type: :string, nullable: true}
+                })
+              ),
+            response: json_response("Device token and user", Schemas.AuthExchangeResponse)
+          )
+      },
+      "/api/v1/auth/passkey/challenge" => %PathItem{
+        post:
+          operation(
+            "Start a passkey sign-in (WebAuthn assertion options)",
+            :auth_passkey_challenge,
+            [],
+            security: [],
+            response:
+              json_response(
+                "Assertion options; usernameless, no email asked for",
+                Schemas.PasskeyChallengeResponse
+              )
+          )
+      },
+      "/api/v1/auth/passkey/verify" => %PathItem{
+        post:
+          operation("Verify a passkey assertion for a device token", :auth_passkey_verify, [],
+            security: [],
+            request_body:
+              body(
+                object(%{
+                  challenge_token: %Schema{
+                    type: :string,
+                    description: "Returned verbatim from the challenge operation"
+                  },
+                  credential_id: %Schema{type: :string, description: "base64url, no padding"},
+                  authenticator_data: %Schema{
+                    type: :string,
+                    description: "base64url, no padding"
+                  },
+                  signature: %Schema{type: :string, description: "base64url, no padding"},
+                  client_data_json: %Schema{type: :string, description: "base64url, no padding"},
                   device_name: %Schema{type: :string, nullable: true}
                 })
               ),

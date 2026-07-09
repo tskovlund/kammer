@@ -389,28 +389,54 @@ defmodule Kammer.Accounts do
           {:ok, {User.t(), [UserToken.t()]}} | {:error, :not_found}
   def login_user_by_magic_link(token) do
     {:ok, query} = UserToken.verify_magic_link_token_query(token)
+    query |> Repo.one() |> consume_login_token()
+  end
 
-    case Repo.one(query) do
-      {%User{confirmed_at: nil} = user, _token} ->
-        with {:ok, {confirmed_user, _tokens}} = success <-
-               user
-               |> User.confirm_changeset()
-               |> update_user_and_delete_all_tokens() do
-          # SPEC §2: signing in upgrades any guest history on this email
-          # into the account, automatically.
-          Kammer.Guests.claim_history(confirmed_user)
-          success
-        end
+  @doc """
+  Logs the user in by short sign-in code (issue #177) — the
+  cross-device variant of the magic link: single-use, same 15-minute
+  lifetime, and additionally scoped to the email it was sent to since
+  8 characters, unlike a 32-byte token, could be guessed if the search
+  weren't narrowed and rate-limited (see `Kammer.RateLimit`).
+  """
+  @spec login_user_by_code(String.t(), String.t()) ::
+          {:ok, {User.t(), [UserToken.t()]}} | {:error, :not_found}
+  def login_user_by_code(email, code) do
+    {:ok, query} = UserToken.verify_login_code_query(email, code)
+    query |> Repo.one() |> consume_login_token()
+  end
 
-      {user, token} ->
-        Repo.delete!(token)
+  # Shared consumption semantics for both email-proof credentials
+  # (magic link and short code): single-use, and the first-ever use
+  # confirms the account and expires every other outstanding token.
+  defp consume_login_token({%User{confirmed_at: nil} = user, _token}) do
+    with {:ok, {confirmed_user, _tokens}} = success <-
+           user
+           |> User.confirm_changeset()
+           |> update_user_and_delete_all_tokens() do
+      # SPEC §2: signing in upgrades any guest history on this email
+      # into the account, automatically.
+      Kammer.Guests.claim_history(confirmed_user)
+      success
+    end
+  end
+
+  defp consume_login_token({user, token}) do
+    # Atomic single-use: two concurrent exchanges of the same token
+    # race on this delete — the loser must get the same neutral
+    # not-found as any spent token, not a StaleEntryError 500
+    # (#197 review).
+    case Repo.delete_all(from(t in UserToken, where: t.id == ^token.id)) do
+      {1, _} ->
         Kammer.Guests.claim_history(user)
         {:ok, {user, []}}
 
-      nil ->
+      {0, _} ->
         {:error, :not_found}
     end
   end
+
+  defp consume_login_token(nil), do: {:error, :not_found}
 
   @doc """
   Exchanges a single-use magic-link token for a long-lived API device
@@ -423,10 +449,44 @@ defmodule Kammer.Accounts do
           {:ok, String.t(), User.t()} | {:error, :not_found}
   def exchange_magic_link_for_device_token(magic_token, device_name) do
     with {:ok, {user, _expired_tokens}} <- login_user_by_magic_link(magic_token) do
-      {encoded_token, user_token} = UserToken.build_device_token(user, device_name)
-      Repo.insert!(user_token)
-      {:ok, encoded_token, user}
+      {:ok, create_device_token(user, device_name), user}
     end
+  end
+
+  @doc """
+  Exchanges an emailed short sign-in code for a device token (issue
+  #177): the cross-device sibling of
+  `exchange_magic_link_for_device_token/2`. Rate limits are hit before
+  verification and count every attempt — valid or not — so guessing
+  burns the budget (`Kammer.RateLimit.hit_login_code_email/1`); a
+  wrong code and an unknown email are indistinguishable to the caller.
+  """
+  @spec exchange_login_code_for_device_token(String.t(), String.t(), String.t() | nil,
+          ip: :inet.ip_address() | String.t() | nil
+        ) ::
+          {:ok, String.t(), User.t()} | {:error, :not_found | :rate_limited}
+  def exchange_login_code_for_device_token(email, code, device_name, opts \\ []) do
+    with {:allow, _count} <- RateLimit.hit_login_code_email(email),
+         {:allow, _count} <- RateLimit.hit_login_code_ip(Keyword.get(opts, :ip)),
+         {:ok, {user, _expired_tokens}} <- login_user_by_code(email, code) do
+      {:ok, create_device_token(user, device_name), user}
+    else
+      {:deny, _retry_after} -> {:error, :rate_limited}
+      {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Mints a long-lived API device token (ADR 0014) for a user who just
+  proved their identity through a non-email path — passkey verify
+  (issue #177). The email-proof paths go through the exchange
+  functions above, which consume their single-use credential first.
+  """
+  @spec create_device_token(User.t(), String.t() | nil) :: String.t()
+  def create_device_token(%User{} = user, device_name) do
+    {encoded_token, user_token} = UserToken.build_device_token(user, device_name)
+    Repo.insert!(user_token)
+    encoded_token
   end
 
   @doc """
@@ -480,10 +540,14 @@ defmodule Kammer.Accounts do
   per-email and per-IP rate limits (SPEC §2, §11).
 
   `client_ip` may be `nil` when unavailable (then only the email limit
-  applies).
+  applies). With `code: true` (the API-initiated PWA flow, issue #177)
+  the email also carries a short single-use sign-in code for typing
+  into the app on another device — one email, one rate-limit hit, two
+  credentials with the same lifetime.
   """
   @spec deliver_login_instructions(User.t(), (String.t() -> String.t()),
-          ip: :inet.ip_address() | String.t() | nil
+          ip: :inet.ip_address() | String.t() | nil,
+          code: boolean()
         ) ::
           {:ok, Swoosh.Email.t()} | {:error, :rate_limited | term()}
   def deliver_login_instructions(%User{} = user, magic_link_url_fun, opts \\ [])
@@ -494,7 +558,15 @@ defmodule Kammer.Accounts do
          {:allow, _count} <- RateLimit.hit_magic_link_ip(client_ip) do
       {encoded_token, user_token} = UserToken.build_email_token(user, "login")
       Repo.insert!(user_token)
-      UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
+
+      code =
+        if Keyword.get(opts, :code, false) do
+          {code, code_token} = UserToken.build_login_code(user)
+          Repo.insert!(code_token)
+          code
+        end
+
+      UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token), code)
     else
       {:deny, _retry_after} -> {:error, :rate_limited}
     end

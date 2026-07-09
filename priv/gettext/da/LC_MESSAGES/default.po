@@ -82,7 +82,7 @@ msgstr "Bekræft og log kun ind denne gang"
 msgid "Confirm and stay signed in"
 msgstr "Bekræft og forbliv logget ind"
 
-#: lib/kammer/accounts/user_notifier.ex:88
+#: lib/kammer/accounts/user_notifier.ex:94
 #, elixir-autogen, elixir-format
 msgid "Confirm your account"
 msgstr "Bekræft din konto"
@@ -172,8 +172,8 @@ msgid "English"
 msgstr "Engelsk"
 
 #: lib/kammer/accounts/user_notifier.ex:46
-#: lib/kammer/accounts/user_notifier.ex:73
-#: lib/kammer/accounts/user_notifier.ex:89
+#: lib/kammer/accounts/user_notifier.ex:78
+#: lib/kammer/accounts/user_notifier.ex:96
 #: lib/kammer/digests.ex:159
 #: lib/kammer/events/event_notifier.ex:34
 #: lib/kammer/guests/guest_notifier.ex:31
@@ -190,7 +190,7 @@ msgstr "Engelsk"
 msgid "Hi %{name},"
 msgstr "Hej %{name},"
 
-#: lib/kammer/accounts/user_notifier.ex:95
+#: lib/kammer/accounts/user_notifier.ex:102
 #, elixir-autogen, elixir-format
 msgid "If you didn't create an account with us, please ignore this email."
 msgstr "Hvis du ikke har oprettet en konto hos os, kan du se bort fra denne e-mail."
@@ -200,7 +200,7 @@ msgstr "Hvis du ikke har oprettet en konto hos os, kan du se bort fra denne e-ma
 msgid "If you didn't request this change, please ignore this email."
 msgstr "Hvis du ikke har anmodet om denne ændring, kan du se bort fra denne e-mail."
 
-#: lib/kammer/accounts/user_notifier.ex:81
+#: lib/kammer/accounts/user_notifier.ex:84
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this email, please ignore it."
 msgstr "Hvis du ikke har anmodet om denne e-mail, kan du se bort fra den."
@@ -316,7 +316,7 @@ msgstr "Logger ind..."
 msgid "The link is invalid or it has expired."
 msgstr "Linket er ugyldigt eller udløbet."
 
-#: lib/kammer/accounts/user_notifier.ex:79
+#: lib/kammer/accounts/user_notifier.ex:108
 #, elixir-autogen, elixir-format
 msgid "The link is valid for 15 minutes and can be used once."
 msgstr "Linket er gyldigt i 15 minutter og kan bruges én gang."
@@ -372,12 +372,12 @@ msgstr "Du kører den lokale mail-adapter."
 msgid "You can change your email by visiting the link below:"
 msgstr "Du kan ændre din e-mail ved at besøge linket nedenfor:"
 
-#: lib/kammer/accounts/user_notifier.ex:91
+#: lib/kammer/accounts/user_notifier.ex:97
 #, elixir-autogen, elixir-format
 msgid "You can confirm your account and sign in by visiting the link below:"
 msgstr "Du kan bekræfte din konto og logge ind ved at besøge linket nedenfor:"
 
-#: lib/kammer/accounts/user_notifier.ex:75
+#: lib/kammer/accounts/user_notifier.ex:79
 #, elixir-autogen, elixir-format
 msgid "You can sign in to your account by visiting the link below:"
 msgstr "Du kan logge ind på din konto ved at besøge linket nedenfor:"
@@ -398,7 +398,7 @@ msgstr "Du skal logge ind igen for at få adgang til denne side."
 msgid "You need to reauthenticate to perform sensitive actions on your account."
 msgstr "Du skal logge ind igen for at udføre følsomme handlinger på din konto."
 
-#: lib/kammer/accounts/user_notifier.ex:72
+#: lib/kammer/accounts/user_notifier.ex:76
 #, elixir-autogen, elixir-format
 msgid "Your sign-in link"
 msgstr "Dit login-link"
@@ -4081,3 +4081,14 @@ msgstr "Søg i opslag, kommentarer, begivenheder og filer…"
 #, elixir-autogen, elixir-format
 msgid "Try different words — search looks at posts, comments, events, and files."
 msgstr "Prøv andre ord — søgningen kigger i opslag, kommentarer, begivenheder og filer."
+
+#: lib/kammer/accounts/user_notifier.ex:81
+#: lib/kammer/accounts/user_notifier.ex:99
+#, elixir-autogen, elixir-format
+msgid "Or enter this sign-in code in the app:"
+msgstr "Eller indtast denne login-kode i appen:"
+
+#: lib/kammer/accounts/user_notifier.ex:111
+#, elixir-autogen, elixir-format
+msgid "The link and code are valid for 15 minutes and can each be used once."
+msgstr "Linket og koden er gyldige i 15 minutter og kan hver bruges én gang."

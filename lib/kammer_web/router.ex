@@ -174,6 +174,8 @@ defmodule KammerWeb.Router do
     post "/auth/register", AuthController, :register
     post "/auth/request-link", AuthController, :request_link
     post "/auth/exchange", AuthController, :exchange
+    post "/auth/passkey/challenge", AuthController, :passkey_challenge
+    post "/auth/passkey/verify", AuthController, :passkey_verify
   end
 
   # Unaliased scope: RenderSpec is a library plug, not a KammerWeb.Api

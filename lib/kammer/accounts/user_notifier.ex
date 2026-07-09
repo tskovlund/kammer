@@ -56,44 +56,64 @@ defmodule Kammer.Accounts.UserNotifier do
 
   @doc """
   Deliver instructions to log in with a magic link. Unconfirmed users get
-  the confirmation wording; the mechanism is identical.
+  the confirmation wording; the mechanism is identical. With a `code`
+  (the PWA flow, issue #177) the email also shows the short sign-in
+  code for typing into the app on another device.
   """
-  @spec deliver_login_instructions(User.t(), String.t()) ::
+  @spec deliver_login_instructions(User.t(), String.t(), String.t() | nil) ::
           {:ok, Swoosh.Email.t()} | {:error, term()}
-  def deliver_login_instructions(user, url) do
+  def deliver_login_instructions(user, url, code \\ nil) do
     case user do
-      %User{confirmed_at: nil} -> deliver_confirmation_instructions(user, url)
-      _confirmed -> deliver_magic_link_instructions(user, url)
+      %User{confirmed_at: nil} -> deliver_confirmation_instructions(user, url, code)
+      _confirmed -> deliver_magic_link_instructions(user, url, code)
     end
   end
 
-  defp deliver_magic_link_instructions(user, url) do
+  defp deliver_magic_link_instructions(user, url, code) do
     Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
-      deliver(user.email, gettext("Your sign-in link"), """
-      #{gettext("Hi %{name},", name: user.display_name)}
-
-      #{gettext("You can sign in to your account by visiting the link below:")}
-
-      #{url}
-
-      #{gettext("The link is valid for 15 minutes and can be used once.")}
-
-      #{gettext("If you didn't request this email, please ignore it.")}
-      """)
+      deliver(
+        user.email,
+        gettext("Your sign-in link"),
+        email_body([
+          gettext("Hi %{name},", name: user.display_name),
+          gettext("You can sign in to your account by visiting the link below:"),
+          url,
+          code && gettext("Or enter this sign-in code in the app:"),
+          code,
+          validity_line(code),
+          gettext("If you didn't request this email, please ignore it.")
+        ])
+      )
     end)
   end
 
-  defp deliver_confirmation_instructions(user, url) do
+  defp deliver_confirmation_instructions(user, url, code) do
     Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
-      deliver(user.email, gettext("Confirm your account"), """
-      #{gettext("Hi %{name},", name: user.display_name)}
-
-      #{gettext("You can confirm your account and sign in by visiting the link below:")}
-
-      #{url}
-
-      #{gettext("If you didn't create an account with us, please ignore this email.")}
-      """)
+      deliver(
+        user.email,
+        gettext("Confirm your account"),
+        email_body([
+          gettext("Hi %{name},", name: user.display_name),
+          gettext("You can confirm your account and sign in by visiting the link below:"),
+          url,
+          code && gettext("Or enter this sign-in code in the app:"),
+          code,
+          code && validity_line(code),
+          gettext("If you didn't create an account with us, please ignore this email.")
+        ])
+      )
     end)
+  end
+
+  defp validity_line(nil), do: gettext("The link is valid for 15 minutes and can be used once.")
+
+  defp validity_line(_code),
+    do: gettext("The link and code are valid for 15 minutes and can each be used once.")
+
+  defp email_body(paragraphs) do
+    paragraphs
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n\n")
+    |> Kernel.<>("\n")
   end
 end
