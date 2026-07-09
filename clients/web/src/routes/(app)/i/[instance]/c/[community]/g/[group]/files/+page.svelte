@@ -19,7 +19,6 @@
 	const instance = $derived(
 		instances.list.find((candidate) => candidate.id === page.params.instance)
 	);
-	const ref = $derived({ community: page.params.community!, group: page.params.group! });
 
 	let store = $state<FilesStore | null>(null);
 	let group = $state<Group | null>(null);
