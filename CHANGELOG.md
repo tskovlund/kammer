@@ -10,6 +10,21 @@ and this project adheres to
 
 ### Added
 
+- Home and group feed screens in the Svelte PWA (issue #179, part of
+  the #165 parity ladder): the merged, community-first Home (recent
+  activity and upcoming events across every added account, bucketed by
+  community with filter chips and per-instance failure banners) and the
+  group feed — chronological/activity sort, pinned-first, cursor
+  pagination, and live updates over the #173 realtime channels. Full
+  write parity on the #178 endpoints: a composer with Markdown (safely
+  rendered — `html: false`, link-validated, the one audited sink),
+  poll builder, attachment upload, and acknowledgment-required toggle;
+  reactions and poll votes are optimistic, post creation is
+  post-then-insert (id-keyed against the channel echo); one-level
+  comment threads with compose/reply/react/edit/delete. Per-instance
+  realtime sockets with manager-owned exponential-backoff reconnect
+  that surfaces auth failure for re-sign-in. EN + DA, dark mode,
+  reduced-motion, AA contrast throughout.
 - Feed write parity over the API (issue #178, part of the #165 parity
   ladder): reaction toggles on posts and comments; poll voting
   (`PUT .../poll/votes` sets the whole selection — single-choice keeps
