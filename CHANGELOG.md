@@ -379,6 +379,26 @@ and this project adheres to
 
 ### Fixed
 
+- Three residual holes in the ban enforcement family #129 hardened
+  (issues #170, #171, #172, found by independent review of #169):
+  `Communities.add_member/3` re-checks the community and instance ban
+  lists inside its own transaction against the row-locked
+  (`FOR UPDATE`) user — the same lock the ban paths take first — so a
+  concurrent ban and invite redemption serialize instead of leaving a
+  banned email holding a live membership; `Moderation.ban_member/4`
+  re-reads the target's email from that locked user row, so the ban
+  records the current address rather than a stale struct snapshot the
+  target could sidestep by having changed their email; and
+  `Communities.create_community/2` now consults the instance-ban list
+  (under the same lock) and refuses with `:unauthorized`, closing the
+  path where a banned account's surviving session could create — and
+  own, unpurgeably — a fresh community. All membership-writing
+  transactions now share one lock order (user row → community
+  membership → group memberships), so none can deadlock another. The
+  races themselves aren't reproducible under the test sandbox; new
+  context tests pin the observable contract (current-email bans,
+  banned-email refusals against stale structs, banned-creator
+  refusal).
 - The moderation ban guards checked the target's protected status
   (admin/owner role for `Moderation.ban_member/4`, operator flag and
   community ownership for `Moderation.ban_instance/3`) before their

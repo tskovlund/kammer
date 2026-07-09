@@ -173,6 +173,25 @@ defmodule Kammer.ModerationTest do
       assert Communities.get_membership(community, author)
     end
 
+    test "the ban records the target's current email, not the caller's snapshot", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      # The struct in hand predates an email change — the ban must
+      # re-read the address from the row-locked user inside the
+      # transaction, or the target could be re-invited immediately
+      # under their new address (issue #171).
+      stale_target = author
+      new_email = unique_user_email()
+      {:ok, _updated} = author |> Ecto.Changeset.change(email: new_email) |> Repo.update()
+
+      assert {:ok, ban} = Moderation.ban_member(owner, community, stale_target, nil)
+      assert ban.email == new_email
+      assert Moderation.banned?(community, new_email)
+      refute Moderation.banned?(community, stale_target.email)
+    end
+
     test "a failed ban insert rolls the membership removal back — check and act are atomic", %{
       community: community,
       owner: owner,

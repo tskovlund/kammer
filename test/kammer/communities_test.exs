@@ -4,8 +4,11 @@ defmodule Kammer.CommunitiesTest do
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
+  alias Kammer.Accounts.User
   alias Kammer.Audit
   alias Kammer.Communities
+  alias Kammer.Moderation
+  alias Kammer.Repo
 
   describe "instance settings" do
     test "get_instance_settings/0 creates the singleton on first access" do
@@ -63,6 +66,22 @@ defmodule Kammer.CommunitiesTest do
 
       assert {:ok, _community} =
                Communities.create_community(plain_user, %{name: "TK", slug: unique_slug("tk")})
+    end
+
+    test "instance-banned creators are refused even when the policy allows them" do
+      # An instance ban is an email-keyed rejoin block, so a banned
+      # account's live session survives — it must not be able to create
+      # (and own) a fresh community (issue #172).
+      allow_any_user_community_creation()
+      operator = instance_operator_fixture()
+      banned_user = user_fixture()
+
+      {:ok, _ban} = Moderation.ban_instance(operator, banned_user.email, nil)
+
+      assert {:error, :unauthorized} =
+               Communities.create_community(banned_user, %{name: "TK", slug: unique_slug("tk")})
+
+      assert Communities.list_user_communities(banned_user) == []
     end
 
     test "rejects reserved and malformed slugs" do
@@ -163,6 +182,29 @@ defmodule Kammer.CommunitiesTest do
 
       assert {:error, :owner_cannot_leave} =
                Communities.remove_member(owner, community, owner_membership)
+    end
+
+    test "add_member/3 checks bans against the current email, not the caller's snapshot" do
+      # The ban re-checks run inside add_member's transaction against
+      # the row-locked user (issue #170) — which also means they see
+      # the current email, not a stale struct's snapshot.
+      {community, owner} = community_with_owner_fixture()
+      outsider = user_fixture()
+      stale_struct = outsider
+      new_email = unique_user_email()
+      {:ok, _updated} = outsider |> Ecto.Changeset.change(email: new_email) |> Repo.update()
+
+      # A community ban on the current address blocks the stale struct...
+      {:ok, ban} = Moderation.ban_member(owner, community, Repo.get!(User, outsider.id), nil)
+      assert {:error, :banned} = Communities.add_member(community, stale_struct)
+      assert Communities.get_membership(community, outsider) == nil
+
+      # ...and so does an instance ban on the current address.
+      {:ok, _lifted} = Moderation.unban(owner, ban)
+      operator = instance_operator_fixture()
+      {:ok, _ban} = Moderation.ban_instance(operator, new_email, nil)
+      assert {:error, :instance_banned} = Communities.add_member(community, stale_struct)
+      assert Communities.get_membership(community, outsider) == nil
     end
 
     test "removing a community member also removes their group memberships" do

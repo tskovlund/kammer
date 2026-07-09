@@ -10,6 +10,7 @@ defmodule Kammer.Moderation do
 
   import Ecto.Query, warn: false
 
+  alias Kammer.Accounts
   alias Kammer.Accounts.User
   alias Kammer.Audit
   alias Kammer.Authorization
@@ -154,7 +155,9 @@ defmodule Kammer.Moderation do
   admins — demote first, deliberately two steps. The protected-role
   check runs inside the transaction against the row-locked membership,
   so a concurrent promotion cannot land between check and removal
-  (issue #129).
+  (issue #129), and the banned email is re-read from the row-locked
+  user, so the ban records the target's current address even when the
+  caller's struct predates an email change (issue #171).
   """
   @spec ban_member(User.t(), Community.t(), User.t(), String.t() | nil) ::
           {:ok, CommunityBan.t()} | {:error, :unauthorized | Ecto.Changeset.t()}
@@ -169,13 +172,24 @@ defmodule Kammer.Moderation do
       true ->
         with {:ok, ban} <-
                Repo.transact(fn ->
+                 # Lock order: the target's user row first, then their
+                 # community-membership row — the same user→membership
+                 # order `purge_memberships_and_ban/3` takes (and
+                 # `Communities.add_member/3` shares the user-row lock,
+                 # #170), so the ban paths can never deadlock each
+                 # other. The locked re-read also yields the target's
+                 # current email: the struct in hand may predate an
+                 # email change, and the ban must record the address
+                 # the account uses now (issue #171).
+                 current_email = Accounts.lock_user_email(target) || target.email
+
                  if lock_community_role(community, target) in [:admin, :owner] do
                    {:error, :unauthorized}
                  else
                    remove_memberships(community, target)
 
                    %CommunityBan{community_id: community.id, banned_by_user_id: actor.id}
-                   |> CommunityBan.changeset(%{email: target.email, reason: reason})
+                   |> CommunityBan.changeset(%{email: current_email, reason: reason})
                    |> Repo.insert()
                  end
                end) do
@@ -183,7 +197,7 @@ defmodule Kammer.Moderation do
             community,
             actor,
             "member.banned",
-            "#{actor.display_name} banned #{target.display_name} (#{target.email})" <>
+            "#{actor.display_name} banned #{target.display_name} (#{ban.email})" <>
               if(reason, do: " — #{reason}", else: "")
           )
 
