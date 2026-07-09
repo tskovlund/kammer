@@ -93,6 +93,7 @@ defmodule KammerWeb.Endpoint do
   plug KammerWeb.Router
 
   @doc false
+  @spec pwa_static_headers(Plug.Conn.t()) :: [{String.t(), String.t()}]
   def pwa_static_headers(conn) do
     # SvelteKit's content-hashed output is safe to cache forever; the
     # rest (icons, manifest) revalidates normally.
