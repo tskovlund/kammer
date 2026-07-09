@@ -1,5 +1,7 @@
 defmodule Kammer.FileVersionsTest do
-  use Kammer.DataCase, async: true
+  # async: false — swaps the global :uploads_path like the other
+  # storage-touching suites.
+  use Kammer.DataCase, async: false
 
   import Kammer.CommunitiesFixtures
 

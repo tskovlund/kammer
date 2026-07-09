@@ -34,6 +34,16 @@ defmodule Kammer.AuthorizationTest do
 
   @content_actions [:post_in_group, :comment_in_group, :post_as_group]
 
+  # The membership/admin actions `Kammer.Authorization` also gates on
+  # `not Group.archived?/1` — read-only means no new members and no new
+  # invites, not just no new content (SPEC §3).
+  @membership_actions [
+    :join_group,
+    :request_to_join_group,
+    :create_group_invite,
+    :approve_group_members
+  ]
+
   defp group_generator do
     gen all(
           visibility <- StreamData.member_of(Group.visibilities()),
@@ -112,6 +122,19 @@ defmodule Kammer.AuthorizationTest do
               group <- group_generator(),
               relationship <- relationship_generator(),
               action <- StreamData.member_of(@content_actions)
+            ) do
+        archived_group = %Group{group | archived_at: ~U[2026-01-01 00:00:00Z]}
+        actor = actor_for(relationship)
+
+        refute Authorization.can?(actor, action, archived_group, relationship)
+      end
+    end
+
+    property "no actor can join, request to join, invite into, or approve members for an archived group" do
+      check all(
+              group <- group_generator(),
+              relationship <- relationship_generator(),
+              action <- StreamData.member_of(@membership_actions)
             ) do
         archived_group = %Group{group | archived_at: ~U[2026-01-01 00:00:00Z]}
         actor = actor_for(relationship)

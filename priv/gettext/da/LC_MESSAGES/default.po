@@ -1186,12 +1186,12 @@ msgstr "Dig"
 #: lib/kammer_web/live/event_live/show.ex:593
 #: lib/kammer_web/live/event_live/show.ex:609
 #: lib/kammer_web/live/feed_event_handlers.ex:206
-#: lib/kammer_web/live/file_live/index.ex:342
-#: lib/kammer_web/live/file_live/index.ex:374
-#: lib/kammer_web/live/file_live/index.ex:395
-#: lib/kammer_web/live/file_live/index.ex:436
-#: lib/kammer_web/live/file_live/index.ex:448
-#: lib/kammer_web/live/file_live/index.ex:506
+#: lib/kammer_web/live/file_live/index.ex:346
+#: lib/kammer_web/live/file_live/index.ex:378
+#: lib/kammer_web/live/file_live/index.ex:399
+#: lib/kammer_web/live/file_live/index.ex:440
+#: lib/kammer_web/live/file_live/index.ex:452
+#: lib/kammer_web/live/file_live/index.ex:510
 #: lib/kammer_web/live/group_live/new.ex:135
 #: lib/kammer_web/live/group_live/settings.ex:226
 #: lib/kammer_web/live/group_live/settings.ex:256
@@ -1391,7 +1391,7 @@ msgstr "Slet permanent"
 #: lib/kammer_web/live/availability_live/show.ex:116
 #: lib/kammer_web/live/event_live/show.ex:365
 #: lib/kammer_web/live/event_live/show.ex:678
-#: lib/kammer_web/live/file_live/index.ex:295
+#: lib/kammer_web/live/file_live/index.ex:299
 #: lib/kammer_web/live/moderation_live/index.ex:49
 #: lib/kammer_web/live/moderation_live/index.ex:193
 #: lib/kammer_web/live/search_live/index.ex:72
@@ -1672,7 +1672,7 @@ msgstr "Opret begivenhed"
 #: lib/kammer_web/live/assignment_live/show.ex:57
 #: lib/kammer_web/live/community_live/settings.ex:124
 #: lib/kammer_web/live/event_live/show.ex:67
-#: lib/kammer_web/live/file_live/index.ex:228
+#: lib/kammer_web/live/file_live/index.ex:232
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Slet"
@@ -1808,7 +1808,7 @@ msgstr "måske"
 msgid "show my calendar link"
 msgstr "vis mit kalenderlink"
 
-#: lib/kammer_web/live/file_live/index.ex:554
+#: lib/kammer_web/live/file_live/index.ex:558
 #, elixir-autogen, elixir-format
 msgid "Browse"
 msgstr "Gennemse"
@@ -1819,28 +1819,23 @@ msgstr "Gennemse"
 msgid "Community files"
 msgstr "Fællesskabets filer"
 
-#: lib/kammer_web/live/file_live/index.ex:149
+#: lib/kammer_web/live/file_live/index.ex:153
 #, elixir-autogen, elixir-format
 msgid "Create"
 msgstr "Opret"
 
-#: lib/kammer_web/live/file_live/index.ex:130
+#: lib/kammer_web/live/file_live/index.ex:134
 #, elixir-autogen, elixir-format
 msgid "Delete folder"
 msgstr "Slet mappe"
 
-#: lib/kammer_web/live/file_live/index.ex:226
+#: lib/kammer_web/live/file_live/index.ex:230
 #, elixir-autogen, elixir-format
 msgid "Delete this file permanently?"
 msgstr "Slet denne fil permanent?"
 
-#: lib/kammer_web/live/file_live/index.ex:127
-#, elixir-autogen, elixir-format
-msgid "Delete this folder? Files move to the root."
-msgstr "Slet denne mappe? Filerne flyttes til roden."
-
-#: lib/kammer_web/live/file_live/index.ex:218
-#: lib/kammer_web/live/file_live/index.ex:255
+#: lib/kammer_web/live/file_live/index.ex:222
+#: lib/kammer_web/live/file_live/index.ex:259
 #, elixir-autogen, elixir-format
 msgid "Download"
 msgstr "Download"
@@ -1853,7 +1848,7 @@ msgstr "Download"
 msgid "Files"
 msgstr "Filer"
 
-#: lib/kammer_web/live/file_live/index.ex:284
+#: lib/kammer_web/live/file_live/index.ex:288
 #, elixir-autogen, elixir-format
 msgid "Files shared here will appear for everyone in this space."
 msgstr "Filer delt her vises for alle i dette område."
@@ -1863,27 +1858,27 @@ msgstr "Filer delt her vises for alle i dette område."
 msgid "Folders"
 msgstr "Mapper"
 
-#: lib/kammer_web/live/file_live/index.ex:371
+#: lib/kammer_web/live/file_live/index.ex:375
 #, elixir-autogen, elixir-format
 msgid "Folders can't nest deeper than this."
 msgstr "Mapper kan ikke ligge dybere end dette."
 
-#: lib/kammer_web/live/file_live/index.ex:555
+#: lib/kammer_web/live/file_live/index.ex:559
 #, elixir-autogen, elixir-format
 msgid "Images"
 msgstr "Billeder"
 
-#: lib/kammer_web/live/file_live/index.ex:145
+#: lib/kammer_web/live/file_live/index.ex:149
 #, elixir-autogen, elixir-format
 msgid "New folder…"
 msgstr "Ny mappe…"
 
-#: lib/kammer_web/live/file_live/index.ex:280
+#: lib/kammer_web/live/file_live/index.ex:284
 #, elixir-autogen, elixir-format
 msgid "Nothing here yet"
 msgstr "Her er intet endnu"
 
-#: lib/kammer_web/live/file_live/index.ex:556
+#: lib/kammer_web/live/file_live/index.ex:560
 #, elixir-autogen, elixir-format
 msgid "Posted in feed"
 msgstr "Delt i feedet"
@@ -1898,27 +1893,27 @@ msgstr "Læsning: kun administratorer"
 msgid "Read: everyone in scope"
 msgstr "Læsning: alle i området"
 
-#: lib/kammer_web/live/file_live/index.ex:163
+#: lib/kammer_web/live/file_live/index.ex:167
 #, elixir-autogen, elixir-format
 msgid "Save %{count} file(s)"
 msgstr "Gem %{count} fil(er)"
 
-#: lib/kammer_web/live/file_live/index.ex:291
+#: lib/kammer_web/live/file_live/index.ex:295
 #, elixir-autogen, elixir-format
 msgid "Storage contributions"
 msgstr "Lagerbidrag"
 
-#: lib/kammer_web/live/file_live/index.ex:478
+#: lib/kammer_web/live/file_live/index.ex:482
 #, elixir-autogen, elixir-format
 msgid "Storage quota reached — ask an admin to raise it or free some space."
 msgstr "Lagerkvoten er nået — bed en administrator om at hæve den, eller frigør plads."
 
-#: lib/kammer_web/live/file_live/index.ex:155
+#: lib/kammer_web/live/file_live/index.ex:159
 #, elixir-autogen, elixir-format
 msgid "Upload"
 msgstr "Upload"
 
-#: lib/kammer_web/live/file_live/index.ex:283
+#: lib/kammer_web/live/file_live/index.ex:287
 #, elixir-autogen, elixir-format
 msgid "Upload the first file — sheet music, minutes, posters."
 msgstr "Upload den første fil — noder, referater, plakater."
@@ -2605,12 +2600,12 @@ msgstr "Vis på Hjem"
 msgid "Show this group's activity on your Home screen"
 msgstr "Vis denne gruppes aktivitet på din Hjem-skærm"
 
-#: lib/kammer_web/live/file_live/index.ex:266
+#: lib/kammer_web/live/file_live/index.ex:270
 #, elixir-autogen, elixir-format
 msgid "Delete this version permanently?"
 msgstr "Slet denne version permanent?"
 
-#: lib/kammer_web/live/file_live/index.ex:268
+#: lib/kammer_web/live/file_live/index.ex:272
 #, elixir-autogen, elixir-format
 msgid "Delete version"
 msgstr "Slet version"
@@ -2620,23 +2615,23 @@ msgstr "Slet version"
 msgid "File versions to keep (empty = unlimited)"
 msgstr "Filversioner der gemmes (tom = ubegrænset)"
 
-#: lib/kammer_web/live/file_live/index.ex:432
+#: lib/kammer_web/live/file_live/index.ex:436
 #, elixir-autogen, elixir-format
 msgid "The only version cannot be deleted — delete the file instead."
 msgstr "Den eneste version kan ikke slettes — slet filen i stedet."
 
-#: lib/kammer_web/live/file_live/index.ex:424
+#: lib/kammer_web/live/file_live/index.ex:428
 #, elixir-autogen, elixir-format
 msgid "Version deleted."
 msgstr "Version slettet."
 
-#: lib/kammer_web/live/file_live/index.ex:211
-#: lib/kammer_web/live/file_live/index.ex:238
+#: lib/kammer_web/live/file_live/index.ex:215
+#: lib/kammer_web/live/file_live/index.ex:242
 #, elixir-autogen, elixir-format
 msgid "Version history"
 msgstr "Versionshistorik"
 
-#: lib/kammer_web/live/file_live/index.ex:249
+#: lib/kammer_web/live/file_live/index.ex:253
 #, elixir-autogen, elixir-format
 msgid "current"
 msgstr "nuværende"
@@ -3925,7 +3920,7 @@ msgstr "Kun for operatører. Blokerer genindmeldelse i alle fællesskaber, ikke 
 msgid "Reason (optional)"
 msgstr "Årsag (valgfri)"
 
-#: lib/kammer_web/live/file_live/index.ex:482
+#: lib/kammer_web/live/file_live/index.ex:486
 #, elixir-autogen, elixir-format
 msgid "Too many uploads — please try again later."
 msgstr "For mange filer på kort tid — prøv igen senere."
@@ -4092,3 +4087,8 @@ msgstr "Eller indtast denne login-kode i appen:"
 #, elixir-autogen, elixir-format
 msgid "The link and code are valid for 15 minutes and can each be used once."
 msgstr "Linket og koden er gyldige i 15 minutter og kan hver bruges én gang."
+
+#: lib/kammer_web/live/file_live/index.ex:128
+#, elixir-autogen, elixir-format
+msgid "Delete this folder? Files move to the root and become visible to everyone who can see this space."
+msgstr "Slet denne mappe? Filerne flyttes til roden og bliver synlige for alle, der kan se dette område."

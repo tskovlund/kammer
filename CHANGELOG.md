@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Deleting a folder that contained files crashed (a foreign-key
+  cascade interplay deleted the folder's file entries out from under
+  their stored files) instead of honoring the documented semantics —
+  files fall back to the space root and outlive their folders. A
+  migration releases folder contents on delete, and the same-name
+  entry lookup now tolerates the sibling entries a release can create.
+  Found by the new API folder-deletion success test (part of #208).
+
 ### Added
 
 - Client test additions from the test-suite audit (#208): XSS
@@ -36,6 +46,27 @@ and this project adheres to
   viewer's already-loaded relationship into the serializer. Consumed by
   the #179/#182/#183 client screens (client wiring is a follow-up; the
   API field is the enabler).
+- Test-suite audit follow-up, security & correctness batch (part of
+  #208, per the #207 standard): domain-level authorization negatives
+  that were the only gate on their function (`Feed.approve_post/2`,
+  `Files.delete_file/2`); an archived-groups property extension over
+  the membership/admin actions (`join`, `request_to_join`,
+  `create_group_invite`, `approve_group_members`) whose archived
+  guards no test protected; a home-feed test pinning that pending and
+  scheduled posts never leak into other members' home feeds; four
+  promise-breaking tests made real (the decisions register-entry
+  rollback is now actually induced, the `User` inspect test now sets
+  the one redacted field, the ADR 0016 gate test now queries the
+  unauthorized viewer and the nonexistent-event surface, the passkey
+  stale-sign-count test is named for the bookkeeping rule it pins);
+  GDPR coverage for the export controller route and for
+  comments/uploaded files in the export zip plus comment anonymization
+  on erasure; API coverage for folder-deletion success and
+  `DELETE /events/{e}/slots/{slot_id}` with their conformance taps;
+  pagination edge-contract assertions (garbage cursor, absurd limit);
+  an events-write leg on the transport-parity property; and
+  `file_versions_test.exs` no longer runs async while swapping the
+  global uploads path.
 - Files over the API and in the Svelte PWA (issue #181, part of the
   #165 parity ladder): a group's file library — browse folders and
   files with breadcrumb navigation, upload new files, re-upload the
