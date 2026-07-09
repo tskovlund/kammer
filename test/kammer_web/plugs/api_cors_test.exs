@@ -100,6 +100,37 @@ defmodule KammerWeb.Plugs.ApiCorsTest do
     assert get_resp_header(conn, "vary") == ["origin"]
   end
 
+  test "restricted-mode preflights echo an allowed origin on the 204" do
+    restrict_origins(["https://app.example.org"])
+
+    conn =
+      :options
+      |> conn("/api/v1/home")
+      |> put_req_header("origin", "https://app.example.org")
+      |> put_req_header("access-control-request-method", "GET")
+      |> ApiCors.call([])
+
+    assert conn.halted
+    assert conn.status == 204
+    assert get_resp_header(conn, "access-control-allow-origin") == ["https://app.example.org"]
+    assert get_resp_header(conn, "vary") == ["origin"]
+  end
+
+  test "restricted-mode preflights still 204 for a denied origin, but grant nothing" do
+    restrict_origins(["https://app.example.org"])
+
+    conn =
+      :options
+      |> conn("/api/v1/home")
+      |> put_req_header("origin", "https://evil.example")
+      |> put_req_header("access-control-request-method", "GET")
+      |> ApiCors.call([])
+
+    assert conn.halted
+    assert conn.status == 204
+    assert get_resp_header(conn, "access-control-allow-origin") == []
+  end
+
   test "an empty configured list means unset, not deny-all" do
     restrict_origins([])
 

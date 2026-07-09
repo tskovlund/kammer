@@ -16,7 +16,9 @@ defmodule KammerWeb.Plugs.ApiCors do
   preflights match no route, so a pipeline plug would 404 before ever
   setting a header. Scoped to `/api/` paths only — the
   cookie-authenticated LiveView app keeps the browser's same-origin
-  default.
+  default. Deliberately `/api/`, not `/api/v1/`: a future API version
+  inherits the policy, so anything mounted under `/api/` must stay
+  Bearer-token-authenticated, never cookie-backed.
   """
 
   @behaviour Plug
@@ -64,8 +66,8 @@ defmodule KammerWeb.Plugs.ApiCors do
 
       allowed_origins when is_list(allowed_origins) ->
         # The response now depends on the Origin request header, so
-        # caches must key on it. Prepend rather than put: a later Vary
-        # writer must not clobber this, nor this an earlier one.
+        # caches must key on it. Prepend rather than put so an earlier
+        # Vary writer isn't clobbered.
         conn = prepend_resp_headers(conn, [{"vary", "origin"}])
 
         with [origin] <- get_req_header(conn, "origin"),
