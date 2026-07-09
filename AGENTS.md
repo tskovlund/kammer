@@ -500,6 +500,13 @@ Controllers automatically have the `current_scope` available if they use the `:b
 
 ## Test guidelines
 
+- **Every test earns its place** (owner-mandated; full statement in
+  [CONVENTIONS.md](CONVENTIONS.md) §Tests): the suite is a portfolio
+  piece — lean, elegant, well-structured. A test that asserts nothing,
+  restates the framework, duplicates coverage, or exists as ceremony
+  is a defect. One sharp test over three overlapping ones; coverage is
+  a floor, never a target. Both review gates check this on every new
+  or changed test.
 - **Always use `start_supervised!/1`** to start processes in tests as it guarantees cleanup between tests
 - **Avoid** `Process.sleep/1` and `Process.alive?/1` in tests
   - Instead of sleeping to wait for a process to finish, **always** use `Process.monitor/1` and assert on the DOWN message:

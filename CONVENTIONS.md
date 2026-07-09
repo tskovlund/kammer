@@ -88,6 +88,19 @@ tooling wherever possible; the rest is enforced in review.
 
 ## Tests
 
+- **Every test earns its place.** The test suite is a portfolio piece,
+  held to the same bar as the code it covers: lean, elegant,
+  well-structured. Everything critical is tested — but a test that
+  asserts nothing, restates the framework, duplicates another test's
+  coverage, or exists only as ceremony is a **defect, not caution**:
+  it buries the tests that matter and rots trust in the suite. Before
+  a test is added it must justify itself — _what real failure does it
+  catch that no existing test does?_ Prefer one sharp test over three
+  overlapping ones; delete a test that no longer earns its place
+  rather than keep it for the count. Coverage (the floor in
+  `coveralls.json`) is a floor to never fall below, never a target to
+  pad toward. Both review gates ask this question of every new or
+  changed test.
 - Context-level unit tests for all domain logic — **permissions above all**.
 - LiveView tests for critical flows: auth, posting, RSVP, invite redemption.
 - Doctests where they genuinely add value.
