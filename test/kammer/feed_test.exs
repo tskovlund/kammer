@@ -356,6 +356,33 @@ defmodule Kammer.FeedTest do
                Feed.create_comment(member, scheduled, %{"body_markdown" => "own note"})
     end
 
+    test "a hidden post answers not_found even to viewers who couldn't comment anyway", %{
+      community: community
+    } do
+      # Community-visible group: a community member can *view* it
+      # without being a group member, but can't comment. For a hidden
+      # (pending) post they must get :not_found — :unauthorized would
+      # confirm the hidden post exists, which no read path does.
+      open_group = group_fixture(community, visibility: :community, approval_queue: true)
+      poster = group_member_fixture(open_group)
+      viewer = member_fixture(community)
+
+      {:ok, pending} = Feed.create_post(poster, open_group, %{"body_markdown" => "queued"})
+      assert pending.pending_approval
+
+      assert {:error, :not_found} =
+               Feed.create_comment(viewer, pending, %{"body_markdown" => "probe"})
+
+      # A *visible* post they can't comment on stays :unauthorized —
+      # its existence is no secret. (Admin posts bypass the queue.)
+      admin = group_member_fixture(open_group, :admin)
+      {:ok, published} = Feed.create_post(admin, open_group, %{"body_markdown" => "public"})
+      refute published.pending_approval
+
+      assert {:error, :unauthorized} =
+               Feed.create_comment(viewer, published, %{"body_markdown" => "still no"})
+    end
+
     test "a created comment carries its author preloaded", %{group: group, member: member} do
       {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "root"})
       {:ok, comment} = Feed.create_comment(member, post, %{"body_markdown" => "hello"})

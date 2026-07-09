@@ -654,20 +654,23 @@ defmodule Kammer.Feed do
   a reply attaches to the parent's top-level comment.
   """
   @spec create_comment(User.t(), Post.t(), map()) ::
-          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :comments_locked}
+          {:ok, Comment.t()}
+          | {:error,
+             Ecto.Changeset.t() | :unauthorized | :comments_locked | :not_found | :rate_limited}
   def create_comment(%User{} = author, %Post{} = post, attrs) do
     group = get_group(post)
     relationship = Authorization.relationship(author, group)
 
     cond do
-      not Authorization.can?(author, :comment_in_group, group, relationship) ->
-        {:error, :unauthorized}
-
-      # A post the caller can't see must answer exactly like a post
-      # that doesn't exist — a 403 here would confirm the hidden post's
-      # existence, which every read path denies.
+      # Visibility answers first: a post the caller can't see must
+      # respond exactly like a post that doesn't exist, for *every*
+      # caller — checking comment permission first would leak a 403
+      # "exists but hidden" to viewers who can't comment.
       not post_commentable_by?(author, post, group, relationship) ->
         {:error, :not_found}
+
+      not Authorization.can?(author, :comment_in_group, group, relationship) ->
+        {:error, :unauthorized}
 
       Post.comments_locked?(post) ->
         {:error, :comments_locked}

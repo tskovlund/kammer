@@ -218,8 +218,10 @@ defmodule KammerWeb.ApiSpec do
 
     # Every operation can answer 401/403/404 with the one error
     # envelope; writes (anything with a request body) can also reject
-    # the payload (422) or rate-limit the caller (429).
-    error_statuses = if request_body, do: [401, 403, 404, 422, 429], else: [401, 403, 404]
+    # the payload as malformed (400) or invalid (422), or rate-limit
+    # the caller (429).
+    error_statuses =
+      if request_body, do: [400, 401, 403, 404, 422, 429], else: [401, 403, 404]
 
     responses =
       error_statuses
