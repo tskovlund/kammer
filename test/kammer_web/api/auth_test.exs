@@ -9,6 +9,7 @@ defmodule KammerWeb.Api.AuthTest do
 
   import Kammer.AccountsFixtures
   import Kammer.WebauthnHelper
+  import OpenApiSpex.TestAssertions
   import Swoosh.TestAssertions
 
   alias Kammer.Accounts
@@ -51,13 +52,20 @@ defmodule KammerWeb.Api.AuthTest do
           "email" => "new-signup@example.org",
           "display_name" => "New Signup"
         })
+        |> tap(&assert_operation_response(&1, "auth_register"))
         |> json_response(201)
 
       assert body["status"] == "confirmation_sent"
       assert body["user"]["email"] == "new-signup@example.org"
       assert Accounts.get_user_by_email("new-signup@example.org")
 
-      assert_email_sent(fn email -> email.to == [{"", "new-signup@example.org"}] end)
+      # ADR 0024: the confirmation email deep-links into the
+      # instance-served PWA and carries a sign-in code.
+      assert_email_sent(fn email ->
+        email.to == [{"", "new-signup@example.org"}] and
+          email.text_body =~ ~r{/app/sign-in/[\w-]+} and
+          email.text_body =~ ~r/sign-in code in the app:/
+      end)
     end
 
     test "rejects a duplicate email with the standard validation envelope", %{conn: conn} do
@@ -85,6 +93,7 @@ defmodule KammerWeb.Api.AuthTest do
       conn
       |> json_conn()
       |> post(~p"/api/v1/auth/request-link", %{"email" => user.email})
+      |> tap(&assert_operation_response(&1, "auth_request_link"))
       |> json_response(200)
 
       # ADR 0024: API-initiated sign-in emails deep-link into the
@@ -109,6 +118,7 @@ defmodule KammerWeb.Api.AuthTest do
           "magic_token" => magic_token,
           "device_name" => "Test suite"
         })
+        |> tap(&assert_operation_response(&1, "auth_exchange"))
         |> json_response(200)
 
       assert user_body["email"] == user.email
@@ -128,6 +138,7 @@ defmodule KammerWeb.Api.AuthTest do
       |> json_conn()
       |> put_req_header("authorization", "Bearer #{device_token}")
       |> delete(~p"/api/v1/auth/device-token")
+      |> tap(&assert_operation_response(&1, "auth_revoke"))
       |> json_response(200)
 
       assert Accounts.get_user_by_device_token(device_token) == nil
@@ -177,6 +188,7 @@ defmodule KammerWeb.Api.AuthTest do
           "code" => code,
           "device_name" => "Other device"
         })
+        |> tap(&assert_operation_response(&1, "auth_exchange"))
         |> json_response(200)
 
       assert user_body["email"] == user.email
@@ -228,23 +240,6 @@ defmodule KammerWeb.Api.AuthTest do
                |> json_response(429)
     end
 
-    test "registration emails deep-link into the PWA too", %{conn: conn} do
-      drain_delivered_emails()
-
-      conn
-      |> json_conn()
-      |> post(~p"/api/v1/auth/register", %{
-        "email" => "pwa-signup@example.org",
-        "display_name" => "PWA Signup"
-      })
-      |> json_response(201)
-
-      assert_email_sent(fn email ->
-        email.text_body =~ ~r{/app/sign-in/[\w-]+} and
-          email.text_body =~ ~r/sign-in code in the app:/
-      end)
-    end
-
     test "authenticated routes refuse garbage and missing tokens", %{conn: conn} do
       assert %{"error" => %{"code" => "unauthorized"}} =
                conn
@@ -289,6 +284,7 @@ defmodule KammerWeb.Api.AuthTest do
         conn
         |> json_conn()
         |> post(~p"/api/v1/auth/passkey/challenge")
+        |> tap(&assert_operation_response(&1, "auth_passkey_challenge"))
         |> json_response(200)
 
       assert %{
@@ -301,6 +297,7 @@ defmodule KammerWeb.Api.AuthTest do
         build_conn()
         |> json_conn()
         |> post(~p"/api/v1/auth/passkey/verify", verify_params(challenge_body, context))
+        |> tap(&assert_operation_response(&1, "auth_passkey_verify"))
         |> json_response(200)
 
       assert user_body["id"] == context.user.id

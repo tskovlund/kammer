@@ -26,7 +26,7 @@ defmodule Kammer.HomeTest do
     {:ok, _sealed_post} = Feed.create_post(member, sealed, %{"body_markdown" => "Board only"})
     {:ok, _post_b} = Feed.create_post(member, group_b, %{"body_markdown" => "B post"})
 
-    {:ok, event_a} =
+    {:ok, _event_a} =
       Events.create_event(member, group_a, %{"title" => "Koncert", "starts_at" => future(48)})
 
     {:ok, _event_b} =
@@ -57,7 +57,6 @@ defmodule Kammer.HomeTest do
     {:ok, _group} = Groups.archive_group(group_a_admin, %{group_a | community: community_a})
     assert Home.upcoming_events(member) == []
     refute "A post" in Enum.map(Home.recent_activity(member), & &1.body_markdown)
-    assert event_a.id
   end
 
   test "non-members see nothing; scheduled posts stay hidden until published" do

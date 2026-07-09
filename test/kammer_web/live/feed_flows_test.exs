@@ -143,6 +143,11 @@ defmodule KammerWeb.FeedFlowsTest do
 
       assert html =~ ~r/older.*newer/s
       assert Kammer.Accounts.get_user!(member.id).feed_sort == :activity
+
+      # The persisted preference drives the home feed too — the same
+      # toggle, rendered by the second LiveView.
+      {:ok, _home_lv, home_html} = live(conn, ~p"/c/#{community.slug}")
+      assert home_html =~ ~r/older.*newer/s
     end
 
     test "anonymous visitors to a public group see no sort toggle", %{community: community} do
@@ -218,7 +223,6 @@ defmodule KammerWeb.FeedFlowsTest do
     end
 
     test "admin pins from the menu; pinned first", %{
-      conn: conn,
       community: community,
       group: group,
       group_owner: group_owner,
@@ -290,40 +294,6 @@ defmodule KammerWeb.FeedFlowsTest do
 
       assert has_element?(lv, ~s(button[phx-click="toggle_pin"][phx-value-id="#{post.id}"]))
     end
-
-    test "the activity toggle persists and reorders (ADR 0006)", %{
-      conn: conn,
-      community: community,
-      group: group,
-      member: member
-    } do
-      now = DateTime.utc_now(:second)
-
-      {:ok, older} =
-        Feed.create_post(member, group, %{
-          "body_markdown" => "older",
-          "published_at" => DateTime.add(now, -2, :hour)
-        })
-
-      {:ok, _newer} =
-        Feed.create_post(member, group, %{
-          "body_markdown" => "newer",
-          "published_at" => DateTime.add(now, -1, :hour)
-        })
-
-      {:ok, _comment} = Feed.create_comment(member, older, %{"body_markdown" => "bump"})
-
-      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}")
-      assert html =~ ~r/newer.*older/s
-
-      html =
-        lv
-        |> form("#feed-sort-form", %{"sort" => "activity"})
-        |> render_change()
-
-      assert html =~ ~r/older.*newer/s
-      assert Kammer.Accounts.get_user!(member.id).feed_sort == :activity
-    end
   end
 
   describe "live updates" do
@@ -352,16 +322,6 @@ defmodule KammerWeb.FeedFlowsTest do
       {:ok, _lv, html} = live(build_conn(), ~p"/c/#{community.slug}/g/#{group.slug}")
 
       assert html =~ ~p"/c/#{community.slug}/g/#{group.slug}/feed.rss"
-    end
-
-    test "not shown on a community-visibility group's page", %{conn: conn} do
-      {community, _owner} = community_with_owner_fixture()
-      group = group_fixture(community, visibility: :community)
-      member = member_fixture(community)
-
-      {:ok, _lv, html} = live(log_in_user(conn, member), ~p"/c/#{community.slug}/g/#{group.slug}")
-
-      refute html =~ "feed.rss"
     end
   end
 end

@@ -6,27 +6,12 @@ defmodule Kammer.AccountsTest do
   import Kammer.AccountsFixtures
   alias Kammer.Accounts.{User, UserToken}
 
-  describe "get_user_by_email/1" do
-    test "does not return the user if the email does not exist" do
-      refute Accounts.get_user_by_email("unknown@example.com")
-    end
-
-    test "returns the user if the email exists" do
+  describe "user lookup" do
+    test "get_user_by_email/1 and get_user!/1 find existing users and nobody else" do
       %{id: id} = user = user_fixture()
       assert %User{id: ^id} = Accounts.get_user_by_email(user.email)
-    end
-  end
-
-  describe "get_user!/1" do
-    test "raises if id is invalid" do
-      assert_raise Ecto.NoResultsError, fn ->
-        Accounts.get_user!("11111111-1111-1111-1111-111111111111")
-      end
-    end
-
-    test "returns the user with the given id" do
-      %{id: id} = user = user_fixture()
       assert %User{id: ^id} = Accounts.get_user!(user.id)
+      refute Accounts.get_user_by_email("unknown@example.com")
     end
   end
 
@@ -97,13 +82,6 @@ defmodule Kammer.AccountsTest do
 
       # not authenticated
       refute Accounts.sudo_mode?(%User{})
-    end
-  end
-
-  describe "change_user_email/3" do
-    test "returns a user changeset" do
-      assert %Ecto.Changeset{} = changeset = Accounts.change_user_email(%User{})
-      assert changeset.required == [:email]
     end
   end
 

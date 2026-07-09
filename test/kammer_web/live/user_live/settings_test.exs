@@ -59,7 +59,7 @@ defmodule KammerWeb.UserLive.SettingsTest do
       assert Accounts.get_user_by_email(user.email)
     end
 
-    test "renders errors with invalid data (phx-change)", %{conn: conn} do
+    test "renders errors with invalid data on change and on submit", %{conn: conn, user: user} do
       {:ok, lv, _html} = live(conn, ~p"/users/settings")
 
       result =
@@ -70,12 +70,7 @@ defmodule KammerWeb.UserLive.SettingsTest do
           "user" => %{"email" => "with spaces"}
         })
 
-      assert result =~ "Change email"
       assert result =~ "must have the @ sign and no spaces"
-    end
-
-    test "renders errors with invalid data (phx-submit)", %{conn: conn, user: user} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
 
       result =
         lv
@@ -84,7 +79,6 @@ defmodule KammerWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Change email"
       assert result =~ "did not change"
     end
   end

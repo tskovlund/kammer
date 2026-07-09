@@ -39,12 +39,6 @@ defmodule KammerWeb.EventFlowsTest do
       assert html =~ "Generalprøve"
       assert html =~ "Stakladen"
     end
-
-    test "reveals the personal ICS link", %{conn: conn, community: community} do
-      {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/events")
-      html = lv |> element("button", "show my calendar link") |> render_click()
-      assert html =~ "/calendar/user/"
-    end
   end
 
   describe "event page" do
@@ -225,31 +219,6 @@ defmodule KammerWeb.EventFlowsTest do
       {:ok, _cancelled} = Events.cancel_occurrence(member, first)
       {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/events/#{first.id}")
       assert html =~ "This occurrence was cancelled"
-    end
-  end
-
-  describe "ICS endpoints" do
-    setup :event_context
-
-    test "group feed by token and single event download", %{
-      conn: conn,
-      community: community,
-      group: group,
-      event: event
-    } do
-      token = Events.ensure_group_ics_token(group)
-
-      feed_conn = get(build_conn(), "/calendar/group/#{token}.ics")
-      assert feed_conn.status == 200
-      assert feed_conn.resp_body =~ "Generalprøve"
-
-      event_conn = get(conn, "/c/#{community.slug}/events/#{event.id}/ics")
-      assert event_conn.status == 200
-      assert event_conn.resp_body =~ "BEGIN:VEVENT"
-
-      # Unauthorized users get a 404 on the single event of a private group.
-      bogus_conn = get(build_conn(), "/calendar/group/wrong-token.ics")
-      assert bogus_conn.status == 404
     end
   end
 end

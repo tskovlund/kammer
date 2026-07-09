@@ -25,6 +25,14 @@ defmodule Kammer.EventsTest do
     end
   end
 
+  defp delivered_emails(acc \\ []) do
+    receive do
+      {:email, email} -> delivered_emails([email | acc])
+    after
+      0 -> Enum.reverse(acc)
+    end
+  end
+
   describe "create_event/3" do
     setup do
       event_context()
@@ -272,7 +280,7 @@ defmodule Kammer.EventsTest do
       assert ics =~ "DTEND;VALUE=DATE:20260804"
     end
 
-    test "group and user feed tokens", %{community: community, group: group, member: member} do
+    test "group and user feed tokens", %{group: group, member: member} do
       {:ok, _event} =
         Events.create_event(member, group, %{"title" => "Feed me", "starts_at" => future(48)})
 
@@ -327,22 +335,21 @@ defmodule Kammer.EventsTest do
                  "starts_at" => DateTime.to_iso8601(event.starts_at)
                })
 
-      import Swoosh.TestAssertions
-
-      assert_email_sent(fn email ->
-        Enum.any?(email.to, fn {_name, address} -> address == member.email end) and
-          email.subject =~ "Reminded" and
-          Enum.any?(email.attachments, fn attachment ->
-            attachment.filename == "event.ics"
-          end)
-      end)
+      # Exactly one email: the yes-RSVP gets the reminder with the ICS
+      # attachment, the no-RSVP owner gets nothing.
+      assert [email] = delivered_emails()
+      assert Enum.any?(email.to, fn {_name, address} -> address == member.email end)
+      refute Enum.any?(email.to, fn {_name, address} -> address == group_owner.email end)
+      assert email.subject =~ "Reminded"
+      assert Enum.any?(email.attachments, fn attachment -> attachment.filename == "event.ics" end)
     end
 
     test "reschedules itself when the event moved", %{group: group, member: member} do
       {:ok, event} =
         Events.create_event(member, group, %{"title" => "Moved", "starts_at" => future(48)})
 
-      {:ok, _updated} = Events.update_event(member, event, %{"starts_at" => future(96)})
+      {:ok, updated} = Events.update_event(member, event, %{"starts_at" => future(96)})
+      drain_delivered_emails()
 
       assert :ok =
                perform_job(Kammer.Workers.EventReminderWorker, %{
@@ -350,9 +357,16 @@ defmodule Kammer.EventsTest do
                  "starts_at" => DateTime.to_iso8601(event.starts_at)
                })
 
-      # A fresh job was enqueued for the new time; no reminder email sent.
-      assert [_job, _rescheduled | _rest] =
-               all_enqueued(worker: Kammer.Workers.EventReminderWorker)
+      # A fresh job was enqueued carrying the new start time, and no
+      # reminder email went out for the stale one.
+      new_starts_at = DateTime.to_iso8601(updated.starts_at)
+
+      assert Enum.any?(
+               all_enqueued(worker: Kammer.Workers.EventReminderWorker),
+               fn job -> job.args["starts_at"] == new_starts_at end
+             )
+
+      assert delivered_emails() == []
     end
   end
 end

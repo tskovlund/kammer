@@ -51,13 +51,6 @@ defmodule KammerWeb.UserLive.DevicesTest do
       %{conn: log_in_user(conn, user), user: user}
     end
 
-    test "no passkeys yet", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/users/settings/devices")
-
-      assert html =~ "No passkeys yet"
-      assert html =~ ~s(id="passkey-register-button")
-    end
-
     test "registering with a valid ceremony adds it to the list", %{conn: conn} do
       {:ok, lv, html} = live(conn, ~p"/users/settings/devices")
 

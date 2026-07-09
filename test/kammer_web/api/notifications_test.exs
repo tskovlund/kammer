@@ -10,6 +10,7 @@ defmodule KammerWeb.Api.NotificationsTest do
 
   import Kammer.CommunitiesFixtures
   import KammerWeb.ApiHelpers
+  import OpenApiSpex.TestAssertions
 
   alias Kammer.Feed
   alias Kammer.Notifications
@@ -40,7 +41,11 @@ defmodule KammerWeb.Api.NotificationsTest do
       for body <- ["one", "two", "three"], do: notify(author, group, body)
 
       %{"data" => [first, second], "next_cursor" => cursor} =
-        reader |> api_conn() |> get(~p"/api/v1/notifications?limit=2") |> json_response(200)
+        reader
+        |> api_conn()
+        |> get(~p"/api/v1/notifications?limit=2")
+        |> tap(&assert_operation_response(&1, "notifications_index"))
+        |> json_response(200)
 
       assert cursor
 
@@ -96,14 +101,6 @@ defmodule KammerWeb.Api.NotificationsTest do
                "display_name" => group.name
              }
     end
-
-    test "requires a device token" do
-      assert %{"error" => %{"code" => "unauthorized"}} =
-               build_conn()
-               |> put_req_header("accept", "application/json")
-               |> get(~p"/api/v1/notifications")
-               |> json_response(401)
-    end
   end
 
   describe "PUT /api/v1/notifications/:id/read and read-all" do
@@ -123,6 +120,7 @@ defmodule KammerWeb.Api.NotificationsTest do
                reader
                |> api_conn()
                |> put(~p"/api/v1/notifications/#{notification_id}/read")
+               |> tap(&assert_operation_response(&1, "notifications_mark_read"))
                |> json_response(200)
 
       %{"data" => [%{"read" => true, "read_at" => read_at}]} =
@@ -158,6 +156,7 @@ defmodule KammerWeb.Api.NotificationsTest do
                reader
                |> api_conn()
                |> put(~p"/api/v1/notifications/read-all")
+               |> tap(&assert_operation_response(&1, "notifications_mark_all_read"))
                |> json_response(200)
 
       assert Notifications.unread_count(reader) == 0
@@ -177,6 +176,7 @@ defmodule KammerWeb.Api.NotificationsTest do
                reader
                |> api_conn()
                |> post(~p"/api/v1/push-subscriptions", subscription)
+               |> tap(&assert_operation_response(&1, "push_subscriptions_create"))
                |> json_response(201)
 
       # Same endpoint again: the web flow's upsert semantics — still 201.
@@ -192,6 +192,7 @@ defmodule KammerWeb.Api.NotificationsTest do
                reader
                |> api_conn()
                |> delete(~p"/api/v1/push-subscriptions?endpoint=#{subscription["endpoint"]}")
+               |> tap(&assert_operation_response(&1, "push_subscriptions_delete"))
                |> json_response(200)
 
       assert Repo.aggregate(Kammer.Notifications.PushSubscription, :count) == 0

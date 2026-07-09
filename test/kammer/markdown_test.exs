@@ -12,11 +12,8 @@ defmodule Kammer.MarkdownTest do
   alias Kammer.Markdown
 
   describe "nil and blank input" do
-    test "nil renders to an empty string" do
+    test "nil and the empty string render to an empty string" do
       assert Markdown.to_html(nil) == ""
-    end
-
-    test "an empty string renders to an empty string" do
       assert Markdown.to_html("") == ""
     end
   end

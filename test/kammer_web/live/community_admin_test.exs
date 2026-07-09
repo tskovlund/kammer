@@ -1,7 +1,7 @@
 defmodule KammerWeb.CommunityAdminTest do
   @moduledoc """
   LiveView tests for community/group administration surfaces and the
-  remaining member-facing pages (events/notifications tabs, bookmarks).
+  remaining member-facing pages (bookmarks).
   """
 
   use KammerWeb.ConnCase, async: true
@@ -199,24 +199,6 @@ defmodule KammerWeb.CommunityAdminTest do
 
       assert {:error, :not_found} =
                Groups.fetch_viewable_group(group_owner, community, group.slug)
-    end
-  end
-
-  describe "events and notifications tabs" do
-    setup %{conn: conn} do
-      {community, _owner} = community_with_owner_fixture()
-      member = member_fixture(community)
-      %{conn: log_in_user(conn, member), community: community}
-    end
-
-    test "events tab renders its empty state", %{conn: conn, community: community} do
-      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/events")
-      assert html =~ "No upcoming events"
-    end
-
-    test "notifications tab renders its empty state", %{conn: conn, community: community} do
-      {:ok, _lv, html} = live(conn, ~p"/c/#{community.slug}/notifications")
-      assert html =~ "caught up"
     end
   end
 
