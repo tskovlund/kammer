@@ -1108,13 +1108,11 @@ defmodule Kammer.Feed do
   @spec toggle_reaction(User.t(), Post.t() | Comment.t(), String.t()) ::
           {:ok, :added | :removed} | {:error, term()}
   def toggle_reaction(%User{} = actor, subject, emoji) do
-    {post, subject_field} =
-      case subject do
-        %Post{} = post -> {post, :post_id}
-        %Comment{} = comment -> {Repo.get!(Post, comment.post_id), :comment_id}
-      end
-
-    group = get_group(post)
+    # A comment can hang off a post, an event, or an assignment; only the
+    # post case has a feed channel to nudge. `comment_context/1` resolves
+    # the host group for every kind, so reactions work on all of them and
+    # only post reactions broadcast a `post_updated`.
+    {group, subject_field, broadcast_target} = reaction_target(subject)
     relationship = Authorization.relationship(actor, group)
 
     if Authorization.can_react?(actor, group, relationship) do
@@ -1145,11 +1143,24 @@ defmodule Kammer.Feed do
             {:ok, :removed}
         end
 
-      broadcast(group, {:post_updated, post.id})
+      if broadcast_target, do: broadcast(group, broadcast_target)
       result
     else
       {:error, :unauthorized}
     end
+  end
+
+  defp reaction_target(%Post{} = post),
+    do: {get_group(post), :post_id, {:post_updated, post.id}}
+
+  defp reaction_target(%Comment{post_id: post_id} = _comment) when is_binary(post_id) do
+    post = Repo.get!(Post, post_id)
+    {get_group(post), :comment_id, {:post_updated, post.id}}
+  end
+
+  defp reaction_target(%Comment{} = comment) do
+    {group, _subject_id} = comment_context(comment)
+    {group, :comment_id, nil}
   end
 
   ## Polls

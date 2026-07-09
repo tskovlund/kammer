@@ -16,6 +16,7 @@ defmodule KammerWeb.ApiError do
     unprocessable: {422, "invalid_params"},
     comments_locked: {422, "comments_locked"},
     poll_closed: {422, "poll_closed"},
+    slot_full: {422, "slot_full"},
     payload_too_large: {413, "payload_too_large"},
     quota_exceeded: {413, "quota_exceeded"},
     rate_limited: {429, "rate_limited"}
@@ -47,6 +48,9 @@ defmodule KammerWeb.ApiError do
 
   def from_result(conn, {:error, :poll_closed}),
     do: send(conn, :poll_closed, "This poll is closed.")
+
+  def from_result(conn, {:error, :slot_full}),
+    do: send(conn, :slot_full, "This signup slot is full.")
 
   def from_result(conn, {:error, :not_acknowledgment_post}),
     do: send(conn, :unprocessable, "This post does not require acknowledgment.")

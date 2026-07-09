@@ -115,7 +115,17 @@ defmodule Kammer.Events do
 
     [
       rsvps: [:user, :guest_identity],
-      comments: [:author_user, replies: [:author_user]],
+      # `:guest_identity` and `:reactions` feed the API serializer (guest
+      # authorship and emoji counts); `:replies` feeds the LiveView's
+      # nested rendering. The comment association is the flat list of all
+      # of an event's comments, so the API serializes it exactly like a
+      # post's comments (one level, keyed by `parent_comment_id`).
+      comments: [
+        :author_user,
+        :guest_identity,
+        reactions: [],
+        replies: [:author_user, :guest_identity]
+      ],
       slots: {slots_query, claims: [:user, :guest_identity]}
     ]
   end

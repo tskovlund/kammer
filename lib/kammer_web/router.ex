@@ -227,7 +227,31 @@ defmodule KammerWeb.Router do
 
     get "/communities/:community_slug/events", EventController, :index
     get "/communities/:community_slug/events/:event_id", EventController, :show
-    put "/communities/:community_slug/events/:event_id/rsvp", EventController, :rsvp
+
+    # Events write parity (issue #180). Creation is group-scoped (an
+    # event belongs to a group); everything else addresses the event by
+    # id within its community. The scope writes the shared prefix once.
+    post "/communities/:community_slug/groups/:group_slug/events", EventController, :create
+
+    scope "/communities/:community_slug/events/:event_id" do
+      put "/rsvp", EventController, :rsvp
+      put "/", EventController, :update
+      delete "/", EventController, :delete
+      # Per-occurrence override (ADR 0019): cancel keeps the row and its
+      # RSVP/comment history, just excludes it from listings and feeds.
+      put "/cancellation", EventController, :cancel
+      delete "/cancellation", EventController, :uncancel
+
+      post "/slots", EventController, :create_slot
+      delete "/slots/:slot_id", EventController, :delete_slot
+      put "/slots/:slot_id/claim", EventController, :claim_slot
+      delete "/slots/:slot_id/claim", EventController, :unclaim_slot
+
+      post "/comments", EventController, :create_comment
+      put "/comments/:comment_id", EventController, :update_comment
+      delete "/comments/:comment_id", EventController, :delete_comment
+      post "/comments/:comment_id/reactions", EventController, :react_comment
+    end
 
     get "/notifications", NotificationController, :index
     # Literal before wildcard, same reason as the browser routes above.

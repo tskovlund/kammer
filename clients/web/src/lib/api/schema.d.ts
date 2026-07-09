@@ -4,34 +4,17 @@
  */
 
 export interface paths {
-	'/api/v1/auth/device-token': {
+	'/api/v1/communities': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		get?: never;
+		/** The device owner's communities */
+		get: operations['communities_index'];
 		put?: never;
 		post?: never;
-		/** Revoke this device token */
-		delete: operations['auth_revoke'];
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/auth/exchange': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/** Exchange a magic token, or an emailed sign-in code, for a device token */
-		post: operations['auth_exchange'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -55,7 +38,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/auth/passkey/verify': {
+	'/api/v1/communities/{community_slug}/events/{event_id}/slots/{slot_id}': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -63,77 +46,26 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		put?: never;
-		/** Verify a passkey assertion for a device token */
-		post: operations['auth_passkey_verify'];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/auth/register': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/** Register an account */
-		post: operations['auth_register'];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/auth/request-link': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/** Request a sign-in link */
-		post: operations['auth_request_link'];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** The device owner's communities */
-		get: operations['communities_index'];
 		put?: never;
 		post?: never;
-		delete?: never;
+		/** Delete a slot and its claims (creator/moderator) */
+		delete: operations['events_delete_slot'];
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/communities/{community_slug}/events': {
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/events': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** Upcoming events */
-		get: operations['events_index'];
+		get?: never;
 		put?: never;
-		post?: never;
+		/** Create an event, or a recurring series */
+		post: operations['events_create'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -149,6 +81,25 @@ export interface paths {
 		};
 		/** Event details with my_rsvp */
 		get: operations['events_show'];
+		/** Edit this occurrence (creator/moderator) */
+		put: operations['events_update'];
+		post?: never;
+		/** Delete an event (creator/moderator) */
+		delete: operations['events_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/instance': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Instance capabilities */
+		get: operations['instance_show'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -157,7 +108,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/communities/{community_slug}/events/{event_id}/rsvp': {
+	'/api/v1/communities/{community_slug}/events/{event_id}/slots/{slot_id}/claim': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -165,94 +116,25 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Set my RSVP */
-		put: operations['events_rsvp'];
+		/** Claim a slot */
+		put: operations['events_claim_slot'];
 		post?: never;
-		delete?: never;
+		/** Release my claim on a slot */
+		delete: operations['events_unclaim_slot'];
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/communities/{community_slug}/groups': {
+	'/api/v1/files/{file_id}': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** Visible groups of a community */
-		get: operations['groups_index'];
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Group feed page (cursor-paginated) */
-		get: operations['posts_index'];
-		put?: never;
-		/** Create a post */
-		post: operations['posts_create'];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		/** Edit a post's body (author) */
-		put: operations['posts_update'];
-		post?: never;
-		/** Delete a post — soft/tombstone (author) or `?hard=true` (moderator) */
-		delete: operations['posts_delete'];
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgment': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		/** Acknowledge a post (idempotent) */
-		put: operations['posts_acknowledge'];
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgments': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Who has and hasn't acknowledged (author/admins) */
-		get: operations['posts_acknowledgments'];
+		/** A stored file's display bytes (inline images, downloads otherwise) */
+		get: operations['files_show'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -278,7 +160,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}': {
+	'/api/v1/notifications/{notification_id}/read': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -286,34 +168,16 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Edit a comment's body (author) */
-		put: operations['comments_update'];
+		/** Mark one notification read */
+		put: operations['notifications_mark_read'];
 		post?: never;
-		/** Delete a comment — soft (author) or hard (moderator); answers the tombstone */
-		delete: operations['comments_delete'];
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/reactions': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/** Toggle my emoji reaction on a comment */
-		post: operations['comments_react'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/pin': {
+	'/api/v1/communities/{community_slug}/events/{event_id}/rsvp': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -321,26 +185,8 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Pin a post (moderator) */
-		put: operations['posts_pin'];
-		post?: never;
-		/** Unpin a post (moderator) */
-		delete: operations['posts_unpin'];
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/poll/votes': {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		/** Set my poll selection (empty list to unvote) */
-		put: operations['poll_vote'];
+		/** Set my RSVP */
+		put: operations['events_rsvp'];
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -365,6 +211,76 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/files/{file_id}/download': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A stored file as a forced download */
+		get: operations['files_download'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Edit an event comment (author) */
+		put: operations['events_update_comment'];
+		post?: never;
+		/** Delete an event comment — soft (author) or hard (moderator) */
+		delete: operations['events_delete_comment'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/pin': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Pin a post (moderator) */
+		put: operations['posts_pin'];
+		post?: never;
+		/** Unpin a post (moderator) */
+		delete: operations['posts_unpin'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgments': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Who has and hasn't acknowledged (author/admins) */
+		get: operations['posts_acknowledgments'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/uploads': {
 		parameters: {
 			query?: never;
@@ -382,15 +298,32 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/files/{file_id}': {
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgment': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** A stored file's display bytes (inline images, downloads otherwise) */
-		get: operations['files_show'];
+		get?: never;
+		/** Acknowledge a post (idempotent) */
+		put: operations['posts_acknowledge'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Visible groups of a community */
+		get: operations['groups_index'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -399,15 +332,49 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/files/{file_id}/download': {
+	'/api/v1/communities/{community_slug}/events/{event_id}/slots': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** A stored file as a forced download */
-		get: operations['files_download'];
+		get?: never;
+		put?: never;
+		/** Add a signup slot (creator/moderator) */
+		post: operations['events_create_slot'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/openapi.json': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** This document */
+		get: operations['openapi'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Upcoming events */
+		get: operations['events_index'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -433,16 +400,16 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/home': {
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/poll/votes': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** Merged Home across communities */
-		get: operations['home_show'];
-		put?: never;
+		get?: never;
+		/** Set my poll selection (empty list to unvote) */
+		put: operations['poll_vote'];
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -450,18 +417,54 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/instance': {
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** Instance capabilities */
-		get: operations['instance_show'];
-		put?: never;
+		get?: never;
+		/** Edit a comment's body (author) */
+		put: operations['comments_update'];
 		post?: never;
+		/** Delete a comment — soft (author) or hard (moderator); answers the tombstone */
+		delete: operations['comments_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events/{event_id}/comments': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Comment on an event */
+		post: operations['events_create_comment'];
 		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Edit a post's body (author) */
+		put: operations['posts_update'];
+		post?: never;
+		/** Delete a post — soft/tombstone (author) or `?hard=true` (moderator) */
+		delete: operations['posts_delete'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -478,6 +481,58 @@ export interface paths {
 		get: operations['notifications_index'];
 		put?: never;
 		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/device-token': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Revoke this device token */
+		delete: operations['auth_revoke'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Group feed page (cursor-paginated) */
+		get: operations['posts_index'];
+		put?: never;
+		/** Create a post */
+		post: operations['posts_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/request-link': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Request a sign-in link */
+		post: operations['auth_request_link'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -501,7 +556,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/notifications/{notification_id}/read': {
+	'/api/v1/auth/register': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -509,26 +564,60 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Mark one notification read */
-		put: operations['notifications_mark_read'];
-		post?: never;
+		put?: never;
+		/** Register an account */
+		post: operations['auth_register'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/api/v1/openapi.json': {
+	'/api/v1/auth/passkey/verify': {
 		parameters: {
 			query?: never;
 			header?: never;
 			path?: never;
 			cookie?: never;
 		};
-		/** This document */
-		get: operations['openapi'];
+		get?: never;
 		put?: never;
-		post?: never;
+		/** Verify a passkey assertion for a device token */
+		post: operations['auth_passkey_verify'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/reactions': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Toggle my emoji reaction on a comment */
+		post: operations['comments_react'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}/reactions': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Toggle my emoji reaction on an event comment */
+		post: operations['events_react_comment'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -548,6 +637,58 @@ export interface paths {
 		post: operations['push_subscriptions_create'];
 		/** Remove a Web Push subscription by endpoint */
 		delete: operations['push_subscriptions_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events/{event_id}/cancellation': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Cancel this occurrence (ADR 0019) */
+		put: operations['events_cancel'];
+		post?: never;
+		/** Reinstate a cancelled occurrence */
+		delete: operations['events_uncancel'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/home': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Merged Home across communities */
+		get: operations['home_show'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/exchange': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Exchange a magic token, or an emailed sign-in code, for a device token */
+		post: operations['auth_exchange'];
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -650,9 +791,21 @@ export interface components {
 		/** Event */
 		Event: {
 			all_day: boolean;
+			/** @description A cancelled occurrence stays viewable but leaves listings and feeds */
+			cancelled: boolean;
+			/** @description Present on event detail, empty on lists */
+			comments: components['schemas']['Comment'][];
+			comments_locked: boolean;
 			description_markdown?: string | null;
 			/** Format: date-time */
 			ends_at?: string | null;
+			/** @description The host group's summary, for provenance without a second fetch */
+			group?: {
+				/** Format: uuid */
+				id: string;
+				name: string;
+				slug: string;
+			} | null;
 			/** Format: uuid */
 			group_id: string;
 			/** Format: uuid */
@@ -666,8 +819,13 @@ export interface components {
 				no: number;
 				yes: number;
 			};
+			/**
+			 * Format: uuid
+			 * @description Set when this event is one occurrence of a recurring series (ADR 0019)
+			 */
+			series_id?: string | null;
 			/** @description Volunteer signup slots — present on event detail, empty on lists */
-			slots?: {
+			slots: {
 				capacity: number;
 				claimants?: components['schemas']['Author'][];
 				/** Format: uuid */
@@ -678,6 +836,32 @@ export interface components {
 			/** Format: date-time */
 			starts_at: string;
 			timezone: string;
+			title: string;
+		};
+		/**
+		 * EventParams
+		 * @description Create or edit an event. On create, an optional `recurrence` object materializes a series (ADR 0019) and the response is the first occurrence carrying its series_id. On edit, changes apply to this occurrence only.
+		 */
+		EventParams: {
+			all_day?: boolean | null;
+			description_markdown?: string | null;
+			/** Format: date-time */
+			ends_at?: string | null;
+			location_name?: string | null;
+			location_url?: string | null;
+			/** @description Create only — turns the event into a bounded recurring series */
+			recurrence?: {
+				/** @enum {string} */
+				frequency: 'weekly' | 'biweekly' | 'monthly';
+				/**
+				 * Format: date
+				 * @description Last date the series may run
+				 */
+				until: string;
+			} | null;
+			/** Format: date-time */
+			starts_at: string;
+			timezone?: string | null;
 			title: string;
 		};
 		/** Group */
@@ -864,7 +1048,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-	auth_revoke: {
+	communities_index: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -873,13 +1057,16 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			/** @description Revoked */
+			/** @description Data envelope */
 			200: {
 				headers: {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': components['schemas']['StatusResponse'];
+					'application/json': {
+						data: components['schemas']['Community'][];
+						next_cursor?: string | null;
+					};
 				};
 			};
 			/** @description Error envelope */
@@ -902,92 +1089,6 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	auth_exchange: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': {
-					/** @description The 8-character sign-in code from the email (case-insensitive) */
-					code?: string | null;
-					device_name?: string | null;
-					/** Format: email */
-					email?: string | null;
-					/** @description The emailed magic-link token. Either this, or email + code. */
-					magic_token?: string | null;
-				};
-			};
-		};
-		responses: {
-			/** @description Device token and user */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['AuthExchangeResponse'];
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1044,315 +1145,14 @@ export interface operations {
 			};
 		};
 	};
-	auth_passkey_verify: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': {
-					/** @description base64url, no padding */
-					authenticator_data?: string;
-					/** @description Returned verbatim from the challenge operation */
-					challenge_token?: string;
-					/** @description base64url, no padding */
-					client_data_json?: string;
-					/** @description base64url, no padding */
-					credential_id?: string;
-					device_name?: string | null;
-					/** @description base64url, no padding */
-					signature?: string;
-				};
-			};
-		};
-		responses: {
-			/** @description Device token and user */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['AuthExchangeResponse'];
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	auth_register: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': {
-					display_name?: string;
-					/** Format: email */
-					email?: string;
-				};
-			};
-		};
-		responses: {
-			/** @description Registered — confirmation email sent */
-			201: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['AuthRegisterResponse'];
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	auth_request_link: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': {
-					/** Format: email */
-					email?: string;
-				};
-			};
-		};
-		responses: {
-			/** @description Always {status: sent} — no account enumeration */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['StatusResponse'];
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	communities_index: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['Community'][];
-						next_cursor?: string | null;
-					};
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	events_index: {
+	events_delete_slot: {
 		parameters: {
 			query?: never;
 			header?: never;
 			path: {
 				community_slug: string;
+				event_id: string;
+				slot_id: string;
 			};
 			cookie?: never;
 		};
@@ -1365,8 +1165,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Event'][];
-						next_cursor?: string | null;
+						data: components['schemas']['Event'];
 					};
 				};
 			};
@@ -1390,6 +1189,89 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['EventParams'];
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -1420,6 +1302,488 @@ export interface operations {
 					'application/json': {
 						data: components['schemas']['Event'];
 					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['EventParams'];
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	instance_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Instance metadata and feature discovery */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Instance'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_claim_slot: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+				slot_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_unclaim_slot: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+				slot_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	files_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The file — served with its own content type */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	comments_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					body_markdown?: string;
+					parent_comment_id?: string | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	notifications_mark_read: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				notification_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Marked read */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -1542,6 +1906,601 @@ export interface operations {
 			};
 		};
 	};
+	posts_react: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					emoji?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	files_download: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The file bytes as an attachment */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_update_comment: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					body_markdown?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_delete_comment: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_pin: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_unpin: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_acknowledgments: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: {
+							acknowledged: components['schemas']['Author'][];
+							pending: components['schemas']['Author'][];
+						};
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	uploads_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'multipart/form-data': {
+					/** Format: binary */
+					file?: string;
+					/** @description Skip the group file space; auto-expires in 30 days */
+					transient?: boolean | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StoredFile'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			413: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_acknowledge: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	groups_index: {
 		parameters: {
 			query?: never;
@@ -1594,18 +2553,145 @@ export interface operations {
 			};
 		};
 	};
-	posts_index: {
+	events_create_slot: {
 		parameters: {
-			query?: {
-				/** @description Opaque cursor from next_cursor */
-				after?: string;
-				/** @description 1..100, default 25 */
-				limit?: string;
-			};
+			query?: never;
 			header?: never;
 			path: {
 				community_slug: string;
-				group_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					capacity?: number;
+					title?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	openapi: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The OpenAPI 3 document */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': Record<string, never>;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
 			};
 			cookie?: never;
 		};
@@ -1618,7 +2704,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Post'][];
+						data: components['schemas']['Event'][];
 						next_cursor?: string | null;
 					};
 				};
@@ -1652,24 +2738,298 @@ export interface operations {
 			};
 		};
 	};
-	posts_create: {
+	files_thumbnail: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The thumbnail bytes */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	poll_vote: {
 		parameters: {
 			query?: never;
 			header?: never;
 			path: {
 				community_slug: string;
 				group_slug: string;
+				post_id: string;
 			};
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
-					acknowledgment_required?: boolean | null;
+					/** @description The full selection: single-choice polls keep the first id, multiple-choice polls keep them all */
+					option_ids?: string[];
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Poll'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	comments_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
 					body_markdown?: string;
-					poll?: components['schemas']['PollParams'];
-					/** @description Ids from the uploads endpoint, in display order — must be the caller's own uploads into this group */
-					stored_file_ids?: string[] | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	comments_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_create_comment: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					body_markdown?: string;
+					parent_comment_id?: string | null;
 				};
 			};
 		};
@@ -1681,7 +3041,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Post'];
+						data: components['schemas']['Comment'];
 					};
 				};
 			};
@@ -1883,15 +3243,16 @@ export interface operations {
 			};
 		};
 	};
-	posts_acknowledge: {
+	notifications_index: {
 		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 25 */
+				limit?: string;
 			};
+			header?: never;
+			path?: never;
 			cookie?: never;
 		};
 		requestBody?: never;
@@ -1903,72 +3264,8 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Post'];
-					};
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	posts_acknowledgments: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: {
-							acknowledged: components['schemas']['Author'][];
-							pending: components['schemas']['Author'][];
-						};
+						data: components['schemas']['Notification'][];
+						next_cursor?: string | null;
 					};
 				};
 			};
@@ -2001,22 +3298,129 @@ export interface operations {
 			};
 		};
 	};
-	comments_create: {
+	auth_revoke: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Revoked */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_index: {
+		parameters: {
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 25 */
+				limit?: string;
+			};
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	posts_create: {
 		parameters: {
 			query?: never;
 			header?: never;
 			path: {
 				community_slug: string;
 				group_slug: string;
-				post_id: string;
 			};
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
+					acknowledgment_required?: boolean | null;
 					body_markdown?: string;
-					parent_comment_id?: string | null;
+					poll?: components['schemas']['PollParams'];
+					/** @description Ids from the uploads endpoint, in display order — must be the caller's own uploads into this group */
+					stored_file_ids?: string[] | null;
 				};
 			};
 		};
@@ -2028,7 +3432,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Comment'];
+						data: components['schemas']['Post'];
 					};
 				};
 			};
@@ -2088,35 +3492,29 @@ export interface operations {
 			};
 		};
 	};
-	comments_update: {
+	auth_request_link: {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
-				comment_id: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		requestBody: {
 			content: {
 				'application/json': {
-					body_markdown?: string;
+					/** Format: email */
+					email?: string;
 				};
 			};
 		};
 		responses: {
-			/** @description Data envelope */
+			/** @description Always {status: sent} — no account enumeration */
 			200: {
 				headers: {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': {
-						data: components['schemas']['Comment'];
-					};
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -2175,29 +3573,22 @@ export interface operations {
 			};
 		};
 	};
-	comments_delete: {
+	notifications_mark_all_read: {
 		parameters: {
 			query?: never;
 			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
-				comment_id: string;
-			};
+			path?: never;
 			cookie?: never;
 		};
 		requestBody?: never;
 		responses: {
-			/** @description Data envelope */
+			/** @description Marked read */
 			200: {
 				headers: {
 					[name: string]: unknown;
 				};
 				content: {
-					'application/json': {
-						data: components['schemas']['Comment'];
-					};
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -2220,6 +3611,178 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	auth_register: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					display_name?: string;
+					/** Format: email */
+					email?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Registered — confirmation email sent */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthRegisterResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	auth_passkey_verify: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description base64url, no padding */
+					authenticator_data?: string;
+					/** @description Returned verbatim from the challenge operation */
+					challenge_token?: string;
+					/** @description base64url, no padding */
+					client_data_json?: string;
+					/** @description base64url, no padding */
+					credential_id?: string;
+					device_name?: string | null;
+					/** @description base64url, no padding */
+					signature?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Device token and user */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthExchangeResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -2316,207 +3879,14 @@ export interface operations {
 			};
 		};
 	};
-	posts_pin: {
+	events_react_comment: {
 		parameters: {
 			query?: never;
 			header?: never;
 			path: {
 				community_slug: string;
-				group_slug: string;
-				post_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['Post'];
-					};
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	posts_unpin: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['Post'];
-					};
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	poll_vote: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'application/json': {
-					/** @description The full selection: single-choice polls keep the first id, multiple-choice polls keep them all */
-					option_ids?: string[];
-				};
-			};
-		};
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['Poll'];
-					};
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	posts_react: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-				post_id: string;
+				event_id: string;
+				comment_id: string;
 			};
 			cookie?: never;
 		};
@@ -2535,7 +3905,7 @@ export interface operations {
 				};
 				content: {
 					'application/json': {
-						data: components['schemas']['Post'];
+						data: components['schemas']['Comment'];
 					};
 				};
 			};
@@ -2586,533 +3956,6 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	uploads_create: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				community_slug: string;
-				group_slug: string;
-			};
-			cookie?: never;
-		};
-		requestBody: {
-			content: {
-				'multipart/form-data': {
-					/** Format: binary */
-					file?: string;
-					/** @description Skip the group file space; auto-expires in 30 days */
-					transient?: boolean | null;
-				};
-			};
-		};
-		responses: {
-			/** @description Data envelope */
-			201: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['StoredFile'];
-					};
-				};
-			};
-			/** @description Error envelope */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			422: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	files_show: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				file_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description The file — served with its own content type */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/octet-stream': string;
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	files_download: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				file_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description The file bytes as an attachment */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/octet-stream': string;
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	files_thumbnail: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				file_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description The thumbnail bytes */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/octet-stream': string;
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	home_show: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Upcoming events and recent activity, labeled */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['HomeResponse'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	instance_show: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Instance metadata and feature discovery */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Instance'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	notifications_index: {
-		parameters: {
-			query?: {
-				/** @description Opaque cursor from next_cursor */
-				after?: string;
-				/** @description 1..100, default 25 */
-				limit?: string;
-			};
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Data envelope */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': {
-						data: components['schemas']['Notification'][];
-						next_cursor?: string | null;
-					};
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	notifications_mark_all_read: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Marked read */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['StatusResponse'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	notifications_mark_read: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				notification_id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description Marked read */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['StatusResponse'];
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-		};
-	};
-	openapi: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description The OpenAPI 3 document */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': Record<string, never>;
-				};
-			};
-			/** @description Error envelope */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			403: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					'application/json': components['schemas']['Error'];
-				};
-			};
-			/** @description Error envelope */
-			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -3247,6 +4090,243 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_cancel: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_uncancel: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	home_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Upcoming events and recent activity, labeled */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HomeResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	auth_exchange: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description The 8-character sign-in code from the email (case-insensitive) */
+					code?: string | null;
+					device_name?: string | null;
+					/** Format: email */
+					email?: string | null;
+					/** @description The emailed magic-link token. Either this, or email + code. */
+					magic_token?: string | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Device token and user */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthExchangeResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};

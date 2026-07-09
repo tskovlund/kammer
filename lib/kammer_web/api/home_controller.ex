@@ -18,10 +18,12 @@ defmodule KammerWeb.Api.HomeController do
     json(conn, %{
       upcoming_events:
         Enum.map(Home.upcoming_events(user), fn event ->
+          # `group` is already on the serialized event; only `community`
+          # (not preloaded by the serializer) is added for merged-Home
+          # labeling.
           event
           |> Serializer.event()
           |> Map.put(:community, Serializer.community(event.group.community))
-          |> Map.put(:group, %{id: event.group.id, name: event.group.name, slug: event.group.slug})
         end),
       recent_activity:
         Enum.map(Home.recent_activity(user), fn post ->

@@ -45,3 +45,8 @@ export function formatDateTime(iso: string, locale: Locale): string {
 export function formatDate(iso: string, locale: Locale): string {
 	return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso));
 }
+
+/** The time without the date — for agenda rows already grouped under a day. */
+export function formatTime(iso: string, locale: Locale): string {
+	return new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(iso));
+}
