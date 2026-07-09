@@ -69,6 +69,39 @@ defmodule KammerWeb.ClientIpTest do
       assert resolve(@proxy, "192.168.1.50") == {192, 168, 1, 50}
     end
 
+    test "a malformed hop left of a valid client never disturbs the selection" do
+      # The walk must stop at the rightmost untrusted VALID hop — an
+      # implementation that eagerly parsed every entry (and fell back
+      # to the peer on any malformed one) would collapse this client
+      # onto the proxy key.
+      trust_proxies(["203.0.113.250"])
+
+      assert resolve(@proxy, "not-an-ip, 198.51.100.7") == {198, 51, 100, 7}
+    end
+
+    test "when every hop is a trusted proxy the peer keys the request" do
+      # No untrusted hop exists to speak for — collapsing to the peer
+      # is the safe floor, never a spoof vector.
+      trust_proxies(["203.0.113.250", "10.0.0.0/8"])
+
+      assert resolve(@proxy, "10.0.0.3, 10.0.0.4") == @proxy
+    end
+
+    test "repeated X-Forwarded-For header lines fold in order" do
+      # Proxies append; Plug folds repeated lines left-to-right, so the
+      # nearest hop is the rightmost entry of the last line — that one
+      # must win the walk.
+      trust_proxies(["203.0.113.250", "10.0.0.0/8"])
+
+      conn =
+        build_conn()
+        |> Map.put(:remote_ip, @proxy)
+        |> put_req_header("x-forwarded-for", "6.6.6.6")
+        |> Plug.Conn.prepend_req_headers([{"x-forwarded-for", "203.0.113.9"}])
+
+      assert ClientIp.call(conn, []).remote_ip == {6, 6, 6, 6}
+    end
+
     test "port-carrying entries from port-appending proxies still resolve" do
       # Some proxies emit "ip:port"; failing to parse these would
       # silently collapse every client onto the proxy's key.
