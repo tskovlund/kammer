@@ -10,6 +10,34 @@ and this project adheres to
 
 ### Added
 
+- Feed write parity over the API (issue #178, part of the #165 parity
+  ladder): reaction toggles on posts and comments; poll voting
+  (`PUT .../poll/votes` sets the whole selection — single-choice keeps
+  the first id, empty list unvotes) with the poll's `my_votes` in the
+  response; post create takes a real, documented `poll` object
+  (options in list order) and `stored_file_ids`; acknowledgments
+  (`PUT .../acknowledgment`, idempotent) plus the author/admin
+  acked-vs-pending view (`GET .../acknowledgments`); post edit
+  (author), delete (author soft-deletes to a tombstone, moderators
+  hard-delete via `?hard=true`), pin/unpin (moderators); comment edit
+  (author, new `Feed.edit_comment/3` — comments now carry an
+  `edited_at` marker) and delete; multipart feed-attachment uploads
+  (`POST .../uploads`, same context path as the LiveView composer) and
+  Bearer-authorized file serving (`GET /api/v1/files/{id}`,
+  `/thumbnail`, `/download` — the browser file routes' logic extracted
+  into a shared `FileServing` module). Serializer/schema growth: post
+  `attachments`/`my_reactions`/`my_acknowledged`/`acknowledged_count`,
+  comment `edited_at`/`reactions`/`my_reactions`, poll `my_votes`
+  (issue #81). Every write goes through the same context functions and
+  authorization as LiveView; writes address posts via
+  `fetch_visible_post`, so an invisible post answers 404 to every verb
+  (issue #156's no-oracle rule extended to writes per issue #161,
+  covered by a write-parity property test). Context hardening the raw
+  transport demanded: feed uploads now require posting rights in the
+  context, `stored_file_ids` must be the author's own uploads into the
+  group (422 otherwise), and locked-comment/closed-poll refusals carry
+  stable `comments_locked`/`poll_closed` error codes (422, previously
+  a generic 400).
 - PWA-native sign-in, server side (issue #177, ADR 0024): API-initiated
   sign-in emails now deep-link into the instance-served PWA
   (`/app/sign-in/{token}`) and carry a short single-use sign-in code

@@ -273,9 +273,16 @@ defmodule Kammer.Feed do
   Built for realtime consumers, which re-fetch per viewer so a
   broadcast can never leak what the feed itself hides.
   """
-  @spec fetch_visible_post(User.t() | nil, Group.t(), Ecto.UUID.t()) ::
+  @spec fetch_visible_post(User.t() | nil, Group.t(), String.t()) ::
           {:ok, Post.t()} | {:error, :not_found}
-  def fetch_visible_post(actor, %Group{} = group, post_id) do
+  def fetch_visible_post(actor, group, post_id) do
+    case Ecto.UUID.cast(post_id) do
+      {:ok, valid_id} -> do_fetch_visible_post(actor, group, valid_id)
+      :error -> {:error, :not_found}
+    end
+  end
+
+  defp do_fetch_visible_post(actor, %Group{} = group, post_id) do
     now = DateTime.utc_now(:second)
 
     # The group and the caller's standing are re-read on every call:
@@ -458,24 +465,73 @@ defmodule Kammer.Feed do
   defp maybe_create_poll(_post, nil), do: {:ok, nil}
   defp maybe_create_poll(_post, poll_attrs) when poll_attrs == %{}, do: {:ok, nil}
 
+  # The API takes a raw `poll` param; anything but an object is a
+  # malformed request, not a changeset's problem.
+  defp maybe_create_poll(_post, poll_attrs) when not is_map(poll_attrs),
+    do: {:error, :invalid_poll}
+
   defp maybe_create_poll(post, poll_attrs) do
     %Poll{post_id: post.id}
     |> Poll.create_changeset(poll_attrs)
     |> Repo.insert()
   end
 
-  defp attach_files(post, stored_file_ids) do
-    stored_file_ids
-    |> Enum.with_index()
-    |> Enum.each(fn {stored_file_id, position} ->
-      Repo.insert!(%PostAttachment{
-        post_id: post.id,
-        stored_file_id: stored_file_id,
-        position: position
-      })
-    end)
+  # Only files the author uploaded into this group may be attached —
+  # the UI can only offer those, but the API takes raw ids, so the
+  # context must enforce it (same stance as post_commentable_by?).
+  # Attaching someone else's file would leak its name and size through
+  # the post, and a bogus id would crash on the FK otherwise.
+  defp attach_files(_post, []), do: :ok
 
-    :ok
+  defp attach_files(post, stored_file_ids) when is_list(stored_file_ids) do
+    with {:ok, valid_ids} <- cast_stored_file_ids(stored_file_ids),
+         :ok <- validate_attachable(post, valid_ids) do
+      valid_ids
+      |> Enum.with_index()
+      |> Enum.each(fn {stored_file_id, position} ->
+        Repo.insert!(%PostAttachment{
+          post_id: post.id,
+          stored_file_id: stored_file_id,
+          position: position
+        })
+      end)
+
+      :ok
+    end
+  end
+
+  defp attach_files(_post, _not_a_list), do: {:error, :invalid_attachment}
+
+  defp cast_stored_file_ids(stored_file_ids) do
+    stored_file_ids
+    |> Enum.reduce_while([], fn id, acc ->
+      case Ecto.UUID.cast(id) do
+        {:ok, valid_id} -> {:cont, [valid_id | acc]}
+        :error -> {:halt, :error}
+      end
+    end)
+    |> case do
+      :error -> {:error, :invalid_attachment}
+      valid_ids -> {:ok, Enum.reverse(valid_ids)}
+    end
+  end
+
+  defp validate_attachable(post, stored_file_ids) do
+    owned_count =
+      Repo.aggregate(
+        from(stored_file in Kammer.Files.StoredFile,
+          where: stored_file.id in ^stored_file_ids,
+          where: stored_file.group_id == ^post.group_id,
+          where: stored_file.uploader_user_id == ^post.author_user_id
+        ),
+        :count
+      )
+
+    if owned_count == length(Enum.uniq(stored_file_ids)) do
+      :ok
+    else
+      {:error, :invalid_attachment}
+    end
   end
 
   @doc """
@@ -972,6 +1028,28 @@ defmodule Kammer.Feed do
 
   defp root_of(%Comment{parent_comment_id: nil} = comment), do: comment.id
   defp root_of(%Comment{parent_comment_id: grandparent_id}), do: grandparent_id
+
+  @doc """
+  Edits a comment's body (author only — admins moderate, never rewrite;
+  SPEC §5). Sets the edited marker; comments keep no separate edit
+  history. One engine for post, event, and assignment comments
+  (ADR 0007).
+  """
+  @spec edit_comment(User.t(), Comment.t(), map()) ::
+          {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+  def edit_comment(%User{} = actor, %Comment{} = comment, attrs) do
+    {group, broadcast_post_id} = comment_context(comment)
+    relationship = Authorization.relationship(actor, group)
+
+    if Authorization.can_edit_comment?(actor, comment, group, relationship) do
+      comment
+      |> Comment.edit_changeset(attrs)
+      |> Repo.update()
+      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+    else
+      {:error, :unauthorized}
+    end
+  end
 
   @doc """
   Soft-deletes a comment (author) or hard-deletes (moderators). Handles

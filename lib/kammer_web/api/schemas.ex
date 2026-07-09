@@ -108,9 +108,20 @@ defmodule KammerWeb.Api.Schemas do
           type: :boolean,
           description: "Guest comments awaiting moderation — visible to moderators only"
         },
-        inserted_at: %Schema{type: :string, format: :"date-time"}
+        inserted_at: %Schema{type: :string, format: :"date-time"},
+        edited_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        reactions: %Schema{
+          type: :object,
+          additionalProperties: %Schema{type: :integer},
+          description: "Emoji → count"
+        },
+        my_reactions: %Schema{
+          type: :array,
+          items: %Schema{type: :string},
+          description: "Emoji the caller has reacted with"
+        }
       },
-      required: [:id, :deleted, :pending_approval, :inserted_at]
+      required: [:id, :deleted, :pending_approval, :inserted_at, :reactions, :my_reactions]
     })
   end
 
@@ -127,6 +138,11 @@ defmodule KammerWeb.Api.Schemas do
         multiple_choice: %Schema{type: :boolean},
         anonymous: %Schema{type: :boolean},
         closes_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        my_votes: %Schema{
+          type: :array,
+          items: %Schema{type: :string, format: :uuid},
+          description: "Option ids the caller currently votes for"
+        },
         options: %Schema{
           type: :array,
           items: %Schema{
@@ -140,7 +156,98 @@ defmodule KammerWeb.Api.Schemas do
           }
         }
       },
-      required: [:id, :multiple_choice, :anonymous, :options]
+      required: [:id, :multiple_choice, :anonymous, :my_votes, :options]
+    })
+  end
+
+  defmodule PollParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "PollParams",
+      description:
+        "A poll to create with a post. The post body is the question; " <>
+          "options keep the order they are sent in.",
+      type: :object,
+      nullable: true,
+      properties: %{
+        multiple_choice: %Schema{type: :boolean, nullable: true},
+        anonymous: %Schema{type: :boolean, nullable: true},
+        closes_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        options: %Schema{
+          type: :array,
+          minItems: 2,
+          items: %Schema{
+            type: :object,
+            properties: %{text: %Schema{type: :string}},
+            required: [:text]
+          }
+        }
+      },
+      required: [:options]
+    })
+  end
+
+  defmodule StoredFile do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "StoredFile",
+      description:
+        "An uploaded file. `id` is what create-post's `stored_file_ids` " <>
+          "takes; the URLs are Bearer-authorized API routes.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        filename: %Schema{type: :string},
+        content_type: %Schema{type: :string},
+        byte_size: %Schema{type: :integer},
+        kind: %Schema{type: :string, enum: ["image", "file"]},
+        width: %Schema{type: :integer, nullable: true},
+        height: %Schema{type: :integer, nullable: true},
+        url: %Schema{type: :string},
+        thumbnail_url: %Schema{type: :string, nullable: true},
+        download_url: %Schema{type: :string}
+      },
+      required: [:id, :filename, :content_type, :byte_size, :kind, :url, :download_url]
+    })
+  end
+
+  defmodule Attachment do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Attachment",
+      description: "A stored file attached to a post, in display order.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        stored_file_id: %Schema{type: :string, format: :uuid},
+        position: %Schema{type: :integer},
+        filename: %Schema{type: :string},
+        content_type: %Schema{type: :string},
+        byte_size: %Schema{type: :integer},
+        kind: %Schema{type: :string, enum: ["image", "file"]},
+        width: %Schema{type: :integer, nullable: true},
+        height: %Schema{type: :integer, nullable: true},
+        url: %Schema{type: :string},
+        thumbnail_url: %Schema{type: :string, nullable: true},
+        download_url: %Schema{type: :string}
+      },
+      required: [
+        :id,
+        :stored_file_id,
+        :position,
+        :filename,
+        :content_type,
+        :byte_size,
+        :kind,
+        :url,
+        :download_url
+      ]
     })
   end
 
@@ -166,12 +273,23 @@ defmodule KammerWeb.Api.Schemas do
         },
         pinned: %Schema{type: :boolean},
         acknowledgment_required: %Schema{type: :boolean},
+        acknowledged_count: %Schema{type: :integer},
+        my_acknowledged: %Schema{
+          type: :boolean,
+          description: "Whether the caller has acknowledged this post"
+        },
         comment_count: %Schema{type: :integer, nullable: true},
         reactions: %Schema{
           type: :object,
           additionalProperties: %Schema{type: :integer},
           description: "Emoji → count"
         },
+        my_reactions: %Schema{
+          type: :array,
+          items: %Schema{type: :string},
+          description: "Emoji the caller has reacted with"
+        },
+        attachments: %Schema{type: :array, items: Attachment},
         poll: Poll,
         comments: %Schema{type: :array, items: Comment}
       },
@@ -182,7 +300,12 @@ defmodule KammerWeb.Api.Schemas do
         :published_at,
         :pending_approval,
         :pinned,
-        :acknowledgment_required
+        :acknowledgment_required,
+        :acknowledged_count,
+        :my_acknowledged,
+        :reactions,
+        :my_reactions,
+        :attachments
       ]
     })
   end

@@ -5,12 +5,21 @@ defmodule KammerWeb.Api.Serializer do
   shape has exactly one home — the OpenAPI schemas mirror these.
   Markdown ships as authored (`*_markdown`); rendering is the client's
   job, exactly as LiveView renders it server-side.
+
+  Viewer-dependent fields (`my_reactions`, `my_votes`,
+  `my_acknowledged`) come from the same preloads the feed already
+  carries — passing the viewer adds no queries, it only filters what
+  is already loaded.
   """
 
+  alias Kammer.Accounts.User
   alias Kammer.Communities.Community
   alias Kammer.Events.Event
   alias Kammer.Feed.Comment
+  alias Kammer.Feed.Poll
   alias Kammer.Feed.Post
+  alias Kammer.Feed.PostAttachment
+  alias Kammer.Files.StoredFile
   alias Kammer.Groups.Group
   alias Kammer.Notifications.Notification
 
@@ -38,8 +47,8 @@ defmodule KammerWeb.Api.Serializer do
     }
   end
 
-  @spec post(Post.t()) :: map()
-  def post(%Post{} = post) do
+  @spec post(Post.t(), User.t() | nil) :: map()
+  def post(%Post{} = post, viewer \\ nil) do
     deleted? = Post.deleted?(post)
 
     %{
@@ -53,15 +62,23 @@ defmodule KammerWeb.Api.Serializer do
       pending_approval: post.pending_approval,
       pinned: post.pinned_at != nil,
       acknowledgment_required: post.acknowledgment_required,
+      acknowledged_count: acknowledged_count(post),
+      my_acknowledged: my_acknowledged(post, viewer),
       comment_count: if(is_list(post.comments), do: length(post.comments)),
       reactions: reaction_counts(post.reactions),
-      poll: poll(post.poll),
-      comments: if(is_list(post.comments), do: Enum.map(post.comments, &comment/1), else: [])
+      my_reactions: my_reactions(post.reactions, viewer),
+      attachments: attachments(post),
+      poll: poll(post.poll, viewer),
+      comments:
+        if(is_list(post.comments),
+          do: Enum.map(post.comments, &comment(&1, viewer)),
+          else: []
+        )
     }
   end
 
-  @spec comment(Comment.t()) :: map()
-  def comment(%Comment{} = comment) do
+  @spec comment(Comment.t(), User.t() | nil) :: map()
+  def comment(%Comment{} = comment, viewer \\ nil) do
     deleted? = comment.deleted_at != nil
 
     %{
@@ -71,8 +88,69 @@ defmodule KammerWeb.Api.Serializer do
       body_markdown: unless(deleted?, do: comment.body_markdown),
       deleted: deleted?,
       pending_approval: comment.pending_approval,
-      inserted_at: comment.inserted_at
+      inserted_at: comment.inserted_at,
+      edited_at: comment.edited_at,
+      reactions: reaction_counts(comment.reactions),
+      my_reactions: my_reactions(comment.reactions, viewer)
     }
+  end
+
+  @doc """
+  A poll with the viewer's current selection — the shape poll-vote
+  responses return, and the `poll` field of a post.
+  """
+  @spec poll(Poll.t() | nil | Ecto.Association.NotLoaded.t(), User.t() | nil) :: map() | nil
+  def poll(poll, viewer \\ nil)
+  def poll(nil, _viewer), do: nil
+  def poll(%Ecto.Association.NotLoaded{}, _viewer), do: nil
+
+  def poll(poll, viewer) do
+    %{
+      id: poll.id,
+      multiple_choice: poll.multiple_choice,
+      anonymous: poll.anonymous,
+      closes_at: poll.closes_at,
+      my_votes: my_votes(poll, viewer),
+      options:
+        Enum.map(poll.options, fn option ->
+          %{id: option.id, text: option.text, votes: length(option.votes)}
+        end)
+    }
+  end
+
+  @doc """
+  A stored file: metadata plus the API file URLs (`/api/v1/files/...`,
+  Bearer-authorized like every other API route). The upload endpoint
+  returns this shape; its `id` is what create-post's `stored_file_ids`
+  takes.
+  """
+  @spec stored_file(StoredFile.t()) :: map()
+  def stored_file(%StoredFile{} = stored_file) do
+    %{
+      id: stored_file.id,
+      filename: stored_file.filename,
+      content_type: stored_file.content_type,
+      byte_size: stored_file.byte_size,
+      kind: stored_file.kind,
+      width: stored_file.width,
+      height: stored_file.height,
+      url: "/api/v1/files/#{stored_file.id}",
+      thumbnail_url:
+        if(stored_file.thumbnail_key, do: "/api/v1/files/#{stored_file.id}/thumbnail"),
+      download_url: "/api/v1/files/#{stored_file.id}/download"
+    }
+  end
+
+  @doc """
+  A stored file as a feed attachment: the stored-file shape keyed by
+  the attachment link (`id`/`position`), `stored_file_id` pointing at
+  the file itself.
+  """
+  @spec attachment(PostAttachment.t()) :: map()
+  def attachment(%PostAttachment{stored_file: %StoredFile{} = file} = attachment) do
+    file
+    |> stored_file()
+    |> Map.merge(%{id: attachment.id, stored_file_id: file.id, position: attachment.position})
   end
 
   @spec event(Event.t(), Kammer.Events.EventRsvp.t() | nil) :: map()
@@ -187,21 +265,42 @@ defmodule KammerWeb.Api.Serializer do
 
   defp reaction_counts(_not_loaded), do: %{}
 
-  defp poll(nil), do: nil
-  defp poll(%Ecto.Association.NotLoaded{}), do: nil
-
-  defp poll(poll) do
-    %{
-      id: poll.id,
-      multiple_choice: poll.multiple_choice,
-      anonymous: poll.anonymous,
-      closes_at: poll.closes_at,
-      options:
-        Enum.map(poll.options, fn option ->
-          %{id: option.id, text: option.text, votes: length(option.votes)}
-        end)
-    }
+  defp my_reactions(reactions, %User{id: viewer_id}) when is_list(reactions) do
+    for reaction <- reactions, reaction.user_id == viewer_id, do: reaction.emoji
   end
+
+  defp my_reactions(_reactions, _viewer), do: []
+
+  defp my_votes(%{options: options}, %User{id: viewer_id}) when is_list(options) do
+    for option <- options,
+        is_list(option.votes),
+        vote <- option.votes,
+        vote.user_id == viewer_id,
+        do: option.id
+  end
+
+  defp my_votes(_poll, _viewer), do: []
+
+  defp acknowledged_count(%Post{acknowledgments: acknowledgments})
+       when is_list(acknowledgments),
+       do: length(acknowledgments)
+
+  defp acknowledged_count(_post), do: 0
+
+  defp my_acknowledged(%Post{acknowledgments: acknowledgments}, %User{id: viewer_id})
+       when is_list(acknowledgments),
+       do: Enum.any?(acknowledgments, &(&1.user_id == viewer_id))
+
+  defp my_acknowledged(_post, _viewer), do: false
+
+  defp attachments(%Post{attachments: attachment_list}) when is_list(attachment_list) do
+    attachment_list
+    |> Enum.filter(&match?(%PostAttachment{stored_file: %StoredFile{}}, &1))
+    |> Enum.sort_by(& &1.position)
+    |> Enum.map(&attachment/1)
+  end
+
+  defp attachments(_post), do: []
 
   defp rsvp_counts(%Event{rsvps: rsvps}) when is_list(rsvps) do
     Map.merge(

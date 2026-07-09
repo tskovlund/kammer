@@ -14,6 +14,8 @@ defmodule KammerWeb.ApiError do
     forbidden: {403, "forbidden"},
     not_found: {404, "not_found"},
     unprocessable: {422, "invalid_params"},
+    comments_locked: {422, "comments_locked"},
+    poll_closed: {422, "poll_closed"},
     rate_limited: {429, "rate_limited"}
   }
 
@@ -37,6 +39,21 @@ defmodule KammerWeb.ApiError do
 
   def from_result(conn, {:error, :rate_limited}),
     do: send(conn, :rate_limited, "Too many attempts. Try again later.")
+
+  def from_result(conn, {:error, :comments_locked}),
+    do: send(conn, :comments_locked, "Comments are locked on this post.")
+
+  def from_result(conn, {:error, :poll_closed}),
+    do: send(conn, :poll_closed, "This poll is closed.")
+
+  def from_result(conn, {:error, :not_acknowledgment_post}),
+    do: send(conn, :unprocessable, "This post does not require acknowledgment.")
+
+  def from_result(conn, {:error, :invalid_attachment}),
+    do: send(conn, :unprocessable, "stored_file_ids must be files you uploaded to this group.")
+
+  def from_result(conn, {:error, :invalid_poll}),
+    do: send(conn, :bad_request, "poll must be an object.")
 
   def from_result(conn, {:error, %Ecto.Changeset{} = changeset}) do
     details =

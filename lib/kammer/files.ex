@@ -73,13 +73,23 @@ defmodule Kammer.Files do
       "transient_expires_at" => transient_expires_at
     }
 
-    with :ok <- check_upload_rate_limit(uploader.id),
+    # Feed uploads exist to be attached to a post, so posting rights
+    # are the gate. The LiveView composer only renders for posters;
+    # the API takes raw requests, so the context enforces it for both.
+    relationship = Authorization.relationship(uploader, group)
+
+    with true <-
+           Authorization.can?(uploader, :post_in_group, group, relationship) || :unauthorized,
+         :ok <- check_upload_rate_limit(uploader.id),
          :ok <- check_quota(group, source_path) do
       if Media.image_content_type?(declared_content_type) do
         store_image(source_path, base_attrs)
       else
         store_plain_file(source_path, declared_content_type, base_attrs)
       end
+    else
+      :unauthorized -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
