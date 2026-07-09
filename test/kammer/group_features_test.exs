@@ -95,7 +95,7 @@ defmodule Kammer.GroupFeaturesTest do
     # at the transport by EventWritesTest "a hidden event 404s").
     assert {:error, :unauthorized} = Events.fetch_viewable_event(onlooker, community, event.id)
 
-    {:ok, _gated} = Groups.update_group_features(admin, group, ["feed", "files"])
+    {:ok, gated} = Groups.update_group_features(admin, group, ["feed", "files"])
 
     # For the member of the gated-off group the event now reads exactly
     # like one that never existed — same tuple, nothing to distinguish.
@@ -104,5 +104,11 @@ defmodule Kammer.GroupFeaturesTest do
 
     assert disabled_result ==
              Events.fetch_viewable_event(member, community, Ecto.UUID.generate())
+
+    # Back on: the same event is reachable again — gating off deleted
+    # nothing. (The updated struct matters: a stale one can make the
+    # changeset a no-op.)
+    {:ok, _reenabled} = Groups.update_group_features(admin, gated, ["feed", "files", "events"])
+    assert {:ok, _event} = Events.fetch_viewable_event(member, community, event.id)
   end
 end

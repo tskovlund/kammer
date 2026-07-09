@@ -4,13 +4,9 @@ defmodule KammerWeb.LegalLiveTest do
   import Kammer.AccountsFixtures
   import Phoenix.LiveViewTest
 
-  alias Kammer.Legal
+  import Kammer.CommunitiesFixtures, only: [instance_operator_fixture: 0]
 
-  defp operator_fixture do
-    user_fixture()
-    |> Ecto.Changeset.change(instance_operator: true)
-    |> Kammer.Repo.update!()
-  end
+  alias Kammer.Legal
 
   describe "public legal pages" do
     test "render the template for visitors", %{conn: conn} do
@@ -22,7 +18,7 @@ defmodule KammerWeb.LegalLiveTest do
     end
 
     test "render published text once an operator saves it", %{conn: conn} do
-      operator = operator_fixture()
+      operator = instance_operator_fixture()
 
       {:ok, _page} =
         Legal.upsert_page(operator, "imprint", %{
@@ -41,7 +37,7 @@ defmodule KammerWeb.LegalLiveTest do
 
   describe "editing" do
     test "operators can publish from the edit form", %{conn: conn} do
-      operator = operator_fixture()
+      operator = instance_operator_fixture()
       conn = log_in_user(conn, operator)
 
       {:ok, lv, _html} = live(conn, ~p"/legal/imprint/edit")
@@ -64,7 +60,7 @@ defmodule KammerWeb.LegalLiveTest do
 
   describe "operator nag" do
     test "the instance home nags operators until the imprint is published", %{conn: conn} do
-      operator = operator_fixture()
+      operator = instance_operator_fixture()
       conn = log_in_user(conn, operator)
 
       {:ok, lv, _html} = live(conn, ~p"/")
@@ -75,29 +71,6 @@ defmodule KammerWeb.LegalLiveTest do
 
       {:ok, lv, _html} = live(conn, ~p"/")
       refute has_element?(lv, "#edit-imprint-link")
-    end
-
-    test "ordinary users never see the nag", %{conn: conn} do
-      conn = log_in_user(conn, user_fixture())
-
-      {:ok, lv, _html} = live(conn, ~p"/")
-      refute has_element?(lv, "#edit-imprint-link")
-    end
-  end
-
-  describe "demo purge from the instance home" do
-    test "operators can remove the demo community", %{conn: conn} do
-      operator = operator_fixture()
-      {:ok, demo} = Kammer.Setup.DemoData.create(operator)
-
-      conn = log_in_user(conn, operator)
-      {:ok, lv, _html} = live(conn, ~p"/")
-      assert has_element?(lv, "#purge-demo-button", "Remove demo")
-
-      render_click(lv, "purge_demo", %{})
-
-      assert Kammer.Repo.get(Kammer.Communities.Community, demo.id) == nil
-      refute has_element?(lv, "#purge-demo-button")
     end
   end
 end

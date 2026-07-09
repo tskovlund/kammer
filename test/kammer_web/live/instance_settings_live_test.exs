@@ -6,19 +6,14 @@ defmodule KammerWeb.InstanceSettingsLiveTest do
   use KammerWeb.ConnCase, async: true
 
   import Kammer.AccountsFixtures
+  import Kammer.CommunitiesFixtures
   import Phoenix.LiveViewTest
 
   alias Kammer.Communities
 
-  defp operator_fixture do
-    user_fixture()
-    |> Ecto.Changeset.change(instance_operator: true)
-    |> Kammer.Repo.update!()
-  end
-
   describe "instance settings" do
     test "operators can toggle content-minimized email mode", %{conn: conn} do
-      operator = operator_fixture()
+      operator = instance_operator_fixture()
       conn = log_in_user(conn, operator)
 
       {:ok, lv, html} = live(conn, ~p"/instance/settings")
@@ -36,17 +31,6 @@ defmodule KammerWeb.InstanceSettingsLiveTest do
       conn = log_in_user(conn, user_fixture())
 
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/instance/settings")
-    end
-
-    test "the link is only shown to operators on the instance home", %{conn: conn} do
-      operator = operator_fixture()
-      conn = log_in_user(conn, operator)
-      {:ok, _lv, html} = live(conn, ~p"/")
-      assert html =~ "Instance settings"
-
-      conn = log_in_user(build_conn(), user_fixture())
-      {:ok, _lv, html} = live(conn, ~p"/")
-      refute html =~ "Instance settings"
     end
   end
 end

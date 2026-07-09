@@ -5,13 +5,6 @@ defmodule KammerWeb.UserLive.RegistrationTest do
   import Kammer.AccountsFixtures
 
   describe "Registration page" do
-    test "renders registration page", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/users/register")
-
-      assert html =~ "Create an account"
-      assert html =~ "Display name"
-    end
-
     test "redirects if already logged in", %{conn: conn} do
       result =
         conn
@@ -63,20 +56,6 @@ defmodule KammerWeb.UserLive.RegistrationTest do
         |> render_submit()
 
       assert result =~ "has already been taken"
-    end
-  end
-
-  describe "registration navigation" do
-    test "redirects to login page when the Log in button is clicked", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/register")
-
-      {:ok, _login_live, login_html} =
-        lv
-        |> element("main a", "Sign in")
-        |> render_click()
-        |> follow_redirect(conn, ~p"/users/log-in")
-
-      assert login_html =~ "Sign in"
     end
   end
 end

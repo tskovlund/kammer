@@ -139,8 +139,29 @@ defmodule Kammer.GuestRsvpTest do
       assert rsvp.user_id == nil
     end
 
-    test "rejects garbage and expired-format tokens" do
+    test "rejects garbage and expired tokens" do
       assert {:error, :invalid} = Events.confirm_guest_rsvp("garbage", fn _token -> "unused" end)
+
+      # A validly-signed token past the 48-hour confirm window is just
+      # as dead. Signed with the same secret/salt `Kammer.Guests.Token`
+      # uses, but back-dated beyond the max age.
+      %{event: event} = public_event_context()
+
+      expired =
+        Plug.Crypto.sign(
+          Application.get_env(:kammer, KammerWeb.Endpoint)[:secret_key_base],
+          "guest confirm",
+          %{
+            event_id: event.id,
+            email: "forsinket@example.org",
+            display_name: "Forsinket",
+            status: :yes
+          },
+          signed_at: System.system_time(:second) - 60 * 60 * 49
+        )
+
+      assert {:error, :invalid} = Events.confirm_guest_rsvp(expired, fn _token -> "unused" end)
+      assert Repo.aggregate(GuestIdentity, :count) == 0
     end
 
     test "confirming twice keeps one RSVP with the latest answer" do

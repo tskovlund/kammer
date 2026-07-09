@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.ResourcesTest do
 
   import Kammer.CommunitiesFixtures
   import KammerWeb.ApiHelpers
+  import OpenApiSpex.TestAssertions
 
   alias Kammer.Events
   alias Kammer.Feed
@@ -73,7 +74,11 @@ defmodule KammerWeb.Api.ResourcesTest do
       path = ~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/posts"
 
       %{"data" => [first, second], "next_cursor" => cursor} =
-        member |> api_conn() |> get(path <> "?limit=2") |> json_response(200)
+        member
+        |> api_conn()
+        |> get(path <> "?limit=2")
+        |> tap(&assert_operation_response(&1, "posts_index"))
+        |> json_response(200)
 
       assert cursor
       assert first["author"]["type"] == "user"
@@ -104,6 +109,7 @@ defmodule KammerWeb.Api.ResourcesTest do
         member
         |> api_conn()
         |> post(path, %{"body_markdown" => "Via API"})
+        |> tap(&assert_operation_response(&1, "posts_create"))
         |> json_response(201)
 
       assert created["body_markdown"] == "Via API"
@@ -112,6 +118,7 @@ defmodule KammerWeb.Api.ResourcesTest do
         member
         |> api_conn()
         |> post(path <> "/#{created["id"]}/comments", %{"body_markdown" => "First!"})
+        |> tap(&assert_operation_response(&1, "comments_create"))
         |> json_response(201)
 
       assert comment["body_markdown"] == "First!"
@@ -212,6 +219,7 @@ defmodule KammerWeb.Api.ResourcesTest do
         member
         |> api_conn()
         |> get(~p"/api/v1/communities/#{community.slug}/events")
+        |> tap(&assert_operation_response(&1, "events_index"))
         |> json_response(200)
 
       assert listed["title"] == "API-koncert"
@@ -222,12 +230,14 @@ defmodule KammerWeb.Api.ResourcesTest do
         |> put(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/rsvp", %{
           "status" => "yes"
         })
+        |> tap(&assert_operation_response(&1, "events_rsvp"))
         |> json_response(200)
 
       %{"data" => shown} =
         member
         |> api_conn()
         |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}")
+        |> tap(&assert_operation_response(&1, "events_show"))
         |> json_response(200)
 
       assert shown["my_rsvp"] == "yes"

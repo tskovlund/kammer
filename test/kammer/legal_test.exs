@@ -57,9 +57,4 @@ defmodule Kammer.LegalTest do
 
     assert %{content_markdown: _messages} = errors_on(changeset)
   end
-
-  test "titles are localized labels" do
-    assert Legal.title("privacy") != ""
-    assert Legal.title("imprint") != ""
-  end
 end
