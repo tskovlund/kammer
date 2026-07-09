@@ -45,7 +45,11 @@ defmodule KammerWeb.ApiSpec do
         get:
           operation("Instance capabilities", :instance_show, [],
             security: [],
-            response: json_response("Instance metadata and feature discovery", Schemas.Instance)
+            response:
+              json_response(
+                "Instance metadata, versions, and feature discovery",
+                Schemas.Instance
+              )
           )
       },
       "/api/v1/auth/register" => %PathItem{

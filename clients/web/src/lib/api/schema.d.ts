@@ -14,7 +14,7 @@ export interface paths {
 		get?: never;
 		put?: never;
 		post?: never;
-		/** Delete a folder (managers; files fall back to the root) */
+		/** Delete a folder (managers). Files fall back to the root and take its visibility — a restrictive read override does not follow them */
 		delete: operations['file_library_delete_folder'];
 		options?: never;
 		head?: never;
@@ -1117,6 +1117,8 @@ export interface components {
 				web_push: boolean;
 			};
 			instance_name: string;
+			/** @description Advisory SemVer floor for the native-app handshake (#203): clients below it should fence themselves — the server does not reject them. Null means any client is fine. */
+			min_client_version: string | null;
 			version: string;
 		};
 		/**
@@ -1740,7 +1742,7 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			/** @description Instance metadata and feature discovery */
+			/** @description Instance metadata, versions, and feature discovery */
 			200: {
 				headers: {
 					[name: string]: unknown;

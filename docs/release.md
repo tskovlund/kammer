@@ -24,7 +24,12 @@ release is bad, ship a fix-forward patch release, never re-tag.
    process above.
 
 2. **Bump the version** in `mix.exs` (`version: "X.Y.Z"`). The release
-   workflow refuses tags that don't match it.
+   workflow refuses tags that don't match it. After tagging, bump
+   `main` **forward** to the next pre-release (`"X.Y.(Z+1)-dev"`) —
+   never back to `"X.Y.Z-dev"`: a `-dev` suffix sorts _below_ its
+   release in SemVer, so a wrong-direction bump makes every instance
+   built from post-release `main` show operators a "newer version
+   available" notice for a release older than the code it runs.
 3. **PR and merge** those two changes to `main` (required checks
    apply, like any change).
 4. **Tag the merge commit:**

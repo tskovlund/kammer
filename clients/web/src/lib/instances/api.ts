@@ -23,29 +23,53 @@ async function guardNetworkError<T>(request: () => Promise<T>, message: string):
 }
 
 /**
- * Capability discovery (RFC 0001) before sign-in: confirms `baseUrl` is a
- * real Kammer instance and surfaces its display name for the add-instance
+ * The one call site for the capability-discovery endpoint (RFC 0001):
+ * both the add-instance probe and the You page's version line read it.
+ * Resolves to the instance metadata, or `null` for any HTTP- or
+ * network-level failure and for non-Kammer servers that answer 200
+ * JSON on unknown paths (which must not become a stored instance named
+ * "undefined", nor show a bogus version) — callers decide whether
+ * `null` is fatal.
+ */
+async function fetchInstanceMetadata(baseUrl: string) {
+	try {
+		const client = createApiClient(baseUrl);
+		const { data, error } = await client.GET('/api/v1/instance');
+		if (error || !data || typeof data.instance_name !== 'string' || !data.instance_name) {
+			return null;
+		}
+		return data;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Capability discovery before sign-in: confirms `baseUrl` is a real
+ * Kammer instance and surfaces its display name for the add-instance
  * screen, without needing credentials yet.
  */
 export async function probeInstance(
 	baseUrl: string
 ): Promise<{ instanceName: string; registrationOpen: boolean }> {
-	return guardNetworkError(async () => {
-		const client = createApiClient(baseUrl);
-		const { data, error } = await client.GET('/api/v1/instance');
-		if (error || !data) {
-			throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
-		}
-		if (typeof data.instance_name !== 'string' || data.instance_name.length === 0) {
-			// A non-Kammer server that answers 200 JSON on unknown paths
-			// must not become a stored instance named "undefined".
-			throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
-		}
-		return {
-			instanceName: data.instance_name,
-			registrationOpen: data.features.registration === 'open'
-		};
-	}, `${baseUrl} doesn't look like a Kammer instance.`);
+	const data = await fetchInstanceMetadata(baseUrl);
+	if (!data) {
+		throw new InstanceApiError(`${baseUrl} doesn't look like a Kammer instance.`);
+	}
+	return {
+		instanceName: data.instance_name,
+		registrationOpen: data.features.registration === 'open'
+	};
+}
+
+/**
+ * The server's product version for the You page's about line (#204).
+ * Best effort by design: `null`, never a thrown error, when the
+ * instance can't answer — a version footnote must not break settings.
+ */
+export async function fetchServerVersion(baseUrl: string): Promise<string | null> {
+	const version = (await fetchInstanceMetadata(baseUrl))?.version;
+	return typeof version === 'string' && version ? version : null;
 }
 
 export async function requestLink(baseUrl: string, email: string): Promise<void> {
