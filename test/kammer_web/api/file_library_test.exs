@@ -89,6 +89,31 @@ defmodule KammerWeb.Api.FileLibraryTest do
       assert listing["can_write"] == false
       assert listing["can_manage"] == false
     end
+
+    test "an entry-less feed upload carries its uploader in the detail view", %{
+      community: community,
+      group: group,
+      member: member,
+      tmp_dir: tmp_dir
+    } do
+      # Feed/comment attachments are entry-less StoredFiles (no version
+      # history), so the detail view falls back to the file itself — which
+      # must still be preloaded with its uploader the way the folder listing
+      # is. Regression: detail-by-id previously returned uploaded_by: null.
+      path = Path.join(tmp_dir, "feed-#{System.unique_integer([:positive])}.txt")
+      File.write!(path, "attached")
+      {:ok, stored} = Files.create_from_upload(member, group, path, %{filename: "poster.txt"})
+
+      %{"data" => detail} =
+        member
+        |> api_conn()
+        |> get("/api/v1/communities/#{community.slug}/groups/#{group.slug}/files/#{stored.id}")
+        |> json_response(200)
+
+      assert detail["file_entry_id"] == nil
+      assert detail["uploaded_by"]["id"] == member.id
+      assert detail["versions"] == []
+    end
   end
 
   describe "upload and versions" do

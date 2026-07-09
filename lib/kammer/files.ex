@@ -290,7 +290,10 @@ defmodule Kammer.Files do
     with {:ok, _uuid} <- Ecto.UUID.cast(file_id),
          %StoredFile{} = stored_file <- Repo.get(StoredFile, file_id),
          :ok <- authorize_file_access(actor, stored_file) do
-      {:ok, stored_file}
+      # Preload the uploader so detail/version responses carry `uploaded_by`
+      # just like the folder listing does (which preloads it explicitly) —
+      # otherwise an entry-less feed upload loses its uploader when opened.
+      {:ok, Repo.preload(stored_file, :uploader_user)}
     else
       {:error, :unauthorized} -> {:error, :unauthorized}
       _missing_or_invalid -> {:error, :not_found}

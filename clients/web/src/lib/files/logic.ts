@@ -27,10 +27,17 @@ export function isImage(file: { kind: string }): boolean {
 }
 
 /**
- * Whether the caller may delete this file: their own upload, or a space
- * manager. Advisory only — the server enforces it regardless; this drives
- * which affordances the UI offers.
+ * Whether the library should offer a delete affordance for this file: the
+ * caller's own upload or a space manager, AND it's a real library entry.
+ * Entry-less files (`file_entry_id == null`) are feed/comment attachments
+ * that merely surface in the "Feed uploads" system folder — they're owned by
+ * their post, and deleting one here cascades it out of that post, so the
+ * library doesn't offer it (delete the post instead). Advisory only — the
+ * server enforces permissions regardless; this just drives the UI.
  */
-export function canDeleteFile(file: Pick<LibraryFile, 'mine'>, canManage: boolean): boolean {
-	return file.mine || canManage;
+export function canDeleteFile(
+	file: Pick<LibraryFile, 'mine' | 'file_entry_id'>,
+	canManage: boolean
+): boolean {
+	return (file.mine || canManage) && file.file_entry_id != null;
 }

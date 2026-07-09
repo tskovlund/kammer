@@ -35,9 +35,17 @@ describe('isImage', () => {
 });
 
 describe('canDeleteFile', () => {
-	it('lets the uploader or a manager delete', () => {
-		expect(canDeleteFile({ mine: true }, false)).toBe(true);
-		expect(canDeleteFile({ mine: false }, true)).toBe(true);
-		expect(canDeleteFile({ mine: false }, false)).toBe(false);
+	it('lets the uploader or a manager delete a real library entry', () => {
+		expect(canDeleteFile({ mine: true, file_entry_id: 'e1' }, false)).toBe(true);
+		expect(canDeleteFile({ mine: false, file_entry_id: 'e1' }, true)).toBe(true);
+		expect(canDeleteFile({ mine: false, file_entry_id: 'e1' }, false)).toBe(false);
+	});
+
+	it('never offers delete for an entry-less feed upload (owned by its post)', () => {
+		// A feed/comment attachment surfacing in the "Feed uploads" folder:
+		// deleting it here would cascade it out of its post, so the library
+		// withholds the affordance even from its uploader or a manager.
+		expect(canDeleteFile({ mine: true, file_entry_id: null }, true)).toBe(false);
+		expect(canDeleteFile({ mine: true, file_entry_id: null }, false)).toBe(false);
 	});
 });

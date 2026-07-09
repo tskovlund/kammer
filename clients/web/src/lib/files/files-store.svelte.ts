@@ -153,7 +153,12 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 		if (!detail) return;
 		try {
 			await api.deleteVersion(instance, ref, detail.id, versionId);
-			detail = await api.fetchFile(instance, ref, detail.id);
+			// `detail.id` is the current version's stored-file id, which may be
+			// the one we just deleted — refetching by it would 404. The server
+			// returns the entry's state given *any* surviving version id, so
+			// refetch by one that outlived the delete.
+			const survivor = detail.versions.find((version) => version.id !== versionId);
+			detail = await api.fetchFile(instance, ref, survivor?.id ?? detail.id);
 			await load();
 		} catch (error) {
 			report(error);

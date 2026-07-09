@@ -81,6 +81,7 @@ const mockListing = vi.mocked(api.fetchListing);
 const mockFile = vi.mocked(api.fetchFile);
 const mockUpload = vi.mocked(api.uploadFile);
 const mockDeleteFile = vi.mocked(api.deleteFile);
+const mockDeleteVersion = vi.mocked(api.deleteVersion);
 
 const ref = { community: 'c', group: 'g' };
 
@@ -174,5 +175,32 @@ describe('createFilesStore', () => {
 		expect(store.detail?.id).toBe('a');
 		store.closeVersions();
 		expect(store.detail).toBeNull();
+	});
+
+	it('deleting the current version refetches by a surviving id, not the deleted one', async () => {
+		mockListing.mockResolvedValue(listing());
+		// The head version's id equals the file's id; deleting it must not
+		// refetch by that (now-gone) id, or the server 404s and the sheet
+		// shows a spurious error over a delete that actually succeeded.
+		const detail = {
+			...file('a', 'a.txt'),
+			versions: [
+				{ id: 'a', version_seq: 2, current: true } as never,
+				{ id: 'a0', version_seq: 1, current: false } as never
+			]
+		};
+		mockFile.mockResolvedValueOnce(detail);
+		const store = createFilesStore(instance(), ref);
+		await store.load(null);
+		await store.openVersions(file('a', 'a.txt'));
+
+		mockDeleteVersion.mockResolvedValueOnce(undefined as never);
+		mockFile.mockResolvedValueOnce({ ...file('a0', 'a.txt'), id: 'a0' });
+		await store.removeVersion('a');
+
+		// Refetched by the survivor 'a0', and no error was surfaced.
+		expect(mockDeleteVersion).toHaveBeenCalledWith(expect.anything(), ref, 'a', 'a');
+		expect(mockFile).toHaveBeenLastCalledWith(expect.anything(), ref, 'a0');
+		expect(store.actionError).toBeNull();
 	});
 });

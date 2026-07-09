@@ -6,7 +6,7 @@
 	import FolderMenu from '$lib/files/components/FolderMenu.svelte';
 	import VersionSheet from '$lib/files/components/VersionSheet.svelte';
 	import type { Folder, LibraryFile } from '$lib/files/types.js';
-	import { formatBytes, isImage } from '$lib/files/logic.js';
+	import { canDeleteFile, formatBytes, isImage } from '$lib/files/logic.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import AuthedImage from '$lib/ui/AuthedImage.svelte';
@@ -338,7 +338,7 @@
 							<Button variant="ghost" size="sm" onclick={() => download(file)}>
 								{t('files.download')}
 							</Button>
-							{#if file.mine || store.canManage}
+							{#if canDeleteFile(file, store.canManage)}
 								<button
 									type="button"
 									class="rounded-lg p-1.5 text-ink-muted hover:bg-danger/5 hover:text-danger"
