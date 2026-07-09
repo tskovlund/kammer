@@ -422,9 +422,18 @@ defmodule Kammer.Accounts do
   end
 
   defp consume_login_token({user, token}) do
-    Repo.delete!(token)
-    Kammer.Guests.claim_history(user)
-    {:ok, {user, []}}
+    # Atomic single-use: two concurrent exchanges of the same token
+    # race on this delete — the loser must get the same neutral
+    # not-found as any spent token, not a StaleEntryError 500
+    # (#197 review).
+    case Repo.delete_all(from(t in UserToken, where: t.id == ^token.id)) do
+      {1, _} ->
+        Kammer.Guests.claim_history(user)
+        {:ok, {user, []}}
+
+      {0, _} ->
+        {:error, :not_found}
+    end
   end
 
   defp consume_login_token(nil), do: {:error, :not_found}

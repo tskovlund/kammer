@@ -47,7 +47,16 @@ defmodule Kammer.RateLimit do
   """
   @spec hit_login_code_email(String.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_login_code_email(email) when is_binary(email) do
-    hit("login_code:email:#{String.downcase(email)}", @fifteen_minutes_in_milliseconds, 5)
+    # String.downcase and citext's lower() can disagree on exotic
+    hit(
+      # Unicode, giving such an address a marginally fresh limiter key —
+      # the handful of variants keeps the guess budget far below the
+      # 40-bit code space, so this matches hit_magic_link_email's
+      # existing normalization rather than chasing exact citext folding.
+      "login_code:email:#{String.downcase(email)}",
+      @fifteen_minutes_in_milliseconds,
+      5
+    )
   end
 
   @doc """
