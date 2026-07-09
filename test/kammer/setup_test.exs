@@ -11,7 +11,7 @@ defmodule Kammer.SetupTest do
   alias Kammer.Setup
   alias Kammer.Setup.DemoData
 
-  @env_keys ~w(INSTANCE_NAME DEFAULT_LOCALE COMMUNITY_CREATION_POLICY OPERATOR_EMAIL)
+  @env_keys ~w(INSTANCE_NAME DEFAULT_LOCALE COMMUNITY_CREATION_POLICY STORAGE_POLICY OPERATOR_EMAIL)
 
   defp operator_fixture do
     user_fixture()
@@ -43,6 +43,7 @@ defmodule Kammer.SetupTest do
       System.put_env("INSTANCE_NAME", "Env Instance")
       System.put_env("DEFAULT_LOCALE", "da")
       System.put_env("COMMUNITY_CREATION_POLICY", "any_user")
+      System.put_env("STORAGE_POLICY", "quota")
       System.put_env("OPERATOR_EMAIL", "boss@example.org")
       on_exit(fn -> Enum.each(@env_keys, &System.delete_env/1) end)
 
@@ -52,9 +53,45 @@ defmodule Kammer.SetupTest do
       assert settings.instance_name == "Env Instance"
       assert settings.default_locale == "da"
       assert settings.community_creation_policy == :any_user
+      assert settings.storage_policy == :quota
 
       operator = Accounts.get_user_by_email("boss@example.org")
       assert operator.instance_operator
+    end
+
+    test "rejects an invalid DEFAULT_LOCALE loudly instead of persisting it" do
+      # The env path goes through InstanceSettings.changeset/2 like the
+      # wizard/UI path (issue #98) — a typo'd locale must fail the boot,
+      # never reach Gettext.
+      System.put_env("DEFAULT_LOCALE", "dk")
+      on_exit(fn -> System.delete_env("DEFAULT_LOCALE") end)
+
+      assert_raise RuntimeError, ~r/DEFAULT_LOCALE/, fn -> Setup.initialize() end
+      assert Communities.get_instance_settings().default_locale == "en"
+    end
+
+    test "raises on unrecognized policy values instead of dropping them" do
+      on_exit(fn -> Enum.each(@env_keys, &System.delete_env/1) end)
+
+      System.put_env("COMMUNITY_CREATION_POLICY", "anyone")
+
+      assert_raise RuntimeError, ~r/COMMUNITY_CREATION_POLICY "anyone"/, fn ->
+        Setup.initialize()
+      end
+
+      System.delete_env("COMMUNITY_CREATION_POLICY")
+      System.put_env("STORAGE_POLICY", "metered")
+
+      assert_raise RuntimeError, ~r/STORAGE_POLICY "metered"/, fn -> Setup.initialize() end
+      assert Communities.get_instance_settings().community_creation_policy == :operators_only
+      assert Communities.get_instance_settings().storage_policy == :unmetered
+    end
+
+    test "raises on an OPERATOR_EMAIL that cannot become an account" do
+      System.put_env("OPERATOR_EMAIL", "not-an-email")
+      on_exit(fn -> System.delete_env("OPERATOR_EMAIL") end)
+
+      assert_raise RuntimeError, ~r/OPERATOR_EMAIL/, fn -> Setup.initialize() end
     end
 
     test "leaves settings alone when the environment provides nothing" do

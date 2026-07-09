@@ -481,10 +481,7 @@ defmodule KammerWeb.GroupLive.Show do
     community = socket.assigns.active_community
 
     client_ip =
-      case get_connect_info(socket, :peer_data) do
-        %{address: address} -> address
-        _no_peer_data -> nil
-      end
+      KammerWeb.ClientIp.client_ip_from_socket(socket)
 
     case Groups.fetch_viewable_group(current_user, community, group_slug) do
       {:ok, group} ->

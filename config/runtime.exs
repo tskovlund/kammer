@@ -40,6 +40,26 @@ if config_env() != :test do
   if allowed_origins != [] do
     config :kammer, :api_allowed_origins, allowed_origins
   end
+
+  # Trusted reverse proxies (issue #162): rate limits key on the
+  # client IP, which behind a proxy is only visible through
+  # X-Forwarded-For — a spoofable header, so it is honored solely
+  # when the TCP peer is listed here (comma-separated IPs/CIDRs,
+  # e.g. TRUSTED_PROXIES=127.0.0.1,::1). Unset means the header is
+  # ignored entirely — safe for direct deployments. Entries are
+  # validated at boot (KammerWeb.ClientIp); a typo
+  # fails the boot rather than silently mis-keying the limiter.
+  # Skipped in test for the same reason as API_ALLOWED_ORIGINS.
+  trusted_proxies =
+    "TRUSTED_PROXIES"
+    |> System.get_env("")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+
+  if trusted_proxies != [] do
+    config :kammer, :trusted_proxies, trusted_proxies
+  end
 end
 
 if config_env() == :prod do
@@ -72,7 +92,18 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # Documented "Required" in .env.example, so enforce it like
+  # SECRET_KEY_BASE (issue #98): a silent example.com fallback ships
+  # wrong sign-in links and email addresses to real users, discovered
+  # by them instead of at boot.
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      Set it to the public hostname of your instance (no scheme),
+      e.g. kammer.example.org — sign-in links, MAIL_FROM_ADDRESS,
+      and VAPID_SUBJECT are all derived from it.
+      """
 
   config :kammer, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

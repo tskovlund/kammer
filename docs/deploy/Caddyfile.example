@@ -1,5 +1,11 @@
 # Minimal Caddy reverse proxy with automatic TLS for Kammer.
 # Replace kammer.example.org with your PHX_HOST.
+#
+# Pair this with TRUSTED_PROXIES in .env (e.g. TRUSTED_PROXIES=127.0.0.1
+# for this same-host setup): Kammer honors X-Forwarded-For only from
+# addresses listed there, so without it rate limiting treats all
+# traffic as coming from the proxy's IP — one abusive client exhausts
+# every user's signup/sign-in budget.
 
 kammer.example.org {
 	encode zstd gzip

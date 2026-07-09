@@ -8,6 +8,10 @@ defmodule Kammer.Application do
 
   @impl Application
   def start(_type, _args) do
+    # Fail the boot on an unparseable TRUSTED_PROXIES value
+    # (issue #162) instead of 500ing on the first request.
+    KammerWeb.ClientIp.validate_config!()
+
     children = [
       KammerWeb.Telemetry,
       Kammer.Repo,
@@ -33,12 +37,17 @@ defmodule Kammer.Application do
 
   # First-run setup (SPEC §13): apply env-provided settings and print the
   # setup token. Skipped in tests (the SQL sandbox owns the connection).
+  # Runs synchronously during supervisor start (issue #98): an invalid
+  # env-provided setting raises, and that raise must fail the boot — a
+  # fire-and-forget Task's crash would only be logged, leaving the app
+  # up with the bad value silently dropped. Placed before the endpoint,
+  # so requests are never served with env settings not yet applied.
   defp setup_children do
     if Application.get_env(:kammer, :setup_on_boot, true) do
       [
         %{
           id: Kammer.Setup,
-          start: {Task, :start_link, [&Kammer.Setup.initialize/0]},
+          start: {Kammer.Setup, :start_boot, []},
           restart: :temporary
         }
       ]

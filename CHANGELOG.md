@@ -54,6 +54,23 @@ and this project adheres to
 
 ### Added
 
+- Trusted reverse-proxy support (issue #162, security-hardening pass):
+  a new `TRUSTED_PROXIES` env var (comma-separated IPs/CIDRs) names
+  the proxies allowed to speak for clients. When the TCP peer is on
+  the list, the real client IP is recovered from `X-Forwarded-For`
+  (rightmost address that isn't itself a trusted proxy) and rate
+  limits key on it — signup, magic-link, sign-in-code, and guest
+  budgets become per-client again instead of instance-wide behind a
+  proxy. From anyone else the header is ignored entirely, so a client
+  that reaches the port directly can't spoof its way past the limiter;
+  unset (the default) ignores the header everywhere, and an invalid
+  entry fails the boot. Applied on both the plug pipeline
+  (`conn.remote_ip`) and the LiveView socket path (`peer_data` +
+  `x_headers` connect info). Hand-rolled rather than the `remote_ip`
+  hex package (SPEC §22's minimal-internal-version rule): that
+  library honors forwarding headers without ever checking the peer
+  and treats all private/loopback ranges as implicit proxies — the
+  two defaults #162 exists to close.
 - Product-version surface (issue #204, implementing the ratified
   versioning strategy #203): `mix.exs` is now the explicit single
   source of truth (`0.1.0-dev` until the first tagged release),
@@ -594,6 +611,27 @@ and this project adheres to
 
 ### Fixed
 
+- Config and env-var errors now fail the boot loudly instead of being
+  silently absorbed (issue #98, security-hardening pass): `PHX_HOST`
+  is enforced in prod like `SECRET_KEY_BASE` (a forgotten value used
+  to silently ship `example.com` sign-in links in real emails);
+  env-provided instance settings go through the same
+  `InstanceSettings.changeset/2` validation as the setup wizard, so a
+  `DEFAULT_LOCALE` typo can no longer be persisted unvalidated and
+  fed to Gettext; unrecognized `COMMUNITY_CREATION_POLICY` /
+  `STORAGE_POLICY` values raise exactly like `MAILER_ADAPTER` /
+  `STORAGE_ADAPTER` typos always have (they used to be dropped with
+  no log at all); an `OPERATOR_EMAIL` that can't become an account
+  raises instead of vanishing; and the boot-time settings application
+  now runs synchronously, so those raises actually stop the boot
+  rather than crashing a background task the supervisor shrugs off.
+  Also from #98: `OPERATOR_EMAIL` (with its auto-promote side effect
+  called out) and `STORAGE_POLICY` are documented in `.env.example`
+  at last, and `Kammer.Backups` asks `Kammer.Storage.adapter/0`
+  instead of reading the raw config key — an unset adapter means
+  local storage there too, so `mix kammer.backup` outside a prod
+  release archives the uploads tarball instead of skipping it with a
+  misleading "S3" message.
 - Group-authored posts no longer leak the human author's identity on
   the remaining web surfaces (issue #167, found by independent review
   of #166) — completing #153's closure across all transports: search

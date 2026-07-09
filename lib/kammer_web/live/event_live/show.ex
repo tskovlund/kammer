@@ -407,10 +407,7 @@ defmodule KammerWeb.EventLive.Show do
     community = socket.assigns.active_community
 
     client_ip =
-      case get_connect_info(socket, :peer_data) do
-        %{address: address} -> address
-        _no_peer_data -> nil
-      end
+      KammerWeb.ClientIp.client_ip_from_socket(socket)
 
     socket = socket |> assign(:client_ip, client_ip) |> assign(:reporting, nil)
 

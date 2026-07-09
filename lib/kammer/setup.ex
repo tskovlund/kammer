@@ -11,9 +11,18 @@ defmodule Kammer.Setup do
   alias Kammer.Accounts
   alias Kammer.Accounts.User
   alias Kammer.Communities
+  alias Kammer.Communities.InstanceSettings
   alias Kammer.Repo
 
   @setup_token_key {__MODULE__, :setup_token}
+
+  # For pointing a boot-failure message at the env var that caused it.
+  @setting_env_vars %{
+    instance_name: "INSTANCE_NAME",
+    default_locale: "DEFAULT_LOCALE",
+    community_creation_policy: "COMMUNITY_CREATION_POLICY",
+    storage_policy: "STORAGE_POLICY"
+  }
 
   @doc """
   Whether first-run setup has completed. Once true, the wizard is locked
@@ -25,9 +34,24 @@ defmodule Kammer.Setup do
   end
 
   @doc """
+  Supervisor entry point: runs `initialize/0` synchronously during
+  application start and starts no process. Synchronous on purpose
+  (issue #98): an invalid env-provided setting raises, and that raise
+  must fail the boot the way `MAILER_ADAPTER` typos do — not crash a
+  background task that the supervisor shrugs off.
+  """
+  @spec start_boot() :: :ignore
+  def start_boot do
+    initialize()
+    :ignore
+  end
+
+  @doc """
   Applies environment-provided setup values (env always wins) and, when
   setup is still pending, generates the setup token and prints it to the
-  logs. Called at application boot.
+  logs. Called at application boot. Raises on invalid env values —
+  env config errors fail the boot rather than being silently dropped
+  (issue #98).
   """
   @spec initialize() :: :ok
   def initialize do
@@ -197,36 +221,70 @@ defmodule Kammer.Setup do
 
   # Env always wins (SPEC §13): apply instance-level values found in the
   # environment on every boot, so declarative deploys stay declarative.
+  # Invalid values raise — a typo'd env var must fail the boot the way
+  # MAILER_ADAPTER/STORAGE_ADAPTER typos do, never be silently dropped
+  # or persisted unvalidated (issue #98).
   defp apply_environment_settings do
     settings = Communities.get_instance_settings()
 
-    changes =
-      [
+    attrs =
+      %{
         instance_name: System.get_env("INSTANCE_NAME"),
         default_locale: System.get_env("DEFAULT_LOCALE"),
         community_creation_policy: parse_policy(System.get_env("COMMUNITY_CREATION_POLICY")),
         storage_policy: parse_storage_policy(System.get_env("STORAGE_POLICY"))
-      ]
-      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+      }
+      |> Map.reject(fn {_key, value} -> is_nil(value) end)
 
-    if changes != [] do
-      settings |> Ecto.Changeset.change(changes) |> Repo.update!()
+    if attrs != %{} do
+      apply_environment_changeset!(settings, attrs)
     end
 
     if operator_email = System.get_env("OPERATOR_EMAIL") do
-      ensure_operator(%{"email" => operator_email})
+      case ensure_operator(%{"email" => operator_email}) do
+        {:ok, _operator} ->
+          :ok
+
+        {:error, reason} ->
+          raise "environment variable OPERATOR_EMAIL could not be applied: #{inspect(reason)}"
+      end
     end
 
     :ok
   end
 
+  # The same changeset as the wizard/UI path (issue #98): env-derived
+  # values get InstanceSettings.changeset/2's validations — a
+  # DEFAULT_LOCALE typo must never be persisted and fed to Gettext.
+  defp apply_environment_changeset!(settings, attrs) do
+    changeset = InstanceSettings.changeset(settings, attrs)
+
+    if changeset.valid? do
+      Repo.update!(changeset)
+    else
+      raise "invalid environment-provided instance settings: " <>
+              Enum.map_join(changeset.errors, "; ", fn {field, {message, _opts}} ->
+                "#{Map.get(@setting_env_vars, field, to_string(field))} #{message}"
+              end)
+    end
+  end
+
+  defp parse_policy(nil), do: nil
   defp parse_policy("operators_only"), do: :operators_only
   defp parse_policy("any_user"), do: :any_user
-  defp parse_policy(_other), do: nil
 
+  defp parse_policy(other) do
+    raise "unsupported COMMUNITY_CREATION_POLICY #{inspect(other)} " <>
+            "(expected \"operators_only\" or \"any_user\")"
+  end
+
+  defp parse_storage_policy(nil), do: nil
   defp parse_storage_policy("unmetered"), do: :unmetered
   defp parse_storage_policy("quota"), do: :quota
-  defp parse_storage_policy(_other), do: nil
+
+  defp parse_storage_policy(other) do
+    raise "unsupported STORAGE_POLICY #{inspect(other)} (expected \"unmetered\" or \"quota\")"
+  end
 
   defp generate_token do
     Base.url_encode64(:crypto.strong_rand_bytes(16), padding: false)
