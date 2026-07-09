@@ -8,6 +8,7 @@ defmodule KammerWeb.Api.CommunityController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Groups
   alias KammerWeb.Api.Serializer
@@ -15,8 +16,15 @@ defmodule KammerWeb.Api.CommunityController do
 
   @spec index(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def index(conn, _params) do
-    communities = Communities.list_user_communities(conn.assigns.current_scope.user)
-    json(conn, %{data: Enum.map(communities, &Serializer.community/1)})
+    user = conn.assigns.current_scope.user
+    communities = Communities.list_user_communities(user)
+
+    json(conn, %{
+      data:
+        Enum.map(communities, fn community ->
+          Serializer.community(community, user, Authorization.relationship(user, community))
+        end)
+    })
   end
 
   @spec groups(Plug.Conn.t(), map()) :: Plug.Conn.t()
@@ -28,9 +36,19 @@ defmodule KammerWeb.Api.CommunityController do
         ApiError.send(conn, :not_found, "Not found.")
 
       community ->
-        active = Groups.list_active_groups(user, community)
-        archived = Groups.list_archived_groups(user, community)
-        json(conn, %{data: Enum.map(active ++ archived, &Serializer.group/1)})
+        groups =
+          Groups.list_active_groups(user, community) ++
+            Groups.list_archived_groups(user, community)
+
+        # Batched: two lookups for the whole list, not two per group.
+        relationships = Authorization.group_relationships(user, community, groups)
+
+        json(conn, %{
+          data:
+            Enum.map(groups, fn group ->
+              Serializer.group(group, user, relationships[group.id])
+            end)
+        })
     end
   end
 end

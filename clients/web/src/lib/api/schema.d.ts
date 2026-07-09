@@ -896,6 +896,8 @@ export interface components {
 			id: string;
 			name: string;
 			slug: string;
+			/** @description Actions the calling viewer may take on this community (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. Empty when the viewer's rights weren't resolved (e.g. an embedded community reference). */
+			viewer_can: ('manage_community' | 'create_group' | 'view_member_directory')[];
 		};
 		/**
 		 * Error
@@ -1076,6 +1078,10 @@ export interface components {
 			name: string;
 			sealed: boolean;
 			slug: string;
+			/** @description Actions the calling viewer may take in this group (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `create_event`/`upload_file` also reflect the group's feature toggles. Empty when the viewer's rights weren't resolved. */
+			viewer_can: (
+				'post' | 'moderate' | 'manage_group' | 'manage_members' | 'create_event' | 'upload_file'
+			)[];
 			/** @enum {string} */
 			visibility: 'private' | 'community' | 'public_link' | 'public_listed';
 		};
@@ -1218,6 +1224,8 @@ export interface components {
 			reactions: {
 				[key: string]: number;
 			};
+			/** @description Actions the calling viewer may take on this post (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `edit`/`delete` are the author's; `pin`/`moderate` are a moderator's. Empty when the viewer's rights weren't resolved. */
+			viewer_can: ('edit' | 'delete' | 'pin' | 'moderate')[];
 		};
 		/** StatusResponse */
 		StatusResponse: {

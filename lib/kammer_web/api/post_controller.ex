@@ -12,6 +12,7 @@ defmodule KammerWeb.Api.PostController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Groups
@@ -32,8 +33,12 @@ defmodule KammerWeb.Api.PostController do
           Pagination.limit(params)
         )
 
+      # One relationship lookup for the whole page — every post is in
+      # this group, so its `viewer_can` shares the same relationship.
+      relationship = Authorization.relationship(user, group)
+
       json(conn, %{
-        data: Enum.map(posts, &Serializer.post(&1, user)),
+        data: Enum.map(posts, &Serializer.post(&1, user, relationship)),
         next_cursor: Pagination.encode(next_cursor)
       })
     end)
@@ -52,10 +57,11 @@ defmodule KammerWeb.Api.PostController do
       case Feed.create_post(user, group, attrs) do
         {:ok, post} ->
           post = Feed.get_post!(group, post.id)
+          relationship = Authorization.relationship(user, group)
 
           conn
           |> put_status(201)
-          |> json(%{data: Serializer.post(post, user)})
+          |> json(%{data: Serializer.post(post, user, relationship)})
 
         error ->
           ApiError.from_result(conn, error)
@@ -79,7 +85,7 @@ defmodule KammerWeb.Api.PostController do
     # gone). The contexts authorize each — this only picks which.
     hard? = params["hard"] in [true, "true"]
 
-    with_visible_post(conn, params, post_id, fn _group, post, user ->
+    with_visible_post(conn, params, post_id, fn group, post, user ->
       result =
         if hard?,
           do: Feed.hard_delete_post(user, post),
@@ -90,7 +96,8 @@ defmodule KammerWeb.Api.PostController do
         # hard-deleted post no longer exists, so its tombstone is
         # built from the struct in hand.
         tombstone = %{post | deleted_at: deleted_post.deleted_at || DateTime.utc_now(:second)}
-        json(conn, %{data: Serializer.post(tombstone, user)})
+        relationship = Authorization.relationship(user, group)
+        json(conn, %{data: Serializer.post(tombstone, user, relationship)})
       end
     end)
   end
@@ -278,7 +285,8 @@ defmodule KammerWeb.Api.PostController do
 
   defp respond_with_post(conn, user, group, post_id) do
     with {:ok, post} <- Feed.fetch_visible_post(user, group, post_id) do
-      json(conn, %{data: Serializer.post(post, user)})
+      relationship = Authorization.relationship(user, group)
+      json(conn, %{data: Serializer.post(post, user, relationship)})
     end
   end
 
