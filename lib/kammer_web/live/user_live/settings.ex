@@ -220,14 +220,23 @@ defmodule KammerWeb.UserLive.Settings do
 
     case Accounts.change_user_email(user, user_params) do
       %{valid?: true} = changeset ->
-        Accounts.deliver_user_update_email_instructions(
-          Ecto.Changeset.apply_action!(changeset, :insert),
-          user.email,
-          &url(~p"/users/settings/confirm-email/#{&1}")
-        )
+        case Accounts.deliver_user_update_email_instructions(
+               Ecto.Changeset.apply_action!(changeset, :insert),
+               user.email,
+               &url(~p"/users/settings/confirm-email/#{&1}")
+             ) do
+          {:error, :rate_limited} ->
+            error =
+              gettext("Too many email-change requests. Please wait a while and try again.")
 
-        info = gettext("A link to confirm your email change has been sent to the new address.")
-        {:noreply, socket |> put_flash(:info, info)}
+            {:noreply, socket |> put_flash(:error, error)}
+
+          _sent ->
+            info =
+              gettext("A link to confirm your email change has been sent to the new address.")
+
+            {:noreply, socket |> put_flash(:info, info)}
+        end
 
       changeset ->
         {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
