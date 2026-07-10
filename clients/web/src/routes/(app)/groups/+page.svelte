@@ -71,7 +71,23 @@
 
 <svelte:head><title>{t('nav.groups')} · {t('app.name')}</title></svelte:head>
 
-<h1 class="text-xl font-semibold tracking-tight text-ink">{t('nav.groups')}</h1>
+<div class="flex items-center justify-between gap-3">
+	<h1 class="text-xl font-semibold tracking-tight text-ink">{t('nav.groups')}</h1>
+	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+	<a
+		href={resolve('/search')}
+		class="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+	>
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4">
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+			/>
+		</svg>
+		{t('search.link')}
+	</a>
+</div>
 
 {#if loadState === 'loading'}
 	<div class="mt-6 flex flex-col gap-4">

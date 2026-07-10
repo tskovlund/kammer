@@ -178,6 +178,24 @@
 	const filesHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/files`)
 	);
+	// Collaborative-tool surfaces (issue #184), each shown only when the group
+	// has the matching feature turned on (ADR 0016 feature toggles); the server
+	// enforces regardless. Full path literals so SvelteKit can type-check them.
+	const availabilityHref = $derived(
+		resolve(
+			`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/availability`
+		)
+	);
+	const assignmentsHref = $derived(
+		resolve(
+			`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/assignments`
+		)
+	);
+	const decisionsHref = $derived(
+		resolve(
+			`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/decisions`
+		)
+	);
 	// Management entry points (issue #183), shown only when the group's
 	// `viewer_can` grants the capability; the server enforces regardless.
 	// Paths are written as full literals so SvelteKit can type-check them
@@ -252,6 +270,27 @@
 						</svg>
 						{t('files.link')}
 					</a>
+				{/if}
+
+				{#if group?.features?.includes('availability') || group?.features?.includes('assignments') || group?.features?.includes('decisions')}
+					<nav class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-sm" aria-label={t('tools.label')}>
+						{#if group?.features?.includes('availability')}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={availabilityHref} class="text-accent hover:underline"
+								>{t('availability.link')}</a
+							>
+						{/if}
+						{#if group?.features?.includes('assignments')}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={assignmentsHref} class="text-accent hover:underline"
+								>{t('assignments.link')}</a
+							>
+						{/if}
+						{#if group?.features?.includes('decisions')}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={decisionsHref} class="text-accent hover:underline">{t('decisions.link')}</a>
+						{/if}
+					</nav>
 				{/if}
 
 				<!-- Membership controls (#182), shown only when `viewer_can` /

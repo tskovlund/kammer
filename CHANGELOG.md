@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Added
 
+- Collaborative tools and global search in the PWA (issue #184, the
+  client half of the #165 parity rung): the Svelte screens over the
+  API above. Each group surfaces the tools it has turned on (ADR 0016)
+  — Availability polls (list, create, answer a candidate date, close or
+  convert the winning date into an event), Assignments (the task list:
+  create, claim/release, complete/reopen, delete, and per-task
+  discussion), and the Decisions register (browse, raise a motion,
+  record its outcome). A global search entry queries every community
+  across all signed-in accounts and presents hits community-first (SPEC
+  §10) over posts, comments, events, and files. Every control is gated
+  on the resource's `viewer_can` so a button that would 403 is never
+  shown; per-action failures surface inline without discarding the
+  screen. EN + DA throughout.
 - Collaborative tools and global search over the JSON API (issue #184,
   the #165 parity rung): the per-group tools the client previously had
   no way to reach, each behind its group feature toggle (ADR 0016) so a
