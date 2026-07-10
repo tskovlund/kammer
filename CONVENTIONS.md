@@ -64,6 +64,28 @@ tooling wherever possible; the rest is enforced in review.
   the central module for actual access control (can this person reach
   this group/file/post at all).
 
+## Configuration (no bare magic operational values)
+
+Every operational/behavioural value lives in one of three tiers (ADR
+0027); none is left as a bare inline literal. User-facing copy is
+separate — that goes through Gettext.
+
+- **Instance setting** — runtime-changeable, per-instance,
+  admin-editable: `Kammer.Communities.InstanceSettings` + admin UI.
+- **Deployment config** — set at boot from an env var, read via
+  `config/runtime.exs`, **validated at boot** (bounds/format, raise on
+  invalid), documented in `.env.example`. For operator-tunable
+  operational values (throughput/policy rate limits, token lifetimes,
+  retention windows): safe default, env override, validated bounds.
+- **Named constant** — a module attribute with a comment stating _why_
+  it is fixed. For genuinely never-configurable values: crypto/protocol
+  constants, and the **anti-abuse/security rate limits** (a security
+  limit behind a runtime knob is a footgun — keep them fixed).
+
+So: a new magic number or operational string is either a named constant
+with a rationale, or a configurable setting — never a bare inline
+literal. Both review gates check this.
+
 ## Formatting, linting, compilation
 
 - `mix format` — enforced by hook and CI (`mix format --check-formatted`).
