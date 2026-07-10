@@ -1573,6 +1573,36 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.Event)
           )
       },
+      "/api/v1/public/files/{file_id}" => %PathItem{
+        get:
+          operation(
+            "A public post attachment's display bytes (inline images, downloads otherwise)",
+            :public_files_show,
+            [path_param(:file_id)],
+            security: [],
+            response: binary_response("The file — served with its own content type")
+          )
+      },
+      "/api/v1/public/files/{file_id}/thumbnail" => %PathItem{
+        get:
+          operation(
+            "A public post attachment's image thumbnail (WebP)",
+            :public_files_thumbnail,
+            [path_param(:file_id)],
+            security: [],
+            response: binary_response("The thumbnail bytes")
+          )
+      },
+      "/api/v1/public/files/{file_id}/download" => %PathItem{
+        get:
+          operation(
+            "A public post attachment as a forced download",
+            :public_files_download,
+            [path_param(:file_id)],
+            security: [],
+            response: binary_response("The file bytes as an attachment")
+          )
+      },
       "/api/v1/openapi.json" => %PathItem{
         get:
           operation("This document", :openapi, [],

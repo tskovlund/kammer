@@ -6,9 +6,10 @@ defmodule KammerWeb.FileServing do
   `X-Content-Type-Options: nosniff`. Access control runs through
   `Kammer.Files.fetch_accessible_file/2` → `Kammer.Authorization`.
 
-  Shared by the browser `FileController` (session auth) and the API
-  `Api.FileController` (Bearer auth) — same bytes, same headers, same
-  authorization; only the credential and the error body differ.
+  Shared by the browser `FileController` (session auth), the API
+  `Api.FileController` (Bearer auth), and the API `Api.PublicFileController`
+  (tokenless, issue #185 slice B) — same bytes, same headers; only the
+  credential, the authorization check, and the error body differ.
   """
 
   import Plug.Conn
@@ -27,8 +28,34 @@ defmodule KammerWeb.FileServing do
   @spec serve(Plug.Conn.t(), User.t() | nil, String.t(), mode()) ::
           {:ok, Plug.Conn.t()} | {:error, :not_found}
   def serve(conn, actor, file_id, mode) do
-    with {:ok, %StoredFile{} = stored_file} <- Files.fetch_accessible_file(actor, file_id),
-         key when is_binary(key) <- storage_key(stored_file, mode) || :not_found,
+    with {:ok, %StoredFile{} = stored_file} <- Files.fetch_accessible_file(actor, file_id) do
+      respond(conn, stored_file, mode)
+    else
+      _unauthorized_or_missing -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Serves the file over the tokenless public surface (issue #185 slice
+  B): same bytes and headers as `serve/4`, but authorized through
+  `Kammer.Files.fetch_public_file/1` instead of an actor's scope
+  access — a file is servable here only when it's an attachment on a
+  post an anonymous visitor can already read publicly (see that
+  function's doc), never merely because its owning scope is publicly
+  viewable.
+  """
+  @spec serve_public(Plug.Conn.t(), String.t(), mode()) ::
+          {:ok, Plug.Conn.t()} | {:error, :not_found}
+  def serve_public(conn, file_id, mode) do
+    with {:ok, %StoredFile{} = stored_file} <- Files.fetch_public_file(file_id) do
+      respond(conn, stored_file, mode)
+    else
+      _not_found -> {:error, :not_found}
+    end
+  end
+
+  defp respond(conn, stored_file, mode) do
+    with key when is_binary(key) <- storage_key(stored_file, mode) || :not_found,
          {:ok, path} <- Storage.path_for(key) do
       conn =
         conn
@@ -39,7 +66,7 @@ defmodule KammerWeb.FileServing do
 
       {:ok, conn}
     else
-      _unauthorized_or_missing -> {:error, :not_found}
+      _missing -> {:error, :not_found}
     end
   end
 

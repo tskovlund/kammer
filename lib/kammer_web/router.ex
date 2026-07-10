@@ -265,6 +265,20 @@ defmodule KammerWeb.Router do
           :post
 
       get "/communities/:community_slug/events/:event_id", PublicController, :event
+
+      # Post attachments over the tokenless surface (issue #185 slice
+      # B): the public twin of the Bearer-authenticated
+      # `/api/v1/files/:file_id` routes below — same bytes via
+      # `FileServing.serve_public/3`, but authorized through
+      # `Files.fetch_public_file/1`, which is strictly narrower than
+      # what a Bearer-authenticated group member can read: only
+      # attachments on a post this same `/public` surface would already
+      # show, never a group/community file-space entry on its own. The
+      # literal `files` segment can't collide with `:community_slug`
+      # (it's not nested under `/communities`).
+      get "/files/:file_id", PublicFileController, :show
+      get "/files/:file_id/thumbnail", PublicFileController, :thumbnail
+      get "/files/:file_id/download", PublicFileController, :download
     end
   end
 
