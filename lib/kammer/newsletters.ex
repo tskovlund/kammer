@@ -6,8 +6,12 @@ defmodule Kammer.Newsletters do
   (an email the moment a new post publishes) or a daily/weekly digest,
   mirroring `Kammer.Digests`' cadence math but scoped to one group
   instead of a user's memberships. Every delivery carries a one-click
-  unsubscribe link built from the guest's management token — the same
-  stateless, expiring credential every other guest link uses.
+  `List-Unsubscribe` link built from a scoped, single-purpose
+  unsubscribe token (issue #233) — not the guest's full-power
+  management token, since that link is auto-fetched by mail gateways
+  with no human in the loop; the management page itself still uses the
+  management token, the same stateless, expiring credential every
+  other guest link uses.
   """
 
   import Ecto.Query, warn: false
@@ -112,15 +116,47 @@ defmodule Kammer.Newsletters do
   end
 
   @doc """
-  Unsubscribes through the guest's management link — also the target
-  of the one-click `List-Unsubscribe` link every delivery carries, so
-  a mail client can call this without the guest visiting any page.
+  Unsubscribes through the guest's full-power management link — the
+  management page's own "unsubscribe" action (`GuestController`/
+  `GuestLive.Manage`), where the guest already holds that token.
   """
   @spec unsubscribe_by_token(String.t(), Ecto.UUID.t()) :: :ok | {:error, :invalid}
   def unsubscribe_by_token(manage_token, subscription_id) do
     with {:ok, subscription} <- fetch_by_manage_token(manage_token, subscription_id) do
       Repo.delete!(subscription)
       :ok
+    end
+  end
+
+  @doc """
+  Unsubscribes through the scoped, single-purpose token from the
+  one-click `List-Unsubscribe` link every delivery carries (issue
+  #233), so a mail client can call this with no session and no page
+  visit. Unlike `unsubscribe_by_token/2`, the token names its own
+  subscription — there's no separate id argument a caller could vary
+  to target a different one — and it verifies against a distinct salt
+  (`Kammer.Guests.Token.verify_unsubscribe/1`), so it can never be
+  replayed against the management endpoints or any other subscription.
+  """
+  @spec unsubscribe_by_scoped_token(String.t()) :: :ok | {:error, :invalid}
+  def unsubscribe_by_scoped_token(token) do
+    case GuestToken.verify_unsubscribe(token) do
+      {:ok, %{subscription_id: subscription_id}} ->
+        # Delete idempotently by id, not Repo.get + Repo.delete!: a mail
+        # gateway auto-fetches (and may retry or pre-fetch) this
+        # one-click `List-Unsubscribe` POST with no human in the loop,
+        # so a duplicate or concurrent unsubscribe of the same
+        # subscription must stay a neutral no-op — never an
+        # `Ecto.StaleEntryError` (deleting an already-gone row), which
+        # would 500 an endpoint whose whole contract is to always
+        # answer 200. `delete_all` returns a count and never raises on a
+        # missing row, so unsubscribing an already-unsubscribed
+        # subscription is success, as it should be.
+        Repo.delete_all(from s in NewsletterSubscription, where: s.id == ^subscription_id)
+        :ok
+
+      _invalid_or_expired ->
+        {:error, :invalid}
     end
   end
 

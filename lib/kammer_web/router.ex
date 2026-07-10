@@ -469,7 +469,11 @@ defmodule KammerWeb.Router do
     get "/guest/comment/confirm/:token", GuestCommentController, :confirm
     get "/guest/claim/confirm/:token", GuestClaimController, :confirm
     get "/newsletter/confirm/:token", NewsletterController, :confirm
-    get "/newsletter/unsubscribe/:token/:subscription_id", NewsletterController, :unsubscribe
+    # `:token` alone (issue #233) — it's a scoped, single-purpose
+    # unsubscribe token that names its own subscription, not the
+    # guest's full-power management token, so there's no separate
+    # `:subscription_id` segment to trust.
+    get "/newsletter/unsubscribe/:token", NewsletterController, :unsubscribe
 
     live_session :guest_links,
       on_mount: [{KammerWeb.UserAuth, :mount_current_scope}] do
@@ -480,9 +484,7 @@ defmodule KammerWeb.Router do
   scope "/", KammerWeb do
     pipe_through [:newsletter_one_click]
 
-    post "/newsletter/unsubscribe/:token/:subscription_id",
-         NewsletterController,
-         :unsubscribe_one_click
+    post "/newsletter/unsubscribe/:token", NewsletterController, :unsubscribe_one_click
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

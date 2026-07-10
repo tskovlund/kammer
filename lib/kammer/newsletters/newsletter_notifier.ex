@@ -17,6 +17,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
   alias Kammer.Feed.Post
   alias Kammer.Groups.Group
   alias Kammer.Guests.GuestIdentity
+  alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.Mailer
   alias Kammer.Newsletters.NewsletterSubscription
 
@@ -101,7 +102,6 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
         identity.email,
         gettext("New post in %{group}", group: group.name),
         body,
-        manage_token,
         subscription.id
       )
     end)
@@ -142,7 +142,6 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
         identity.email,
         gettext("%{group} digest", group: group.name),
         body,
-        manage_token,
         subscription.id
       )
     end)
@@ -156,8 +155,8 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
     end
   end
 
-  defp deliver_with_unsubscribe(to_address, subject_line, body, manage_token, subscription_id) do
-    unsubscribe_url = unsubscribe_url(manage_token, subscription_id)
+  defp deliver_with_unsubscribe(to_address, subject_line, body, subscription_id) do
+    unsubscribe_url = unsubscribe_url(subscription_id)
 
     email =
       to_address
@@ -187,12 +186,23 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
     "#{KammerWeb.Endpoint.url()}/c/#{community.slug}/g/#{group.slug}"
   end
 
+  # Full-power, 60-day manage token, deliberately still embedded here
+  # (contrast `unsubscribe_url/1` below) — this is a link a human must
+  # open and click from the email body, not a URL mail gateways
+  # auto-fetch with no interaction, so it isn't issue #233's attack
+  # vector. It rides the #185/#187 PWA transition as-is for now;
+  # revisit once LiveView's guest-manage surface is replaced.
   defp manage_url(manage_token) do
     "#{KammerWeb.Endpoint.url()}/guest/manage/#{manage_token}"
   end
 
-  defp unsubscribe_url(manage_token, subscription_id) do
-    "#{KammerWeb.Endpoint.url()}/newsletter/unsubscribe/#{manage_token}/#{subscription_id}"
+  # RFC 8058 `List-Unsubscribe` is fetched automatically by mail
+  # gateways with no human interaction, so (issue #233) it must never
+  # carry a full-power credential — only a token scoped to exactly this
+  # one subscription, unable to authorize anything else.
+  defp unsubscribe_url(subscription_id) do
+    token = GuestToken.sign_unsubscribe(%{subscription_id: subscription_id})
+    "#{KammerWeb.Endpoint.url()}/newsletter/unsubscribe/#{token}"
   end
 
   defp author_name(%Post{author_type: :group, group: group}), do: group.name

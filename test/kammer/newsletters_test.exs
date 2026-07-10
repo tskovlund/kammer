@@ -15,6 +15,7 @@ defmodule Kammer.NewslettersTest do
   alias Kammer.Feed
   alias Kammer.Guests
   alias Kammer.Guests.GuestIdentity
+  alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.Newsletters
   alias Kammer.Newsletters.NewsletterSubscription
   alias Kammer.Repo
@@ -238,6 +239,86 @@ defmodule Kammer.NewslettersTest do
       # daily subscriber waits for the digest tick, so the mailbox is
       # empty after draining the one expected message above.
       refute_email_sent()
+    end
+  end
+
+  describe "one-click unsubscribe scoping (issue #233)" do
+    test "the List-Unsubscribe token is scoped to its own subscription, not the full-power manage token" do
+      %{group: group, member: member} = public_group_context()
+      {_group, subscription, manage_token} = group |> request!(subscribe_attrs()) |> confirm!()
+
+      drain_delivered_emails()
+
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Nyt indlæg!"})
+      assert :ok = Newsletters.notify_subscribers(post)
+
+      assert_email_sent(fn email ->
+        [token] =
+          Regex.run(~r{/newsletter/unsubscribe/(\S+)>}, email.headers["List-Unsubscribe"],
+            capture: :all_but_first
+          )
+
+        send(self(), {:header_token, token})
+        true
+      end)
+
+      assert_received {:header_token, header_token}
+
+      # It's a different token than the manage link carries...
+      refute header_token == manage_token
+      # ...verifying under a different salt, to exactly the subscription
+      # it was minted for...
+      assert {:ok, %{subscription_id: id}} = GuestToken.verify_unsubscribe(header_token)
+      assert id == subscription.id
+      # ...and it is powerless against the manage surface — every manage
+      # endpoint gates on this same check.
+      refute Guests.manage_token_valid?(header_token)
+
+      # It does what it's scoped to do.
+      assert :ok = Newsletters.unsubscribe_by_scoped_token(header_token)
+      assert Repo.aggregate(NewsletterSubscription, :count) == 0
+    end
+
+    test "a scoped token only ever unsubscribes the subscription named inside it" do
+      %{group: group} = public_group_context()
+      {_group, subscription_a, _manage} = group |> request!(subscribe_attrs()) |> confirm!()
+      {_group, subscription_b, _manage} = group |> request!(subscribe_attrs()) |> confirm!()
+
+      # No separate id travels alongside the token for an attacker to
+      # vary — the subscription it names is baked into the signed
+      # payload itself.
+      token = GuestToken.sign_unsubscribe(%{subscription_id: subscription_a.id})
+
+      assert :ok = Newsletters.unsubscribe_by_scoped_token(token)
+      assert Repo.get(NewsletterSubscription, subscription_a.id) == nil
+      assert Repo.get(NewsletterSubscription, subscription_b.id) != nil
+    end
+
+    test "an invalid, garbage, or cross-purpose token is one neutral :invalid, never an oracle" do
+      %{group: group} = public_group_context()
+      {_group, subscription, _manage} = group |> request!(subscribe_attrs()) |> confirm!()
+      manage_token = GuestToken.sign_manage(%{identity_id: subscription.guest_identity_id})
+
+      assert {:error, :invalid} = Newsletters.unsubscribe_by_scoped_token("garbage")
+      # The manage token doesn't verify here either — different salt,
+      # so a leaked manage token can't be replayed as an unsubscribe
+      # token any more than the reverse.
+      assert {:error, :invalid} = Newsletters.unsubscribe_by_scoped_token(manage_token)
+    end
+
+    test "a duplicate fetch of the same token is a neutral no-op, never a crash" do
+      %{group: group} = public_group_context()
+      {_group, subscription, _manage} = group |> request!(subscribe_attrs()) |> confirm!()
+      token = GuestToken.sign_unsubscribe(%{subscription_id: subscription.id})
+
+      assert :ok = Newsletters.unsubscribe_by_scoped_token(token)
+      # Mail gateways auto-fetch (and may pre-fetch or retry) the
+      # `List-Unsubscribe` POST with no human in the loop, so a second
+      # delivery of the same token must stay `:ok` rather than raise on
+      # the already-deleted row — the endpoint's contract is to always
+      # answer 200.
+      assert :ok = Newsletters.unsubscribe_by_scoped_token(token)
+      assert Repo.aggregate(NewsletterSubscription, :count) == 0
     end
   end
 

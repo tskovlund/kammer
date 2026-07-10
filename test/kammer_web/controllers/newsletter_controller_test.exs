@@ -1,8 +1,11 @@
 defmodule KammerWeb.NewsletterControllerTest do
   @moduledoc """
-  The RFC 8058 one-click unsubscribe endpoint (SPEC §8): email clients
-  POST it from the `List-Unsubscribe` header with no session and no
-  CSRF token, so it must work bare. This route survives the LiveView
+  The RFC 8058 one-click unsubscribe endpoint (SPEC §8, issue #233):
+  email clients POST it from the `List-Unsubscribe` header with no
+  session and no CSRF token, so it must work bare — and the token in
+  that header must be a scoped, single-purpose credential, never the
+  guest's full-power management token, since mail gateways auto-fetch
+  it with no human in the loop. This route survives the LiveView
   removal cut (#187), so it lives in a controller test rather than in
   the newsletter-flow LiveView tests.
   """
@@ -12,6 +15,7 @@ defmodule KammerWeb.NewsletterControllerTest do
   import Kammer.CommunitiesFixtures
   import Swoosh.TestAssertions
 
+  alias Kammer.Feed
   alias Kammer.Newsletters
   alias Kammer.Newsletters.NewsletterSubscription
   alias Kammer.Repo
@@ -40,9 +44,24 @@ defmodule KammerWeb.NewsletterControllerTest do
     token
   end
 
+  # Pulls the URL out of the (auto-fetched, never-clicked)
+  # `List-Unsubscribe` header itself, rather than assuming its shape —
+  # the point of this suite is to prove what that header actually
+  # carries.
+  defp unsubscribe_header_url do
+    assert_email_sent(fn email ->
+      send(self(), {:header, email.headers["List-Unsubscribe"]})
+      true
+    end)
+
+    assert_received {:header, "<" <> rest}
+    String.trim_trailing(rest, ">")
+  end
+
   test "one-click unsubscribe (RFC 8058): a bare POST with no session or CSRF token still works" do
     {community, _owner} = community_with_owner_fixture()
     group = group_fixture(community, visibility: :public_listed)
+    member = group_member_fixture(group)
     drain_delivered_emails()
 
     assert :ok =
@@ -59,19 +78,27 @@ defmodule KammerWeb.NewsletterControllerTest do
 
     confirm_token = email_link(~r{http://test/confirm/(\S+)})
 
-    assert {:ok, _group, subscription} =
+    assert {:ok, _group, _subscription} =
              Newsletters.confirm_subscription(confirm_token, fn manage_token ->
                "http://test/manage/#{manage_token}"
              end)
 
-    manage_token = email_link(~r{http://test/manage/(\S+)})
+    drain_delivered_emails()
 
-    conn =
-      build_conn()
-      |> post(~p"/newsletter/unsubscribe/#{manage_token}/#{subscription.id}")
+    {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Nyt indlæg!"})
+    assert :ok = Newsletters.notify_subscribers(post)
+
+    conn = build_conn() |> post(unsubscribe_header_url())
 
     assert conn.status == 200
     assert conn.resp_body == "Unsubscribed."
     assert Repo.aggregate(NewsletterSubscription, :count) == 0
+  end
+
+  test "an invalid or garbage scoped token still gets the same neutral 200" do
+    conn = build_conn() |> post(~p"/newsletter/unsubscribe/garbage")
+
+    assert conn.status == 200
+    assert conn.resp_body == "Unsubscribed."
   end
 end
