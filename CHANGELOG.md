@@ -155,7 +155,7 @@ and this project adheres to
   LiveView precedent). `POST /api/v1/setup/verify-token` is removed:
   it was a boolean oracle over the setup credential, and `complete`
   already validates the token itself before doing any work. `POST
-  /api/v1/setup` is now rate-limited per IP (10/hour, fixed — no
+/api/v1/setup` is now rate-limited per IP (10/hour, fixed — no
   config knob, same stance as every other security limit in
   `Kammer.RateLimit`), defense-in-depth for the one window in an
   instance's life with no operator around to notice abuse. The guest
