@@ -102,7 +102,7 @@ defmodule KammerWeb.EventSlotFlowsTest do
 
       lv
       |> form("#guest-claim-form-#{slot.id}",
-        guest: %{display_name: "Gæsten", email: "gaest@example.org"}
+        guest: %{display_name: "Gæsten", email: "gaest-slot@example.org"}
       )
       |> render_submit()
 
@@ -112,7 +112,7 @@ defmodule KammerWeb.EventSlotFlowsTest do
       confirm_conn = get(build_conn(), ~p"/guest/claim/confirm/#{confirm_token}")
       assert redirected_to(confirm_conn) == "/c/#{community.slug}/events/#{event.id}"
 
-      identity = Repo.get_by!(GuestIdentity, email: "gaest@example.org")
+      identity = Repo.get_by!(GuestIdentity, email: "gaest-slot@example.org")
       assert Repo.get_by!(SlotClaim, guest_identity_id: identity.id).slot_id == slot.id
 
       # The manage page lists the signup with a release button.

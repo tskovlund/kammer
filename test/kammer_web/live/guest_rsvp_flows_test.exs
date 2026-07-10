@@ -98,7 +98,7 @@ defmodule KammerWeb.GuestRsvpFlowsTest do
 
       lv
       |> form("#guest-rsvp-form",
-        guest: %{display_name: "Gæsten", email: "gaest@example.org", status: "yes"}
+        guest: %{display_name: "Gæsten", email: "gaest-rsvp@example.org", status: "yes"}
       )
       |> render_submit()
 
@@ -108,7 +108,7 @@ defmodule KammerWeb.GuestRsvpFlowsTest do
       confirm_conn = get(build_conn(), ~p"/guest/rsvp/confirm/#{confirm_token}")
       assert redirected_to(confirm_conn) == "/c/#{community.slug}/events/#{event.id}"
 
-      identity = Repo.get_by!(GuestIdentity, email: "gaest@example.org")
+      identity = Repo.get_by!(GuestIdentity, email: "gaest-rsvp@example.org")
       assert Repo.get_by!(EventRsvp, event_id: event.id, guest_identity_id: identity.id)
 
       manage_token = email_link(~r{/guest/manage/([^/\s]+)$}m)
