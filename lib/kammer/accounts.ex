@@ -561,13 +561,23 @@ defmodule Kammer.Accounts do
 
   """
   @spec deliver_user_update_email_instructions(User.t(), String.t(), (String.t() -> String.t())) ::
-          {:ok, Swoosh.Email.t()} | {:error, term()}
+          {:ok, Swoosh.Email.t()} | {:error, :rate_limited | term()}
   def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
       when is_function(update_email_url_fun, 1) do
-    {encoded_token, user_token} = UserToken.build_email_token(user, "change:#{current_email}")
+    # Keyed on the acting user, not the target: the recipient is a
+    # user-chosen new address, so this caps one account from turning the
+    # change-email form into an arbitrary-recipient email relay (#97).
+    # Checked before the insert so a refused request writes no token row.
+    case RateLimit.hit_email_change(user.id) do
+      {:allow, _count} ->
+        {encoded_token, user_token} = UserToken.build_email_token(user, "change:#{current_email}")
 
-    Repo.insert!(user_token)
-    UserNotifier.deliver_update_email_instructions(user, update_email_url_fun.(encoded_token))
+        Repo.insert!(user_token)
+        UserNotifier.deliver_update_email_instructions(user, update_email_url_fun.(encoded_token))
+
+      {:deny, _retry_after} ->
+        {:error, :rate_limited}
+    end
   end
 
   @doc """

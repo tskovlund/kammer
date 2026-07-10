@@ -102,6 +102,25 @@ defmodule Kammer.AccountsTest do
       assert user_token.sent_to == user.email
       assert user_token.context == "change:current@example.com"
     end
+
+    test "caps requests per user and writes no token past the cap (#97)", %{user: user} do
+      url_fun = &"http://localhost/confirm-email/#{&1}"
+
+      for _attempt <- 1..5 do
+        assert {:ok, _email} =
+                 Accounts.deliver_user_update_email_instructions(user, user.email, url_fun)
+      end
+
+      assert {:error, :rate_limited} =
+               Accounts.deliver_user_update_email_instructions(user, user.email, url_fun)
+
+      assert Repo.aggregate(
+               from(t in UserToken,
+                 where: t.user_id == ^user.id and t.context == ^"change:#{user.email}"
+               ),
+               :count
+             ) == 5
+    end
   end
 
   describe "update_user_email/2" do

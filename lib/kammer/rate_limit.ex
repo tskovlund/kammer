@@ -1,8 +1,9 @@
 defmodule Kammer.RateLimit do
   @moduledoc """
   Central rate limiter (SPEC §11): magic-link issuance (per email and per
-  IP), signup, posting/commenting, guest endpoints, uploads, and @everyone
-  all take their limits from here so policy lives in one place.
+  IP), signup, posting/commenting, guest endpoints, uploads, @everyone, and
+  email-change confirmation all take their limits from here so policy lives
+  in one place.
 
   Backed by Hammer's ETS backend — per-node counters, which is sufficient
   for the single-node deployment model of v1.
@@ -141,6 +142,23 @@ defmodule Kammer.RateLimit do
   @spec hit_upload(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_upload(user_id) do
     hit("upload:user:#{user_id}", 10 * 60 * 1000, 40)
+  end
+
+  @doc """
+  Rate limit for email-change confirmation emails, keyed by the acting
+  user: 5 per hour.
+
+  Unlike the magic-link limiter, the key is the requesting user, not the
+  recipient. The confirmation goes to a user-supplied *new* address, so
+  keying on the (attacker-varied) target would hand every fresh address
+  its own budget and throttle nothing; capping per user is what stops one
+  account from looping the change-email form into an arbitrary-recipient
+  email relay (issue #97). Five per hour absorbs an honest mistype-and-
+  correct while holding the relay to a trickle.
+  """
+  @spec hit_email_change(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_email_change(user_id) do
+    hit("email_change:user:#{user_id}", 60 * 60 * 1000, 5)
   end
 
   defp format_ip(ip_address) when is_binary(ip_address), do: ip_address

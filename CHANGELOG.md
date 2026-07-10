@@ -69,6 +69,13 @@ and this project adheres to
 
 ### Fixed
 
+- Email-change confirmation is now rate-limited (issue #97,
+  security-hardening pass): any signed-in user in sudo mode could loop
+  the account-settings email form to send the branded confirmation to
+  arbitrary addresses (an email-flooding relay) and pile up
+  never-cleaned token rows. Issuance is now capped per acting user
+  (five per hour) in the `Accounts` context, checked before any token
+  is written or mail sent — a refused request does neither.
 - The test suite no longer deadlocks intermittently on the
   instance-settings singleton (issue #215): the row is seeded once in
   the test bootstrap, so concurrent sandboxed transactions never race
