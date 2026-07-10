@@ -15,10 +15,12 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "pnpm run test:unit -- --run",
+		"test:e2e": "playwright test",
 		"generate:api": "openapi-typescript ${KAMMER_API_URL:-http://localhost:4000/api/v1/openapi.json} -o src/lib/api/schema.d.ts && prettier --write src/lib/api/schema.d.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@playwright/test": "1.56.1",
 		"@resvg/resvg-js": "^2.6.2",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.63.0",

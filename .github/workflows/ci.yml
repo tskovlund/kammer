@@ -169,6 +169,107 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  # End-to-end suite for the instance-served PWA (issue #235): boots a
+  # real instance the same way `smoke` does, but drives the Svelte client
+  # instead of LiveView — the client-side twin of that job, and a
+  # prerequisite for the LiveView removal (#187). Structure mirrors
+  # `smoke` deliberately (same Postgres service, same Nix/Mix caching, same
+  # runner-provided Chrome instead of a Playwright-managed download) so the
+  # two jobs' environment assumptions stay identical; the divergences are
+  # called out inline below.
+  e2e:
+    name: End-to-end (Svelte PWA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Client toolchain (pnpm/action-setup installs its own pnpm binary,
+      # independent of the Nix shell's nodejs_22 below — same pairing the
+      # `web-client` job above uses).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: clients/web/package.json
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Cache Mix dependencies and build
+        uses: actions/cache@v6
+        with:
+          path: |
+            deps
+            _build
+            .nix-mix
+            .nix-hex
+          key: mix-dev-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-dev-${{ runner.os }}-
+
+      - name: Install Hex and rebar
+        run: nix develop --command bash -c "mix local.hex --force && mix local.rebar --force"
+
+      - name: Fetch dependencies
+        run: nix develop --command mix deps.get
+
+      # Divergence from `smoke`: no `mix assets.setup && mix assets.build`
+      # step. That pipeline builds the LiveView app.css/app.js bundle,
+      # which this suite never requests — it drives the Svelte client only
+      # (served from `priv/static/app`, staged by e2e/global-setup.ts, not
+      # `mix assets.build`), so skipping it is a real time saving rather
+      # than an untested assumption.
+      - name: Compile
+        run: nix develop --command mix compile
+
+      - name: Run the Playwright suite
+        # global-setup.ts (invoked by `playwright test` itself) resets and
+        # migrates the database, builds and stages the client, and boots
+        # `mix phx.server` — see clients/web/e2e/global-setup.ts. `mix`
+        # must be on PATH for that, hence `nix develop --command`; pnpm
+        # from the setup steps above stays on PATH inside it.
+        run: nix develop --command bash scripts/e2e.sh
+        env:
+          # The runner's preinstalled Chrome, same as `smoke` — avoids a
+          # Playwright-managed browser download...
+          CHROMIUM_BIN: /usr/bin/google-chrome
+          # ...so also stop @playwright/test's postinstall from fetching
+          # the browser bundle this job never uses.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      # `test-results/` holds a trace per failed test (`trace:
+      # 'retain-on-failure'` in playwright.config.ts) — more useful for
+      # debugging a CI-only failure than the HTML reporter output, which
+      # this job doesn't generate (its `reporter` is `github` + `list`).
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: clients/web/test-results/
+          if-no-files-found: ignore
+
   # End-to-end smoke test: boots a real instance and drives the actual
   # product flows (wizard, invite signups, posts, poll, event, files) in
   # a headless browser — the same script that generates the README
