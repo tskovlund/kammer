@@ -103,10 +103,19 @@ defmodule KammerWeb.Api.Serializer do
     }
   end
 
-  @spec post(Post.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
-  def post(post, viewer \\ nil, relationship \\ nil)
+  @doc """
+  `opts` accepts `public: true` (issue #185 slice B) to shape
+  attachment URLs for the tokenless public surface
+  (`/api/v1/public/files/...`, see `stored_file/2`) instead of the
+  default Bearer-authenticated ones — the only wire difference between
+  the public and authenticated post shapes. Every other field is
+  identical; callers on the public path already pass `viewer`/
+  `relationship` as `nil` since there is no signed-in actor.
+  """
+  @spec post(Post.t(), User.t() | nil, Authorization.relationship() | nil, keyword()) :: map()
+  def post(post, viewer \\ nil, relationship \\ nil, opts \\ [])
 
-  def post(%Post{} = post, viewer, relationship) do
+  def post(%Post{} = post, viewer, relationship, opts) do
     deleted? = Post.deleted?(post)
 
     %{
@@ -125,7 +134,7 @@ defmodule KammerWeb.Api.Serializer do
       comment_count: if(is_list(post.comments), do: length(post.comments)),
       reactions: reaction_counts(post.reactions),
       my_reactions: my_reactions(post.reactions, viewer),
-      attachments: attachments(post),
+      attachments: attachments(post, opts),
       poll: poll(post.poll, viewer),
       viewer_can: post_capabilities(post, viewer, relationship),
       comments:
@@ -178,13 +187,17 @@ defmodule KammerWeb.Api.Serializer do
   end
 
   @doc """
-  A stored file: metadata plus the API file URLs (`/api/v1/files/...`,
-  Bearer-authorized like every other API route). The upload endpoint
-  returns this shape; its `id` is what create-post's `stored_file_ids`
-  takes.
+  A stored file: metadata plus the API file URLs. Bearer-authorized
+  `/api/v1/files/...` by default, like every other authenticated API
+  route; pass `public: true` (issue #185 slice B) for the tokenless
+  `/api/v1/public/files/...` twin instead — used only when shaping a
+  post attachment for the public post-read surface, never for the
+  upload endpoint's response (there is no anonymous upload).
   """
-  @spec stored_file(StoredFile.t()) :: map()
-  def stored_file(%StoredFile{} = stored_file) do
+  @spec stored_file(StoredFile.t(), keyword()) :: map()
+  def stored_file(%StoredFile{} = stored_file, opts \\ []) do
+    base = if opts[:public], do: "/api/v1/public/files", else: "/api/v1/files"
+
     %{
       id: stored_file.id,
       filename: stored_file.filename,
@@ -193,22 +206,22 @@ defmodule KammerWeb.Api.Serializer do
       kind: stored_file.kind,
       width: stored_file.width,
       height: stored_file.height,
-      url: "/api/v1/files/#{stored_file.id}",
-      thumbnail_url:
-        if(stored_file.thumbnail_key, do: "/api/v1/files/#{stored_file.id}/thumbnail"),
-      download_url: "/api/v1/files/#{stored_file.id}/download"
+      url: "#{base}/#{stored_file.id}",
+      thumbnail_url: if(stored_file.thumbnail_key, do: "#{base}/#{stored_file.id}/thumbnail"),
+      download_url: "#{base}/#{stored_file.id}/download"
     }
   end
 
   @doc """
   A stored file as a feed attachment: the stored-file shape keyed by
   the attachment link (`id`/`position`), `stored_file_id` pointing at
-  the file itself.
+  the file itself. `opts` is forwarded to `stored_file/2` (the
+  `public: true` URL switch).
   """
-  @spec attachment(PostAttachment.t()) :: map()
-  def attachment(%PostAttachment{stored_file: %StoredFile{} = file} = attachment) do
+  @spec attachment(PostAttachment.t(), keyword()) :: map()
+  def attachment(%PostAttachment{stored_file: %StoredFile{} = file} = attachment, opts \\ []) do
     file
-    |> stored_file()
+    |> stored_file(opts)
     |> Map.merge(%{id: attachment.id, stored_file_id: file.id, position: attachment.position})
   end
 
@@ -650,14 +663,14 @@ defmodule KammerWeb.Api.Serializer do
 
   defp my_acknowledged(_post, _viewer), do: false
 
-  defp attachments(%Post{attachments: attachment_list}) when is_list(attachment_list) do
+  defp attachments(%Post{attachments: attachment_list}, opts) when is_list(attachment_list) do
     attachment_list
     |> Enum.filter(&match?(%PostAttachment{stored_file: %StoredFile{}}, &1))
     |> Enum.sort_by(& &1.position)
-    |> Enum.map(&attachment/1)
+    |> Enum.map(&attachment(&1, opts))
   end
 
-  defp attachments(_post), do: []
+  defp attachments(_post, _opts), do: []
 
   ## People (issue #182): invites, roster rows, memberships, profile,
   ## devices. Redaction (ADR 0020) happens in the contexts —

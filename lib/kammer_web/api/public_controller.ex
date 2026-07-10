@@ -27,6 +27,11 @@ defmodule KammerWeb.Api.PublicController do
   `public_link` groups are directly reachable by slug below, exactly
   like the RSS feed and `GroupLive.Show`, but per SPEC §3 stay
   unlisted — that's what "unlisted" means.
+
+  Post attachments are served separately by `PublicFileController`
+  (`/api/v1/public/files/...`) — posts serialized here pass
+  `public: true` through `Serializer.post/4` so their attachment URLs
+  point there instead of the Bearer-protected `/api/v1/files/...`.
   """
 
   use KammerWeb, :controller
@@ -84,7 +89,10 @@ defmodule KammerWeb.Api.PublicController do
       # unfiltered page, so paging stays stable even when a page's
       # count changes after this filter.
       json(conn, %{
-        data: posts |> Enum.reject(&Post.deleted?/1) |> Enum.map(&Serializer.post/1),
+        data:
+          posts
+          |> Enum.reject(&Post.deleted?/1)
+          |> Enum.map(&Serializer.post(&1, nil, nil, public: true)),
         next_cursor: Pagination.encode(next_cursor)
       })
     end)
@@ -98,7 +106,7 @@ defmodule KammerWeb.Api.PublicController do
           if Post.deleted?(post) do
             ApiError.send(conn, :not_found, "Not found.")
           else
-            json(conn, %{data: Serializer.post(post)})
+            json(conn, %{data: Serializer.post(post, nil, nil, public: true)})
           end
 
         error ->

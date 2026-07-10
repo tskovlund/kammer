@@ -15,6 +15,8 @@ defmodule Kammer.Files do
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Feed
+  alias Kammer.Feed.Post
+  alias Kammer.Feed.PostAttachment
   alias Kammer.Files.FileEntry
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
@@ -327,6 +329,72 @@ defmodule Kammer.Files do
 
   defp load_folder(nil), do: nil
   defp load_folder(folder_id), do: Repo.get(Folder, folder_id)
+
+  @doc """
+  Fetches a stored file over the tokenless public surface (issue #185
+  slice B) — a strictly narrower gate than `fetch_accessible_file/2`'s
+  actor-based scope check. A file is public here iff it is an
+  attachment on a post an anonymous visitor can already reach through
+  `PublicController.post/2` (published, not pending approval, not
+  soft-deleted) whose group additionally passes
+  `Kammer.Authorization.publicly_readable?/1`. The post conditions are
+  applied in one boolean-shaped query rather than by composing
+  `Feed.fetch_visible_post/3`: this runs once per `<img>` tag on a
+  public page, on an unauthenticated (unthrottled) path, so loading
+  the full post association graph a dozen queries deep just to answer
+  yes/no would hand anonymous scrapers a query-amplification lever.
+  The conditions mirror `Feed`'s anonymous `visible_posts/4` branch
+  plus the soft-delete check, and the controller test suite pins the
+  parity (including the pending-approval case) so the two surfaces
+  can't silently drift. Every other file — group/community
+  file-space entries not attached to any visible post, orphaned
+  uploads, anything in a private/community/sealed/archived group — is
+  indistinguishable from a nonexistent id (no existence oracle, issue
+  #156/#161). A file attached to more than one post is public if *any*
+  of its posts clears the bar.
+  """
+  @spec fetch_public_file(String.t()) :: {:ok, StoredFile.t()} | {:error, :not_found}
+  def fetch_public_file(file_id) do
+    case Ecto.UUID.cast(file_id) do
+      {:ok, valid_id} ->
+        if Enum.any?(visible_attachment_groups(valid_id), &Authorization.publicly_readable?/1) do
+          case Repo.get(StoredFile, valid_id) do
+            %StoredFile{} = stored_file -> {:ok, stored_file}
+            nil -> {:error, :not_found}
+          end
+        else
+          {:error, :not_found}
+        end
+
+      :error ->
+        {:error, :not_found}
+    end
+  end
+
+  # The groups of every anonymously-visible post this file is attached
+  # to, in one query. The post conditions mirror `Feed`'s anonymous
+  # `visible_posts/4` branch (published, not pending approval) plus the
+  # soft-delete check; the group half of the policy stays where policy
+  # lives — each returned struct is judged by
+  # `Authorization.publicly_readable?/1` above, never by inlining
+  # visibility flags into this query.
+  defp visible_attachment_groups(stored_file_id) do
+    now = DateTime.utc_now(:second)
+
+    Repo.all(
+      from(attachment in PostAttachment,
+        join: post in Post,
+        on: post.id == attachment.post_id,
+        join: group in Group,
+        on: group.id == post.group_id,
+        where: attachment.stored_file_id == ^stored_file_id,
+        where: post.published_at <= ^now and post.pending_approval == false,
+        where: is_nil(post.deleted_at),
+        select: group,
+        distinct: true
+      )
+    )
+  end
 
   @doc """
   Deletes transient files past their expiry (SPEC §5). Returns the purge

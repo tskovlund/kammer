@@ -59,6 +59,27 @@ and this project adheres to
   those forms without guessing from `visibility`/`archived`/`sealed`
   or trying a request and handling the refusal. OpenAPI operations,
   schemas, and conformance taps included.
+- Tokenless public reads of post attachments (issue #185 slice B):
+  `GET /api/v1/public/files/:file_id` and its `/thumbnail`/`/download`
+  twins serve the same bytes and hardening headers as the
+  Bearer-authenticated `/api/v1/files/:file_id` (`KammerWeb.FileServing`
+  shared between them), so an anonymous PWA visitor browsing a public
+  post can load its image/file attachments — previously every
+  attachment URL pointed at the Bearer-protected route, so a guest
+  hit a 401 on every image in a public post's feed. Authorization is
+  a new `Kammer.Files.fetch_public_file/1`, strictly narrower than the
+  actor-based scope check `fetch_accessible_file/2` uses: a file is
+  public only when it's an attachment on a post an anonymous visitor
+  can already read through `PublicController.post/2` (published, not
+  pending approval, not deleted) whose group additionally passes
+  `Authorization.publicly_readable?/1` — never merely because its
+  owning scope (a group/community file space) is publicly viewable,
+  so library files not attached to any visible post stay 404. The
+  `Serializer.post/4` shape gained a `public: true` option so posts
+  read through the `/public` surface emit attachment URLs pointing at
+  the new route instead, without changing the Bearer-authenticated
+  shape any existing client already depends on. OpenAPI operations
+  and conformance included.
 - Guest, newsletter, legal, and first-run setup screens in the PWA
   (issue #185, the client half of the surfaces above): every route the
   guest/newsletter emails and the setup flow link to, all top-level and
