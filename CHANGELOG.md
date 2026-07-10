@@ -239,6 +239,16 @@ and this project adheres to
   entry lookup now tolerates the sibling entries a release can create.
   Found by the new API folder-deletion success test (part of #208).
 
+### Security
+
+- Bumped `plug` (1.20.2 → 1.20.3) and `postgrex` (0.22.2 → 0.22.3,
+  plus `db_connection` 2.10.1 → 2.10.2) to clear two newly-published
+  advisories against the pinned versions: CVE-2026-56814 (plug's
+  multipart `:length` limit not charged for part headers → unbounded
+  temp-file creation, a DoS) and CVE-2026-58225 (Postgrex dollar-quote
+  injection in the reconnect notification replay → notification DoS).
+  Both had started failing `mix deps.audit` in CI on every branch.
+
 ### Added
 
 - Trusted reverse-proxy support (issue #162, security-hardening pass):
