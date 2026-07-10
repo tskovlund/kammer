@@ -92,15 +92,8 @@ defmodule Kammer.RateLimit do
   def hit_guest_ip(nil), do: {:allow, 0}
 
   def hit_guest_ip(ip_address) do
-    hit("guest:ip:#{format_ip(ip_address)}", @fifteen_minutes_in_milliseconds, guest_ip_limit())
+    hit("guest:ip:#{format_ip(ip_address)}", @fifteen_minutes_in_milliseconds, 10)
   end
-
-  # Configurable so the test suite can lift it: guest endpoints run from a
-  # shared peer address across the async suite, and Hammer's ETS counters
-  # aren't reset between tests, so the production ceiling would accumulate
-  # and spuriously throttle unrelated tests. The per-email guest budget
-  # stays fixed — that's the one the throttling test exercises.
-  defp guest_ip_limit, do: Application.get_env(:kammer, :guest_ip_rate_limit, 10)
 
   @doc """
   Rate limit for `@everyone` broadcast mentions, keyed by group: at most

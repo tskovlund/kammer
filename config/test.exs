@@ -51,8 +51,3 @@ config :kammer, setup_on_boot: false
 
 # Serve the PWA static fixture so Plug.Static's guards are testable.
 config :kammer, :pwa_static_root, Path.expand("../test/support/fixtures/pwa_static", __DIR__)
-
-# Guest endpoints run from a shared peer IP across the async suite and
-# Hammer's counters aren't reset between tests, so lift the per-IP guest
-# ceiling here; the per-email guest limit stays low for the throttling test.
-config :kammer, :guest_ip_rate_limit, 1_000_000

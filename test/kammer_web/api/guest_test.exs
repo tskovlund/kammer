@@ -216,7 +216,19 @@ defmodule KammerWeb.Api.GuestTest do
     end
   end
 
-  defp public_conn, do: put_req_header(build_conn(), "accept", "application/json")
+  # Each request comes from a fresh TEST-NET-1 (RFC 5737, 192.0.2.0/24)
+  # address so the per-IP guest budget spent here can never collide with
+  # another async test — or with the LiveView guest-flow tests, which
+  # share the stubbed peer address. Only the email dimension is exercised
+  # across requests (the rate-limit test below); the IP is deliberately
+  # unique so it never confounds that assertion.
+  defp public_conn do
+    ip = {192, 0, 2, rem(System.unique_integer([:positive]), 254) + 1}
+
+    build_conn()
+    |> Map.put(:remote_ip, ip)
+    |> put_req_header("accept", "application/json")
+  end
 
   defp guest,
     do: %{
