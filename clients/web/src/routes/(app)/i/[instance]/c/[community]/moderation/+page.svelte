@@ -29,7 +29,11 @@
 	let reports = $state<Report[]>([]);
 	let bans = $state<Ban[]>([]);
 	let loading = $state(true);
+	// Load failure — replaces the page. A per-action failure uses
+	// `actionError` instead, so one failed resolve/dismiss doesn't discard
+	// the whole loaded queue.
 	let error = $state<ManageErrorKind | null>(null);
+	let actionError = $state<ManageErrorKind | null>(null);
 	// Ids currently mid-action, so their buttons disable without freezing the
 	// whole list.
 	let busy = $state<string[]>([]);
@@ -76,11 +80,12 @@
 
 	async function act(id: string, run: () => Promise<void>) {
 		if (!instance || busy.includes(id)) return;
+		actionError = null;
 		mark(id, true);
 		try {
 			await run();
 		} catch (cause) {
-			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			actionError = cause instanceof ManageApiError ? cause.kind : 'server';
 		} finally {
 			mark(id, false);
 		}
@@ -121,11 +126,14 @@
 		<Skeleton class="h-24" />
 		<Skeleton class="h-24" />
 	</div>
-{:else if error === 'forbidden' || (!loading && community && !canManage && bans.length === 0 && reports.length === 0)}
+{:else if error === 'forbidden'}
 	<EmptyState title={t('manage.error.forbiddenTitle')} body={t('manage.error.forbiddenBody')} />
 {:else if error}
 	<EmptyState title={t('manage.error.title')} body={t('manage.error.body')} />
 {:else}
+	{#if actionError}
+		<p class="mb-4 text-sm text-danger" role="alert">{t('manage.error.body')}</p>
+	{/if}
 	<section aria-labelledby="reports-heading" class="mb-8">
 		<h2 id="reports-heading" class="mb-2 text-sm font-semibold text-ink-muted">
 			{t('manage.moderation.reports.title')}
