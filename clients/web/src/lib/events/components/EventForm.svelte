@@ -75,7 +75,7 @@
 <form onsubmit={submit} class="flex flex-col gap-4" id="event-form">
 	<label class="flex flex-col gap-1">
 		<span class="text-sm font-medium text-ink">{t('events.form.title')}</span>
-		<input bind:value={title} required class={fieldClass} />
+		<input id="event-form-title" bind:value={title} required class={fieldClass} />
 	</label>
 
 	<label class="flex flex-col gap-1">
@@ -87,7 +87,13 @@
 	<div class="flex flex-col gap-4 sm:flex-row">
 		<label class="flex flex-1 flex-col gap-1">
 			<span class="text-sm font-medium text-ink">{t('events.form.startsAt')}</span>
-			<input type="datetime-local" bind:value={startsAt} required class={fieldClass} />
+			<input
+				id="event-form-starts-at"
+				type="datetime-local"
+				bind:value={startsAt}
+				required
+				class={fieldClass}
+			/>
 		</label>
 		<label class="flex flex-1 flex-col gap-1">
 			<span class="text-sm font-medium text-ink">{t('events.form.endsAt')}</span>

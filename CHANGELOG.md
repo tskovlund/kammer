@@ -241,6 +241,29 @@ and this project adheres to
   per-account Profile (base profile, contact visibilities, and each
   community's custom fields with the required-fields nag) and Devices
   (list + revoke) screens. EN+DA throughout.
+- End-to-end Playwright coverage of the Svelte PWA (issue #235): the
+  client-side counterpart to the LiveView smoke test
+  (`scripts/screenshots.sh`), and the piece of test coverage the
+  LiveView removal (#187) needs before it can proceed without losing
+  browser-level assurance. `clients/web/e2e/global-setup.ts` builds
+  and stages the client at `priv/static/app` (exactly where the
+  Dockerfile's client stage puts it) and boots a real `mix phx.server`
+  against a throwaway `kammer_dev` database — same-origin, so the
+  suite exercises the deep-link sign-in flow's actual
+  `window.location.origin` assumption rather than working around it
+  with a second dev-server port. Three serial spec files cover what a
+  first-time operator and a later anonymous visitor both do: the
+  first-run setup wizard through to a magic-link sign-in
+  (`01-onboarding.spec.ts`); posting with a file attachment, seeing it
+  in the feed, creating an event, and RSVPing (`02-content.spec.ts`);
+  and the tokenless public surface — anonymous browse of a public
+  community/group/post/event, plus the guest comment and RSVP request
+  forms landing on a neutral "sent" state (`03-guest.spec.ts`). A new
+  `e2e` CI job runs the suite headless on every PR, structured like
+  `smoke` (same Postgres service, Nix/Mix caching, and
+  runner-provided Chrome) but skipping the LiveView asset-build step
+  the Svelte client doesn't need. `scripts/e2e.sh` runs the same suite
+  locally.
 
 ### Changed
 
