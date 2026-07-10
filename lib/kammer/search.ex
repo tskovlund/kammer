@@ -1,6 +1,6 @@
 defmodule Kammer.Search do
   @moduledoc """
-  Global search within a community (SPEC §16): Postgres full-text
+  Global search within a community (SPEC §10): Postgres full-text
   search over posts, comments, events, and files, filtered through
   `Authorization.listable_groups_query/2` — search results are a form
   of *surfacing*, so they follow listing visibility, not link

@@ -43,7 +43,7 @@ screen.
 
 ## Features
 
-- **Passwordless sign-in** — magic links; passkeys on the roadmap.
+- **Passwordless sign-in** — magic links and passkeys.
 - **Communities and groups** — one instance hosts many communities; four
   visibility presets (`private`, `community`, `public_link`, `public_listed`),
   join/posting/comment policies, invite links, roles, and **sealed groups**

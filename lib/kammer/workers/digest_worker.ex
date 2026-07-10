@@ -1,6 +1,6 @@
 defmodule Kammer.Workers.DigestWorker do
   @moduledoc """
-  The digest tick (SPEC §16): every morning at 06:00 UTC, deliver to
+  The digest tick (SPEC §9): every morning at 06:00 UTC, deliver to
   everyone due — daily users every day, weekly users on Mondays. One
   failing recipient never blocks the rest.
   """
