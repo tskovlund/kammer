@@ -47,6 +47,8 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
   alias Kammer.Invitations.Invite
+  alias Kammer.Legal
+  alias Kammer.Markdown
   alias Kammer.Notifications.Notification
 
   @spec community(Community.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
@@ -970,4 +972,68 @@ defmodule KammerWeb.Api.Serializer do
   end
 
   defp rsvp_counts(_event), do: %{yes: 0, maybe: 0, no: 0}
+
+  @doc """
+  A guest's full management inventory (issue #185): everything behind
+  their signed management link — identity plus their RSVPs, signup
+  claims, comments (with moderation state), and newsletter
+  subscriptions. Mirrors what `GuestLive.Manage` renders. Expects the
+  preloads `Guests.fetch_manage_state/1` supplies.
+  """
+  @spec guest_manage_state(map()) :: map()
+  def guest_manage_state(%{
+        identity: identity,
+        rsvps: rsvps,
+        claims: claims,
+        comments: comments,
+        subscriptions: subscriptions
+      }) do
+    %{
+      identity: %{display_name: identity.display_name, email: identity.email},
+      rsvps:
+        Enum.map(rsvps, fn rsvp ->
+          %{event_id: rsvp.event_id, event_title: rsvp.event.title, status: rsvp.status}
+        end),
+      claims:
+        Enum.map(claims, fn claim ->
+          %{claim_id: claim.id, slot_title: claim.slot.title, event_title: claim.slot.event.title}
+        end),
+      comments:
+        Enum.map(comments, fn comment ->
+          %{
+            group_name: comment.post.group.name,
+            body_markdown: comment.body_markdown,
+            pending_approval: comment.pending_approval,
+            removed: Comment.deleted?(comment)
+          }
+        end),
+      subscriptions:
+        Enum.map(subscriptions, fn subscription ->
+          %{
+            subscription_id: subscription.id,
+            community_name: subscription.group.community.name,
+            group_name: subscription.group.name,
+            cadence: subscription.cadence
+          }
+        end)
+    }
+  end
+
+  @doc """
+  A public legal page (issue #185): the operator's text or the built-in
+  template, both as authored markdown and server-rendered HTML, plus
+  whether an operator has published their own version yet.
+  """
+  @spec legal_page(String.t()) :: map()
+  def legal_page(key) do
+    page = Legal.get_page(key)
+
+    %{
+      key: key,
+      title: Legal.title(key),
+      content_markdown: page.content_markdown,
+      content_html: Markdown.to_html(page.content_markdown),
+      published: Legal.published?(key)
+    }
+  end
 end

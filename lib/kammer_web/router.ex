@@ -179,6 +179,54 @@ defmodule KammerWeb.Router do
     post "/auth/exchange", AuthController, :exchange
     post "/auth/passkey/challenge", AuthController, :passkey_challenge
     post "/auth/passkey/verify", AuthController, :passkey_verify
+
+    # First-run setup (issue #185): the operator-bootstrap flow over the
+    # API. Gated by the setup token printed to the server logs, not a
+    # device token — see SetupController. Public because a pre-setup
+    # instance has no operator to authenticate yet.
+    get "/setup", SetupController, :status
+    post "/setup/verify-token", SetupController, :verify_token
+    post "/setup", SetupController, :complete
+
+    # Public legal pages (issue #185, SPEC §13).
+    get "/legal/:key", LegalController, :show
+
+    # Account-less guest surfaces (issue #185, ADR 0013/0024): the signed
+    # link in the URL is the whole credential, so these stay tokenless
+    # and out of :api_authenticated. Request endpoints email a confirm
+    # link; confirm endpoints record and email a management link; the
+    # management token then lists, changes, and erases the guest's data.
+    post "/communities/:community_slug/events/:event_id/guest-rsvp",
+         GuestController,
+         :request_rsvp
+
+    post "/communities/:community_slug/events/:event_id/slots/:slot_id/guest-claim",
+         GuestController,
+         :request_claim
+
+    post "/communities/:community_slug/groups/:group_slug/posts/:post_id/guest-comment",
+         GuestController,
+         :request_comment
+
+    post "/guest/rsvp/confirm", GuestController, :confirm_rsvp
+    post "/guest/claim/confirm", GuestController, :confirm_claim
+    post "/guest/comment/confirm", GuestController, :confirm_comment
+
+    get "/guest/manage/:token", GuestController, :manage
+    put "/guest/manage/:token/rsvps/:event_id", GuestController, :set_rsvp
+    delete "/guest/manage/:token/claims/:claim_id", GuestController, :release_claim
+    put "/guest/manage/:token/subscriptions/:subscription_id", GuestController, :set_cadence
+    delete "/guest/manage/:token/subscriptions/:subscription_id", GuestController, :unsubscribe
+    delete "/guest/manage/:token", GuestController, :erase
+
+    # Guest newsletter subscriptions (issue #185, SPEC §8). Cadence
+    # change and unsubscribe ride the shared guest management token
+    # above; the RFC 8058 one-click POST stays a plain-HTTP route.
+    post "/communities/:community_slug/groups/:group_slug/newsletter",
+         NewsletterController,
+         :subscribe
+
+    post "/newsletter/confirm", NewsletterController, :confirm
   end
 
   # Unaliased scope: RenderSpec is a library plug, not a KammerWeb.Api
