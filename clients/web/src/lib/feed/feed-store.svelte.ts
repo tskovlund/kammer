@@ -1,4 +1,5 @@
 import type { Instance } from '$lib/instances/types.js';
+import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
 import { getSocket, noteInstanceAuthFailure } from '$lib/realtime/registry.svelte.js';
 import * as api from './api.js';
 import { FeedApiError, type CreatePostInput, type FeedErrorKind } from './api.js';
@@ -38,6 +39,10 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	let loadingMore = $state(false);
 	let actionError = $state<FeedActionError | null>(null);
 	let stopLive: (() => void) | null = null;
+	// Non-null exactly when `posts` is last-known-good cached data rather
+	// than a fresh fetch (issue #186) — drives the stale/offline banner.
+	let snapshotSavedAt = $state<string | null>(null);
+	const snapshotKey = `feed:${instance.id}:${groupId}`;
 
 	// Ids of comments this client just created that haven't yet appeared in a
 	// `post_updated` echo. They're preserved across a concurrent echo that
@@ -88,11 +93,24 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 			const page = await api.fetchFeedPage(instance, ref);
 			posts = page.posts;
 			nextCursor = page.nextCursor;
+			snapshotSavedAt = null;
 			loadState = 'ready';
+			saveSnapshot(snapshotKey, page.posts);
 		} catch (error) {
 			if (error instanceof FeedApiError) {
 				loadErrorKind = error.kind;
 				if (error.kind === 'auth') noteInstanceAuthFailure(instance);
+				// Unreachable, specifically — not an auth/validation error — is
+				// when last-known-good data is worth falling back to (#186).
+				if (error.kind === 'network') {
+					const cached = loadSnapshot<Post[]>(snapshotKey);
+					if (cached) {
+						posts = cached.data;
+						snapshotSavedAt = cached.savedAt;
+						loadState = 'ready';
+						return;
+					}
+				}
 			} else {
 				loadErrorKind = 'server';
 			}
@@ -314,6 +332,10 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		},
 		get loadErrorKind() {
 			return loadErrorKind;
+		},
+		/** Non-null when `items` is cached data, not a fresh fetch — see `StaleBanner`. */
+		get snapshotSavedAt() {
+			return snapshotSavedAt;
 		},
 		get hasMore() {
 			return nextCursor !== null;

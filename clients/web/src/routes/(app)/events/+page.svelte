@@ -8,6 +8,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
 
 	const events = createEventsStore();
@@ -49,6 +50,10 @@
 		{t('events.new')}
 	</a>
 </div>
+
+{#if events.snapshotSavedAt}
+	<StaleBanner savedAt={events.snapshotSavedAt} />
+{/if}
 
 {#if events.failedInstances.length > 0}
 	<div class="mb-5 flex flex-col gap-2">

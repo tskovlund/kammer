@@ -1,11 +1,14 @@
 import { FeedApiError } from '$lib/feed/api.js';
 import type { FailedInstance, InstanceFailureKind } from '$lib/instances/home.js';
 import type { Instance } from '$lib/instances/types.js';
+import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
 import { fetchCommunities, fetchCommunityEvents } from './api.js';
 import { groupEventsByDay, type AgendaDay } from './agenda.js';
 import type { MergedEvent } from './types.js';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+const SNAPSHOT_KEY = 'events';
 
 /** A community present in the merged events, for the filter chips. */
 export interface CommunityChip {
@@ -65,6 +68,9 @@ export function createEventsStore() {
 	let failedInstances = $state<FailedInstance[]>([]);
 	let loadState = $state<LoadState>('idle');
 	let activeFilter = $state<string | null>(null);
+	// Non-null exactly when `events` is last-known-good cached data rather
+	// than a fresh fetch (issue #186) — drives the stale/offline banner.
+	let snapshotSavedAt = $state<string | null>(null);
 	// Discards a fetch that resolves after a newer load (or after teardown),
 	// so stale data never overwrites fresh data.
 	let loadGeneration = 0;
@@ -103,16 +109,36 @@ export function createEventsStore() {
 		const results = await Promise.all(instances.map(loadInstance));
 		if (generation !== loadGeneration) return;
 
-		events = results
+		const loadedEvents = results
 			.flatMap((result) => result.events)
 			.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-		failedInstances = results
+		const loadedFailures = results
 			.map((result) => result.failure)
 			.filter((failure): failure is FailedInstance => failure !== null);
-		// Every account failing (and none succeeding) is a hard error; a
-		// partial failure degrades gracefully and still shows what loaded.
-		loadState =
-			events.length === 0 && failedInstances.length === instances.length ? 'error' : 'ready';
+		const allFailed = instances.length > 0 && loadedFailures.length === instances.length;
+		// Network failures only, matching feed-store's gate — auth/server
+		// failures are real state to surface, not an occasion for a snapshot.
+		const allOffline = allFailed && loadedFailures.every((failed) => failed.kind === 'network');
+
+		if (allOffline) {
+			const cached = loadSnapshot<MergedEvent[]>(SNAPSHOT_KEY);
+			if (cached) {
+				events = cached.data;
+				failedInstances = loadedFailures;
+				snapshotSavedAt = cached.savedAt;
+				loadState = 'ready';
+				return;
+			}
+		}
+
+		events = loadedEvents;
+		failedInstances = loadedFailures;
+		snapshotSavedAt = null;
+		// Every account failing (and none succeeding), with nothing cached to
+		// fall back to either, is a hard error; a partial failure degrades
+		// gracefully and still shows what loaded.
+		loadState = events.length === 0 && allFailed ? 'error' : 'ready';
+		if (!allFailed) saveSnapshot(SNAPSHOT_KEY, events);
 	}
 
 	return {
@@ -124,6 +150,10 @@ export function createEventsStore() {
 		},
 		get failedInstances() {
 			return failedInstances;
+		},
+		/** Non-null when the current events are cached data, not a fresh fetch — see `StaleBanner`. */
+		get snapshotSavedAt() {
+			return snapshotSavedAt;
 		},
 		get loadState() {
 			return loadState;

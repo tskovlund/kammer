@@ -87,6 +87,19 @@ defmodule KammerWeb.PwaControllerTest do
       assert cache =~ "immutable"
     end
 
+    test "service-worker.js is served as a real file, not the SPA fallback (#186)",
+         %{conn: conn} do
+      # Registration requires script content back, not index.html — the
+      # only: allowlist must include it or navigator.serviceWorker.register
+      # would fail on a mismatched response.
+      conn = get(conn, "/app/service-worker.js")
+
+      assert response(conn, 200) =~ "service worker fixture"
+      # Not content-hashed, so it must always revalidate — otherwise an
+      # HTTP cache could mask a new build from registration.update().
+      assert get_resp_header(conn, "cache-control") == ["no-cache"]
+    end
+
     test "the PWA scope shadows nothing outside its base path", %{conn: conn} do
       # Liveness probe.
       assert text_response(get(conn, "/healthz"), 200) == "ok"

@@ -46,11 +46,16 @@ defmodule KammerWeb.Endpoint do
   # always go through PwaController (CSP, frame-ancestors, no-cache);
   # serving it as a plain static file would ship it cacheable and
   # unguarded. Content-hashed build assets get immutable caching.
+  # `service-worker.js` (issue #186) is SvelteKit's own build output — a
+  # real file the browser fetches directly, unlike index.html it must be
+  # served as-is (correct script content-type) rather than falling
+  # through to PwaController, or `navigator.serviceWorker.register()`
+  # would get an HTML document back and fail.
   plug Plug.Static,
     at: Application.compile_env!(:kammer, :pwa_base_path),
     from: Application.compile_env!(:kammer, :pwa_static_root),
     gzip: not code_reloading?,
-    only: ~w(_app icons manifest.webmanifest robots.txt),
+    only: ~w(_app icons manifest.webmanifest robots.txt service-worker.js),
     headers: {__MODULE__, :pwa_static_headers, []}
 
   # Serve at "/" the static files from "priv/static" directory.
@@ -113,12 +118,21 @@ defmodule KammerWeb.Endpoint do
   @doc false
   @spec pwa_static_headers(Plug.Conn.t()) :: [{String.t(), String.t()}]
   def pwa_static_headers(conn) do
-    # SvelteKit's content-hashed output is safe to cache forever; the
-    # rest (icons, manifest) revalidates normally.
-    if String.contains?(conn.request_path, "/_app/immutable/") do
-      [{"cache-control", "public, max-age=31536000, immutable"}]
-    else
-      []
+    cond do
+      # SvelteKit's content-hashed output is safe to cache forever.
+      String.contains?(conn.request_path, "/_app/immutable/") ->
+        [{"cache-control", "public, max-age=31536000, immutable"}]
+
+      # Not content-hashed (fixed filename) and it decides when a new app
+      # version takes over (issue #186) — always revalidate, or an HTTP
+      # cache could mask a new build from `registration.update()` for as
+      # long as the response stays fresh.
+      String.ends_with?(conn.request_path, "/service-worker.js") ->
+        [{"cache-control", "no-cache"}]
+
+      # The rest (icons, manifest) revalidates normally.
+      true ->
+        []
     end
   end
 end

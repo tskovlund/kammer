@@ -264,6 +264,62 @@ and this project adheres to
   runner-provided Chrome) but skipping the LiveView asset-build step
   the Svelte client doesn't need. `scripts/e2e.sh` runs the same suite
   locally.
+- Service worker, offline reading, and Web Push registration for the
+  Svelte PWA (issue #186, the final parity-ladder rung before the
+  LiveView removal cut, #187). `clients/web/src/service-worker.ts`
+  uses SvelteKit's native `$service-worker` build support (no workbox
+  dependency): it precaches the hashed build bundle, the static
+  files, and the SPA shell (fetched explicitly — it isn't part of
+  either, since `KammerWeb.PwaController` renders it per-request) into
+  a version-named cache, serves precached assets cache-first and
+  everything else network-first, and falls back to the cached shell
+  only on a failed navigation (offline). New versions install silently
+  and take over on reconnect/next-visible rather than mid-session
+  (`$lib/pwa/register-service-worker.ts`), matching the LiveView
+  side's "clients pick up new versions on reconnect" (SPEC §13).
+  `endpoint.ex`'s `Plug.Static` `only:` allowlist gained
+  `service-worker.js` (the one server-side touch this client work
+  needed — the file wasn't in the allowlist, so it fell through to the
+  SPA fallback and served HTML instead of the worker script) with a
+  `no-cache` header so an HTTP cache can't mask a new build from
+  `registration.update()`.
+  Last-fetched-data offline reading (SPEC §14, full write queue stays
+  #137) is a small `localStorage` snapshot per view
+  (`$lib/offline/snapshot-cache.ts`) — the leanest option that
+  satisfies "last data readable offline with a stale indicator"
+  without an offline database or a service-worker-level HTTP response
+  cache (which would also have to reason about auth headers and
+  multi-instance CORS invalidation). Home, the Events tab, and a
+  group's feed each fall back to their last snapshot when every added
+  instance is unreachable, and show a calm `StaleBanner` while doing
+  so.
+  Web Push registration lives on a new per-instance You page
+  (`you/[instance]/notifications`), wired to the existing
+  `POST`/`DELETE /api/v1/push-subscriptions` endpoints (#173) via
+  `$lib/push/api.ts`, and unregisters best-effort on sign-out
+  (`revokeAndRemoveInstance`). Because a browser holds one push
+  subscription per _origin_, and the PWA is instance-served (one
+  origin per instance), push is only manageable from the instance
+  actually serving the page — the settings page detects a mismatch and
+  points elsewhere rather than offering a dead control.
+  `service-worker.ts`'s `push`/`notificationclick` handlers and
+  `$lib/push/notification-routing.ts` translate a notification's
+  server-sent link (`Kammer.Notifications.push_payload/4`'s
+  `{title, body, url}`) into the right in-PWA account/community route,
+  landing on an already-open window via `postMessage` or a cold-opened
+  one via a `notify` query param the root layout resolves (a service
+  worker has no `localStorage` access, so it can't resolve instances
+  itself). Actually subscribing is currently blocked on issue #251:
+  `GET /api/v1/instance` exposes whether a server has push configured
+  (`features.web_push`, unchanged) but not the VAPID public key
+  `PushManager.subscribe()` needs — the settings page shows an honest
+  "almost there" state instead of a non-functional button; the client
+  plumbing (`subscribeToPush`/`unsubscribeFromPush`) already takes the
+  key as a parameter and needs no further change once #251 lands.
+  Manifest/icons (shipped earlier) were manually re-verified against
+  an installability checklist: `start_url`/`scope` within the service
+  worker's scope, 192/512/maskable icons, `standalone` display — no
+  Lighthouse available in this container.
 
 ### Changed
 

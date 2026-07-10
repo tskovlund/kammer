@@ -26,6 +26,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
 
 	const instance = $derived(
@@ -396,6 +397,10 @@
 	</header>
 
 	{#if store}
+		{#if store.snapshotSavedAt}
+			<StaleBanner savedAt={store.snapshotSavedAt} />
+		{/if}
+
 		<div class="mb-5">
 			<Composer {store} {instance} {ref} />
 		</div>
