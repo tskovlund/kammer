@@ -178,6 +178,22 @@
 	const filesHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/files`)
 	);
+	// Management entry points (issue #183), shown only when the group's
+	// `viewer_can` grants the capability; the server enforces regardless.
+	// Paths are written as full literals so SvelteKit can type-check them
+	// against the known routes (a composed variable defeats that).
+	const groupSettingsHref = $derived(
+		resolve(`/i/${page.params.instance}/c/${page.params.community}/g/${page.params.group}/settings`)
+	);
+	const moderationHref = $derived(
+		resolve(`/i/${page.params.instance}/c/${page.params.community}/moderation`)
+	);
+	const communitySettingsHref = $derived(
+		resolve(`/i/${page.params.instance}/c/${page.params.community}/settings`)
+	);
+	const canManageGroup = $derived(group?.viewer_can?.includes('manage_group') ?? false);
+	const canModerate = $derived(group?.viewer_can?.includes('moderate') ?? false);
+	const canManageCommunity = $derived(community?.viewer_can?.includes('manage_community') ?? false);
 </script>
 
 <svelte:head>
@@ -283,6 +299,31 @@
 						<p class="text-sm text-ink-muted" role="status">{membershipNotice}</p>
 					{/if}
 				</div>
+				{#if canManageGroup || canModerate || canManageCommunity}
+					<nav
+						class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-sm"
+						aria-label={t('manage.moderation.title')}
+					>
+						{#if canManageGroup}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={groupSettingsHref} class="text-accent hover:underline"
+								>{t('manage.group.title')}</a
+							>
+						{/if}
+						{#if canModerate || canManageCommunity}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={moderationHref} class="text-accent hover:underline"
+								>{t('manage.moderation.link')}</a
+							>
+						{/if}
+						{#if canManageCommunity}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={communitySettingsHref} class="text-accent hover:underline"
+								>{t('manage.community.title')}</a
+							>
+						{/if}
+					</nav>
+				{/if}
 			</div>
 			{#if store}
 				<div

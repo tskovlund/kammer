@@ -37,7 +37,15 @@ function post(overrides: {
 		attachments: [],
 		viewer_can: [],
 		comments: [],
-		community: { ...overrides.community, description: null, viewer_can: [] },
+		community: {
+			...overrides.community,
+			description: null,
+			accent_color: '#3E6B48',
+			default_locale: 'en',
+			listed_on_instance: false,
+			require_real_names: false,
+			viewer_can: []
+		},
 		group: { id: 'g1', name: 'Group', slug: 'group' },
 		instance: overrides.instance
 	};
@@ -61,7 +69,15 @@ function event(overrides: {
 		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
 		slots: [],
 		comments: [],
-		community: { ...overrides.community, description: null, viewer_can: [] },
+		community: {
+			...overrides.community,
+			description: null,
+			accent_color: '#3E6B48',
+			default_locale: 'en',
+			listed_on_instance: false,
+			require_real_names: false,
+			viewer_can: []
+		},
 		group: { id: 'g1', name: 'Group', slug: 'group' },
 		instance: overrides.instance
 	};

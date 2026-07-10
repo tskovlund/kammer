@@ -23,6 +23,13 @@ and this project adheres to
   emails). Every endpoint enforces authorization in the context, hides
   rows the caller may not act on behind a 404 (no oracle), and ships
   OpenAPI operations with inline conformance taps.
+- Management and moderation screens in the PWA (issue #183): the client
+  side of the management rung — a moderation queue (resolve or dismiss
+  reports, lift bans), community-settings and group-settings screens,
+  and capability-gated entry links on the group page. Every control is
+  shown only when `viewer_can` says it would succeed, so a stale
+  capability degrades to a graceful "not allowed" rather than a broken
+  button. EN + DA.
 - Invite issuance is now rate-limited (issue #97): a community/group
   admin may send at most 20 email invites per hour, enforced in
   `Kammer.Invitations` before any row is written or mail delivered, so

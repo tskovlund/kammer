@@ -33,6 +33,10 @@ function event(overrides: Partial<MergedEvent> & { id: string; starts_at: string
 			name: 'Community',
 			slug: 'community',
 			description: null,
+			accent_color: '#3E6B48',
+			default_locale: 'en',
+			listed_on_instance: false,
+			require_real_names: false,
 			viewer_can: []
 		},
 		...overrides

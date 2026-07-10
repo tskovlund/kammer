@@ -24,7 +24,17 @@ function instance(id: string, name: string): Instance {
 }
 
 function community(id: string, slug: string, name: string): Community {
-	return { id, slug, name, description: null, viewer_can: [] };
+	return {
+		id,
+		slug,
+		name,
+		description: null,
+		accent_color: '#3E6B48',
+		default_locale: 'en',
+		listed_on_instance: false,
+		require_real_names: false,
+		viewer_can: []
+	};
 }
 
 function event(id: string, startsAt: string, groupId = 'g'): Event {
