@@ -35,6 +35,38 @@ and this project adheres to
   expired, or used token gets one neutral answer, never an oracle.
   OpenAPI operations, schemas, and conformance taps included; PWA
   screens follow as the client half.
+- Guest, newsletter, legal, and first-run setup screens in the PWA
+  (issue #185, the client half of the surfaces above): every route the
+  guest/newsletter emails and the setup flow link to, all top-level and
+  unauthenticated since these guests and operators hold no device
+  token (ADR 0024). The RSVP, signup-claim, comment, and newsletter
+  confirm links each POST their token once and show a neutral
+  confirmed/error state (a full slot on claim confirm gets its own
+  message rather than the generic "link invalid," since the API
+  already distinguishes it). The guest management page lists RSVPs,
+  claims, comments, and subscriptions behind a signed management link,
+  lets a guest change an RSVP or subscription cadence, release a claim,
+  unsubscribe, or erase everything — erasure requires an explicit
+  in-page confirm step with focus moved to it and returned to the
+  trigger on cancel, given how irreversible it is. Unlike the
+  single-use confirm links, the management token is long-lived (issue
+  #230, ADR 0026), so the emailed link carries it in the URL
+  _fragment_ rather than a path segment — the page reads it from
+  `window.location.hash` and sends it as an `Authorization: Bearer`
+  header, never a URL, so it never lands in access logs, proxy logs,
+  or `Referer`. Legal pages (privacy/imprint) render through the same
+  sanitized Markdown component the feed uses. The first-run setup
+  wizard mirrors `SetupLive.Wizard`'s field set (operator/instance →
+  community/group → done) so the two stay interchangeable while
+  LiveView setup still exists; there is no separate token-verification
+  step (issue #230) — the setup token rides the operator step's form
+  and is only actually checked on the final `POST /setup`, with a bad
+  or expired one surfaced as a neutral error on that step rather than
+  a pre-flight yes/no. EN + DA throughout; public event/group/post
+  browsing and the initial guest RSVP/claim/comment _request_ forms
+  are out of scope here — they need tokenless content-read endpoints
+  for `public_listed` events/groups/posts that don't exist yet, left
+  as remaining #185 scope rather than a new issue.
 - Collaborative tools and global search in the PWA (issue #184, the
   client half of the #165 parity rung): the Svelte screens over the
   API above. Each group surfaces the tools it has turned on (ADR 0016)
