@@ -1,6 +1,6 @@
 defmodule Kammer.Digests do
   @moduledoc """
-  Email digests (SPEC §16): a periodic, calm summary of what happened
+  Email digests (SPEC §9): a periodic, calm summary of what happened
   across everything the user belongs to — new posts and upcoming
   events, grouped by community. Strictly opt-in (`digest_frequency`
   defaults to `:off`), and an empty period sends nothing: no email is

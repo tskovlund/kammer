@@ -182,6 +182,17 @@ and this project adheres to
 
 ### Fixed
 
+- Documentation drift between the spec/README/moduledocs and the
+  shipped code (issue #93, round-2 quality audit). `SPEC.md` cited a
+  nonexistent `RESTORE.md` (the restore walkthrough lives in
+  `docs/backups.md`) and still called the cross-community **Home**
+  feed "roadmap" though it shipped (`Kammer.Home`, ADR 0015); the
+  README still listed passkeys as roadmap though they shipped (ADR
+  0018). Four moduledocs cited the wrong SPEC section (Search →
+  §10, digests → §9, not §16 "Architecture strategy"), `Notifications`
+  implied digests were unbuilt, and `Kammer.Repo`/`Kammer.Mailer` had
+  no `@moduledoc` despite CONVENTIONS requiring one on every module.
+
 - Guest/setup public API hardening (issue #230, refining #185/#229 —
   the owner asked for a "do it properly" pass rather than matching the
   LiveView precedent). `POST /api/v1/setup/verify-token` is removed:

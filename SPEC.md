@@ -72,7 +72,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 ## 5. Feed & posts
 
-- Per-group feeds + aggregated home feed **scoped to the active community** (cross-community merging is roadmap, delivered properly by the v2 client). **Strictly chronological + pinned posts. No algorithmic ranking, ever** (product principle and marketing line). Optional user-selectable **activity view** (sorted by latest comment, forum-style bump). New-since-last-visit marker.
+- Per-group feeds + aggregated home feed **scoped to the active community**, plus the merged cross-community **Home** lens (ADR 0015) spanning everything you belong to. **Strictly chronological + pinned posts. No algorithmic ranking, ever** (product principle and marketing line). Optional user-selectable **activity view** (sorted by latest comment, forum-style bump). New-since-last-visit marker.
 - **Content**: Markdown canonical; composer is a friendly rich-text toolbar reading/writing Markdown.
 - **Attachments**: images (thumbnailed, lightbox), **polls**, files.
   - Files default into the group file space via a folder picker (default "Feed uploads"); deleting a post never deletes the file.
@@ -141,7 +141,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 - **First-run: hybrid env + wizard.** Every setup value settable via env (env always wins; fully declarative deploys); wizard collects the remainder on first boot: instance-operator email (magic link doubles as live SMTP test), **first community** (name/logo/accent color/default language), first group, invite link, and the community-creation policy (operators only / any user). Wizard protected by a setup token printed to server logs; locks permanently on completion. **Optional demo data** (example community with group, posts, poll, event) with one-click purge.
 - **Branding**: name, logo, accent color, default language — in settings UI, not only env.
-- **Backups built in**: Oban-scheduled pg_dump + file snapshot to local path or S3 target; retention policy; **optional `age` public-key encryption** of archives (documented hard: lose the key, lose the backups); tested restore procedure in `RESTORE.md`.
+- **Backups built in**: Oban-scheduled pg_dump + file snapshot to local path or S3 target; retention policy; **optional `age` public-key encryption** of archives (documented hard: lose the key, lose the backups); tested restore procedure in `docs/backups.md`.
 - **Observability**: structured logs, `/healthz`, optional Prometheus `/metrics` (Telemetry), optional Sentry-compatible (GlitchTip) error reporting.
 - **Upgrades**: release check against GitHub shown **in the admin panel only** (toggleable off; no phone-home otherwise); never shown to regular users. Migrations run on boot; LiveView clients pick up new versions on reconnect; assets digest-versioned.
 - **Email admin UX**: SMTP settings with "send test email". Docs cover providers (Postmark/Resend) and self-hosted (Stalwart) incl. SPF/DKIM/DMARC.

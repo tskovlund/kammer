@@ -1,6 +1,6 @@
 defmodule KammerWeb.SearchLive.Index do
   @moduledoc """
-  Community search (SPEC §16): one box, four sections — posts,
+  Community search (SPEC §10): one box, four sections — posts,
   comments, events, files — everything filtered through the same
   listing visibility the rest of the product uses. Anonymous visitors
   search exactly the public face.

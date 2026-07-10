@@ -3,7 +3,7 @@ defmodule Kammer.Notifications do
   Layered notifications (SPEC §9): in-app center, email, and Web Push,
   with "highlights" defaults — push+email for mentions, replies to you,
   acknowledgment-required posts, and event activity; ordinary posts stay
-  in-app (digests are Phase 2). Broadcast groups (admins-only posting)
+  in-app + digest. Broadcast groups (admins-only posting)
   default to "everything": announcement groups should announce.
 
   Per-user, per-group levels: everything / highlights / mentions-only /
