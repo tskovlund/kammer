@@ -10,6 +10,23 @@ and this project adheres to
 
 ### Added
 
+- Collaborative tools and global search over the JSON API (issue #184,
+  the #165 parity rung): the per-group tools the client previously had
+  no way to reach, each behind its group feature toggle (ADR 0016) so a
+  disabled tool is unreachable. Availability polls — list the open
+  polls, create one, answer a candidate date, and close it plainly or
+  by converting the winning date into an event. Assignments — the group
+  task list, create/edit/delete, claim/release, complete/reopen, and
+  the shared comment engine (ADR 0007). The decisions register — browse
+  it, raise a motion (a feed post carrying the default For/Against/
+  Abstain vote), and record the outcome. Global search — one
+  community-scoped endpoint over posts, comments, events, and files,
+  applying the exact listing-visibility and folder-permission narrowing
+  the context already enforces, so a result never surfaces what the
+  viewer couldn't already see. Every endpoint enforces authorization in
+  the context, hides a resource the caller may not see behind a 404 (no
+  oracle), carries a `viewer_can` capability list, and ships OpenAPI
+  operations with inline conformance taps.
 - Management and moderation over the JSON API (issue #183, the #165
   parity rung): the community-admin and instance-operator surfaces the
   client previously had no way to reach. Moderation — the open report

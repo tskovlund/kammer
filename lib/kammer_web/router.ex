@@ -346,6 +346,54 @@ defmodule KammerWeb.Router do
       post "/comments/:comment_id/reactions", EventController, :react_comment
     end
 
+    # Collaborative tools and global search (issue #184), each per-group
+    # and feature-gated (ADR 0016). Creation is group-scoped (the tool
+    # belongs to a group); a poll/assignment/decision is then addressed
+    # by id within its community, exactly as events are. Literal
+    # `availability`/`assignments`/`decisions`/`search` segments never
+    # collide with the member or event routes.
+    get "/communities/:community_slug/search", SearchController, :search
+
+    get "/communities/:community_slug/availability", AvailabilityController, :index
+
+    post "/communities/:community_slug/groups/:group_slug/availability",
+         AvailabilityController,
+         :create
+
+    scope "/communities/:community_slug/availability/:poll_id" do
+      get "/", AvailabilityController, :show
+      put "/responses", AvailabilityController, :respond
+      put "/closure", AvailabilityController, :close
+      put "/conversion", AvailabilityController, :convert
+    end
+
+    get "/communities/:community_slug/groups/:group_slug/assignments",
+        AssignmentController,
+        :index
+
+    post "/communities/:community_slug/groups/:group_slug/assignments",
+         AssignmentController,
+         :create
+
+    scope "/communities/:community_slug/assignments/:assignment_id" do
+      get "/", AssignmentController, :show
+      put "/", AssignmentController, :update
+      delete "/", AssignmentController, :delete
+      put "/claim", AssignmentController, :claim
+      delete "/claim", AssignmentController, :unclaim
+      put "/completion", AssignmentController, :complete
+      delete "/completion", AssignmentController, :reopen
+      post "/comments", AssignmentController, :create_comment
+    end
+
+    get "/communities/:community_slug/groups/:group_slug/decisions", DecisionController, :index
+    post "/communities/:community_slug/groups/:group_slug/decisions", DecisionController, :create
+
+    scope "/communities/:community_slug/decisions/:decision_id" do
+      get "/", DecisionController, :show
+      put "/outcome", DecisionController, :record_outcome
+    end
+
     get "/notifications", NotificationController, :index
     # Literal before wildcard, same reason as the browser routes above.
     put "/notifications/read-all", NotificationController, :mark_all_read

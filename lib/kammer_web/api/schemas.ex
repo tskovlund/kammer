@@ -1445,4 +1445,204 @@ defmodule KammerWeb.Api.Schemas do
       required: [:status]
     })
   end
+
+  defmodule UserRef do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "UserRef",
+      description: "A person reference: id and display name. Null when not resolved.",
+      type: :object,
+      nullable: true,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        display_name: %Schema{type: :string}
+      },
+      required: [:id, :display_name]
+    })
+  end
+
+  defmodule AvailabilityPoll do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AvailabilityPoll",
+      description:
+        "A date-finding poll (issue #39): candidate dates members answer " <>
+          "per date. Closing can convert the winning date into an event. " <>
+          "Feature-gated per group (`availability`).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        group_id: %Schema{type: :string, format: :uuid},
+        title: %Schema{type: :string},
+        closed: %Schema{type: :boolean},
+        converted_event_id: %Schema{
+          type: :string,
+          format: :uuid,
+          nullable: true,
+          description: "The event a converted poll produced (ADR 0019)"
+        },
+        created_at: %Schema{type: :string, format: :"date-time"},
+        created_by: UserRef,
+        options: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :object,
+            properties: %{
+              id: %Schema{type: :string, format: :uuid},
+              starts_at: %Schema{type: :string, format: :"date-time"},
+              position: %Schema{type: :integer},
+              responses: %Schema{
+                type: :array,
+                items: %Schema{
+                  type: :object,
+                  properties: %{
+                    user: UserRef,
+                    answer: %Schema{type: :string, enum: ["yes", "if_needed", "no"]}
+                  },
+                  required: [:answer]
+                }
+              },
+              my_answer: %Schema{
+                type: :string,
+                enum: ["yes", "if_needed", "no"],
+                nullable: true,
+                description: "The caller's own answer for this date, if any"
+              }
+            },
+            required: [:id, :starts_at, :position, :responses]
+          }
+        },
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{type: :string, enum: ["respond", "manage"]},
+          description:
+            "Advisory actions the caller may take (issue #199) — `respond` " <>
+              "while open, `manage` (close/convert) for creator or moderator. " <>
+              "Empty when the viewer's rights weren't resolved."
+        }
+      },
+      required: [:id, :group_id, :title, :closed, :created_at, :options, :viewer_can]
+    })
+  end
+
+  defmodule Assignment do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Assignment",
+      description:
+        "A lightweight group task (issue #17): open / claimed / done, " <>
+          "several claimants allowed. Feature-gated per group " <>
+          "(`assignments`). `comments`/`comment_count` are populated on " <>
+          "detail, empty on the list.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        group_id: %Schema{type: :string, format: :uuid},
+        title: %Schema{type: :string},
+        notes_markdown: %Schema{type: :string, nullable: true},
+        due_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        completed: %Schema{type: :boolean},
+        completed_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        completed_by: UserRef,
+        created_at: %Schema{type: :string, format: :"date-time"},
+        created_by: UserRef,
+        claims: %Schema{
+          type: :array,
+          items: UserRef,
+          description: "Everyone currently holding a claim"
+        },
+        claimed_by_me: %Schema{type: :boolean},
+        comment_count: %Schema{type: :integer, nullable: true},
+        comments: %Schema{type: :array, items: Comment},
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :string,
+            enum: ["claim", "complete", "reopen", "comment", "manage"]
+          },
+          description:
+            "Advisory actions the caller may take (issue #199) — " <>
+              "`claim`/`complete` while open, `reopen` while done, `comment`, " <>
+              "`manage` (edit/delete) for creator or moderator. Empty when the " <>
+              "viewer's rights weren't resolved."
+        }
+      },
+      required: [
+        :id,
+        :group_id,
+        :title,
+        :completed,
+        :created_at,
+        :claims,
+        :claimed_by_me,
+        :comments,
+        :viewer_can
+      ]
+    })
+  end
+
+  defmodule Decision do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Decision",
+      description:
+        "A decisions-register entry (issue #43): the motion, its linked " <>
+          "feed post (`post_id`, carrying the For/Against/Abstain vote), and " <>
+          "the recorded outcome. Feature-gated per group (`decisions`).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        group_id: %Schema{type: :string, format: :uuid},
+        post_id: %Schema{type: :string, format: :uuid},
+        title: %Schema{type: :string},
+        outcome: %Schema{
+          type: :string,
+          enum: ["adopted", "rejected", "noted"],
+          nullable: true,
+          description: "Null until an outcome is recorded"
+        },
+        outcome_note: %Schema{type: :string, nullable: true},
+        decided: %Schema{type: :boolean},
+        decided_at: %Schema{type: :string, format: :"date-time", nullable: true},
+        decided_by: UserRef,
+        created_at: %Schema{type: :string, format: :"date-time"},
+        viewer_can: %Schema{
+          type: :array,
+          items: %Schema{type: :string, enum: ["record_outcome"]},
+          description:
+            "Advisory actions the caller may take (issue #199) — " <>
+              "`record_outcome` for the motion's proposer or a moderator."
+        }
+      },
+      required: [:id, :group_id, :post_id, :title, :decided, :created_at, :viewer_can]
+    })
+  end
+
+  defmodule SearchResults do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "SearchResults",
+      description:
+        "Global search hits (SPEC §16), already narrowed to what the " <>
+          "viewer may see. Up to ten per section, best matches first.",
+      type: :object,
+      properties: %{
+        posts: %Schema{type: :array, items: Post},
+        comments: %Schema{type: :array, items: Comment},
+        events: %Schema{type: :array, items: Event},
+        files: %Schema{type: :array, items: LibraryFile}
+      },
+      required: [:posts, :comments, :events, :files]
+    })
+  end
 end
