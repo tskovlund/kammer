@@ -85,9 +85,21 @@ the same one:
 - **Swoosh test assertions pop the _next_ mailbox message** — drain
   fixture-generated emails first (`drain_delivered_emails` helper,
   used throughout the test suite).
-- **The ETS rate limiter is global across async tests** — use unique
-  emails per test (`System.unique_integer/1`) to avoid cross-test
-  interference.
+- **The ETS rate limiter is global across async tests and never
+  resets between them** — so isolate by _keyspace_, on every
+  dimension a limiter keys on, never by loosening the limit. For the
+  email dimension, give each test a unique address
+  (`System.unique_integer/1`). For the per-IP dimension, set a
+  distinct `conn.remote_ip` from a documentation range (RFC 5737
+  TEST-NET blocks — `203.0.113.0/24`, `198.51.100.0/24`,
+  `192.0.2.0/24`; grep the suite for ones already pinned so you don't
+  collide) rather than sharing the default `127.0.0.1`, which every
+  guest/signup/magic-link test otherwise piles onto until one
+  spuriously 429s. Resetting the shared table isn't an option under
+  async; partitioning the keys is. And never reach for a production
+  config knob to raise a limit in the test env — a security limit
+  behind a runtime-reachable setting is a footgun, and the isolation
+  belongs in the test layer regardless.
 
 ## What runs automatically
 
