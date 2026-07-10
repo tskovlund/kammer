@@ -241,23 +241,14 @@ defmodule KammerWeb.Api.GuestController do
     end
   end
 
-  # Reads the first `authorization` request header and parses a
-  # `Bearer <token>` scheme (case-insensitive, surrounding whitespace
-  # trimmed) — the management token's transport since ADR 0026.
+  # The management token's transport since ADR 0026: the shared API
+  # Bearer parser, resolving to a signed guest token here rather than
+  # a device token.
   @spec fetch_manage_token(Plug.Conn.t()) :: {:ok, String.t()} | :error
   defp fetch_manage_token(conn) do
-    with [header | _] <- get_req_header(conn, "authorization"),
-         {:ok, token} <- parse_bearer(header) do
-      {:ok, token}
-    else
-      _ -> :error
-    end
-  end
-
-  defp parse_bearer(header) do
-    case Regex.run(~r/^\s*Bearer\s+(\S+)\s*$/i, header) do
-      [_, token] -> {:ok, token}
+    case KammerWeb.ApiAuth.bearer_token(conn) do
       nil -> :error
+      token -> {:ok, token}
     end
   end
 

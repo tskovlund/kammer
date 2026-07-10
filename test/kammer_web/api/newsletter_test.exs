@@ -6,12 +6,13 @@ defmodule KammerWeb.Api.NewsletterTest do
   confirm token gets one neutral answer.
 
   Since issue #230 (ADR 0026) the management token rides an
-  `Authorization: Bearer` header, not the URL — see `manage_conn/1`.
+  `Authorization: Bearer` header, not the URL — see `bearer_conn/1`.
   """
 
   use KammerWeb.ConnCase, async: true
 
   import Kammer.CommunitiesFixtures
+  import KammerWeb.ApiHelpers, only: [bearer_conn: 1]
   import OpenApiSpex.TestAssertions
   import Swoosh.TestAssertions
 
@@ -46,11 +47,11 @@ defmodule KammerWeb.Api.NewsletterTest do
       end)
       |> token_from_email(~r{/guest/manage#([^\s"<]+)})
 
-    body = manage_conn(manage_token) |> get(~p"/api/v1/guest/manage") |> json_response(200)
+    body = bearer_conn(manage_token) |> get(~p"/api/v1/guest/manage") |> json_response(200)
     assert [%{"cadence" => "weekly", "subscription_id" => id}] = body["data"]["subscriptions"]
 
     changed =
-      manage_conn(manage_token)
+      bearer_conn(manage_token)
       |> put(~p"/api/v1/guest/manage/subscriptions/#{id}", %{"cadence" => "daily"})
       |> tap(&assert_operation_response(&1, "guest_set_cadence"))
       |> json_response(200)
@@ -58,7 +59,7 @@ defmodule KammerWeb.Api.NewsletterTest do
     assert [%{"cadence" => "daily"}] = changed["data"]["subscriptions"]
 
     emptied =
-      manage_conn(manage_token)
+      bearer_conn(manage_token)
       |> delete(~p"/api/v1/guest/manage/subscriptions/#{id}")
       |> tap(&assert_operation_response(&1, "guest_unsubscribe"))
       |> json_response(200)
@@ -77,7 +78,6 @@ defmodule KammerWeb.Api.NewsletterTest do
 
   # The management token's transport since ADR 0026: an Authorization
   # header, not a URL segment.
-  defp manage_conn(token), do: public_conn() |> put_req_header("authorization", "Bearer #{token}")
 
   defp token_from_email(_conn, regex) do
     assert_email_sent(fn email ->

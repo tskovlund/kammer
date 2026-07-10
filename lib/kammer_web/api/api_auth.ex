@@ -37,12 +37,22 @@ defmodule KammerWeb.ApiAuth do
     end
   end
 
-  @doc "The raw Bearer token of the current request, or nil."
+  @doc """
+  The raw Bearer token of the current request, or nil.
+
+  The one Bearer parser for the whole API — device tokens here and the
+  guest management token (ADR 0026) share it, so both surfaces accept
+  exactly the same header shapes. The scheme name is case-insensitive
+  and surrounding whitespace is tolerated (RFC 7235 §2.1); a missing,
+  empty, or malformed header is nil.
+  """
   @spec bearer_token(Plug.Conn.t()) :: String.t() | nil
   def bearer_token(conn) do
-    case get_req_header(conn, "authorization") do
-      ["Bearer " <> token | _rest] -> token
-      _missing -> nil
+    with [header | _rest] <- get_req_header(conn, "authorization"),
+         [_header, token] <- Regex.run(~r/^\s*Bearer\s+(\S+)\s*$/i, header) do
+      token
+    else
+      _missing_or_malformed -> nil
     end
   end
 end

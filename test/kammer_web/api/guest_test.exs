@@ -9,7 +9,7 @@ defmodule KammerWeb.Api.GuestTest do
   answer; the per-email rate limit is enforced.
 
   Since issue #230 (ADR 0026) the management token rides an
-  `Authorization: Bearer` header, not the URL — `manage_conn/1` builds
+  `Authorization: Bearer` header, not the URL — `bearer_conn/1` builds
   the header, and `manage_token/1` reads it from the email link's URL
   fragment (`#token`, not `/token`).
   """
@@ -17,6 +17,7 @@ defmodule KammerWeb.Api.GuestTest do
   use KammerWeb.ConnCase, async: true
 
   import Kammer.CommunitiesFixtures
+  import KammerWeb.ApiHelpers, only: [bearer_conn: 1]
   import OpenApiSpex.TestAssertions
   import Swoosh.TestAssertions
 
@@ -73,7 +74,7 @@ defmodule KammerWeb.Api.GuestTest do
         |> manage_token()
 
       body =
-        manage_conn(manage_token)
+        bearer_conn(manage_token)
         |> get(~p"/api/v1/guest/manage")
         |> tap(&assert_operation_response(&1, "guest_manage"))
         |> json_response(200)
@@ -82,20 +83,20 @@ defmodule KammerWeb.Api.GuestTest do
       assert event_id == event.id
 
       updated =
-        manage_conn(manage_token)
+        bearer_conn(manage_token)
         |> put(~p"/api/v1/guest/manage/rsvps/#{event.id}", %{"status" => "no"})
         |> tap(&assert_operation_response(&1, "guest_set_rsvp"))
         |> json_response(200)
 
       assert [%{"status" => "no"}] = updated["data"]["rsvps"]
 
-      manage_conn(manage_token)
+      bearer_conn(manage_token)
       |> delete(~p"/api/v1/guest/manage")
       |> tap(&assert_operation_response(&1, "guest_erase"))
       |> json_response(200)
 
       # Erased: the token no longer resolves to any inventory.
-      assert manage_conn(manage_token)
+      assert bearer_conn(manage_token)
              |> get(~p"/api/v1/guest/manage")
              |> json_response(404)
     end
@@ -165,7 +166,7 @@ defmodule KammerWeb.Api.GuestTest do
         |> manage_token()
 
       body =
-        manage_conn(manage_token)
+        bearer_conn(manage_token)
         |> get(~p"/api/v1/guest/manage")
         |> json_response(200)
 
@@ -187,7 +188,7 @@ defmodule KammerWeb.Api.GuestTest do
       victim = claim_manage_token(base, slot)
 
       claim_id =
-        manage_conn(victim)
+        bearer_conn(victim)
         |> get(~p"/api/v1/guest/manage")
         |> json_response(200)
         |> get_in(["data", "claims", Access.at(0), "claim_id"])
@@ -196,12 +197,12 @@ defmodule KammerWeb.Api.GuestTest do
       # to another guest: the per-identity scoping in the context must
       # answer a neutral 404 and leave the victim's claim untouched — the
       # token authorizes the caller, never an arbitrary sub-resource id.
-      manage_conn(attacker)
+      bearer_conn(attacker)
       |> delete(~p"/api/v1/guest/manage/claims/#{claim_id}")
       |> json_response(404)
 
       assert [%{"claim_id" => ^claim_id}] =
-               manage_conn(victim)
+               bearer_conn(victim)
                |> get(~p"/api/v1/guest/manage")
                |> json_response(200)
                |> get_in(["data", "claims"])
@@ -215,7 +216,7 @@ defmodule KammerWeb.Api.GuestTest do
                |> post(~p"/api/v1/guest/rsvp/confirm", %{"token" => "not-a-token"})
                |> json_response(404)
 
-      assert manage_conn("not-a-token")
+      assert bearer_conn("not-a-token")
              |> get(~p"/api/v1/guest/manage")
              |> json_response(404)
     end
@@ -233,7 +234,7 @@ defmodule KammerWeb.Api.GuestTest do
 
     test "a missing status gets the deliberate 400, not a clause crash" do
       assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =
-               manage_conn("bogus")
+               bearer_conn("bogus")
                |> put(~p"/api/v1/guest/manage/rsvps/#{Ecto.UUID.generate()}", %{})
                |> json_response(400)
     end
@@ -255,7 +256,6 @@ defmodule KammerWeb.Api.GuestTest do
 
   # The management token's transport since ADR 0026: an Authorization
   # header, not a URL segment.
-  defp manage_conn(token), do: public_conn() |> put_req_header("authorization", "Bearer #{token}")
 
   defp guest,
     do: %{

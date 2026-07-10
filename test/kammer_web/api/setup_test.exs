@@ -63,39 +63,27 @@ defmodule KammerWeb.Api.SetupTest do
     refute Setup.completed?()
   end
 
-  test "the per-IP rate limit is enforced" do
+  test "the per-IP rate limit is enforced, and malformed bodies burn it too" do
     Setup.ensure_setup_token()
     # A distinct TEST-NET-1 address (RFC 5737) so this test's budget
     # can never collide with the default-IP requests the other tests
     # in this module make.
     ip = {192, 0, 2, 77}
-    body = Map.put(@complete_body, "token", "not-the-token")
+    wrong_token = Map.put(@complete_body, "token", "not-the-token")
 
-    for _attempt <- 1..10 do
-      assert public_conn(ip) |> post(~p"/api/v1/setup", body) |> json_response(403)
-    end
+    # One shared budget, burned before the body is inspected: wrong
+    # tokens and malformed (non-string-token) bodies draw from the same
+    # ceiling, so a malformed body is not a free way around the limiter.
+    for _attempt <- 1..5 do
+      assert public_conn(ip) |> post(~p"/api/v1/setup", wrong_token) |> json_response(403)
 
-    assert %{"error" => %{"code" => "rate_limited"}} =
-             public_conn(ip) |> post(~p"/api/v1/setup", body) |> json_response(429)
-  end
-
-  test "malformed bodies burn rate-limit budget too" do
-    # A token-less or non-string-token body must not be a free way
-    # around the limiter: the budget is spent before the body is
-    # inspected, so exactly the same ceiling applies.
-    Setup.ensure_setup_token()
-    ip = {192, 0, 2, 78}
-
-    for _attempt <- 1..10 do
       assert public_conn(ip)
              |> post(~p"/api/v1/setup", %{"token" => 12_345})
              |> json_response(400)
     end
 
     assert %{"error" => %{"code" => "rate_limited"}} =
-             public_conn(ip)
-             |> post(~p"/api/v1/setup", %{"token" => 12_345})
-             |> json_response(429)
+             public_conn(ip) |> post(~p"/api/v1/setup", wrong_token) |> json_response(429)
   end
 
   defp public_conn, do: public_conn({127, 0, 0, 1})
