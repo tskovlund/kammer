@@ -12,6 +12,7 @@ defmodule KammerWeb.EventLive.Show do
 
   alias Kammer.Events
   alias Kammer.Feed
+  alias Kammer.Validation
   alias KammerWeb.ReportHandlers
 
   @impl Phoenix.LiveView
@@ -34,7 +35,7 @@ defmodule KammerWeb.EventLive.Show do
             <span>{@event.group.name}</span>
             <span :if={@event.location_name}>
               ·
-              <%= if @event.location_url do %>
+              <%= if Validation.http_url?(@event.location_url) do %>
                 <a href={@event.location_url} class="link" rel="noopener" target="_blank">
                   {@event.location_name}
                 </a>

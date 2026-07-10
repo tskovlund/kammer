@@ -73,6 +73,29 @@ defmodule KammerWeb.Api.EventWritesTest do
       assert Enum.any?(events, &(&1["title"] == "Sommerfest"))
     end
 
+    test "a stored non-http location_url is never emitted over the API (issue #247)", %{
+      community: community,
+      creator: creator,
+      group: group
+    } do
+      # Simulates a row written before the changeset validation existed;
+      # the serializer is the choke point every client (PWA, future
+      # native apps) reads through, so it must not emit the raw value.
+      %{event: event} = create_event(creator, community, group)
+
+      event
+      |> Ecto.Changeset.change(location_url: "javascript:alert(1)")
+      |> Kammer.Repo.update!()
+
+      %{"data" => events} =
+        creator
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/events")
+        |> json_response(200)
+
+      assert %{"location_url" => nil} = Enum.find(events, &(&1["id"] == event.id))
+    end
+
     test "a recurring series returns the first occurrence with a series_id", %{
       community: community,
       creator: creator,

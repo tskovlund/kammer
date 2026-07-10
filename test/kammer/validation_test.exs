@@ -24,6 +24,10 @@ defmodule Kammer.ValidationTest do
     {%{}, %{display_name: :string}} |> change() |> put_change(:display_name, display_name)
   end
 
+  defp url_changeset(url) do
+    {%{}, %{url: :string}} |> change() |> put_change(:url, url)
+  end
+
   describe "validate_email_format/3" do
     test "accepts a well-formed address" do
       assert email_changeset("a@b.com") |> Validation.validate_email_format() |> valid?()
@@ -80,6 +84,45 @@ defmodule Kammer.ValidationTest do
       assert display_name_changeset(String.duplicate("a", 100))
              |> Validation.validate_display_name_length(:display_name, 100)
              |> valid?()
+    end
+  end
+
+  # The accepted/rejected matrix lives on `http_url?/1` (the primitive
+  # both the changeset validator and every render guard delegate to);
+  # the validate_http_url/3 tests below only cover the changeset wiring.
+  describe "http_url?/1" do
+    test "true for http(s) URLs, including IDN hosts and pasted padding" do
+      assert Validation.http_url?("https://example.com/path")
+      assert Validation.http_url?("http://example.com")
+      assert Validation.http_url?("https://øl.dk")
+      assert Validation.http_url?("https://example.com ")
+    end
+
+    test "false for executable and scheme-less forms, and nil (issue #247)" do
+      refute Validation.http_url?("javascript:alert(1)")
+      refute Validation.http_url?("data:text/html,x")
+      refute Validation.http_url?("not a url")
+      refute Validation.http_url?("//example.com")
+      refute Validation.http_url?("https:example.com")
+      refute Validation.http_url?(nil)
+    end
+  end
+
+  describe "validate_http_url/3" do
+    test "wires http_url?/1 into a changeset error" do
+      assert url_changeset("https://example.com")
+             |> Validation.validate_http_url(:url)
+             |> valid?()
+
+      changeset = url_changeset("javascript:alert(1)") |> Validation.validate_http_url(:url)
+      assert "must be a valid http(s) URL" in errors_on(changeset, :url)
+    end
+
+    test "passes through a custom message" do
+      changeset =
+        url_changeset("javascript:x") |> Validation.validate_http_url(:url, message: "nope")
+
+      assert "nope" in errors_on(changeset, :url)
     end
   end
 

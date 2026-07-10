@@ -9,6 +9,8 @@ defmodule Kammer.Communities.InstanceBookmark do
 
   import Ecto.Changeset
 
+  alias Kammer.Validation
+
   @type t() :: %__MODULE__{}
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -34,19 +36,6 @@ defmodule Kammer.Communities.InstanceBookmark do
     |> validate_required([:name, :url])
     |> validate_length(:name, max: 100)
     |> validate_length(:url, max: 500)
-    |> validate_url()
-  end
-
-  defp validate_url(changeset) do
-    validate_change(changeset, :url, fn :url, url ->
-      case URI.new(url) do
-        {:ok, %URI{scheme: scheme, host: host}}
-        when scheme in ["http", "https"] and is_binary(host) and host != "" ->
-          []
-
-        _invalid ->
-          [url: "must be a valid http(s) URL"]
-      end
-    end)
+    |> Validation.validate_http_url(:url)
   end
 end
