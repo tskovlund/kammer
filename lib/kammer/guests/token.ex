@@ -10,23 +10,25 @@ defmodule Kammer.Guests.Token do
   directly, so contexts stay free of web-layer modules.
   """
 
+  alias Kammer.Config
+
   @confirm_salt "guest confirm"
   @manage_salt "guest manage"
   @unsubscribe_salt "guest unsubscribe"
 
-  # Long enough to find the email, short enough that a leaked confirm
-  # link goes stale quickly.
-  @confirm_max_age_seconds 60 * 60 * 48
-  # Management links live as long as changing an answer stays useful:
-  # issued fresh with every confirmation email.
-  @manage_max_age_seconds 60 * 60 * 24 * 60
+  # Confirm/manage lifetimes are tier-2 deployment config (ADR 0027,
+  # issue #234) — see Kammer.Config.guest_confirm_link_hours/0 and
+  # guest_manage_link_days/0.
   # Unsubscribe tokens carry no identity, only a `subscription_id`
   # (issue #233) — possession authorizes unsubscribing exactly that one
   # subscription and nothing else, so it's low-impact by construction
   # even long after issue. Pick generously (180 days, well past the
-  # 60-day manage token) so an old newsletter email's unsubscribe link
-  # — and the auto-fetched `List-Unsubscribe` header it doubles as —
-  # keeps working for as long as a subscription realistically lives.
+  # 60-day default manage-token lifetime) so an old newsletter email's
+  # unsubscribe link — and the auto-fetched `List-Unsubscribe` header
+  # it doubles as — keeps working for as long as a subscription
+  # realistically lives. Deliberately a fixed constant, not tier-2
+  # config: it carries no identity to abuse, so there's no tuning
+  # trade-off an operator would reach for.
   @unsubscribe_max_age_seconds 60 * 60 * 24 * 180
 
   @doc "Signs a confirm-intent payload (email round-trip proof)."
@@ -36,7 +38,10 @@ defmodule Kammer.Guests.Token do
   @doc "Verifies a confirm token."
   @spec verify_confirm(String.t()) :: {:ok, term()} | {:error, atom()}
   def verify_confirm(token),
-    do: Plug.Crypto.verify(secret(), @confirm_salt, token, max_age: @confirm_max_age_seconds)
+    do:
+      Plug.Crypto.verify(secret(), @confirm_salt, token,
+        max_age: Config.guest_confirm_link_hours() * 60 * 60
+      )
 
   @doc "Signs a management-link payload."
   @spec sign_manage(term()) :: String.t()
@@ -45,7 +50,10 @@ defmodule Kammer.Guests.Token do
   @doc "Verifies a management token."
   @spec verify_manage(String.t()) :: {:ok, term()} | {:error, atom()}
   def verify_manage(token),
-    do: Plug.Crypto.verify(secret(), @manage_salt, token, max_age: @manage_max_age_seconds)
+    do:
+      Plug.Crypto.verify(secret(), @manage_salt, token,
+        max_age: Config.guest_manage_link_days() * 24 * 60 * 60
+      )
 
   @doc """
   Signs a scoped unsubscribe payload — a single-purpose credential

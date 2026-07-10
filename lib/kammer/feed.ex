@@ -14,6 +14,7 @@ defmodule Kammer.Feed do
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Config
   alias Kammer.Feed.Comment
   alias Kammer.Feed.FeedVisit
   alias Kammer.Feed.Mentions
@@ -591,7 +592,8 @@ defmodule Kammer.Feed do
 
   @doc """
   Soft-deletes a post (author): leaves a "removed" stub preserving thread
-  coherence; content purged after 30 days (SPEC §5).
+  coherence; content purged after `CONTENT_RETENTION_DAYS` (SPEC §5,
+  ADR 0027; default 30 days).
   """
   @spec soft_delete_post(User.t(), Post.t()) :: {:ok, Post.t()} | {:error, :unauthorized}
   def soft_delete_post(%User{} = actor, %Post{} = post) do
@@ -1249,15 +1251,17 @@ defmodule Kammer.Feed do
     end
   end
 
-  ## Purging (Oban-scheduled, SPEC §5: content purged 30 days after soft-delete)
+  ## Purging (Oban-scheduled, SPEC §5: content purged CONTENT_RETENTION_DAYS
+  ## after soft-delete, ADR 0027 — default 30 days)
 
   @doc """
-  Purges the content of posts and comments soft-deleted more than 30 days
-  ago. The stub rows remain for thread coherence.
+  Purges the content of posts and comments soft-deleted more than
+  `Kammer.Config.content_retention_days/0` days ago. The stub rows
+  remain for thread coherence.
   """
   @spec purge_old_deleted_content() :: non_neg_integer()
   def purge_old_deleted_content do
-    cutoff = DateTime.add(DateTime.utc_now(:second), -30, :day)
+    cutoff = DateTime.add(DateTime.utc_now(:second), -Config.content_retention_days(), :day)
 
     {purged_posts, _} =
       Repo.update_all(

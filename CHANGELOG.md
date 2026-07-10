@@ -10,6 +10,21 @@ and this project adheres to
 
 ### Added
 
+- Operator-configurable tier-2 deployment settings (issue #234, ADR
+  0027): the throughput/policy rate limits, token lifetimes, and
+  retention windows an operator legitimately tunes now read from
+  `Kammer.Config`, each with a bounds-validated env override that
+  fails the boot (naming the offending var) on an invalid value
+  instead of silently clamping or being dropped — new vars
+  `RATE_LIMIT_POSTS_PER_5MIN`, `RATE_LIMIT_COMMENTS_PER_5MIN`,
+  `RATE_LIMIT_UPLOADS_PER_10MIN`, `RATE_LIMIT_EVERYONE_MENTIONS_PER_HOUR`,
+  `SESSION_VALIDITY_DAYS`, `API_DEVICE_VALIDITY_DAYS`,
+  `CHANGE_EMAIL_VALIDITY_DAYS`, `CONTENT_RETENTION_DAYS`,
+  `TRANSIENT_UPLOAD_DAYS`, `GUEST_CONFIRM_LINK_HOURS`, and
+  `GUEST_MANAGE_LINK_DAYS` (documented in `.env.example`). Every
+  default is unchanged — the anti-abuse/security rate limits
+  (magic-link, login-code, signup, setup, email-change, invite
+  issuance) deliberately stay fixed constants, per ADR 0027.
 - Account-less guest surfaces, newsletter, legal pages, and first-run
   setup over the JSON API (issue #185, the server half of the last
   #165 parity rung before the LiveView cut). These flows stay tokenless

@@ -10,6 +10,7 @@ defmodule Kammer.Accounts.UserToken do
   import Ecto.Query
 
   alias Kammer.Accounts.UserToken
+  alias Kammer.Config
 
   @type t() :: %__MODULE__{}
 
@@ -28,11 +29,9 @@ defmodule Kammer.Accounts.UserToken do
   # Crockford base32 without lookalikes: no I, L, O (mapped from user
   # input by normalize_login_code/1) and no U (transcription safety).
   @login_code_alphabet ~c"0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-  @change_email_validity_in_days 7
-  @session_validity_in_days 14
-  # API device tokens (ADR 0014) live long — they are the API sibling
-  # of browser sessions, revocable any time from the devices page.
-  @device_validity_in_days 365
+  # session/device/change-email lifetimes are tier-2 deployment config
+  # (ADR 0027, issue #234) — see Kammer.Config.session_validity_days/0,
+  # api_device_validity_days/0, change_email_validity_days/0.
   # Passkey exchange tokens (ADR 0018) only bridge a WebAuthn assertion
   # verified inside a LiveView process to the controller action that
   # sets the session cookie (LiveView has no `conn` to do that itself)
@@ -95,14 +94,15 @@ defmodule Kammer.Accounts.UserToken do
   The query returns the user found by the token, if any, along with the token's creation time.
 
   The token is valid if it matches the value in the database and it has
-  not expired (after @session_validity_in_days).
+  not expired (after the configured session validity —
+  `Kammer.Config.session_validity_days/0`).
   """
   @spec verify_session_token_query(binary()) :: {:ok, Ecto.Query.t()}
   def verify_session_token_query(token) do
     query =
       from token in by_token_and_context_query(token, "session"),
         join: user in assoc(token, :user),
-        where: token.inserted_at > ago(@session_validity_in_days, "day"),
+        where: token.inserted_at > ago(^Config.session_validity_days(), "day"),
         select: {%{user | authenticated_at: token.authenticated_at}, token.inserted_at}
 
     {:ok, query}
@@ -140,8 +140,9 @@ defmodule Kammer.Accounts.UserToken do
 
   @doc """
   Verification query for an API device token: valid if the hash matches,
-  the context is right, it is younger than #{@device_validity_in_days}
-  days, and the account email hasn't changed since issuance.
+  the context is right, it is younger than the configured device
+  validity (`Kammer.Config.api_device_validity_days/0`), and the
+  account email hasn't changed since issuance.
   """
   @spec verify_device_token_query(String.t()) :: {:ok, Ecto.Query.t()} | :error
   def verify_device_token_query(token) do
@@ -152,7 +153,7 @@ defmodule Kammer.Accounts.UserToken do
         query =
           from token in by_token_and_context_query(hashed_token, "api-device"),
             join: user in assoc(token, :user),
-            where: token.inserted_at > ago(@device_validity_in_days, "day"),
+            where: token.inserted_at > ago(^Config.api_device_validity_days(), "day"),
             where: token.sent_to == user.email,
             select: {user, token}
 
@@ -274,7 +275,8 @@ defmodule Kammer.Accounts.UserToken do
   This is used to validate requests to change the user
   email.
   The given token is valid if it matches its hashed counterpart in the
-  database and if it has not expired (after @change_email_validity_in_days).
+  database and if it has not expired (after the configured
+  change-email validity — `Kammer.Config.change_email_validity_days/0`).
   The context must always start with "change:".
   """
   @spec verify_change_email_token_query(String.t(), String.t()) ::
@@ -286,7 +288,7 @@ defmodule Kammer.Accounts.UserToken do
 
         query =
           from token in by_token_and_context_query(hashed_token, context),
-            where: token.inserted_at > ago(@change_email_validity_in_days, "day")
+            where: token.inserted_at > ago(^Config.change_email_validity_days(), "day")
 
         {:ok, query}
 

@@ -72,7 +72,9 @@ split by intent, not uniformly:
 
 This split honours both standing owner statements — a configurable
 product for the knobs operators tune, a fixed floor for the security
-backstops. It is confirmable/overridable on issue #234.
+backstops. The owner confirmed this split, the tier-2/tier-3
+classification, and the `RATE_LIMIT_*`-prefixed naming convention for
+the rate-limit vars on issue #234 (2026-07-10).
 
 ## Consequences
 
@@ -89,10 +91,15 @@ backstops. It is confirmable/overridable on issue #234.
   folding into the sweep: Oban queue concurrency and cron schedule are
   compile-time (`config.exs`) today and moving them to `runtime.exs`
   plus choosing the env-var shape is a small design of its own.
-- Deferred as tier-3 unless an issue asks: guest confirm/manage link
-  lifetimes, change-email token validity, and `media.ex` image widths
-  (changing widths doesn't regenerate existing thumbnails — a backfill
-  hazard, not a free knob).
+- The easy extractions are done as of #234's first tier-2 PR: the
+  tier-2 rate limits (post/comment/upload creation, `@everyone`
+  mentions), session/API-device/change-email token lifetimes, content
+  and transient-upload retention windows, and guest confirm/manage
+  link lifetimes are all `Kammer.Config`-backed and env-overridable.
+  Deferred as tier-3, with no issue asking otherwise: `media.ex` image
+  widths — changing widths doesn't regenerate existing thumbnails, a
+  backfill hazard, not a free knob, until a backfill job exists to pair
+  it with.
 - The tier-2 documentation falls out as the configuration reference for
   the docs site (#188).
 
