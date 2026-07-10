@@ -3,9 +3,14 @@ defmodule KammerWeb.NewsletterController do
   Lands the emailed newsletter confirm link (SPEC §8) and the
   unsubscribe links every delivery carries — the plain GET a human
   might click, and the RFC 8058 one-click POST a mail client fires
-  with no session at all. Invalid or expired tokens get a friendly
-  dead end; the one-click endpoint always answers 200 regardless, so
-  it never leaks whether a token was valid.
+  with no session at all. Both unsubscribe actions take a *scoped*
+  token (issue #233): it names its own subscription, so the id is
+  never a separate, attacker-variable request value, and it authorizes
+  nothing beyond that one subscription — never the guest's full-power
+  management token, since a mail gateway auto-fetches this URL with no
+  human in the loop. Invalid or expired tokens get a friendly dead
+  end; the one-click endpoint always answers 200 regardless, so it
+  never leaks whether a token was valid.
   """
 
   use KammerWeb, :controller
@@ -35,8 +40,8 @@ defmodule KammerWeb.NewsletterController do
   end
 
   @spec unsubscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def unsubscribe(conn, %{"token" => token, "subscription_id" => subscription_id}) do
-    Newsletters.unsubscribe_by_token(token, subscription_id)
+  def unsubscribe(conn, %{"token" => token}) do
+    Newsletters.unsubscribe_by_scoped_token(token)
 
     conn
     |> put_flash(:info, gettext("You're unsubscribed."))
@@ -44,8 +49,8 @@ defmodule KammerWeb.NewsletterController do
   end
 
   @spec unsubscribe_one_click(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def unsubscribe_one_click(conn, %{"token" => token, "subscription_id" => subscription_id}) do
-    Newsletters.unsubscribe_by_token(token, subscription_id)
+  def unsubscribe_one_click(conn, %{"token" => token}) do
+    Newsletters.unsubscribe_by_scoped_token(token)
 
     conn
     |> put_resp_content_type("text/plain")

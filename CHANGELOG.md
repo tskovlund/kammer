@@ -1206,3 +1206,21 @@ and this project adheres to
   inline script. The app's one inline script (the light/dark theme
   bootstrap) carries the nonce; colocated LiveView hooks were never
   affected — they compile into the external `app.js` bundle.
+- Newsletter one-click unsubscribe no longer embeds the full-power,
+  60-day guest manage token in the RFC 8058 `List-Unsubscribe` header
+  (issue #233) — a URL mail gateways auto-fetch with no human in the
+  loop, so that token was a live, wide credential sitting in every
+  delivered email. `Kammer.Guests.Token` gained a third,
+  single-purpose salt (`sign_unsubscribe/1`/`verify_unsubscribe/1`,
+  180-day max-age): the payload carries only the one
+  `subscription_id` it authorizes, never an identity, so a leaked or
+  auto-fetched copy can unsubscribe exactly that one subscription and
+  nothing else — it fails `Guests.manage_token_valid?/1` outright
+  (different salt), so it's powerless against every manage endpoint.
+  The `/newsletter/unsubscribe/:token` route (GET and the RFC
+  8058 POST) dropped its separate `:subscription_id` segment — the
+  token names its own subscription, so there's no longer a
+  caller-supplied id to tamper with. The body "manage or unsubscribe
+  anytime" link is deliberately left carrying the full manage token
+  for now (it's a link a human must click, not an auto-fetched
+  header) pending the #185/#187 PWA transition.

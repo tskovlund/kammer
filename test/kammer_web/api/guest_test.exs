@@ -23,6 +23,7 @@ defmodule KammerWeb.Api.GuestTest do
 
   alias Kammer.Events
   alias Kammer.Feed
+  alias Kammer.Guests.Token, as: GuestToken
 
   setup do
     {community, _owner} = community_with_owner_fixture()
@@ -217,6 +218,19 @@ defmodule KammerWeb.Api.GuestTest do
                |> json_response(404)
 
       assert bearer_conn("not-a-token")
+             |> get(~p"/api/v1/guest/manage")
+             |> json_response(404)
+    end
+
+    test "a newsletter one-click unsubscribe token is powerless as a manage Bearer token (issue #233)" do
+      # The scoped List-Unsubscribe token (a different salt entirely,
+      # `Kammer.Guests.Token.verify_unsubscribe/1`) must never authorize
+      # anything on the manage surface, even though it's a validly
+      # signed guest token — the same neutral 404 as any other bad
+      # token, never a distinguishable answer.
+      scoped_token = GuestToken.sign_unsubscribe(%{subscription_id: Ecto.UUID.generate()})
+
+      assert bearer_conn(scoped_token)
              |> get(~p"/api/v1/guest/manage")
              |> json_response(404)
     end
