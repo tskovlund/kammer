@@ -51,6 +51,20 @@ defmodule KammerWeb.ApiError do
   def from_result(conn, {:error, :poll_closed}),
     do: send(conn, :poll_closed, "This poll is closed.")
 
+  # Availability polls close once (issue #184): responding to, closing,
+  # or converting a closed poll is refused with the same poll-closed
+  # class the feed uses.
+  def from_result(conn, {:error, :closed}),
+    do: send(conn, :poll_closed, "This poll is closed.")
+
+  def from_result(conn, {:error, :no_options}),
+    do: send(conn, :bad_request, "Provide at least one candidate date in `options`.")
+
+  # An assignment already marked done (issue #184) can't be claimed or
+  # completed again.
+  def from_result(conn, {:error, :done}),
+    do: send(conn, :unprocessable, "This assignment is already done.")
+
   def from_result(conn, {:error, :slot_full}),
     do: send(conn, :slot_full, "This signup slot is full.")
 

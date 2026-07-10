@@ -26,11 +26,14 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Authorization
   alias Kammer.Accounts.User
   alias Kammer.Accounts.UserToken
+  alias Kammer.Assignments.Assignment
   alias Kammer.Audit.AuditEvent
+  alias Kammer.Availability.AvailabilityPoll
   alias Kammer.Communities.Community
   alias Kammer.Communities.CommunityMembership
   alias Kammer.Communities.CustomField
   alias Kammer.Communities.InstanceSettings
+  alias Kammer.Decisions.Decision
   alias Kammer.Moderation.CommunityBan
   alias Kammer.Moderation.Report
   alias Kammer.Events.Event
@@ -311,6 +314,201 @@ defmodule KammerWeb.Api.Serializer do
           else: []
         )
     }
+  end
+
+  ## Collaborative tools (issue #184): availability polls, assignments,
+  ## and the decisions register — each per-group and feature-gated
+  ## (ADR 0016). The `viewer_can` capability list is computed from the
+  ## same pure `Authorization` decisions the contexts enforce; without a
+  ## group + relationship (the caller didn't thread one) it stays empty.
+
+  @doc """
+  A date-finding poll (issue #39) with its candidate dates, each date's
+  answers, and the viewer's own answer per date. `viewer_can` names the
+  advisory actions the caller may take — `respond` while it's open and
+  they may react; `manage` (close/convert) for the creator or a
+  moderator.
+  """
+  @spec availability_poll(
+          AvailabilityPoll.t(),
+          User.t() | nil,
+          Group.t() | nil,
+          Authorization.relationship() | nil
+        ) :: map()
+  def availability_poll(poll, viewer \\ nil, group \\ nil, relationship \\ nil)
+
+  def availability_poll(%AvailabilityPoll{} = poll, viewer, group, relationship) do
+    %{
+      id: poll.id,
+      group_id: poll.group_id,
+      title: poll.title,
+      closed: AvailabilityPoll.closed?(poll),
+      converted_event_id: poll.converted_event_id,
+      created_at: poll.inserted_at,
+      created_by: user_ref(poll.created_by_user),
+      options: poll_options(poll, viewer),
+      viewer_can: poll_capabilities(poll, viewer, group, relationship)
+    }
+  end
+
+  @doc """
+  An assignment (issue #17): its state, claimants, the discussion
+  thread, and — for the caller — whether they hold a claim. `viewer_can`
+  names the advisory actions: `claim`/`complete` while open, `reopen`
+  while done, `comment`, and `manage` (edit/delete) for creator or
+  moderator.
+  """
+  @spec assignment(
+          Assignment.t(),
+          User.t() | nil,
+          Group.t() | nil,
+          Authorization.relationship() | nil
+        ) :: map()
+  def assignment(assignment, viewer \\ nil, group \\ nil, relationship \\ nil)
+
+  def assignment(%Assignment{} = assignment, viewer, group, relationship) do
+    %{
+      id: assignment.id,
+      group_id: assignment.group_id,
+      title: assignment.title,
+      notes_markdown: assignment.notes_markdown,
+      due_at: assignment.due_at,
+      completed: Assignment.done?(assignment),
+      completed_at: assignment.completed_at,
+      completed_by: user_ref(assignment.completed_by_user),
+      created_at: assignment.inserted_at,
+      created_by: user_ref(assignment.created_by_user),
+      claims: assignment_claims(assignment),
+      claimed_by_me: claimed_by_me?(assignment, viewer),
+      comment_count: if(is_list(assignment.comments), do: length(assignment.comments)),
+      comments:
+        if(is_list(assignment.comments),
+          do: Enum.map(assignment.comments, &comment(&1, viewer)),
+          else: []
+        ),
+      viewer_can: assignment_capabilities(assignment, viewer, group, relationship)
+    }
+  end
+
+  @doc """
+  A decisions-register entry (issue #43): the motion, its linked feed
+  post, and the recorded outcome. `viewer_can` is threaded in by the
+  caller (recording the outcome depends on the motion's post author, a
+  read the caller already made), so this shape stays query-free.
+  """
+  @spec decision(Decision.t(), [String.t()]) :: map()
+  def decision(decision, viewer_can \\ [])
+
+  def decision(%Decision{} = decision, viewer_can) do
+    %{
+      id: decision.id,
+      group_id: decision.group_id,
+      post_id: decision.post_id,
+      title: decision.title,
+      outcome: decision.outcome,
+      outcome_note: decision.outcome_note,
+      decided: Decision.decided?(decision),
+      decided_at: decision.decided_at,
+      decided_by: user_ref(decision.decided_by_user),
+      created_at: decision.inserted_at,
+      viewer_can: viewer_can
+    }
+  end
+
+  @doc """
+  Global search results (SPEC §16): each section reuses the resource's
+  own serializer, so the wire shape has one home. The context already
+  narrowed to what the viewer may see; this only shapes.
+  """
+  @spec search_results(Kammer.Search.results(), User.t() | nil) :: map()
+  def search_results(%{posts: posts, comments: comments, events: events, files: files}, viewer) do
+    %{
+      posts: Enum.map(posts, &post(&1, viewer)),
+      comments: Enum.map(comments, &comment(&1, viewer)),
+      events: Enum.map(events, &event(&1, nil, viewer)),
+      files: Enum.map(files, &file(&1, viewer))
+    }
+  end
+
+  defp poll_options(%AvailabilityPoll{options: options}, viewer) when is_list(options) do
+    Enum.map(options, fn option ->
+      %{
+        id: option.id,
+        starts_at: option.starts_at,
+        position: option.position,
+        responses: option_responses(option),
+        my_answer: my_answer(option, viewer)
+      }
+    end)
+  end
+
+  defp poll_options(_poll, _viewer), do: []
+
+  defp option_responses(%{responses: responses}) when is_list(responses),
+    do:
+      Enum.map(responses, fn response ->
+        %{user: user_ref(response.user), answer: response.answer}
+      end)
+
+  defp option_responses(_option), do: []
+
+  defp my_answer(%{responses: responses}, %User{id: viewer_id}) when is_list(responses),
+    do:
+      Enum.find_value(responses, fn response ->
+        response.user_id == viewer_id && response.answer
+      end)
+
+  defp my_answer(_option, _viewer), do: nil
+
+  defp poll_capabilities(_poll, _viewer, nil, _relationship), do: []
+  defp poll_capabilities(_poll, _viewer, _group, nil), do: []
+
+  defp poll_capabilities(%AvailabilityPoll{} = poll, viewer, %Group{} = group, relationship) do
+    open? = not AvailabilityPoll.closed?(poll)
+
+    capabilities([
+      {"respond", open? and Authorization.can_react?(viewer, group, relationship)},
+      {"manage",
+       open? and
+         Authorization.can_manage_own_resource?(
+           viewer,
+           poll.created_by_user_id,
+           group,
+           relationship
+         )}
+    ])
+  end
+
+  defp assignment_claims(%Assignment{claims: claims}) when is_list(claims),
+    do: claims |> Enum.map(&user_ref(&1.user)) |> Enum.reject(&is_nil/1)
+
+  defp assignment_claims(_assignment), do: []
+
+  defp claimed_by_me?(%Assignment{claims: claims}, %User{id: viewer_id}) when is_list(claims),
+    do: Enum.any?(claims, &(&1.user_id == viewer_id))
+
+  defp claimed_by_me?(_assignment, _viewer), do: false
+
+  defp assignment_capabilities(_assignment, _viewer, nil, _relationship), do: []
+  defp assignment_capabilities(_assignment, _viewer, _group, nil), do: []
+
+  defp assignment_capabilities(%Assignment{} = assignment, viewer, %Group{} = group, relationship) do
+    done? = Assignment.done?(assignment)
+    reactor? = Authorization.can_react?(viewer, group, relationship)
+
+    capabilities([
+      {"claim", not done? and reactor?},
+      {"complete", not done? and reactor?},
+      {"reopen", done? and reactor?},
+      {"comment", Authorization.can?(viewer, :comment_in_group, group, relationship)},
+      {"manage",
+       Authorization.can_manage_own_resource?(
+         viewer,
+         assignment.created_by_user_id,
+         group,
+         relationship
+       )}
+    ])
   end
 
   @spec notification(Notification.t()) :: map()

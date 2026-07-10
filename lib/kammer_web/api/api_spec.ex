@@ -1088,6 +1088,249 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Deleted (idempotent)", Schemas.StatusResponse)
           )
       },
+      "/api/v1/communities/{community_slug}/search" => %PathItem{
+        get:
+          operation(
+            "Global search across the community (SPEC §16)",
+            :search,
+            [
+              path_param(:community_slug),
+              query_param(:q, "The search query; a blank query returns empty sections")
+            ],
+            response: single_response(Schemas.SearchResults)
+          )
+      },
+      "/api/v1/communities/{community_slug}/availability" => %PathItem{
+        get:
+          operation(
+            "Open date-finding polls across the community",
+            :availability_index,
+            [path_param(:community_slug)],
+            response: data_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/availability" => %PathItem{
+        post:
+          operation(
+            "Create a date-finding poll",
+            :availability_create,
+            group_params(),
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  title: %Schema{type: :string},
+                  options: %Schema{
+                    type: :array,
+                    minItems: 1,
+                    items: %Schema{type: :string, format: :"date-time"},
+                    description: "Candidate dates as ISO 8601 date-times"
+                  }
+                })
+              ),
+            response: single_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/availability/{poll_id}" => %PathItem{
+        get:
+          operation(
+            "A poll with its candidate dates and answers",
+            :availability_show,
+            poll_params(),
+            response: single_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/availability/{poll_id}/responses" => %PathItem{
+        put:
+          operation(
+            "Set my answer for one candidate date (upsert)",
+            :availability_respond,
+            poll_params(),
+            # 422 poll_closed once the poll is closed.
+            extra_errors: [422],
+            request_body:
+              body(
+                object(%{
+                  option_id: %Schema{type: :string, format: :uuid},
+                  answer: %Schema{type: :string, enum: ["yes", "if_needed", "no"]}
+                })
+              ),
+            response: single_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/availability/{poll_id}/closure" => %PathItem{
+        put:
+          operation(
+            "Close a poll without converting (creator/moderator)",
+            :availability_close,
+            poll_params(),
+            extra_errors: [422],
+            response: single_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/availability/{poll_id}/conversion" => %PathItem{
+        put:
+          operation(
+            "Close a poll by converting the chosen date into an event (creator/moderator)",
+            :availability_convert,
+            poll_params(),
+            extra_errors: [422],
+            request_body: body(object(%{option_id: %Schema{type: :string, format: :uuid}})),
+            response: single_response(Schemas.AvailabilityPoll)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/assignments" => %PathItem{
+        get:
+          operation(
+            "The group's assignment list",
+            :assignments_index,
+            group_params(),
+            response: data_response(Schemas.Assignment)
+          ),
+        post:
+          operation(
+            "Create an assignment",
+            :assignments_create,
+            group_params(),
+            status: 201,
+            request_body: body(assignment_body()),
+            response: single_response(Schemas.Assignment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/assignments/{assignment_id}" => %PathItem{
+        get:
+          operation(
+            "An assignment with its claims and discussion",
+            :assignments_show,
+            assignment_params(),
+            response: single_response(Schemas.Assignment)
+          ),
+        put:
+          operation(
+            "Edit an assignment (creator/moderator)",
+            :assignments_update,
+            assignment_params(),
+            request_body: body(assignment_body()),
+            response: single_response(Schemas.Assignment)
+          ),
+        delete:
+          operation(
+            "Delete an assignment and its claims and discussion (creator/moderator)",
+            :assignments_delete,
+            assignment_params(),
+            response: single_response(Schemas.Assignment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/assignments/{assignment_id}/claim" => %PathItem{
+        put:
+          operation(
+            "Claim an assignment (several people may)",
+            :assignments_claim,
+            assignment_params(),
+            # 422 when the assignment is already done.
+            extra_errors: [422],
+            response: single_response(Schemas.Assignment)
+          ),
+        delete:
+          operation(
+            "Release my own claim",
+            :assignments_unclaim,
+            assignment_params(),
+            response: single_response(Schemas.Assignment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/assignments/{assignment_id}/completion" => %PathItem{
+        put:
+          operation(
+            "Mark the assignment done",
+            :assignments_complete,
+            assignment_params(),
+            extra_errors: [422],
+            response: single_response(Schemas.Assignment)
+          ),
+        delete:
+          operation(
+            "Reopen a done assignment",
+            :assignments_reopen,
+            assignment_params(),
+            response: single_response(Schemas.Assignment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/assignments/{assignment_id}/comments" => %PathItem{
+        post:
+          operation(
+            "Comment on an assignment (the shared engine, ADR 0007)",
+            :assignments_create_comment,
+            assignment_params(),
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  body_markdown: %Schema{type: :string},
+                  parent_comment_id: %Schema{type: :string, nullable: true}
+                })
+              ),
+            response: single_response(Schemas.Comment)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/decisions" => %PathItem{
+        get:
+          operation(
+            "The group's decisions register (newest first)",
+            :decisions_index,
+            group_params(),
+            response: data_response(Schemas.Decision)
+          ),
+        post:
+          operation(
+            "Raise a motion — creates the feed post (with the default vote) and the register entry",
+            :decisions_create,
+            group_params(),
+            status: 201,
+            request_body:
+              body(
+                object(%{
+                  title: %Schema{type: :string},
+                  motion_markdown: %Schema{
+                    type: :string,
+                    nullable: true,
+                    description: "The motion body; the title is used as the body when omitted"
+                  },
+                  with_vote: %Schema{
+                    type: :boolean,
+                    nullable: true,
+                    description: "Attach the default For/Against/Abstain vote (default true)"
+                  }
+                })
+              ),
+            response: single_response(Schemas.Decision)
+          )
+      },
+      "/api/v1/communities/{community_slug}/decisions/{decision_id}" => %PathItem{
+        get:
+          operation(
+            "A register entry",
+            :decisions_show,
+            decision_params(),
+            response: single_response(Schemas.Decision)
+          )
+      },
+      "/api/v1/communities/{community_slug}/decisions/{decision_id}/outcome" => %PathItem{
+        put:
+          operation(
+            "Record (or amend, pre-1.0) the outcome (proposer/moderator)",
+            :decisions_record_outcome,
+            decision_params(),
+            request_body:
+              body(
+                object(%{
+                  outcome: %Schema{type: :string, enum: ["adopted", "rejected", "noted"]},
+                  outcome_note: %Schema{type: :string, nullable: true}
+                })
+              ),
+            response: single_response(Schemas.Decision)
+          )
+      },
       "/api/v1/openapi.json" => %PathItem{
         get:
           operation("This document", :openapi, [],
@@ -1316,6 +1559,22 @@ defmodule KammerWeb.ApiSpec do
   defp file_params, do: group_params() ++ [path_param(:file_id)]
 
   defp folder_params, do: group_params() ++ [path_param(:folder_id)]
+
+  defp poll_params, do: [path_param(:community_slug), path_param(:poll_id)]
+
+  defp assignment_params, do: [path_param(:community_slug), path_param(:assignment_id)]
+
+  defp decision_params, do: [path_param(:community_slug), path_param(:decision_id)]
+
+  # Assignment create/edit share one body; the context enforces the
+  # required title (a missing one is a 422, never a create without it).
+  defp assignment_body do
+    object(%{
+      title: %Schema{type: :string},
+      notes_markdown: %Schema{type: :string, nullable: true},
+      due_at: %Schema{type: :string, format: :"date-time", nullable: true}
+    })
+  end
 
   defp object(properties \\ %{}) do
     %Schema{type: :object, properties: properties}
