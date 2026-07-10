@@ -232,11 +232,29 @@ defmodule KammerWeb.Api.GuestTest do
              |> json_response(404)
     end
 
-    test "a missing status gets the deliberate 400, not a clause crash" do
+    test "an authentic token with a missing status gets the deliberate 400", %{
+      community: community,
+      event: event,
+      member: member
+    } do
+      {:ok, slot} = Events.create_slot(member, event, %{"title" => "Bar shift", "capacity" => 4})
+      base = ~p"/api/v1/communities/#{community.slug}/events/#{event.id}"
+      token = claim_manage_token(base, slot)
+
       assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =
-               bearer_conn("bogus")
-               |> put(~p"/api/v1/guest/manage/rsvps/#{Ecto.UUID.generate()}", %{})
+               bearer_conn(token)
+               |> put(~p"/api/v1/guest/manage/rsvps/#{event.id}", %{})
                |> json_response(400)
+    end
+
+    test "request-shape errors are gated behind a valid token — a bad token can't probe the body" do
+      # A forged token with a malformed body must get the neutral 404,
+      # never the shape-specific 400: the body is only inspected once the
+      # token is proven authentic, so 400-vs-404 never distinguishes a
+      # good token from a bad one (ADR 0026's no-oracle property).
+      assert bearer_conn("not-a-token")
+             |> put(~p"/api/v1/guest/manage/rsvps/#{Ecto.UUID.generate()}", %{})
+             |> json_response(404)
     end
   end
 

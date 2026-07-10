@@ -167,10 +167,15 @@ and this project adheres to
   leaking into server/proxy access logs, browser history, and
   `Referer`. The emailed management link now carries the token in the
   URL fragment instead, which browsers never send to any server; a
-  missing or malformed Authorization header answers the same neutral
-  404 an invalid token already did. See ADR 0026 for the full
-  reasoning, including why the setup token and the single-use guest
-  confirm links deliberately keep their current transport.
+  missing, malformed, or forged Authorization header answers the same
+  neutral 404 an invalid token already did — checked before any
+  request-shape validation, so the request body can never be probed
+  without an authentic token. This covers the API surface; the
+  recurring newsletter emails still carry a manage token in their URL
+  and `List-Unsubscribe` header and are hardened separately. See ADR
+  0026 for the full reasoning, including why the setup token and the
+  single-use guest confirm links deliberately keep their current
+  transport.
 - Email-change confirmation is now rate-limited (issue #97,
   security-hardening pass): any signed-in user in sudo mode could loop
   the account-settings email form to send the branded confirmation to

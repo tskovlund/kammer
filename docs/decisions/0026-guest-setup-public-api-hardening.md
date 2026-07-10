@@ -57,6 +57,19 @@ log, and browser history entry.
   string; only the controllers' transport changed (the ADR 0014
   boundary).
 
+## Scope: the API surface only
+
+This ADR hardens the **API** guest-manage transport. The recurring
+**newsletter emails** (`Kammer.Newsletters.NewsletterNotifier`) still
+embed a full-power manage token as a URL path segment in their body
+link and, unavoidably for RFC 8058 one-click, in the
+`List-Unsubscribe` header — a standing exposure this ADR does **not**
+close (they still target the frozen LiveView route). The right fix is
+a separate, single-purpose unsubscribe token rather than the
+full-privilege manage token; it is tracked as its own issue and its
+own change, because a one-click `List-Unsubscribe` URL is POSTed by
+mail gateways and so cannot use a fragment at all.
+
 ## References
 
 Refines ADR 0013 and ADR 0024; issue #230, following #185/#229.

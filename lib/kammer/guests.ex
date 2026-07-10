@@ -186,4 +186,16 @@ defmodule Kammer.Guests do
       erase(identity)
     end
   end
+
+  @doc """
+  Whether a management token is authentic and unexpired (signature +
+  age only, no database lookup). Lets a transport gate reject a forged
+  or stale token before it does any request-shape work, so every manage
+  endpoint answers a garbage token identically regardless of the rest of
+  the request.
+  """
+  @spec manage_token_valid?(String.t()) :: boolean()
+  def manage_token_valid?(manage_token) do
+    match?({:ok, _payload}, Kammer.Guests.Token.verify_manage(manage_token))
+  end
 end

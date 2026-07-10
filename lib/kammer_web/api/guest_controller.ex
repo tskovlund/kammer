@@ -231,13 +231,20 @@ defmodule KammerWeb.Api.GuestController do
   ## Shared transport
 
   # The management token lives in the Authorization header, not the URL
-  # (ADR 0026). A missing or malformed header answers the same neutral
-  # "no longer valid" an invalid token gets — the no-oracle property
-  # must hold for the header's presence too, not just its content.
+  # (ADR 0026). One neutral "no longer valid" covers every way a caller
+  # can fail to present an authentic token — a missing header, a
+  # malformed header, and a forged or expired token all answer
+  # identically, and all *before* any request-shape validation runs, so
+  # a bad token can never be told apart from a good one by a 400-vs-404
+  # on the body. Only a caller holding an authentic, unexpired token
+  # reaches `fun`, where the context still does the authoritative
+  # per-identity lookup.
   defp with_manage_token(conn, fun) do
-    case fetch_manage_token(conn) do
-      {:ok, token} -> fun.(token)
-      :error -> invalid_link(conn)
+    with {:ok, token} <- fetch_manage_token(conn),
+         true <- Guests.manage_token_valid?(token) do
+      fun.(token)
+    else
+      _missing_or_invalid -> invalid_link(conn)
     end
   end
 

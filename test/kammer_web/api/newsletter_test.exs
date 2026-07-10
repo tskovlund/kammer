@@ -74,7 +74,55 @@ defmodule KammerWeb.Api.NewsletterTest do
              |> json_response(404)
   end
 
+  test "a manage token cannot unsubscribe another guest's subscription (#156/#161)", %{
+    community: community,
+    group: group
+  } do
+    {victim_token, victim_sub_id} = subscribe(community, group, "victim@example.org")
+    {attacker_token, _attacker_sub_id} = subscribe(community, group, "attacker@example.org")
+
+    # The attacker holds a valid manage token but names the victim's
+    # subscription id: per-identity scoping must answer a neutral 404 and
+    # leave the victim subscribed — the token authorizes its own guest,
+    # never an arbitrary subscription id.
+    assert bearer_conn(attacker_token)
+           |> delete(~p"/api/v1/guest/manage/subscriptions/#{victim_sub_id}")
+           |> json_response(404)
+
+    assert [%{"subscription_id" => ^victim_sub_id}] =
+             bearer_conn(victim_token)
+             |> get(~p"/api/v1/guest/manage")
+             |> json_response(200)
+             |> get_in(["data", "subscriptions"])
+  end
+
   defp public_conn, do: put_req_header(build_conn(), "accept", "application/json")
+
+  # Subscribes a guest and confirms it, returning {manage_token,
+  # subscription_id} for that guest.
+  defp subscribe(community, group, email) do
+    confirm =
+      public_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/newsletter", %{
+        "email" => email,
+        "display_name" => "Reader",
+        "cadence" => "weekly"
+      })
+      |> token_from_email(~r{/newsletter/confirm/([^\s"<]+)})
+
+    manage_token =
+      public_conn()
+      |> post(~p"/api/v1/newsletter/confirm", %{"token" => confirm})
+      |> token_from_email(~r{/guest/manage#([^\s"<]+)})
+
+    [%{"subscription_id" => id}] =
+      bearer_conn(manage_token)
+      |> get(~p"/api/v1/guest/manage")
+      |> json_response(200)
+      |> get_in(["data", "subscriptions"])
+
+    {manage_token, id}
+  end
 
   # The management token's transport since ADR 0026: an Authorization
   # header, not a URL segment.
