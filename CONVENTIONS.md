@@ -158,6 +158,14 @@ literal. Both review gates check this.
 
 ## Documentation
 
+- **Diátaxis is the organizing lens** (owner-confirmed, #236): every
+  doc should know which of the four modes it is — tutorial (learning
+  by doing), how-to (task recipe), reference (lookup), explanation
+  (understanding/why) — and not mix them mid-page. Applied
+  pragmatically, reader-first: the best reader experience wins over
+  taxonomic purity, so a quickstart README may stay marketing-forward
+  and an ADR is simply explanation. It also becomes the information
+  architecture of the docs website (#188).
 - Architecture decisions live in `docs/decisions/` as short ADRs
   (context → decision → consequences, ≤ 1 page).
 - Scope trims, stubs, and deferrals go in the PR description and, if

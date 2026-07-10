@@ -186,7 +186,12 @@ not_planned` or `completed` as fits) — don't let it linger as noise
     change), `documentation` (doc-only fix), `tests` (test-coverage
     addition/cleanup only). Before applying `enhancement`, ask "is
     this actually a new capability, or cleanup wearing the default
-    label because that's what was easiest to reach for."
+    label because that's what was easiest to reach for." Exception
+    (owner-confirmed on #236): issues that are _purely_ owner
+    planning/action items — a `decision` or `action` with no
+    implementation of its own (e.g. a business-model call, a
+    real-machine test, a naming decision) — carry no Type label; the
+    Type axis classifies work on the product, and these aren't that.
   - **Process** (zero or more): `decision`/`action` only while
     genuinely blocking (see above — unassign and consider dropping
     the label once resolved, not just unassigning); `roadmap` on
@@ -289,6 +294,15 @@ much higher.
   independently of chat, and re-asking something already answered
   there wastes their attention and looks like the process isn't
   paying attention.
+- **The owner is _always_ assigned to any issue awaiting their
+  input — no exceptions** (owner-stated, 2026-07-10, second time the
+  pattern slipped). Their assigned-issues list is the one overview
+  they maintain; a question posed in an unassigned issue's comment is
+  invisible to it and effectively unasked. The assignment happens the
+  moment the question is posed, not later; unassign when the input
+  arrives (per the hygiene rule above). This applies to _any_ form of
+  owner input — decisions, reviews, steers, restyle passes — not just
+  `decision`-labeled issues.
 - **Anything that needs the owner to decide or review before it's
   final goes in a GitHub _issue_ (assigned to owner, `decision`
   label) — never in a PR body or PR comment** (owner-stated,
