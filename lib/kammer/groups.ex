@@ -138,6 +138,54 @@ defmodule Kammer.Groups do
     )
   end
 
+  @doc """
+  The `list_public_groups/1` result, filtered to the ones the
+  tokenless public JSON API may also list (issue #185 slice B):
+  additionally excludes sealed groups per
+  `Authorization.publicly_readable?/1`. Kept separate from
+  `list_public_groups/1` rather than changing it in place — that
+  function still backs `CommunityLive.Home`'s public page (LiveView is
+  feature-frozen, ADR 0024), so this composes on top instead of
+  risking a behavior change there.
+  """
+  @spec list_publicly_readable_groups(Community.t()) :: [Group.t()]
+  def list_publicly_readable_groups(%Community{} = community) do
+    community
+    |> list_public_groups()
+    |> Enum.filter(&Authorization.publicly_readable?/1)
+  end
+
+  @doc """
+  Fetches a group by community and slug for the tokenless public JSON
+  API (issue #185 slice B): `public_link` or `public_listed`, never
+  archived or sealed (`Authorization.publicly_readable?/1` — the same
+  boundary the RSS/Atom feeds and the guest RSVP/comment/claim
+  requests already expose, hardened against sealed groups since this
+  is a newly-browsable surface). No actor, so no relationship to
+  load — unlike `fetch_viewable_group/3`, this never returns
+  `:unauthorized`: a group that exists but isn't publicly readable is
+  indistinguishable from one that doesn't exist, folding what would be
+  a 403 into the same neutral 404 (issue #156/#161 no-oracle stance).
+  """
+  @spec fetch_public_group(Community.t(), String.t()) :: {:ok, Group.t()} | {:error, :not_found}
+  def fetch_public_group(%Community{} = community, slug) do
+    case Repo.one(
+           from(group in Group,
+             where: group.community_id == ^community.id and group.slug == ^slug
+           )
+         ) do
+      %Group{} = group ->
+        if Authorization.publicly_readable?(group) do
+          {:ok, %Group{group | community: community}}
+        else
+          {:error, :not_found}
+        end
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
   ## Writing
 
   @doc """

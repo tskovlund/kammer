@@ -372,6 +372,28 @@ defmodule Kammer.Authorization do
   end
 
   @doc """
+  Whether an anonymous visitor may read this group's content over the
+  tokenless public JSON API (issue #185 slice B): the same
+  public-and-live gate the RSS/Atom feeds, the group page, and the
+  guest RSVP/comment/subscribe checks above already use — `public_link`
+  or `public_listed`, never archived — plus excluding sealed groups.
+  Sealed is orthogonal to `visibility` in the schema (nothing stops a
+  sealed group from also being `public_listed`) and none of the
+  existing guest predicates above check it, since it exists to limit
+  *admin* override (ADR 0005), not visitor visibility. This is the one
+  newly-browsable surface (issue #185 slice B opens JSON reads, not
+  just direct-link actions, to a wider unauthenticated audience than
+  before), so it draws the stricter line explicitly rather than
+  inheriting a gap the narrower existing surfaces never had reason to
+  hit in practice.
+  """
+  @spec publicly_readable?(Group.t()) :: boolean()
+  def publicly_readable?(%Group{} = group) do
+    group.visibility in [:public_link, :public_listed] and not Group.archived?(group) and
+      not group.sealed
+  end
+
+  @doc """
   The feature gate (ADR 0016): a disabled feature is indistinguishable
   from one the actor may not see — the same `:not_found` surface, so
   toggling leaks nothing. Contexts call this beside `authorize/3` for

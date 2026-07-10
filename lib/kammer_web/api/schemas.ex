@@ -155,6 +155,18 @@ defmodule KammerWeb.Api.Schemas do
               "the server still enforces. `create_event`/`upload_file` also " <>
               "reflect the group's feature toggles. Empty when the viewer's " <>
               "rights weren't resolved."
+        },
+        guest_rsvp_allowed: %Schema{
+          type: :boolean,
+          description: "Whether an account-less guest may RSVP to this group's events (SPEC §6)"
+        },
+        guest_comment_allowed: %Schema{
+          type: :boolean,
+          description: "Whether an account-less guest may comment on this group's posts (SPEC §3)"
+        },
+        guest_subscribe_allowed: %Schema{
+          type: :boolean,
+          description: "Whether an account-less guest may subscribe to this group's feed by email"
         }
       },
       required: [
@@ -166,8 +178,33 @@ defmodule KammerWeb.Api.Schemas do
         :features,
         :sealed,
         :archived,
-        :viewer_can
+        :viewer_can,
+        :guest_rsvp_allowed,
+        :guest_comment_allowed,
+        :guest_subscribe_allowed
       ]
+    })
+  end
+
+  defmodule PublicCommunity do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "PublicCommunity",
+      description:
+        "The tokenless public community read (issue #185 slice B): the " <>
+          "community's public face plus its `public_listed` groups — the " <>
+          "same content `CommunityLive.Home` shows an anonymous visitor. " <>
+          "`public_link` groups are reachable directly by slug (the group " <>
+          "show endpoint) but stay out of this list, same as the LiveView " <>
+          "page — that's what \"unlisted\" means.",
+      type: :object,
+      properties: %{
+        community: Community,
+        groups: %Schema{type: :array, items: Group}
+      },
+      required: [:community, :groups]
     })
   end
 

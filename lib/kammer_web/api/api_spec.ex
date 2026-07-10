@@ -1518,6 +1518,61 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Subscribed", Schemas.GuestConfirmation)
           )
       },
+      "/api/v1/public/communities/{community_slug}" => %PathItem{
+        get:
+          operation(
+            "A community's public face and its public_listed groups (issue #185)",
+            :public_community_show,
+            [path_param(:community_slug)],
+            security: [],
+            response: single_response(Schemas.PublicCommunity)
+          )
+      },
+      "/api/v1/public/communities/{community_slug}/groups/{group_slug}" => %PathItem{
+        get:
+          operation(
+            "A publicly readable group",
+            :public_group_show,
+            group_params(),
+            security: [],
+            response: single_response(Schemas.Group)
+          )
+      },
+      "/api/v1/public/communities/{community_slug}/groups/{group_slug}/posts" => %PathItem{
+        get:
+          operation(
+            "A publicly readable group's feed (cursor-paginated)",
+            :public_group_posts,
+            group_params() ++
+              [
+                query_param(:after, "Opaque cursor from next_cursor"),
+                query_param(:limit, "1..100, default 25")
+              ],
+            security: [],
+            response: data_response(Schemas.Post)
+          )
+      },
+      "/api/v1/public/communities/{community_slug}/groups/{group_slug}/posts/{post_id}" =>
+        %PathItem{
+          get:
+            operation(
+              "A single post in a publicly readable group",
+              :public_post_show,
+              group_params() ++ [path_param(:post_id)],
+              security: [],
+              response: single_response(Schemas.Post)
+            )
+        },
+      "/api/v1/public/communities/{community_slug}/events/{event_id}" => %PathItem{
+        get:
+          operation(
+            "An event in a publicly readable group",
+            :public_event_show,
+            [path_param(:community_slug), path_param(:event_id)],
+            security: [],
+            response: single_response(Schemas.Event)
+          )
+      },
       "/api/v1/openapi.json" => %PathItem{
         get:
           operation("This document", :openapi, [],

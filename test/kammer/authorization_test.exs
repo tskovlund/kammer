@@ -331,4 +331,26 @@ defmodule Kammer.AuthorizationTest do
       refute Authorization.can_manage_own_resource?(nil, nil, group, @anonymous_relationship)
     end
   end
+
+  describe "publicly_readable?/1 (tokenless public JSON API, issue #185 slice B)" do
+    property "exactly public_link/public_listed, not archived, not sealed — no relationship involved" do
+      check all(group <- group_generator()) do
+        expected =
+          group.visibility in [:public_link, :public_listed] and
+            is_nil(group.archived_at) and not group.sealed
+
+        assert Authorization.publicly_readable?(group) == expected
+      end
+    end
+
+    test "a sealed public_listed group is excluded, unlike can_guest_rsvp?/1 on the same group" do
+      group = %Group{visibility: :public_listed, sealed: true, archived_at: nil}
+
+      refute Authorization.publicly_readable?(group)
+      # The guest RSVP gate doesn't check `sealed` (ADR 0005: sealed
+      # limits admin override, not visitor visibility) — this
+      # documents that the two intentionally diverge, not a drift bug.
+      assert Authorization.can_guest_rsvp?(group)
+    end
+  end
 end
