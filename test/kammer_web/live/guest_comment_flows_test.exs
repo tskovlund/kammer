@@ -100,7 +100,7 @@ defmodule KammerWeb.GuestCommentFlowsTest do
       |> form("#guest-comment-form-#{post.id}",
         guest: %{
           display_name: "Gæsten",
-          email: "gaest@example.org",
+          email: "gaest-comment@example.org",
           body_markdown: "Må jeg være med?"
         }
       )
@@ -112,7 +112,7 @@ defmodule KammerWeb.GuestCommentFlowsTest do
       confirm_conn = get(build_conn(), ~p"/guest/comment/confirm/#{confirm_token}")
       assert redirected_to(confirm_conn) == "/c/#{community.slug}/g/#{group.slug}"
 
-      identity = Repo.get_by!(GuestIdentity, email: "gaest@example.org")
+      identity = Repo.get_by!(GuestIdentity, email: "gaest-comment@example.org")
       comment = Repo.get_by!(Comment, guest_identity_id: identity.id)
       assert comment.pending_approval
 

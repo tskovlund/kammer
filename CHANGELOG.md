@@ -10,6 +10,31 @@ and this project adheres to
 
 ### Added
 
+- Account-less guest surfaces, newsletter, legal pages, and first-run
+  setup over the JSON API (issue #185, the server half of the last
+  #165 parity rung before the LiveView cut). These flows stay tokenless
+  by design (ADR 0024): a guest holds no device token, so the signed
+  link in the URL is the whole credential (ADR 0013) and the endpoints
+  live in the public API, never behind Bearer auth. Guests may RSVP to
+  a public event, claim a signup slot, and comment (each a request →
+  emailed confirm link → record two-step flow), then reach one
+  management page — behind their signed management link — that lists
+  and changes every RSVP, claim, comment, and newsletter subscription
+  they created, or erases all of it (SPEC §6/§8/§12). Newsletter
+  subscribe/confirm mirror the same shape; the RFC 8058 one-click
+  unsubscribe stays a plain-HTTP endpoint (mail clients POST the exact
+  header URL) and is deliberately not duplicated. A public read
+  endpoint serves the privacy and imprint legal pages (operator text or
+  the built-in template). First-run setup is exposed over the API using
+  the _existing_ operator-bootstrap credential — the setup token
+  printed to the server logs — with no new secret: a status probe, a
+  token check, and a one-shot complete that creates the operator,
+  instance settings, first community and group, and invite link, then
+  locks setup permanently. Every flow runs the same context function,
+  authorization, and rate limit the LiveView flows use; an invalid,
+  expired, or used token gets one neutral answer, never an oracle.
+  OpenAPI operations, schemas, and conformance taps included; PWA
+  screens follow as the client half.
 - Collaborative tools and global search in the PWA (issue #184, the
   client half of the #165 parity rung): the Svelte screens over the
   API above. Each group surfaces the tools it has turned on (ADR 0016)

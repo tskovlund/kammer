@@ -8,6 +8,8 @@ defmodule Kammer.Setup do
 
   require Logger
 
+  import Ecto.Query, warn: false
+
   alias Kammer.Accounts
   alias Kammer.Accounts.User
   alias Kammer.Communities
@@ -111,6 +113,13 @@ defmodule Kammer.Setup do
   doubles as the live SMTP test), instance settings, first community,
   first group, invite link, optional demo data. Locks setup.
 
+  Concurrency-safe: the transaction first takes a `FOR UPDATE` lock on the
+  settings singleton and re-checks completion under it, so two concurrent
+  submissions (a double-clicked wizard, a retried request) serialize — the
+  second sees setup already locked and aborts with `:already_completed`
+  rather than creating a second operator and community. The `completed?/0`
+  check below is only a cheap fast path.
+
   Returns the created invite token and the operator user.
   """
   @spec complete(map(), (String.t() -> String.t())) ::
@@ -133,7 +142,8 @@ defmodule Kammer.Setup do
 
   defp run_completion(attrs, magic_link_url_fun) do
     Repo.transact(fn ->
-      with {:ok, operator} <- ensure_operator(attrs["operator"]),
+      with {:ok, _locked} <- claim_setup(),
+           {:ok, operator} <- ensure_operator(attrs["operator"]),
            {:ok, _settings} <- apply_wizard_settings(operator, attrs["instance"] || %{}),
            {:ok, community} <- Communities.create_community(operator, attrs["community"] || %{}),
            {:ok, group} <-
@@ -202,6 +212,21 @@ defmodule Kammer.Setup do
 
   defp apply_wizard_settings(operator, instance_attrs) do
     Communities.update_instance_settings(operator, instance_attrs)
+  end
+
+  # The authoritative completion guard, run first inside the transaction:
+  # locks the settings singleton row FOR UPDATE so concurrent `complete/2`
+  # calls serialize here. The first to acquire the lock finishes and sets
+  # `setup_completed_at`; the second then reads the committed flag and
+  # aborts, so setup can never run twice. The row is ensured to exist first
+  # (`get_instance_settings/0` is an idempotent upsert).
+  defp claim_setup do
+    _ = Communities.get_instance_settings()
+
+    case Repo.one!(from(settings in InstanceSettings, limit: 1, lock: "FOR UPDATE")) do
+      %InstanceSettings{setup_completed_at: nil} = settings -> {:ok, settings}
+      %InstanceSettings{} -> {:error, :already_completed}
+    end
   end
 
   defp lock_setup do

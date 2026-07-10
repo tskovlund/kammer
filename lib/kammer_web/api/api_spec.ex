@@ -1331,6 +1331,191 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.Decision)
           )
       },
+      "/api/v1/setup" => %PathItem{
+        get:
+          operation("Whether first-run setup has completed", :setup_status, [],
+            security: [],
+            response: json_response("Setup status", Schemas.SetupStatus)
+          ),
+        post:
+          operation(
+            "Complete first-run setup (operator, instance, first community and group)",
+            :setup_complete,
+            [],
+            security: [],
+            status: 201,
+            request_body: body(setup_body()),
+            response: json_response("The completed instance", Schemas.SetupResult)
+          )
+      },
+      "/api/v1/setup/verify-token" => %PathItem{
+        post:
+          operation("Check a setup token before submitting the wizard", :setup_verify_token, [],
+            security: [],
+            request_body: body(object(%{token: %Schema{type: :string}})),
+            response: json_response("Whether the token matches", Schemas.SetupTokenVerification)
+          )
+      },
+      "/api/v1/legal/{key}" => %PathItem{
+        get:
+          operation("A public legal page (privacy or imprint)", :legal_show, [path_param(:key)],
+            security: [],
+            response: json_response("The legal page", Schemas.LegalPage)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/guest-rsvp" => %PathItem{
+        post:
+          operation(
+            "Request a guest RSVP — emails a confirm link (SPEC §6)",
+            :guest_request_rsvp,
+            [path_param(:community_slug), path_param(:event_id)],
+            security: [],
+            status: 202,
+            request_body: body(guest_rsvp_body()),
+            response: json_response("Confirmation email sent", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/communities/{community_slug}/events/{event_id}/slots/{slot_id}/guest-claim" =>
+        %PathItem{
+          post:
+            operation(
+              "Request a guest signup-slot claim — emails a confirm link",
+              :guest_request_claim,
+              [path_param(:community_slug), path_param(:event_id), path_param(:slot_id)],
+              security: [],
+              status: 202,
+              request_body: body(guest_identity_body()),
+              response: json_response("Confirmation email sent", Schemas.StatusResponse)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/guest-comment" =>
+        %PathItem{
+          post:
+            operation(
+              "Request a guest comment — emails a confirm link (SPEC §3)",
+              :guest_request_comment,
+              [path_param(:community_slug), path_param(:group_slug), path_param(:post_id)],
+              security: [],
+              status: 202,
+              request_body: body(guest_comment_body()),
+              response: json_response("Confirmation email sent", Schemas.StatusResponse)
+            )
+        },
+      "/api/v1/guest/rsvp/confirm" => %PathItem{
+        post:
+          operation("Confirm a guest RSVP from the emailed link", :guest_confirm_rsvp, [],
+            security: [],
+            request_body: body(token_body()),
+            response: json_response("Recorded", Schemas.GuestConfirmation)
+          )
+      },
+      "/api/v1/guest/claim/confirm" => %PathItem{
+        post:
+          operation(
+            "Confirm a guest signup claim from the emailed link",
+            :guest_confirm_claim,
+            [],
+            security: [],
+            request_body: body(token_body()),
+            response: json_response("Recorded", Schemas.GuestConfirmation)
+          )
+      },
+      "/api/v1/guest/comment/confirm" => %PathItem{
+        post:
+          operation(
+            "Confirm a guest comment from the emailed link",
+            :guest_confirm_comment,
+            [],
+            security: [],
+            request_body: body(token_body()),
+            response: json_response("Submitted for moderation", Schemas.GuestConfirmation)
+          )
+      },
+      "/api/v1/guest/manage/{token}" => %PathItem{
+        get:
+          operation(
+            "A guest's full inventory behind their management link (SPEC §12)",
+            :guest_manage,
+            [path_param(:token)],
+            security: [],
+            response: json_response("The guest's data", Schemas.GuestManageState)
+          ),
+        delete:
+          operation(
+            "Erase a guest and everything they created",
+            :guest_erase,
+            [path_param(:token)],
+            security: [],
+            response: json_response("Erased", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/guest/manage/{token}/rsvps/{event_id}" => %PathItem{
+        put:
+          operation(
+            "Change a guest RSVP answer",
+            :guest_set_rsvp,
+            [path_param(:token), path_param(:event_id)],
+            security: [],
+            request_body:
+              body(object(%{status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}})),
+            response: json_response("Refreshed inventory", Schemas.GuestManageState)
+          )
+      },
+      "/api/v1/guest/manage/{token}/claims/{claim_id}" => %PathItem{
+        delete:
+          operation(
+            "Release a guest signup claim",
+            :guest_release_claim,
+            [path_param(:token), path_param(:claim_id)],
+            security: [],
+            response: json_response("Refreshed inventory", Schemas.GuestManageState)
+          )
+      },
+      "/api/v1/guest/manage/{token}/subscriptions/{subscription_id}" => %PathItem{
+        put:
+          operation(
+            "Change a newsletter subscription's cadence",
+            :guest_set_cadence,
+            [path_param(:token), path_param(:subscription_id)],
+            security: [],
+            request_body:
+              body(
+                object(%{cadence: %Schema{type: :string, enum: ["per_post", "daily", "weekly"]}})
+              ),
+            response: json_response("Refreshed inventory", Schemas.GuestManageState)
+          ),
+        delete:
+          operation(
+            "Unsubscribe from a group newsletter",
+            :guest_unsubscribe,
+            [path_param(:token), path_param(:subscription_id)],
+            security: [],
+            response: json_response("Refreshed inventory", Schemas.GuestManageState)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/newsletter" => %PathItem{
+        post:
+          operation(
+            "Request a guest newsletter subscription — emails a confirm link (SPEC §8)",
+            :newsletter_subscribe,
+            [path_param(:community_slug), path_param(:group_slug)],
+            security: [],
+            status: 202,
+            request_body: body(newsletter_body()),
+            response: json_response("Confirmation email sent", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/newsletter/confirm" => %PathItem{
+        post:
+          operation(
+            "Confirm a newsletter subscription from the emailed link",
+            :newsletter_confirm,
+            [],
+            security: [],
+            request_body: body(token_body()),
+            response: json_response("Subscribed", Schemas.GuestConfirmation)
+          )
+      },
       "/api/v1/openapi.json" => %PathItem{
         get:
           operation("This document", :openapi, [],
@@ -1573,6 +1758,69 @@ defmodule KammerWeb.ApiSpec do
       title: %Schema{type: :string},
       notes_markdown: %Schema{type: :string, nullable: true},
       due_at: %Schema{type: :string, format: :"date-time", nullable: true}
+    })
+  end
+
+  # The tokenless guest/newsletter/setup bodies (issue #185).
+  defp token_body, do: object(%{token: %Schema{type: :string}})
+
+  defp guest_identity_body do
+    object(%{
+      email: %Schema{type: :string, format: :email},
+      display_name: %Schema{type: :string}
+    })
+  end
+
+  defp guest_rsvp_body do
+    object(%{
+      email: %Schema{type: :string, format: :email},
+      display_name: %Schema{type: :string},
+      status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}
+    })
+  end
+
+  defp guest_comment_body do
+    object(%{
+      email: %Schema{type: :string, format: :email},
+      display_name: %Schema{type: :string},
+      body_markdown: %Schema{type: :string}
+    })
+  end
+
+  defp newsletter_body do
+    object(%{
+      email: %Schema{type: :string, format: :email},
+      display_name: %Schema{type: :string},
+      cadence: %Schema{type: :string, enum: ["per_post", "daily", "weekly"], nullable: true}
+    })
+  end
+
+  defp setup_body do
+    object(%{
+      token: %Schema{type: :string},
+      operator:
+        object(%{
+          email: %Schema{type: :string, format: :email},
+          display_name: %Schema{type: :string, nullable: true}
+        }),
+      instance:
+        object(%{
+          instance_name: %Schema{type: :string, nullable: true},
+          default_locale: %Schema{type: :string, enum: ["en", "da"], nullable: true},
+          community_creation_policy: %Schema{
+            type: :string,
+            enum: ["operators_only", "any_user"],
+            nullable: true
+          }
+        }),
+      community:
+        object(%{
+          name: %Schema{type: :string},
+          slug: %Schema{type: :string},
+          accent_color: %Schema{type: :string, nullable: true}
+        }),
+      group: object(%{name: %Schema{type: :string}, slug: %Schema{type: :string}}),
+      demo_data: %Schema{type: :boolean, nullable: true}
     })
   end
 
