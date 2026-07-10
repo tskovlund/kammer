@@ -289,6 +289,20 @@ much higher.
   independently of chat, and re-asking something already answered
   there wastes their attention and looks like the process isn't
   paying attention.
+- **Anything that needs the owner to decide or review before it's
+  final goes in a GitHub _issue_ (assigned to owner, `decision`
+  label) — never in a PR body or PR comment** (owner-stated,
+  2026-07-10). A PR can merge before the owner reads it, and once
+  merged the decision point is gone with no time-bound for them to
+  catch it; an issue has no such deadline, so it's the only channel
+  that guarantees the owner sees the question on their own schedule.
+  A PR body describes the change and non-blocking status — it is not
+  a place to park questions the owner must answer. If a design
+  choice in a PR genuinely needs owner sign-off, file the issue,
+  cross-reference it from the PR as non-blocking, and proceed on the
+  most reasonable option (the issue makes the call visible and
+  overridable). This holds in sync mode too, not just async
+  stretches.
 
 #### Async-only stretches (owner watching GitHub, not chat)
 
@@ -299,9 +313,13 @@ stretch (e.g. a week away). During one of these stretches:
 
 - Keep working autonomously. Do not pause a task waiting on a chat
   reply that will not come — that's a stall, not caution.
-- All status, findings, and decisions get written to GitHub (PR
-  descriptions, issue comments, CHANGELOG), never left only in chat —
-  chat may not be read again for the whole stretch.
+- All status, findings, and decisions get written to GitHub, never
+  left only in chat — chat may not be read again for the whole
+  stretch. Match the channel to the content: status/findings can go
+  in PR descriptions, issue comments, or the CHANGELOG, but anything
+  needing the owner's decision goes in a `decision` _issue_, never a
+  PR body (see the Owner-interaction rule above — a PR can merge
+  before it's read).
 - For a `decision`-labeled issue that would normally block on the
   owner: if truly blocking, pick the most reasonable option, say so
   explicitly in an issue comment with the reasoning (so it's a
