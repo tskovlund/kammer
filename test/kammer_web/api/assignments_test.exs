@@ -109,6 +109,20 @@ defmodule KammerWeb.Api.AssignmentsTest do
     |> json_response(404)
   end
 
+  test "an assignment through another community's slug answers 404 (cross-tenant no-oracle)" do
+    %{community: community, group: group, creator: creator} = assignments_context()
+    created = create_assignment(creator, community, group)
+    {other, other_owner} = community_with_owner_fixture()
+
+    # A real assignment id reached through a DIFFERENT community's slug:
+    # the community_id guard must 404, never leak it across the tenant
+    # boundary — even to an owner authorized in their own community.
+    other_owner
+    |> api_conn()
+    |> get(~p"/api/v1/communities/#{other.slug}/assignments/#{created["data"]["id"]}")
+    |> json_response(404)
+  end
+
   test "delete is creator-or-moderator; a plain member is refused" do
     %{community: community, group: group, creator: creator} = assignments_context()
     member = group_member_fixture(group)

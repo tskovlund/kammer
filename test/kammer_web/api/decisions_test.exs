@@ -80,6 +80,28 @@ defmodule KammerWeb.Api.DecisionsTest do
     |> json_response(404)
   end
 
+  test "a decision through another community's slug answers 404 (cross-tenant no-oracle)" do
+    %{community: community, group: group, proposer: proposer} = decisions_context()
+
+    created =
+      proposer
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/decisions", %{
+        title: "Hæv kontingentet"
+      })
+      |> json_response(201)
+
+    {other, other_owner} = community_with_owner_fixture()
+
+    # A real decision id reached through a DIFFERENT community's slug: the
+    # community_id guard must 404, never leak it across the tenant
+    # boundary — even to an owner authorized in their own community.
+    other_owner
+    |> api_conn()
+    |> get(~p"/api/v1/communities/#{other.slug}/decisions/#{created["data"]["id"]}")
+    |> json_response(404)
+  end
+
   test "recording the outcome is the proposer's or a moderator's, not a member's" do
     %{community: community, group: group, proposer: proposer} = decisions_context()
     member = group_member_fixture(group)
