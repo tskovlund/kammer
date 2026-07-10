@@ -42,7 +42,7 @@ defmodule Kammer.Invitations.InviteNotifier do
         |> text_body("""
         #{gettext("Hi,")}
 
-        #{gettext("%{inviter} has invited you to join %{target} on %{product}.", inviter: inviter.display_name, target: target_name, product: product_name())}
+        #{gettext("%{inviter} has invited you to join %{target} on %{product}.", inviter: inviter.display_name, target: target_name, product: Kammer.product_name())}
 
         #{gettext("Accept the invitation by visiting the link below:")}
 
@@ -60,11 +60,7 @@ defmodule Kammer.Invitations.InviteNotifier do
   defp mail_from do
     from_config = Application.get_env(:kammer, :mail_from, [])
 
-    {Keyword.get(from_config, :name, product_name()),
+    {Keyword.get(from_config, :name, Kammer.product_name()),
      Keyword.get(from_config, :address, "kammer@localhost")}
-  end
-
-  defp product_name do
-    Application.get_env(:kammer, :product_name, "Kammer")
   end
 end

@@ -28,12 +28,24 @@ defmodule Kammer do
   Advisory, not enforced: the server never rejects a client over it.
   Clients compare their own version against this SemVer floor and
   fence themselves (prompt for an update, degrade, or refuse). `nil` —
-  the default; no config entry is declared for it today — means any
-  client is fine. A release that needs to fence out old clients sets
-  `config :kammer, :min_client_version, "x.y.z"`.
+  the default, and what an unset `MIN_CLIENT_VERSION` env var yields
+  (`config/runtime.exs`) — means any client is fine. A release that
+  needs to fence out old clients sets `MIN_CLIENT_VERSION=x.y.z`.
   """
   @spec min_client_version() :: String.t() | nil
   def min_client_version do
     Application.get_env(:kammer, :min_client_version)
+  end
+
+  @doc """
+  The instance's display name (SPEC §15), shown in emails, page
+  titles, and the PWA shell. `config/config.exs` sets the `"Kammer"`
+  default; this is the one place that reads it, so renaming the
+  product is a single-config-key change instead of re-typing the
+  fallback at every call site (issue #234).
+  """
+  @spec product_name() :: String.t()
+  def product_name do
+    Application.get_env(:kammer, :product_name, "Kammer")
   end
 end

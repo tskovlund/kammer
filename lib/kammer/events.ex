@@ -34,6 +34,24 @@ defmodule Kammer.Events do
   alias Kammer.Repo
   alias Kammer.Validation
 
+  # Past-events page size (ADR 0027: named constant — a history browse,
+  # not a paginated archive today; raising it is a product decision).
+  @past_events_limit 30
+
+  # Reminder lead time (SPEC §6): how long before an event's start its
+  # reminder email/notification fires. The single source of truth for
+  # both `schedule_reminder/1` below and
+  # `Kammer.Workers.EventReminderWorker`, which reschedules using the
+  # same value when an event's time changes after the reminder job was
+  # queued — kept here, not duplicated, so the two can't drift.
+  @reminder_lead_hours 24
+
+  @doc """
+  Hours before an event's start that its reminder fires (SPEC §6).
+  """
+  @spec reminder_lead_hours() :: pos_integer()
+  def reminder_lead_hours, do: @reminder_lead_hours
+
   ## Reading
 
   @doc """
@@ -175,7 +193,7 @@ defmodule Kammer.Events do
           from(event in base_query,
             where: event.starts_at < ^now and (is_nil(event.ends_at) or event.ends_at < ^now),
             order_by: [desc: event.starts_at],
-            limit: 30
+            limit: @past_events_limit
           )
       end
 
@@ -977,7 +995,7 @@ defmodule Kammer.Events do
   ## Reminders
 
   defp schedule_reminder(%Event{} = event) do
-    reminder_at = DateTime.add(event.starts_at, -24, :hour)
+    reminder_at = DateTime.add(event.starts_at, -@reminder_lead_hours, :hour)
 
     if DateTime.compare(reminder_at, DateTime.utc_now()) == :gt do
       %{"event_id" => event.id, "starts_at" => DateTime.to_iso8601(event.starts_at)}

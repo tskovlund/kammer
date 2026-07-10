@@ -33,6 +33,11 @@ defmodule Kammer.Feed do
   alias Kammer.Repo
   alias Kammer.Validation
 
+  # Home-feed page size (ADR 0027: named constant, not operator-tunable —
+  # SPEC §5 keeps this feed strictly chronological with no pagination
+  # UI yet; raising it is a product decision, not an ops knob).
+  @home_feed_limit 50
+
   # Pending guest comments (SPEC §3 `members_and_guests`) exist only for
   # moderators until approved, so the comment preload is viewer-dependent:
   # everyone else gets a query that filters them out at the database.
@@ -201,7 +206,7 @@ defmodule Kammer.Feed do
         where: post.published_at <= ^now,
         where: post.pending_approval == false,
         order_by: ^feed_order_by(sort),
-        limit: 50,
+        limit: @home_feed_limit,
         preload: ^preloads(false)
       )
     )

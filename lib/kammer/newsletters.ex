@@ -28,6 +28,10 @@ defmodule Kammer.Newsletters do
   alias Kammer.Repo
   alias Kammer.Validation
 
+  # A single newsletter send summarizes since the last one — not a
+  # full re-feed (ADR 0027: named constant, not operator-tunable).
+  @max_newsletter_posts 50
+
   ## Request / confirm (SPEC §8: nothing recorded before the link is followed)
 
   @doc """
@@ -316,7 +320,7 @@ defmodule Kammer.Newsletters do
         where: post.pending_approval == false,
         where: is_nil(post.deleted_at),
         order_by: [asc: post.published_at],
-        limit: 50,
+        limit: @max_newsletter_posts,
         preload: [:author_user]
       )
     )

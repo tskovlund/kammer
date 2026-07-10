@@ -29,6 +29,13 @@ defmodule Kammer.Digests do
   alias Kammer.Mailer
   alias Kammer.Repo
 
+  # Named per ADR 0027 (no bare magic operational values) — a digest
+  # is a summary, not a full re-feed, so these caps stay fixed rather
+  # than becoming operator-tunable.
+  @max_digest_posts 50
+  @max_digest_events 20
+  @upcoming_events_horizon_days 7
+
   @doc """
   Users whose digest is due at `now`: daily every day, weekly on
   Mondays — both at the cron hour, both guarded against double sends
@@ -112,14 +119,14 @@ defmodule Kammer.Digests do
         where: is_nil(post.deleted_at),
         where: post.author_user_id != ^user.id or is_nil(post.author_user_id),
         order_by: [asc: post.published_at],
-        limit: 50,
+        limit: @max_digest_posts,
         preload: [:author_user, group: {group, :community}]
       )
     )
   end
 
   defp upcoming_events(user, now) do
-    horizon = DateTime.add(now, 7 * 24, :hour)
+    horizon = DateTime.add(now, @upcoming_events_horizon_days * 24, :hour)
 
     Repo.all(
       from(event in Event,
@@ -131,7 +138,7 @@ defmodule Kammer.Digests do
         where: is_nil(group.archived_at),
         where: event.starts_at >= ^now and event.starts_at <= ^horizon,
         order_by: [asc: event.starts_at],
-        limit: 20,
+        limit: @max_digest_events,
         preload: [group: {group, :community}]
       )
     )
@@ -139,7 +146,7 @@ defmodule Kammer.Digests do
 
   defp digest_email(user, posts, events, since, minimized?) do
     Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
-      product_name = Application.get_env(:kammer, :product_name, "Kammer")
+      product_name = Kammer.product_name()
 
       new()
       |> to({user.display_name, user.email})
@@ -253,7 +260,7 @@ defmodule Kammer.Digests do
 
   defp mail_from do
     from_config = Application.get_env(:kammer, :mail_from, [])
-    product_name = Application.get_env(:kammer, :product_name, "Kammer")
+    product_name = Kammer.product_name()
 
     {Keyword.get(from_config, :name, product_name),
      Keyword.get(from_config, :address, "kammer@localhost")}
