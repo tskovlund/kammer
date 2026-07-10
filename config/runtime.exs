@@ -60,6 +60,71 @@ if config_env() != :test do
   if trusted_proxies != [] do
     config :kammer, :trusted_proxies, trusted_proxies
   end
+
+  # Tier-2 deployment config (ADR 0027, issue #234): operator-tunable
+  # throughput/policy rate limits, token lifetimes, and retention
+  # windows. Each has a safe compiled-in default (`Kammer.Config`) and
+  # a bounds-validated env override, parsed by
+  # `Kammer.Config.parse_bounded_env_int!/3` (the #98 pattern — an
+  # out-of-bounds or unparseable value fails the boot naming the
+  # offending var, rather than silently clamping or being dropped);
+  # unset leaves the app-env key unset so the accessor's default
+  # applies unchanged. Skipped in test for the same reason as
+  # API_ALLOWED_ORIGINS/TRUSTED_PROXIES above — the suite's isolation
+  # is keyspace-based and must not inherit whatever a developer's
+  # shell happens to export.
+
+  # Posts/comments/uploads per author, and @everyone mentions per
+  # group — spam/UX throughput knobs a large community's operator
+  # tunes (ADR 0027), distinct from Kammer.RateLimit's fixed
+  # anti-abuse limits.
+  if value = Kammer.Config.parse_bounded_env_int!("RATE_LIMIT_POSTS_PER_5MIN", 1, 100) do
+    config :kammer, :rate_limit_posts_per_5min, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("RATE_LIMIT_COMMENTS_PER_5MIN", 1, 200) do
+    config :kammer, :rate_limit_comments_per_5min, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("RATE_LIMIT_UPLOADS_PER_10MIN", 1, 200) do
+    config :kammer, :rate_limit_uploads_per_10min, value
+  end
+
+  if value =
+       Kammer.Config.parse_bounded_env_int!("RATE_LIMIT_EVERYONE_MENTIONS_PER_HOUR", 1, 20) do
+    config :kammer, :rate_limit_everyone_mentions_per_hour, value
+  end
+
+  # Token lifetimes.
+  if value = Kammer.Config.parse_bounded_env_int!("SESSION_VALIDITY_DAYS", 1, 90) do
+    config :kammer, :session_validity_days, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("API_DEVICE_VALIDITY_DAYS", 1, 1825) do
+    config :kammer, :api_device_validity_days, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("CHANGE_EMAIL_VALIDITY_DAYS", 1, 30) do
+    config :kammer, :change_email_validity_days, value
+  end
+
+  # Retention windows.
+  if value = Kammer.Config.parse_bounded_env_int!("CONTENT_RETENTION_DAYS", 1, 365) do
+    config :kammer, :content_retention_days, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("TRANSIENT_UPLOAD_DAYS", 1, 90) do
+    config :kammer, :transient_upload_days, value
+  end
+
+  # Guest link lifetimes.
+  if value = Kammer.Config.parse_bounded_env_int!("GUEST_CONFIRM_LINK_HOURS", 1, 336) do
+    config :kammer, :guest_confirm_link_hours, value
+  end
+
+  if value = Kammer.Config.parse_bounded_env_int!("GUEST_MANAGE_LINK_DAYS", 1, 365) do
+    config :kammer, :guest_manage_link_days, value
+  end
 end
 
 if config_env() == :prod do

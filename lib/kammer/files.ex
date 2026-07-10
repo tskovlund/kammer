@@ -14,6 +14,7 @@ defmodule Kammer.Files do
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Config
   alias Kammer.Feed
   alias Kammer.Feed.Post
   alias Kammer.Feed.PostAttachment
@@ -26,7 +27,6 @@ defmodule Kammer.Files do
   alias Kammer.Repo
   alias Kammer.Storage
 
-  @default_transient_days 30
   @default_upload_limit_megabytes 100
 
   @doc "Upload size limit in bytes (configurable, SPEC §7 default 100 MB)."
@@ -46,7 +46,7 @@ defmodule Kammer.Files do
   Options:
 
     * `:transient` — no file-space home; auto-expires after
-      #{@default_transient_days} days (SPEC §5).
+      `TRANSIENT_UPLOAD_DAYS` (SPEC §5, ADR 0027; default 30 days).
   """
   @spec create_from_upload(User.t(), Group.t(), Path.t(), map(), keyword()) ::
           {:ok, StoredFile.t()} | {:error, term()}
@@ -56,7 +56,7 @@ defmodule Kammer.Files do
 
     transient_expires_at =
       if Keyword.get(opts, :transient, false) do
-        DateTime.add(DateTime.utc_now(:second), @default_transient_days, :day)
+        DateTime.add(DateTime.utc_now(:second), Config.transient_upload_days(), :day)
       end
 
     folder_id =

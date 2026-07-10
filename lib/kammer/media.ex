@@ -9,6 +9,11 @@ defmodule Kammer.Media do
   alias Vix.Vips.Image
   alias Vix.Vips.Operation
 
+  # Deliberately fixed, not tier-2 config (ADR 0027): changing these
+  # widths doesn't regenerate already-stored images, so a runtime
+  # knob here would silently desync existing thumbnails/display
+  # copies from freshly-processed ones — a backfill hazard, not a
+  # free operator knob. Revisit only alongside an actual backfill job.
   @display_max_width 1600
   @thumbnail_width 480
 

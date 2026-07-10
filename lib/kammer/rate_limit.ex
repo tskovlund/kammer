@@ -11,6 +11,8 @@ defmodule Kammer.RateLimit do
 
   use Hammer, backend: :ets
 
+  alias Kammer.Config
+
   @fifteen_minutes_in_milliseconds 15 * 60 * 1000
 
   @doc """
@@ -96,12 +98,18 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
-  Rate limit for `@everyone` broadcast mentions, keyed by group: at most
-  2 per group per hour (SPEC §5: gated and rate-limited).
+  Rate limit for `@everyone` broadcast mentions, keyed by group (SPEC
+  §5: gated and rate-limited). A throughput/policy limit (ADR 0027) —
+  configurable via `RATE_LIMIT_EVERYONE_MENTIONS_PER_HOUR`, default 2
+  per group per hour.
   """
   @spec hit_everyone_mention(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_everyone_mention(group_id) do
-    hit("everyone_mention:group:#{group_id}", 60 * 60 * 1000, 2)
+    hit(
+      "everyone_mention:group:#{group_id}",
+      60 * 60 * 1000,
+      Config.rate_limit_everyone_mentions_per_hour()
+    )
   end
 
   @doc """
@@ -118,30 +126,36 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
-  Rate limit for creating a post, keyed by author: 10 per 5 minutes.
+  Rate limit for creating a post, keyed by author. A throughput/policy
+  limit (ADR 0027) — configurable via `RATE_LIMIT_POSTS_PER_5MIN`,
+  default 10 per 5 minutes.
   """
   @spec hit_post_create(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_post_create(user_id) do
-    hit("post_create:user:#{user_id}", 5 * 60 * 1000, 10)
+    hit("post_create:user:#{user_id}", 5 * 60 * 1000, Config.rate_limit_posts_per_5min())
   end
 
   @doc """
-  Rate limit for creating a comment, keyed by author: 20 per 5 minutes.
-  Shared across post/event/assignment comments — one "commenting"
-  budget per person, not per subject type.
+  Rate limit for creating a comment, keyed by author. Shared across
+  post/event/assignment comments — one "commenting" budget per
+  person, not per subject type. A throughput/policy limit (ADR 0027)
+  — configurable via `RATE_LIMIT_COMMENTS_PER_5MIN`, default 20 per 5
+  minutes.
   """
   @spec hit_comment_create(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_comment_create(user_id) do
-    hit("comment_create:user:#{user_id}", 5 * 60 * 1000, 20)
+    hit("comment_create:user:#{user_id}", 5 * 60 * 1000, Config.rate_limit_comments_per_5min())
   end
 
   @doc """
-  Rate limit for uploading a file, keyed by uploader: 40 per 10 minutes
-  — generous enough to attach a batch of images to one post.
+  Rate limit for uploading a file, keyed by uploader — generous enough
+  to attach a batch of images to one post. A throughput/policy limit
+  (ADR 0027) — configurable via `RATE_LIMIT_UPLOADS_PER_10MIN`,
+  default 40 per 10 minutes.
   """
   @spec hit_upload(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
   def hit_upload(user_id) do
-    hit("upload:user:#{user_id}", 10 * 60 * 1000, 40)
+    hit("upload:user:#{user_id}", 10 * 60 * 1000, Config.rate_limit_uploads_per_10min())
   end
 
   @doc """
