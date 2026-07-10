@@ -1645,4 +1645,195 @@ defmodule KammerWeb.Api.Schemas do
       required: [:posts, :comments, :events, :files]
     })
   end
+
+  defmodule GuestConfirmation do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GuestConfirmation",
+      description:
+        "A confirmed guest action (issue #185): the guest's name (when " <>
+          "the flow knows it) and the client-relative path the PWA lands " <>
+          "on next — the API twin of the web confirm redirect.",
+      type: :object,
+      properties: %{
+        data: %Schema{
+          type: :object,
+          properties: %{
+            guest_name: %Schema{type: :string, nullable: true},
+            redirect_path: %Schema{type: :string}
+          },
+          required: [:redirect_path, :guest_name]
+        }
+      },
+      required: [:data]
+    })
+  end
+
+  defmodule GuestManageState do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GuestManageState",
+      description:
+        "Everything behind a guest's management link (issue #185): their " <>
+          "identity, RSVPs, signup claims, comments, and newsletter " <>
+          "subscriptions. Returned by the manage read and by every manage " <>
+          "mutation (the refreshed inventory).",
+      type: :object,
+      properties: %{
+        data: %Schema{
+          type: :object,
+          properties: %{
+            identity: %Schema{
+              type: :object,
+              properties: %{
+                display_name: %Schema{type: :string},
+                email: %Schema{type: :string, format: :email}
+              },
+              required: [:display_name, :email]
+            },
+            rsvps: %Schema{
+              type: :array,
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  event_id: %Schema{type: :string, format: :uuid},
+                  event_title: %Schema{type: :string},
+                  status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}
+                },
+                required: [:event_id, :event_title, :status]
+              }
+            },
+            claims: %Schema{
+              type: :array,
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  claim_id: %Schema{type: :string, format: :uuid},
+                  slot_title: %Schema{type: :string},
+                  event_title: %Schema{type: :string}
+                },
+                required: [:claim_id, :slot_title, :event_title]
+              }
+            },
+            comments: %Schema{
+              type: :array,
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  group_name: %Schema{type: :string},
+                  body_markdown: %Schema{type: :string},
+                  pending_approval: %Schema{type: :boolean},
+                  removed: %Schema{type: :boolean}
+                },
+                required: [:group_name, :body_markdown, :pending_approval, :removed]
+              }
+            },
+            subscriptions: %Schema{
+              type: :array,
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  subscription_id: %Schema{type: :string, format: :uuid},
+                  community_name: %Schema{type: :string},
+                  group_name: %Schema{type: :string},
+                  cadence: %Schema{type: :string, enum: ["per_post", "daily", "weekly"]}
+                },
+                required: [:subscription_id, :community_name, :group_name, :cadence]
+              }
+            }
+          },
+          required: [:identity, :rsvps, :claims, :comments, :subscriptions]
+        }
+      },
+      required: [:data]
+    })
+  end
+
+  defmodule LegalPage do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "LegalPage",
+      description:
+        "A public legal page (issue #185, SPEC §13): the operator's text " <>
+          "or the built-in template, as authored markdown and rendered HTML.",
+      type: :object,
+      properties: %{
+        data: %Schema{
+          type: :object,
+          properties: %{
+            key: %Schema{type: :string, enum: ["privacy", "imprint"]},
+            title: %Schema{type: :string},
+            content_markdown: %Schema{type: :string},
+            content_html: %Schema{type: :string},
+            published: %Schema{
+              type: :boolean,
+              description: "False while the built-in template still shows"
+            }
+          },
+          required: [:key, :title, :content_markdown, :content_html, :published]
+        }
+      },
+      required: [:data]
+    })
+  end
+
+  defmodule SetupStatus do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "SetupStatus",
+      description: "Whether first-run setup has completed (issue #185, SPEC §13).",
+      type: :object,
+      properties: %{setup_completed: %Schema{type: :boolean}},
+      required: [:setup_completed]
+    })
+  end
+
+  defmodule SetupTokenVerification do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "SetupTokenVerification",
+      description: "Whether a candidate setup token matches the one from the server logs.",
+      type: :object,
+      properties: %{valid: %Schema{type: :boolean}},
+      required: [:valid]
+    })
+  end
+
+  defmodule SetupResult do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "SetupResult",
+      description:
+        "The completed instance (issue #185): the first community and " <>
+          "group, the shareable invite link, and whether the operator's " <>
+          "first magic link (the live SMTP test) went out.",
+      type: :object,
+      properties: %{
+        data: %Schema{
+          type: :object,
+          properties: %{
+            community_slug: %Schema{type: :string},
+            group_slug: %Schema{type: :string},
+            invite_token: %Schema{type: :string},
+            invite_url: %Schema{type: :string},
+            magic_link_sent: %Schema{type: :boolean}
+          },
+          required: [:community_slug, :group_slug, :invite_token, :invite_url, :magic_link_sent]
+        }
+      },
+      required: [:data]
+    })
+  end
 end
