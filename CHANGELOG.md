@@ -182,6 +182,31 @@ and this project adheres to
 
 ### Fixed
 
+- Configuration-layer hygiene, the no-decision "clear fixes" slice of
+  the ADR 0027 audit (issue #234). `MIN_CLIENT_VERSION` now actually
+  wires the advertised minimum-client-version knob to an env var
+  (`config/runtime.exs`, documented in `.env.example`) — previously
+  `Kammer.min_client_version/0` read a config key nothing ever set, so
+  the advisory floor could never be raised without hand-editing
+  source. The `"Kammer"` product-name default, previously re-typed at
+  ten `Application.get_env(:kammer, :product_name, "Kammer")` call
+  sites across the notifiers, digests, newsletters, and templates, now
+  has one accessor (`Kammer.product_name/0`, mirroring
+  `min_client_version/0`) that every call site uses instead. The
+  endpoint's request-body length ceiling (previously a hardcoded
+  `128_000_000`) now derives from `UPLOAD_MAX_MB` plus fixed multipart
+  headroom via a small wrapper plug (`KammerWeb.Plugs.BodyParsers`),
+  so raising `UPLOAD_MAX_MB` no longer requires the source edit
+  `.env.example` used to ask operators for — `Plug.Parsers` bakes its
+  options in at compile time, before `config/runtime.exs` runs, so the
+  wrapper recomputes them per request instead. Several bare magic
+  `limit:` literals (`Digests`, `Newsletters`, `Feed.list_home_feed/3`,
+  `Events` past-events) are now named module attributes with a
+  one-line rationale, and the duplicated 24-hour event-reminder lead
+  time (`Kammer.Events` and `Kammer.Workers.EventReminderWorker` each
+  hardcoded `-24, :hour`) is now a single `Kammer.Events.reminder_lead_hours/0`
+  accessor both read, so they can't drift apart.
+
 - Documentation drift between the spec/README/moduledocs and the
   shipped code (issue #93, round-2 quality audit). `SPEC.md` cited a
   nonexistent `RESTORE.md` (the restore walkthrough lives in

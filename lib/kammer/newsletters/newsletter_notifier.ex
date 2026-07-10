@@ -224,7 +224,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
   defp mail_from do
     from_config = Application.get_env(:kammer, :mail_from, [])
-    product_name = Application.get_env(:kammer, :product_name, "Kammer")
+    product_name = Kammer.product_name()
 
     {Keyword.get(from_config, :name, product_name),
      Keyword.get(from_config, :address, "kammer@localhost")}

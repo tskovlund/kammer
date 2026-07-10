@@ -168,7 +168,7 @@ defmodule KammerWeb.InstanceLive.Home do
       <% else %>
         <div class="space-y-6 py-8 text-center">
           <h1 class="text-3xl font-semibold tracking-tight">
-            {Application.get_env(:kammer, :product_name, "Kammer")}
+            {Kammer.product_name()}
           </h1>
           <p class="mx-auto max-w-md text-base-content/70">
             {gettext(

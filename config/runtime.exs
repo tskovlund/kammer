@@ -248,3 +248,9 @@ if config_env() == :prod do
   # unconditionally — the default without DISABLE_UPDATE_CHECK is on.
   config :kammer, :update_check, enabled: System.get_env("DISABLE_UPDATE_CHECK") not in ~w(true 1)
 end
+
+# Advisory client-version floor (issues #203/#204, #234): unset means
+# no enforcement — `Kammer.min_client_version/0` returns nil and every
+# client is fine. Read unconditionally (not gated to :prod) since the
+# accessor itself has no environment gate either.
+config :kammer, :min_client_version, System.get_env("MIN_CLIENT_VERSION")

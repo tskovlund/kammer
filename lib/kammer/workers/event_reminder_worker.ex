@@ -1,8 +1,10 @@
 defmodule Kammer.Workers.EventReminderWorker do
   @moduledoc """
-  Emails event reminders 24 hours before the start (SPEC §6) to members
-  who RSVP'd yes or maybe. If the event moved since scheduling, the job
-  reschedules itself for the new time instead of sending.
+  Emails event reminders `Kammer.Events.reminder_lead_hours/0` hours
+  before the start (SPEC §6) to members who RSVP'd yes or maybe. If the
+  event moved since scheduling, the job reschedules itself for the new
+  time instead of sending — using the same lead time `Kammer.Events`
+  used to schedule it originally, so the two can't drift (issue #234).
   """
 
   use Oban.Worker, queue: :mailers, max_attempts: 3
@@ -86,7 +88,7 @@ defmodule Kammer.Workers.EventReminderWorker do
   end
 
   defp reschedule(event) do
-    reminder_at = DateTime.add(event.starts_at, -24, :hour)
+    reminder_at = DateTime.add(event.starts_at, -Kammer.Events.reminder_lead_hours(), :hour)
 
     if DateTime.compare(reminder_at, DateTime.utc_now()) == :gt do
       %{"event_id" => event.id, "starts_at" => DateTime.to_iso8601(event.starts_at)}

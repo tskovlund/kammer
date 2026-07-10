@@ -82,7 +82,7 @@ defmodule KammerWeb.Layouts do
     <header class="navbar border-b border-base-200 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
         <.link navigate={~p"/"} class="text-lg font-semibold tracking-tight">
-          {Application.get_env(:kammer, :product_name, "Kammer")}
+          {Kammer.product_name()}
         </.link>
       </div>
       <div class="flex-none">
