@@ -183,9 +183,11 @@ defmodule KammerWeb.Router do
     # First-run setup (issue #185): the operator-bootstrap flow over the
     # API. Gated by the setup token printed to the server logs, not a
     # device token — see SetupController. Public because a pre-setup
-    # instance has no operator to authenticate yet.
+    # instance has no operator to authenticate yet. No separate
+    # token-check route (issue #230): that would be a boolean oracle
+    # over the setup credential, and `complete` already validates the
+    # token itself before doing any work.
     get "/setup", SetupController, :status
-    post "/setup/verify-token", SetupController, :verify_token
     post "/setup", SetupController, :complete
 
     # Public legal pages (issue #185, SPEC §13).
@@ -194,8 +196,7 @@ defmodule KammerWeb.Router do
     # Account-less guest surfaces (issue #185, ADR 0013/0024): the signed
     # link in the URL is the whole credential, so these stay tokenless
     # and out of :api_authenticated. Request endpoints email a confirm
-    # link; confirm endpoints record and email a management link; the
-    # management token then lists, changes, and erases the guest's data.
+    # link; confirm endpoints record and email a management link.
     post "/communities/:community_slug/events/:event_id/guest-rsvp",
          GuestController,
          :request_rsvp
@@ -212,12 +213,18 @@ defmodule KammerWeb.Router do
     post "/guest/claim/confirm", GuestController, :confirm_claim
     post "/guest/comment/confirm", GuestController, :confirm_comment
 
-    get "/guest/manage/:token", GuestController, :manage
-    put "/guest/manage/:token/rsvps/:event_id", GuestController, :set_rsvp
-    delete "/guest/manage/:token/claims/:claim_id", GuestController, :release_claim
-    put "/guest/manage/:token/subscriptions/:subscription_id", GuestController, :set_cadence
-    delete "/guest/manage/:token/subscriptions/:subscription_id", GuestController, :unsubscribe
-    delete "/guest/manage/:token", GuestController, :erase
+    # The management token is long-lived (unlike the single-use confirm
+    # tokens above), so it travels in the `Authorization: Bearer` header
+    # instead of the URL (issue #230, ADR 0026) — a path segment would
+    # leak it into access logs, proxy logs, browser history, and
+    # `Referer`. `GuestController.fetch_manage_token/1` reads it; these
+    # routes carry no `:token` param.
+    get "/guest/manage", GuestController, :manage
+    put "/guest/manage/rsvps/:event_id", GuestController, :set_rsvp
+    delete "/guest/manage/claims/:claim_id", GuestController, :release_claim
+    put "/guest/manage/subscriptions/:subscription_id", GuestController, :set_cadence
+    delete "/guest/manage/subscriptions/:subscription_id", GuestController, :unsubscribe
+    delete "/guest/manage", GuestController, :erase
 
     # Guest newsletter subscriptions (issue #185, SPEC §8). Cadence
     # change and unsubscribe ride the shared guest management token

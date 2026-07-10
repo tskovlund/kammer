@@ -150,6 +150,32 @@ and this project adheres to
 
 ### Fixed
 
+- Guest/setup public API hardening (issue #230, refining #185/#229 —
+  the owner asked for a "do it properly" pass rather than matching the
+  LiveView precedent). `POST /api/v1/setup/verify-token` is removed:
+  it was a boolean oracle over the setup credential, and `complete`
+  already validates the token itself before doing any work. `POST
+/api/v1/setup` is now rate-limited per IP (10/hour, fixed — no
+  config knob, same stance as every other security limit in
+  `Kammer.RateLimit`), defense-in-depth for the one window in an
+  instance's life with no operator around to notice abuse. The guest
+  **management** link's token — long-lived, unlike the single-use
+  confirm tokens — moved from a URL path segment
+  (`/guest/manage/{token}`) to an `Authorization: Bearer` header
+  (`/guest/manage`, read via `GuestController.fetch_manage_token/1`):
+  a path segment for a credential that stays valid indefinitely was
+  leaking into server/proxy access logs, browser history, and
+  `Referer`. The emailed management link now carries the token in the
+  URL fragment instead, which browsers never send to any server; a
+  missing, malformed, or forged Authorization header answers the same
+  neutral 404 an invalid token already did — checked before any
+  request-shape validation, so the request body can never be probed
+  without an authentic token. This covers the API surface; the
+  recurring newsletter emails still carry a manage token in their URL
+  and `List-Unsubscribe` header and are hardened separately. See ADR
+  0026 for the full reasoning, including why the setup token and the
+  single-use guest confirm links deliberately keep their current
+  transport.
 - Email-change confirmation is now rate-limited (issue #97,
   security-hardening pass): any signed-in user in sudo mode could loop
   the account-settings email form to send the branded confirmation to

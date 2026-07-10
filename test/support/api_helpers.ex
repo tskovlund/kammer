@@ -18,7 +18,16 @@ defmodule KammerWeb.ApiHelpers do
   def api_conn(user) do
     {token, user_token} = UserToken.build_device_token(user, "test device")
     Repo.insert!(user_token)
+    bearer_conn(token)
+  end
 
+  @doc """
+  A JSON conn carrying `Authorization: Bearer <token>` for a literal
+  token value — the guest management surface (ADR 0026), where the
+  bearer is a signed guest token rather than a device token.
+  """
+  @spec bearer_conn(String.t()) :: Plug.Conn.t()
+  def bearer_conn(token) do
     build_conn()
     |> put_req_header("accept", "application/json")
     |> put_req_header("authorization", "Bearer #{token}")

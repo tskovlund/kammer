@@ -29,6 +29,12 @@ defmodule KammerWeb.Api.PublicLinks do
   @doc """
   Absolute PWA confirm link for a request email — the signed token in
   the path is the credential the confirm endpoint verifies.
+
+  Unlike `manage_url/2`, this token stays in the path (ADR 0026): it's
+  single-use — the confirm endpoint consumes it once — so it never
+  accumulates in server logs the way a long-lived credential would; a
+  captured link is a magic-link-equivalent bearer secret already, the
+  same accepted trade-off as every other one-shot email link here.
   """
   @spec confirm_url(Plug.Conn.t(), :rsvp | :comment | :claim | :newsletter, String.t()) ::
           String.t()
@@ -36,9 +42,19 @@ defmodule KammerWeb.Api.PublicLinks do
     pwa_url(conn, Map.fetch!(@confirm_paths, kind) <> token)
   end
 
-  @doc "Absolute PWA management link every confirmation email carries."
+  @doc """
+  Absolute PWA management link every confirmation email carries.
+
+  The token rides the URL *fragment* (`#token`, not `/token`) rather
+  than the path (issue #230, ADR 0026): the management token is
+  long-lived, and a fragment is never sent to any server — not this
+  one, not an intermediate proxy — so it can't leak into access logs,
+  and browsers omit it from the `Referer` header on outbound
+  navigation. The PWA reads it client-side and sends it back as
+  `Authorization: Bearer <token>`.
+  """
   @spec manage_url(Plug.Conn.t(), String.t()) :: String.t()
-  def manage_url(conn, token), do: pwa_url(conn, "/guest/manage/" <> token)
+  def manage_url(conn, token), do: pwa_url(conn, "/guest/manage#" <> token)
 
   @doc "Absolute PWA sign-in link for the setup operator's first magic link."
   @spec sign_in_url(Plug.Conn.t(), String.t()) :: String.t()

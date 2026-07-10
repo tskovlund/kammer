@@ -175,6 +175,23 @@ defmodule Kammer.RateLimit do
     hit("invite_issuance:user:#{user_id}", 60 * 60 * 1000, 20)
   end
 
+  @doc """
+  Rate limit for completing first-run setup, keyed by client IP: 10 per
+  hour, the same fixed budget as `hit_signup_ip/1`. This is defense-in-
+  depth for the pre-setup window — the setup token printed to the
+  server logs is already the real gate — but that window has no
+  operator yet around to notice or react to abuse, so the limit is a
+  fixed constant with no runtime config knob (a security limit behind
+  config is a footgun).
+  """
+  @spec hit_setup_ip(:inet.ip_address() | String.t() | nil) ::
+          {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_setup_ip(nil), do: {:allow, 0}
+
+  def hit_setup_ip(ip_address) do
+    hit("setup:ip:#{format_ip(ip_address)}", 60 * 60 * 1000, 10)
+  end
+
   defp format_ip(ip_address) when is_binary(ip_address), do: ip_address
 
   defp format_ip(ip_address) when is_tuple(ip_address),
