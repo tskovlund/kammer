@@ -112,6 +112,37 @@ and this project adheres to
   are out of scope here — they need tokenless content-read endpoints
   for `public_listed` events/groups/posts that don't exist yet, left
   as remaining #185 scope rather than a new issue.
+- Public community/group/post/event browse screens in the PWA, hosting
+  the guest RSVP/signup-claim/comment request forms (issue #185 slice
+  B, the client half of the last #187 rung before the LiveView cut —
+  this is the guest-parity surface #187 was gated on). Four new
+  top-level, tokenless routes consume the public content-read
+  endpoints above: `/c/:community` (public face plus its
+  `public_listed` groups), `/c/:community/g/:group` (description plus
+  a cursor-paginated feed with load-more), a post page nested under
+  the group (body, attachments, comments, and the guest comment form),
+  and `/c/:community/events/:event` (details, RSVP counts, signup
+  slots, and the guest RSVP/claim forms). Every guest form honors the
+  `guest_rsvp_allowed`/`guest_comment_allowed` flags the group
+  serializer now exposes — hidden entirely rather than shown and
+  refused — and answers with the same neutral "check your email to
+  confirm" state the request endpoints already guarantee (rate-limited,
+  no oracle on whether an email is already known). The RSVP and
+  signup-claim forms share `guest_rsvp_allowed` (one flag governs
+  both, matching `Authorization.can_guest_rsvp?/1` server-side); each
+  open signup slot reveals its own claim form rather than one shared
+  one, since a claim is scoped to a specific slot. Post/event bodies
+  render through the same sanitized Markdown component the
+  authenticated feed uses; comments render read-only (no reactions,
+  edit, or reply — none are guest capabilities). Attachments link
+  straight to the serializer's plain URLs rather than the authenticated
+  feed's Bearer-fetched object URLs (a guest holds no device token) —
+  today that means an anonymous visitor's image request can 404 until
+  the public-file-serving path lands in a parallel PR, so each image
+  degrades to a neutral placeholder on load failure instead of a
+  broken-image icon. `schema.d.ts` regenerated from the merged spec to
+  pick up the five new `/api/v1/public/...` operations. EN + DA
+  throughout.
 - Collaborative tools and global search in the PWA (issue #184, the
   client half of the #165 parity rung): the Svelte screens over the
   API above. Each group surfaces the tools it has turned on (ADR 0016)

@@ -62,7 +62,10 @@ const group: Group = {
 	features: [],
 	sealed: false,
 	archived: false,
-	viewer_can: []
+	viewer_can: [],
+	guest_rsvp_allowed: false,
+	guest_comment_allowed: false,
+	guest_subscribe_allowed: false
 };
 
 describe('hitCount', () => {

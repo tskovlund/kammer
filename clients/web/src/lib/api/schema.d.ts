@@ -678,6 +678,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/public/communities/{community_slug}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A community's public face and its public_listed groups (issue #185) */
+		get: operations['public_community_show'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/assignments/{assignment_id}/completion': {
 		parameters: {
 			query?: never;
@@ -923,6 +940,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/public/communities/{community_slug}/events/{event_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** An event in a publicly readable group */
+		get: operations['public_event_show'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}': {
 		parameters: {
 			query?: never;
@@ -950,6 +984,23 @@ export interface paths {
 		get?: never;
 		/** Change a member's community role (admins; owner transitions need the owner) */
 		put: operations['members_update_role'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/public/communities/{community_slug}/groups/{group_slug}/posts/{post_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A single post in a publicly readable group */
+		get: operations['public_post_show'];
+		put?: never;
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -1002,6 +1053,23 @@ export interface paths {
 		get?: never;
 		/** Acknowledge a post (idempotent) */
 		put: operations['posts_acknowledge'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/public/communities/{community_slug}/groups/{group_slug}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A publicly readable group */
+		get: operations['public_group_show'];
+		put?: never;
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -1088,6 +1156,23 @@ export interface paths {
 		get?: never;
 		/** Approve a join request, creating the membership (422 when the person is banned) */
 		put: operations['join_requests_approve'];
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/public/communities/{community_slug}/groups/{group_slug}/posts': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A publicly readable group's feed (cursor-paginated) */
+		get: operations['public_group_posts'];
+		put?: never;
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -2215,6 +2300,12 @@ export interface components {
 			archived: boolean;
 			description?: string | null;
 			features: string[];
+			/** @description Whether an account-less guest may comment on this group's posts (SPEC §3) */
+			guest_comment_allowed: boolean;
+			/** @description Whether an account-less guest may RSVP to this group's events (SPEC §6) */
+			guest_rsvp_allowed: boolean;
+			/** @description Whether an account-less guest may subscribe to this group's feed by email */
+			guest_subscribe_allowed: boolean;
 			/** Format: uuid */
 			id: string;
 			/** @enum {string} */
@@ -2378,6 +2469,14 @@ export interface components {
 			thumbnail_url?: string | null;
 			url: string;
 			width?: number | null;
+		};
+		/**
+		 * PublicCommunity
+		 * @description The tokenless public community read (issue #185 slice B): the community's public face plus its `public_listed` groups — the same content `CommunityLive.Home` shows an anonymous visitor. `public_link` groups are reachable directly by slug (the group show endpoint) but stay out of this list, same as the LiveView page — that's what "unlisted" means.
+		 */
+		PublicCommunity: {
+			community: components['schemas']['Community'];
+			groups: components['schemas']['Group'][];
 		};
 		/**
 		 * CommunityParams
@@ -6146,6 +6245,57 @@ export interface operations {
 			};
 		};
 	};
+	public_community_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['PublicCommunity'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	assignments_complete: {
 		parameters: {
 			query?: never;
@@ -7423,6 +7573,58 @@ export interface operations {
 			};
 		};
 	};
+	public_event_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Event'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	groups_update: {
 		parameters: {
 			query?: never;
@@ -7588,6 +7790,59 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	public_post_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -7892,6 +8147,58 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	public_group_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Group'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -8292,6 +8599,64 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	public_group_posts: {
+		parameters: {
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 25 */
+				limit?: string;
+			};
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Post'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
