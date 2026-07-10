@@ -58,6 +58,26 @@ defmodule KammerWeb.EventFlowsTest do
       assert Events.get_rsvp(event, member).status == :yes
     end
 
+    test "a stored javascript: location_url renders as plain text, not a link (issue #247)", %{
+      conn: conn,
+      community: community,
+      event: event
+    } do
+      # The changeset rejects this scheme on write (Kammer.ValidationTest /
+      # Kammer.EventsTest cover that); force it directly to simulate a row
+      # written before that check existed, and assert the render guard
+      # still holds.
+      event
+      |> Ecto.Changeset.change(location_url: "javascript:alert(1)")
+      |> Kammer.Repo.update!()
+
+      {:ok, lv, html} = live(conn, ~p"/c/#{community.slug}/events/#{event.id}")
+
+      assert html =~ "Stakladen"
+      refute has_element?(lv, "a", "Stakladen")
+      refute has_element?(lv, ~s{a[href^="javascript:"]})
+    end
+
     test "member comments on the event", %{conn: conn, community: community, event: event} do
       {:ok, lv, _html} = live(conn, ~p"/c/#{community.slug}/events/#{event.id}")
 

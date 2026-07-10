@@ -16,6 +16,8 @@ defmodule Kammer.Events.Event do
 
   import Ecto.Changeset
 
+  alias Kammer.Validation
+
   @type t() :: %__MODULE__{}
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -68,6 +70,7 @@ defmodule Kammer.Events.Event do
     |> validate_length(:description_markdown, max: 50_000)
     |> validate_length(:location_name, max: 200)
     |> validate_length(:location_url, max: 500)
+    |> Validation.validate_http_url(:location_url)
     |> validate_end_after_start()
   end
 

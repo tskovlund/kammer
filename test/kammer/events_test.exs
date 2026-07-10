@@ -73,6 +73,18 @@ defmodule Kammer.EventsTest do
       assert changeset.errors[:ends_at]
     end
 
+    test "rejects a javascript: location_url (issue #247 — scheme rules themselves are covered by Kammer.ValidationTest)",
+         %{group: group, member: member} do
+      assert {:error, changeset} =
+               Events.create_event(member, group, %{
+                 "title" => "Bad location",
+                 "starts_at" => future(48),
+                 "location_url" => "javascript:alert(1)"
+               })
+
+      assert changeset.errors[:location_url]
+    end
+
     test "schedules a reminder job for events more than a day out", %{
       group: group,
       member: member

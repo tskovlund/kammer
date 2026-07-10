@@ -50,6 +50,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Legal
   alias Kammer.Markdown
   alias Kammer.Notifications.Notification
+  alias Kammer.Validation
 
   @spec community(Community.t(), User.t() | nil, Authorization.relationship() | nil) :: map()
   def community(community, viewer \\ nil, relationship \\ nil)
@@ -328,7 +329,10 @@ defmodule KammerWeb.Api.Serializer do
       all_day: event.all_day,
       timezone: event.timezone,
       location_name: event.location_name,
-      location_url: event.location_url,
+      # The API is the one choke point every client reads through —
+      # never emit a location_url a raw <a href> couldn't safely
+      # render (issue #247; rows predating the changeset validation).
+      location_url: if(Validation.http_url?(event.location_url), do: event.location_url),
       cancelled: event.cancelled_at != nil,
       comments_locked: event.comment_locked_at != nil,
       rsvp_counts: rsvp_counts(event),

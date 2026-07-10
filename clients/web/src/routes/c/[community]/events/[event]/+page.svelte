@@ -10,6 +10,7 @@
 		type Group,
 		type RsvpStatus
 	} from '$lib/public/api.js';
+	import { safeHttpUrl } from '$lib/url.js';
 	import type { Event } from '$lib/events/types.js';
 	import { formatDate, formatDateTime } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
@@ -39,21 +40,8 @@
 	const communitySlug = $derived(page.params.community!);
 	const eventId = $derived(page.params.event!);
 
-	// `location_url` is host-entered and only length-validated server-side
-	// (issue #247), so a `javascript:` value must never become a clickable
-	// same-origin link on this anonymous page — only http(s) gets an
-	// anchor; anything else falls back to the plain location name.
-	const safeLocationUrl = $derived.by(() => {
-		if (!event?.location_url) return null;
-		try {
-			const parsed = new URL(event.location_url);
-			return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-				? event.location_url
-				: null;
-		} catch {
-			return null;
-		}
-	});
+	// Only http(s) becomes a clickable link — see safeHttpUrl (issue #247).
+	const safeLocationUrl = $derived(safeHttpUrl(event?.location_url));
 
 	onMount(async () => {
 		try {

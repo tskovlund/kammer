@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import * as api from '$lib/events/api.js';
 	import { createEventStore, type EventStore } from '$lib/events/event-store.svelte.js';
+	import { safeHttpUrl } from '$lib/url.js';
 	import EventComments from '$lib/events/components/EventComments.svelte';
 	import RsvpControl from '$lib/events/components/RsvpControl.svelte';
 	import SlotList from '$lib/events/components/SlotList.svelte';
@@ -37,6 +38,9 @@
 	});
 
 	const event = $derived(store?.event ?? null);
+
+	// Only http(s) becomes a clickable link — see safeHttpUrl (issue #247).
+	const eventLocationUrl = $derived(safeHttpUrl(event?.location_url));
 
 	const when = $derived(
 		event
@@ -117,10 +121,10 @@
 					{/if}
 					{#if event.location_name}
 						<span class="text-ink-faint">·</span>
-						{#if event.location_url}
+						{#if eventLocationUrl}
 							<!-- eslint-disable svelte/no-navigation-without-resolve -->
 							<a
-								href={event.location_url}
+								href={eventLocationUrl}
 								rel="noopener noreferrer"
 								target="_blank"
 								class="text-accent hover:underline"

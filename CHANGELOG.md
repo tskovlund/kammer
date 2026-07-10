@@ -8,6 +8,37 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Security
+
+- `Event.location_url` now rejects anything but `http`/`https` on
+  write (issue #247, found by the adversarial review of #246):
+  previously it was only length-checked, so an event host could set
+  it to `javascript:...` and have the LiveView event page render a
+  raw `<a href>` — `rel="noopener noreferrer"` does not neutralize
+  `javascript:` URLs, and this executed same-origin, i.e. member-facing
+  stored XSS. Defense in depth, outermost first: the changeset
+  validation (`Kammer.Validation.validate_http_url/3`, a new shared
+  helper — `InstanceBookmark`'s near-identical private URL check now
+  delegates to it too) blocks new writes; a data migration nulls any
+  pre-validation row (which also keeps the ICS export's `LOCATION`
+  text clean); the API serializer never emits a non-http(s)
+  `location_url`, covering every current and future client at one
+  choke point; and the render sites — the LiveView anchor
+  (`EventLive.Show`) and both PWA event pages (the anonymous public
+  one already guarded in #246, plus the authenticated member page
+  which had the same gap, both via a shared `safeHttpUrl` helper) —
+  still guard independently. Both sides enforce the same anchored
+  scheme-allowlist rule rather than full URL parsing: RFC-3986
+  parsing over-rejected IDN hosts (`https://øl.dk`) and pasted maps
+  URLs browsers accept, while diverging from the WHATWG parsing the
+  client used. A repo-wide sweep for other user-entered URL fields
+  rendered as a raw href found none unguarded: `InstanceBookmark.url`
+  already validated the scheme (from its original commit), and the
+  two other raw `href={...}` sites in the LiveView app (`file_href/1`
+  in the file browser and search results, `latest_known_release_url`)
+  are either server-generated paths or sourced from GitHub's release
+  API, not user input.
+
 ### Added
 
 - Operator-configurable tier-2 deployment settings (issue #234, ADR
