@@ -35,6 +35,30 @@ and this project adheres to
   expired, or used token gets one neutral answer, never an oracle.
   OpenAPI operations, schemas, and conformance taps included; PWA
   screens follow as the client half.
+- Tokenless public content-read endpoints over the JSON API (issue
+  #185 slice B, the server half of the last #187 rung before the
+  LiveView cut): `GET /api/v1/public/communities/:community_slug`
+  (public face plus its `public_listed` groups), `.../groups/:slug`
+  and `.../groups/:slug/posts` (cursor-paginated feed) and
+  `.../posts/:post_id`, and `.../events/:event_id` — enough for the
+  PWA to host the guest RSVP/signup-claim/comment request forms
+  (above) on public content pages without an account. Every read is
+  scoped through the new `Authorization.publicly_readable?/1` — the
+  same `public_link`/`public_listed`-and-not-archived boundary the
+  RSS/Atom feeds and the guest request endpoints already expose,
+  additionally hardened against sealed groups since this is a
+  newly-browsable JSON surface; a community/group/event/post that
+  exists but isn't publicly readable answers the identical neutral
+  404 a nonexistent one does — no oracle (#156/#161). The group feed
+  and single-post read exclude soft-deleted posts entirely (not shown
+  as tombstones, unlike the authenticated feed) since a guest has
+  nothing to comment on there and the guest-comment request endpoint
+  already refuses one. The `Group` serializer gained
+  `guest_rsvp_allowed`/`guest_comment_allowed`/
+  `guest_subscribe_allowed` so a client can decide whether to render
+  those forms without guessing from `visibility`/`archived`/`sealed`
+  or trying a request and handling the refusal. OpenAPI operations,
+  schemas, and conformance taps included.
 - Guest, newsletter, legal, and first-run setup screens in the PWA
   (issue #185, the client half of the surfaces above): every route the
   guest/newsletter emails and the setup flow link to, all top-level and

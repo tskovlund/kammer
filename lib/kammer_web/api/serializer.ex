@@ -88,7 +88,18 @@ defmodule KammerWeb.Api.Serializer do
       sealed: group.sealed,
       archived: Group.archived?(group),
       my_role: relationship && relationship.group_role,
-      viewer_can: group_capabilities(viewer, group, relationship)
+      viewer_can: group_capabilities(viewer, group, relationship),
+      # Static facts about the group, not the viewer (issue #185 slice
+      # B): whether an account-less guest could RSVP/comment/subscribe
+      # here at all, so a client can decide whether to render those
+      # forms without guessing from `visibility`/`archived`/`sealed`
+      # itself or trying a request and handling the refusal. Computed
+      # from the exact same `Authorization.can_guest_*?/1` the guest
+      # request endpoints enforce, so it can't drift from what those
+      # endpoints actually accept.
+      guest_rsvp_allowed: Authorization.can_guest_rsvp?(group),
+      guest_comment_allowed: Authorization.can_guest_comment?(group),
+      guest_subscribe_allowed: Authorization.can_guest_subscribe?(group)
     }
   end
 

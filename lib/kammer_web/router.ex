@@ -234,6 +234,38 @@ defmodule KammerWeb.Router do
          :subscribe
 
     post "/newsletter/confirm", NewsletterController, :confirm
+
+    # Public content reads (issue #185 slice B): tokenless browsing of
+    # public_link/public_listed communities/groups/events/posts, so the
+    # PWA can host the guest RSVP/claim/comment request forms (above)
+    # on public content pages without an account — the last piece
+    # gating the LiveView removal (issue #187). Every read is scoped
+    # through `Authorization.publicly_readable?/1`, the same
+    # public-and-live boundary the guest request endpoints above and
+    # the RSS/Atom feeds already expose (hardened against sealed
+    # groups here, see that function's doc) — a guest can browse to
+    # exactly the content they could already act on, no more. Nested
+    # under `/public` rather than reusing the authenticated resource
+    # paths above: `groups/:group_slug/posts` and `events/:event_id`
+    # are already taken there, and `public` can never collide with a
+    # real `:community_slug` (it's in `Community`'s reserved-slugs
+    # list). A community/group/event/post that exists but isn't
+    # publicly readable 404s identically to a nonexistent one — no
+    # oracle (issue #156/#161).
+    scope "/public" do
+      get "/communities/:community_slug", PublicController, :community
+      get "/communities/:community_slug/groups/:group_slug", PublicController, :group
+
+      get "/communities/:community_slug/groups/:group_slug/posts",
+          PublicController,
+          :group_posts
+
+      get "/communities/:community_slug/groups/:group_slug/posts/:post_id",
+          PublicController,
+          :post
+
+      get "/communities/:community_slug/events/:event_id", PublicController, :event
+    end
   end
 
   # Unaliased scope: RenderSpec is a library plug, not a KammerWeb.Api
