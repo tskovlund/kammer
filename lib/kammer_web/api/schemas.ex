@@ -45,6 +45,10 @@ defmodule KammerWeb.Api.Schemas do
         name: %Schema{type: :string},
         slug: %Schema{type: :string},
         description: %Schema{type: :string, nullable: true},
+        accent_color: %Schema{type: :string, description: "Hex theme color, e.g. #3E6B48"},
+        default_locale: %Schema{type: :string, enum: ["en", "da"]},
+        listed_on_instance: %Schema{type: :boolean},
+        require_real_names: %Schema{type: :boolean},
         my_role: %Schema{
           type: :string,
           enum: ["owner", "admin", "member"],
@@ -66,7 +70,36 @@ defmodule KammerWeb.Api.Schemas do
               "weren't resolved (e.g. an embedded community reference)."
         }
       },
-      required: [:id, :name, :slug, :viewer_can]
+      required: [
+        :id,
+        :name,
+        :slug,
+        :accent_color,
+        :default_locale,
+        :listed_on_instance,
+        :require_real_names,
+        :viewer_can
+      ]
+    })
+  end
+
+  defmodule CommunityParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "CommunityParams",
+      description: "Editable community settings (issue #183). All fields optional on update.",
+      type: :object,
+      properties: %{
+        name: %Schema{type: :string},
+        slug: %Schema{type: :string},
+        description: %Schema{type: :string, nullable: true},
+        accent_color: %Schema{type: :string},
+        default_locale: %Schema{type: :string, enum: ["en", "da"]},
+        listed_on_instance: %Schema{type: :boolean},
+        require_real_names: %Schema{type: :boolean}
+      }
     })
   end
 
@@ -1180,6 +1213,236 @@ defmodule KammerWeb.Api.Schemas do
         }
       },
       required: [:upcoming_events, :recent_activity]
+    })
+  end
+
+  defmodule GroupParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GroupParams",
+      description:
+        "Group settings (issue #183). On create, `sealed` may be set once " <>
+          "and is irreversible (ADR 0005); it is never editable afterward.",
+      type: :object,
+      properties: %{
+        name: %Schema{type: :string},
+        slug: %Schema{type: :string},
+        description: %Schema{type: :string, nullable: true},
+        visibility: %Schema{
+          type: :string,
+          enum: ["private", "community", "public_link", "public_listed"]
+        },
+        join_policy: %Schema{type: :string, enum: ["invite_only", "request_approval", "open"]},
+        posting_policy: %Schema{type: :string, enum: ["all_members", "admins_only"]},
+        comment_policy: %Schema{type: :string, enum: ["members", "members_and_guests", "off"]},
+        approval_queue: %Schema{type: :boolean},
+        sealed: %Schema{type: :boolean, description: "Create-only, irreversible"},
+        version_retention: %Schema{type: :integer, nullable: true}
+      }
+    })
+  end
+
+  defmodule GroupFeaturesParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GroupFeaturesParams",
+      description: "The full set of enabled features (ADR 0016). The feed is always forced on.",
+      type: :object,
+      properties: %{
+        features: %Schema{
+          type: :array,
+          items: %Schema{
+            type: :string,
+            enum: ["feed", "events", "files", "availability", "assignments", "decisions"]
+          }
+        }
+      },
+      required: [:features]
+    })
+  end
+
+  defmodule Report do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Report",
+      description: "A reported post or comment in the moderation queue (issue #183).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        reason: %Schema{type: :string},
+        status: %Schema{type: :string, enum: ["open", "dismissed", "resolved"]},
+        inserted_at: %Schema{type: :string, format: :"date-time"},
+        reporter: %Schema{
+          type: :object,
+          nullable: true,
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            display_name: %Schema{type: :string}
+          }
+        },
+        subject: %Schema{
+          type: :object,
+          nullable: true,
+          description: "The reported content, embedded for triage.",
+          properties: %{
+            type: %Schema{type: :string, enum: ["post", "comment"]},
+            id: %Schema{type: :string, format: :uuid},
+            group_id: %Schema{type: :string, format: :uuid, nullable: true},
+            author: %Schema{type: :object, nullable: true},
+            body_markdown: %Schema{type: :string, nullable: true}
+          }
+        }
+      },
+      required: [:id, :reason, :status, :inserted_at]
+    })
+  end
+
+  defmodule ReportAction do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "ReportAction",
+      description: "The report's new status after resolving or dismissing it.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        status: %Schema{type: :string, enum: ["dismissed", "resolved"]}
+      },
+      required: [:id, :status]
+    })
+  end
+
+  defmodule Ban do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Ban",
+      description: "A community email ban (issue #183).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        email: %Schema{type: :string},
+        reason: %Schema{type: :string, nullable: true},
+        inserted_at: %Schema{type: :string, format: :"date-time"},
+        banned_by: %Schema{
+          type: :object,
+          nullable: true,
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            display_name: %Schema{type: :string}
+          }
+        }
+      },
+      required: [:id, :email, :inserted_at]
+    })
+  end
+
+  defmodule BanParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "BanParams",
+      type: :object,
+      properties: %{
+        user_id: %Schema{type: :string, format: :uuid, description: "The member to ban"},
+        reason: %Schema{type: :string, nullable: true}
+      },
+      required: [:user_id]
+    })
+  end
+
+  defmodule AuditEvent do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AuditEvent",
+      description: "One append-only audit entry (issue #183, SPEC §11).",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        action: %Schema{type: :string, example: "member.banned"},
+        summary: %Schema{type: :string},
+        metadata: %Schema{type: :object},
+        inserted_at: %Schema{type: :string, format: :"date-time"},
+        actor: %Schema{
+          type: :object,
+          nullable: true,
+          description: "The acting user, or null for a system action.",
+          properties: %{
+            id: %Schema{type: :string, format: :uuid},
+            display_name: %Schema{type: :string}
+          }
+        }
+      },
+      required: [:id, :action, :summary, :inserted_at]
+    })
+  end
+
+  defmodule InstanceSettings do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "InstanceSettings",
+      description: "Operator-editable instance settings (issue #183, SPEC §13).",
+      type: :object,
+      properties: %{
+        instance_name: %Schema{type: :string, nullable: true},
+        default_locale: %Schema{type: :string, enum: ["en", "da"]},
+        community_creation_policy: %Schema{
+          type: :string,
+          enum: ["operators_only", "any_user"]
+        },
+        storage_policy: %Schema{type: :string, enum: ["unmetered", "quota"]},
+        content_minimized_emails: %Schema{type: :boolean}
+      },
+      required: [
+        :default_locale,
+        :community_creation_policy,
+        :storage_policy,
+        :content_minimized_emails
+      ]
+    })
+  end
+
+  defmodule InstanceSettingsParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "InstanceSettingsParams",
+      description: "Instance-settings changes (issue #183). All fields optional.",
+      type: :object,
+      properties: %{
+        instance_name: %Schema{type: :string, nullable: true},
+        default_locale: %Schema{type: :string, enum: ["en", "da"]},
+        community_creation_policy: %Schema{type: :string, enum: ["operators_only", "any_user"]},
+        storage_policy: %Schema{type: :string, enum: ["unmetered", "quota"]},
+        content_minimized_emails: %Schema{type: :boolean}
+      }
+    })
+  end
+
+  defmodule StatusOnly do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "StatusOnly",
+      description: "A bare status acknowledgement, e.g. {\"status\": \"unbanned\"}.",
+      type: :object,
+      properties: %{status: %Schema{type: :string}},
+      required: [:status]
     })
   end
 end

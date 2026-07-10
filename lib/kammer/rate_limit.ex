@@ -161,6 +161,20 @@ defmodule Kammer.RateLimit do
     hit("email_change:user:#{user_id}", 60 * 60 * 1000, 5)
   end
 
+  @doc """
+  Rate limit for issuing email invites, keyed by the acting community/
+  group admin: 20 per hour (issue #97). Only email-bearing invites
+  count — a link invite sends nothing — so this caps how fast one
+  privileged actor can drive branded email to arbitrary addresses,
+  the same arbitrary-recipient-flood class every other email path here
+  already throttles. Generous enough to onboard a whole board in one
+  sitting, tight enough that the endpoint can't become a spam relay.
+  """
+  @spec hit_invite_issuance(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_invite_issuance(user_id) do
+    hit("invite_issuance:user:#{user_id}", 60 * 60 * 1000, 20)
+  end
+
   defp format_ip(ip_address) when is_binary(ip_address), do: ip_address
 
   defp format_ip(ip_address) when is_tuple(ip_address),

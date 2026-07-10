@@ -454,10 +454,122 @@ defmodule KammerWeb.ApiSpec do
             response: data_response(Schemas.Community)
           )
       },
+      "/api/v1/communities/{community_slug}" => %PathItem{
+        put:
+          operation(
+            "Update community settings",
+            :communities_update,
+            [path_param(:community_slug)],
+            request_body: body(Schemas.CommunityParams),
+            response: single_response(Schemas.Community)
+          )
+      },
       "/api/v1/communities/{community_slug}/groups" => %PathItem{
         get:
           operation("Visible groups of a community", :groups_index, [path_param(:community_slug)],
             response: data_response(Schemas.Group)
+          ),
+        post:
+          operation("Create a group", :groups_create, [path_param(:community_slug)],
+            status: 201,
+            request_body: body(Schemas.GroupParams),
+            response: single_response(Schemas.Group)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}" => %PathItem{
+        put:
+          operation("Update group settings", :groups_update, group_params(),
+            request_body: body(Schemas.GroupParams),
+            response: single_response(Schemas.Group)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/features" => %PathItem{
+        put:
+          operation("Set a group's enabled features", :groups_features, group_params(),
+            request_body: body(Schemas.GroupFeaturesParams),
+            response: single_response(Schemas.Group)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/archive" => %PathItem{
+        put:
+          operation("Archive a group", :groups_archive, group_params(),
+            response: single_response(Schemas.Group)
+          ),
+        delete:
+          operation("Unarchive a group", :groups_unarchive, group_params(),
+            response: single_response(Schemas.Group)
+          )
+      },
+      "/api/v1/communities/{community_slug}/moderation/reports" => %PathItem{
+        get:
+          operation(
+            "The open moderation report queue",
+            :moderation_reports,
+            [
+              path_param(:community_slug)
+            ],
+            response: data_response(Schemas.Report)
+          )
+      },
+      "/api/v1/communities/{community_slug}/moderation/reports/{report_id}/resolve" => %PathItem{
+        post:
+          operation(
+            "Resolve a report by removing its content",
+            :moderation_resolve,
+            [path_param(:community_slug), path_param(:report_id)],
+            response: single_response(Schemas.ReportAction)
+          )
+      },
+      "/api/v1/communities/{community_slug}/moderation/reports/{report_id}/dismiss" => %PathItem{
+        post:
+          operation(
+            "Dismiss a report (the content stays)",
+            :moderation_dismiss,
+            [path_param(:community_slug), path_param(:report_id)],
+            response: single_response(Schemas.ReportAction)
+          )
+      },
+      "/api/v1/communities/{community_slug}/moderation/bans" => %PathItem{
+        get:
+          operation("Active community bans", :moderation_bans, [path_param(:community_slug)],
+            response: data_response(Schemas.Ban)
+          ),
+        post:
+          operation("Ban a member", :moderation_ban, [path_param(:community_slug)],
+            status: 201,
+            request_body: body(Schemas.BanParams),
+            response: single_response(Schemas.Ban)
+          )
+      },
+      "/api/v1/communities/{community_slug}/moderation/bans/{ban_id}" => %PathItem{
+        delete:
+          operation(
+            "Lift a ban",
+            :moderation_unban,
+            [path_param(:community_slug), path_param(:ban_id)],
+            response: single_response(Schemas.StatusOnly)
+          )
+      },
+      "/api/v1/communities/{community_slug}/audit-log" => %PathItem{
+        get:
+          operation(
+            "The community audit log (newest first)",
+            :audit_log,
+            [
+              path_param(:community_slug)
+            ],
+            response: data_response(Schemas.AuditEvent)
+          )
+      },
+      "/api/v1/instance/settings" => %PathItem{
+        get:
+          operation("Read instance settings (operators only)", :instance_settings, [],
+            response: single_response(Schemas.InstanceSettings)
+          ),
+        put:
+          operation("Update instance settings (operators only)", :instance_update_settings, [],
+            request_body: body(Schemas.InstanceSettingsParams),
+            response: single_response(Schemas.InstanceSettings)
           )
       },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/posts" => %PathItem{

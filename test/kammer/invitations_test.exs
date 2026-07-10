@@ -48,6 +48,33 @@ defmodule Kammer.InvitationsTest do
         Enum.any?(email.to, fn {_name, address} -> address == "trumpet@example.com" end)
       end)
     end
+
+    test "email invites are rate-limited per actor; link invites are not (issue #97)" do
+      {community, owner} = community_with_owner_fixture()
+
+      # The per-actor hourly budget: the first 20 email invites land,
+      # the 21st is refused with a stable code the API maps to 429.
+      for n <- 1..20 do
+        assert {:ok, _invite} =
+                 Invitations.create_community_invite(owner, community, %{
+                   "invited_email" => "guest#{n}@example.com"
+                 })
+      end
+
+      assert {:error, :rate_limited} =
+               Invitations.create_community_invite(owner, community, %{
+                 "invited_email" => "guest21@example.com"
+               })
+
+      # A refused invite writes nothing — no orphaned token rows.
+      assert {:ok, invites} = Invitations.list_invites(owner, community)
+      assert length(invites) == 20
+
+      # A link invite sends no email, so the exhausted budget never
+      # touches it.
+      assert {:ok, link} = Invitations.create_community_invite(owner, community)
+      assert link.invited_email == nil
+    end
   end
 
   defp drain_delivered_emails do

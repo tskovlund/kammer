@@ -45,6 +45,21 @@ defmodule Kammer.Accounts do
   @spec get_user!(Ecto.UUID.t()) :: User.t()
   def get_user!(id), do: Repo.get!(User, id)
 
+  @doc """
+  Gets a single user by id, or `nil` — including for a malformed id, so
+  a caller passing an untrusted path/body value gets `nil` rather than a
+  crash (the API ban flow relies on this).
+  """
+  @spec get_user(term()) :: User.t() | nil
+  def get_user(id) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> Repo.get(User, uuid)
+      :error -> nil
+    end
+  end
+
+  def get_user(_id), do: nil
+
   ## User registration
 
   @doc """

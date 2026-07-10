@@ -115,8 +115,19 @@ defmodule Kammer.Moderation do
   @spec dismiss_report(User.t(), Report.t()) ::
           {:ok, Report.t()} | {:error, :unauthorized}
   def dismiss_report(%User{} = actor, %Report{status: :open} = report) do
-    with :ok <- authorize_on_report(actor, report) do
-      close_report(report, actor, :dismissed)
+    with :ok <- authorize_on_report(actor, report),
+         {:ok, dismissed} <- close_report(report, actor, :dismissed) do
+      kind = if(report.post_id, do: "post", else: "comment")
+
+      Audit.record(
+        report.community_id,
+        actor,
+        "report.dismissed",
+        "#{actor.display_name} dismissed a report on a #{kind}",
+        %{"report_id" => report.id}
+      )
+
+      {:ok, dismissed}
     end
   end
 

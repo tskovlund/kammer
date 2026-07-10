@@ -10,6 +10,25 @@ and this project adheres to
 
 ### Added
 
+- Management and moderation over the JSON API (issue #183, the #165
+  parity rung): the community-admin and instance-operator surfaces the
+  client previously had no way to reach. Moderation — the open report
+  queue, resolve (removes the content) or dismiss a report, community
+  email bans (list/add/lift), and the append-only audit log. Community
+  settings updates (name, slug, branding, locale, listing and
+  real-name policy). Group management — create, edit settings, toggle
+  features (ADR 0016), and archive/unarchive. Instance operator
+  settings — read and update the singleton (community-creation policy,
+  storage policy, default locale, instance name, content-minimized
+  emails). Every endpoint enforces authorization in the context, hides
+  rows the caller may not act on behind a 404 (no oracle), and ships
+  OpenAPI operations with inline conformance taps.
+- Invite issuance is now rate-limited (issue #97): a community/group
+  admin may send at most 20 email invites per hour, enforced in
+  `Kammer.Invitations` before any row is written or mail delivered, so
+  the invite endpoint can't be turned into an arbitrary-recipient
+  email relay. A refused invite returns the `rate_limited` code (HTTP
+  429). Link invites, which send nothing, are never limited.
 - The last owner of a community can no longer demote themselves into
   an unrecoverable ownerless state (found by the #182 people-API
   review): `PUT .../members/{id}/role` refuses it with `422 last_owner`.
