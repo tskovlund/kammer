@@ -17,13 +17,14 @@ defmodule Kammer.Invitations do
   alias Kammer.Groups.Group
   alias Kammer.Invitations.Invite
   alias Kammer.Invitations.InviteNotifier
+  alias Kammer.RateLimit
   alias Kammer.Repo
 
   @doc """
   Creates a community-wide invite. Requires `:create_community_invite`.
   """
   @spec create_community_invite(User.t(), Community.t(), map()) ::
-          {:ok, Invite.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Invite.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_community_invite(%User{} = actor, %Community{} = community, attrs \\ %{}) do
     with :ok <- Authorization.authorize(actor, :create_community_invite, community) do
       insert_invite(actor, community, nil, attrs)
@@ -35,7 +36,7 @@ defmodule Kammer.Invitations do
   community). Requires `:create_group_invite`.
   """
   @spec create_group_invite(User.t(), Group.t(), map()) ::
-          {:ok, Invite.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Invite.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def create_group_invite(%User{} = actor, %Group{} = group, attrs \\ %{}) do
     group = Repo.preload(group, :community)
 
@@ -193,11 +194,27 @@ defmodule Kammer.Invitations do
         "created_by_user_id" => actor.id
       })
 
-    with {:ok, invite} <- %Invite{} |> Invite.create_changeset(attrs) |> Repo.insert() do
+    # Email invites are throttled per acting admin before anything is
+    # written or sent (issue #97): a refused invite inserts no row and
+    # delivers no mail, so the limit caps arbitrary-recipient email
+    # flooding without leaving orphaned tokens behind. Link invites
+    # (no `invited_email`) send nothing and are never limited.
+    with :ok <- check_email_invite_rate(actor, attrs),
+         {:ok, invite} <- %Invite{} |> Invite.create_changeset(attrs) |> Repo.insert() do
       maybe_deliver_email(invite, actor, community, group)
       {:ok, invite}
     end
   end
+
+  defp check_email_invite_rate(actor, %{"invited_email" => email})
+       when is_binary(email) and email != "" do
+    case RateLimit.hit_invite_issuance(actor.id) do
+      {:allow, _count} -> :ok
+      {:deny, _retry_after} -> {:error, :rate_limited}
+    end
+  end
+
+  defp check_email_invite_rate(_actor, _attrs), do: :ok
 
   defp maybe_deliver_email(%Invite{invited_email: nil}, _actor, _community, _group), do: :ok
 

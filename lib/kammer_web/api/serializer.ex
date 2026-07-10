@@ -26,9 +26,13 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Authorization
   alias Kammer.Accounts.User
   alias Kammer.Accounts.UserToken
+  alias Kammer.Audit.AuditEvent
   alias Kammer.Communities.Community
   alias Kammer.Communities.CommunityMembership
   alias Kammer.Communities.CustomField
+  alias Kammer.Communities.InstanceSettings
+  alias Kammer.Moderation.CommunityBan
+  alias Kammer.Moderation.Report
   alias Kammer.Events.Event
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Poll
@@ -51,6 +55,14 @@ defmodule KammerWeb.Api.Serializer do
       name: community.name,
       slug: community.slug,
       description: community.description,
+      # Direct columns, always loaded, none secret: accent themes the
+      # client, the rest let an admin's settings screen (issue #183)
+      # read current values without a second shape. `viewer_can` still
+      # gates whether the client shows the editing UI.
+      accent_color: community.accent_color,
+      default_locale: community.default_locale,
+      listed_on_instance: community.listed_on_instance,
+      require_real_names: community.require_real_names,
       my_role: relationship && relationship.community_role,
       viewer_can: community_capabilities(viewer, community, relationship)
     }
@@ -485,6 +497,100 @@ defmodule KammerWeb.Api.Serializer do
     do: %{id: id, name: name, slug: slug}
 
   defp invite_group(_invite), do: nil
+
+  @doc """
+  A report in a moderation queue (issue #183). The subject is embedded
+  so a moderator can triage without a second fetch — group-scoped by
+  `group_id` (from the preloads `Moderation.list_open_reports/2`
+  already carries), never a live join here.
+  """
+  @spec report(Report.t()) :: map()
+  def report(%Report{} = report) do
+    %{
+      id: report.id,
+      reason: report.reason,
+      status: report.status,
+      inserted_at: report.inserted_at,
+      reporter: user_ref(report.reporter_user),
+      subject: report_subject(report)
+    }
+  end
+
+  @doc "A community email ban (issue #183). Community admins only."
+  @spec community_ban(CommunityBan.t()) :: map()
+  def community_ban(%CommunityBan{} = ban) do
+    %{
+      id: ban.id,
+      email: ban.email,
+      reason: ban.reason,
+      inserted_at: ban.inserted_at,
+      banned_by: user_ref(ban.banned_by_user)
+    }
+  end
+
+  @doc """
+  One append-only audit entry (issue #183). `summary` is the
+  plain-language record written at action time; `actor` is `nil` for
+  system-initiated actions.
+  """
+  @spec audit_event(AuditEvent.t()) :: map()
+  def audit_event(%AuditEvent{} = event) do
+    %{
+      id: event.id,
+      action: event.action,
+      summary: event.summary,
+      metadata: event.metadata,
+      inserted_at: event.inserted_at,
+      actor: user_ref(event.actor_user)
+    }
+  end
+
+  @doc """
+  Instance-level settings (issue #183) — the operator-editable subset,
+  never the update-check bookkeeping columns.
+  """
+  @spec instance_settings(InstanceSettings.t()) :: map()
+  def instance_settings(%InstanceSettings{} = settings) do
+    %{
+      instance_name: settings.instance_name,
+      default_locale: settings.default_locale,
+      community_creation_policy: settings.community_creation_policy,
+      storage_policy: settings.storage_policy,
+      content_minimized_emails: settings.content_minimized_emails
+    }
+  end
+
+  defp user_ref(%User{id: id, display_name: name}), do: %{id: id, display_name: name}
+  defp user_ref(_), do: nil
+
+  defp report_subject(%Report{post: %Post{} = post}) do
+    %{
+      type: "post",
+      id: post.id,
+      group_id: post.group_id,
+      author: author(post),
+      body_markdown: post.body_markdown
+    }
+  end
+
+  defp report_subject(%Report{comment: %Comment{} = comment}) do
+    %{
+      type: "comment",
+      id: comment.id,
+      group_id: comment_group_id(comment),
+      author: comment_author(comment),
+      body_markdown: comment.body_markdown
+    }
+  end
+
+  defp report_subject(_report), do: nil
+
+  # The group is read straight from the preloaded parent (post/event/
+  # assignment) the report already carries — no query here.
+  defp comment_group_id(%Comment{post: %Post{group_id: group_id}}), do: group_id
+  defp comment_group_id(%Comment{event: %Event{group_id: group_id}}), do: group_id
+  defp comment_group_id(%Comment{assignment: %{group_id: group_id}}), do: group_id
+  defp comment_group_id(_comment), do: nil
 
   @doc """
   A community-defined profile field (ADR 0020) — the roster's columns

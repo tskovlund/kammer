@@ -196,6 +196,12 @@ defmodule KammerWeb.Router do
 
     get "/home", HomeController, :show
 
+    # Instance operator settings (issue #183), gated to operators in the
+    # context. Authenticated; the public `/instance` capability doc stays
+    # unauthenticated above.
+    get "/instance/settings", InstanceController, :settings
+    put "/instance/settings", InstanceController, :update_settings
+
     # The caller's own account (issue #182): profile, and devices (#174).
     get "/me", ProfileController, :show
     put "/me", ProfileController, :update
@@ -206,12 +212,26 @@ defmodule KammerWeb.Router do
 
     get "/communities", CommunityController, :index
     get "/communities/:community_slug/groups", CommunityController, :groups
+    post "/communities/:community_slug/groups", GroupController, :create
 
     # The people rung (issue #182): directory/roster, membership
     # lifecycle, invites, per-community profile, group membership
     # management, and the per-group notification level. The scope
     # writes the shared prefix once and adds no alias of its own.
     scope "/communities/:community_slug" do
+      # Management/admin surfaces (issue #183): community settings, the
+      # moderation queue + bans, and the audit log. Literal segments
+      # (`moderation`, `audit-log`) never collide with the member routes.
+      put "/", CommunityController, :update
+
+      get "/moderation/reports", ModerationController, :reports
+      post "/moderation/reports/:report_id/resolve", ModerationController, :resolve
+      post "/moderation/reports/:report_id/dismiss", ModerationController, :dismiss
+      get "/moderation/bans", ModerationController, :bans
+      post "/moderation/bans", ModerationController, :ban
+      delete "/moderation/bans/:ban_id", ModerationController, :unban
+      get "/audit-log", ModerationController, :audit_log
+
       get "/members", MemberController, :index
       put "/members/:user_id/role", MemberController, :update_role
       delete "/members/:user_id", MemberController, :remove
@@ -225,6 +245,14 @@ defmodule KammerWeb.Router do
       delete "/invites/:invite_id", InviteController, :revoke
 
       scope "/groups/:group_slug" do
+        # Group management (issue #183): settings, feature toggles
+        # (ADR 0016), archive/unarchive. `features`/`archive` are literal
+        # segments — no collision with the member routes below.
+        put "/", GroupController, :update
+        put "/features", GroupController, :features
+        put "/archive", GroupController, :archive
+        delete "/archive", GroupController, :unarchive
+
         get "/invites", InviteController, :index
         post "/invites", InviteController, :create
 
