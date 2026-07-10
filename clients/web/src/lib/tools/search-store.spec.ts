@@ -107,6 +107,23 @@ describe('createSearchStore', () => {
 		expect(store.loadState).toBe('ready');
 	});
 
+	it("keeps an account's other communities when one community's search fails", async () => {
+		mockCommunities.mockResolvedValue([community('good', 'Good'), community('bad', 'Bad')]);
+		mockSearch.mockImplementation(async (_inst, slug) => {
+			if (slug === 'bad') throw new api.ToolsApiError('server', 'boom', 500);
+			return results(2);
+		});
+
+		const store = createSearchStore();
+		await store.run([instance('i1')], 'picnic');
+
+		// One community's transient failure must not blank the account's
+		// other hits, and a partial failure is not an account-level failure.
+		expect(store.buckets.map((bucket) => bucket.community.name)).toEqual(['Good']);
+		expect(store.failedInstances).toEqual([]);
+		expect(store.loadState).toBe('ready');
+	});
+
 	it('reports an error only when every account fails', async () => {
 		mockCommunities.mockRejectedValue(new FeedApiError('network', 'offline', null));
 		const store = createSearchStore();

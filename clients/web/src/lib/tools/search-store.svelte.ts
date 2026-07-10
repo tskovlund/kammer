@@ -19,30 +19,52 @@ async function searchInstance(
 	instance: Instance,
 	query: string
 ): Promise<{ searches: CommunitySearch[]; failure: FailedInstance | null }> {
+	let communities;
 	try {
-		const communities = await fetchCommunities(instance);
-		const searches = await Promise.all(
-			communities.map(async (community): Promise<CommunitySearch> => {
-				// The group list resolves a hit's group id back to a slug for
-				// deep links; searching and listing run in parallel.
-				const [results, groups] = await Promise.all([
-					searchCommunity(instance, community.slug, query),
-					fetchGroups(instance, community.slug)
-				]);
-				return { instance, community, results, groups };
-			})
-		);
-		return { searches, failure: null };
+		communities = await fetchCommunities(instance);
 	} catch (error) {
+		// The account itself is unreachable — nothing to show for it.
 		return { searches: [], failure: { instance, kind: failureKind(error) } };
 	}
+
+	// Each community searches independently: one community's transient
+	// failure (e.g. a 429 under the fanout) must not discard the hits from
+	// the account's other communities. The group list resolves a hit's
+	// group id back to a slug for deep links; searching and listing run in
+	// parallel.
+	const settled = await Promise.allSettled(
+		communities.map(async (community): Promise<CommunitySearch> => {
+			const [results, groups] = await Promise.all([
+				searchCommunity(instance, community.slug, query),
+				fetchGroups(instance, community.slug)
+			]);
+			return { instance, community, results, groups };
+		})
+	);
+
+	const searches = settled
+		.filter((s): s is PromiseFulfilledResult<CommunitySearch> => s.status === 'fulfilled')
+		.map((s) => s.value);
+	const rejected = settled.filter((s): s is PromiseRejectedResult => s.status === 'rejected');
+
+	// Surface the account as failed only when it is wholly unusable — it has
+	// communities but every one errored. A partial failure degrades quietly
+	// and still shows what matched.
+	const failure =
+		searches.length === 0 && rejected.length > 0
+			? { instance, kind: failureKind(rejected[0].reason) }
+			: null;
+
+	return { searches, failure };
 }
 
 /**
  * Global search across every added account (SPEC §10), kept community-first
  * (ADR 0024). A query fans out over each instance's communities in parallel;
- * one unreachable account surfaces in `failedInstances` (with its #159 kind)
- * without blanking the rest. A blank query holds the idle state — no fanout,
+ * an unreachable account (or one whose every community errors) surfaces in
+ * `failedInstances` (with its #159 kind) without blanking the rest — and one
+ * community's transient failure never discards its account's other hits. A
+ * blank query holds the idle state — no fanout,
  * no empty round-trips. Results already come narrowed to what the viewer may
  * see (the server's central authorization module, SPEC §10).
  */
