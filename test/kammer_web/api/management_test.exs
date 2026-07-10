@@ -121,6 +121,37 @@ defmodule KammerWeb.Api.ManagementTest do
       |> put(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}", %{name: "Nej"})
       |> json_response(403)
     end
+
+    test "a management verb on a group the caller can't see answers 404, not 403 (#156/#161)",
+         %{community: community} do
+      hidden = group_fixture(community, %{visibility: :private})
+      outsider = Kammer.AccountsFixtures.user_fixture()
+
+      # An unviewable group must be indistinguishable from a nonexistent
+      # one — a 403 here would confirm the group exists.
+      outsider
+      |> api_conn()
+      |> put(~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}", %{name: "Nej"})
+      |> json_response(404)
+    end
+
+    test "a sealed flag in an update body is ignored — sealed is create-only", %{
+      community: community,
+      owner: owner,
+      group: group
+    } do
+      refute group.sealed
+
+      owner
+      |> api_conn()
+      |> put(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}", %{
+        sealed: true,
+        description: "Stadig useglet"
+      })
+      |> json_response(200)
+
+      refute Kammer.Repo.get!(Kammer.Groups.Group, group.id).sealed
+    end
   end
 
   describe "instance settings" do
@@ -147,6 +178,11 @@ defmodule KammerWeb.Api.ManagementTest do
       member
       |> api_conn()
       |> get(~p"/api/v1/instance/settings")
+      |> json_response(403)
+
+      member
+      |> api_conn()
+      |> put(~p"/api/v1/instance/settings", %{instance_name: "Nej"})
       |> json_response(403)
     end
   end

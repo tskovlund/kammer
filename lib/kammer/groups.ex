@@ -151,12 +151,16 @@ defmodule Kammer.Groups do
     with :ok <- Authorization.authorize(creator, :create_group, community) do
       attrs = Map.put(attrs, "community_id", community.id)
 
-      Repo.transact(fn ->
-        with {:ok, group} <- %Group{} |> Group.create_changeset(attrs) |> Repo.insert(),
-             {:ok, _membership} <- insert_membership(group, creator, :owner) do
-          {:ok, %Group{group | community: community}}
-        end
-      end)
+      with {:ok, group} <-
+             Repo.transact(fn ->
+               with {:ok, group} <- %Group{} |> Group.create_changeset(attrs) |> Repo.insert(),
+                    {:ok, _membership} <- insert_membership(group, creator, :owner) do
+                 {:ok, %Group{group | community: community}}
+               end
+             end) do
+        audit_group_action(creator, group, "group.created", "created the group")
+        {:ok, group}
+      end
     end
   end
 
@@ -208,9 +212,11 @@ defmodule Kammer.Groups do
         end)
         |> Enum.reject(&is_nil/1)
 
-      group
-      |> Group.features_changeset(%{features: features})
-      |> Repo.update()
+      with {:ok, updated} <-
+             group |> Group.features_changeset(%{features: features}) |> Repo.update() do
+        audit_group_action(actor, group, "group.features_updated", "updated the features of")
+        {:ok, updated}
+      end
     end
   end
 
@@ -224,10 +230,11 @@ defmodule Kammer.Groups do
   @spec archive_group(User.t(), Group.t()) ::
           {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def archive_group(%User{} = actor, %Group{} = group) do
-    with :ok <- Authorization.authorize(actor, :archive_group, group) do
-      group
-      |> Group.archive_changeset(DateTime.utc_now(:second))
-      |> Repo.update()
+    with :ok <- Authorization.authorize(actor, :archive_group, group),
+         {:ok, updated} <-
+           group |> Group.archive_changeset(DateTime.utc_now(:second)) |> Repo.update() do
+      audit_group_action(actor, group, "group.archived", "archived the group")
+      {:ok, updated}
     end
   end
 
@@ -237,10 +244,10 @@ defmodule Kammer.Groups do
   @spec unarchive_group(User.t(), Group.t()) ::
           {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def unarchive_group(%User{} = actor, %Group{} = group) do
-    with :ok <- Authorization.authorize(actor, :unarchive_group, group) do
-      group
-      |> Group.archive_changeset(nil)
-      |> Repo.update()
+    with :ok <- Authorization.authorize(actor, :unarchive_group, group),
+         {:ok, updated} <- group |> Group.archive_changeset(nil) |> Repo.update() do
+      audit_group_action(actor, group, "group.unarchived", "unarchived the group")
+      {:ok, updated}
     end
   end
 

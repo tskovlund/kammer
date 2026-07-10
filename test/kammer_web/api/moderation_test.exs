@@ -143,6 +143,33 @@ defmodule KammerWeb.Api.ModerationTest do
       |> post(~p"/api/v1/communities/#{community.slug}/moderation/bans", %{user_id: other.id})
       |> json_response(403)
     end
+
+    test "a non-admin ban is refused 403 even for an unknown user id — no existence oracle",
+         %{community: community, author: author} do
+      # Authorization precedes the target lookup, so a missing id and a
+      # real one both answer 403 — the 404-vs-403 difference can't reveal
+      # whether a given user exists.
+      author
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/moderation/bans", %{
+        user_id: Ecto.UUID.generate()
+      })
+      |> json_response(403)
+    end
+
+    test "unbanning a ban that belongs to another community answers 404", %{
+      community: community,
+      owner: owner
+    } do
+      {other, other_owner} = community_with_owner_fixture()
+      target = member_fixture(other)
+      {:ok, foreign_ban} = Moderation.ban_member(other_owner, other, target, nil)
+
+      owner
+      |> api_conn()
+      |> delete(~p"/api/v1/communities/#{community.slug}/moderation/bans/#{foreign_ban.id}")
+      |> json_response(404)
+    end
   end
 
   describe "audit log" do
@@ -172,6 +199,25 @@ defmodule KammerWeb.Api.ModerationTest do
              |> get(~p"/api/v1/communities/#{community.slug}/audit-log")
              |> json_response(200)
              |> Map.fetch!("data") == []
+    end
+
+    test "dismissing a report is recorded in the audit log", %{
+      community: community,
+      owner: owner,
+      report: report
+    } do
+      owner
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/moderation/reports/#{report.id}/dismiss")
+      |> json_response(200)
+
+      body =
+        owner
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/audit-log")
+        |> json_response(200)
+
+      assert Enum.any?(body["data"], &(&1["action"] == "report.dismissed"))
     end
   end
 end

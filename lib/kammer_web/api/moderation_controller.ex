@@ -17,6 +17,7 @@ defmodule KammerWeb.Api.ModerationController do
 
   alias Kammer.Accounts
   alias Kammer.Audit
+  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Moderation
   alias Kammer.Moderation.CommunityBan
@@ -57,22 +58,23 @@ defmodule KammerWeb.Api.ModerationController do
     with_community(conn, slug, fn community ->
       actor = conn.assigns.current_scope.user
 
-      case Accounts.get_user(user_id) do
-        nil ->
-          ApiError.send(conn, :not_found, "Not found.")
-
-        target ->
-          case Moderation.ban_member(actor, community, target, params["reason"]) do
-            {:ok, ban} ->
-              # The banning admin is the actor in hand — no need to
-              # re-fetch it just to serialize `banned_by`.
-              conn
-              |> put_status(:created)
-              |> json(%{data: Serializer.community_ban(%{ban | banned_by_user: actor})})
-
-            error ->
-              ApiError.from_result(conn, error)
-          end
+      # Authorize before resolving the target: a non-admin must be
+      # refused (403) before any user lookup, so the 404-for-missing vs
+      # something-else-for-real difference can't become a user-existence
+      # oracle. Ban-create is a community-level action with no hidden
+      # row, so 403 (not 404) is the honest answer for a denied caller;
+      # `ban_member` re-checks authorization as the source of truth.
+      with :ok <- Authorization.authorize(actor, :manage_community, community),
+           target when not is_nil(target) <- Accounts.get_user(user_id),
+           {:ok, ban} <- Moderation.ban_member(actor, community, target, params["reason"]) do
+        # The banning admin is the actor in hand — no need to re-fetch it
+        # just to serialize `banned_by`.
+        conn
+        |> put_status(:created)
+        |> json(%{data: Serializer.community_ban(%{ban | banned_by_user: actor})})
+      else
+        nil -> ApiError.send(conn, :not_found, "Not found.")
+        error -> ApiError.from_result(conn, error)
       end
     end)
   end
