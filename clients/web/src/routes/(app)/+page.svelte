@@ -7,6 +7,7 @@
 	import { reconnectInstance } from '$lib/realtime/registry.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
 
 	const home = createHomeStore();
@@ -23,6 +24,10 @@
 <svelte:head><title>{t('nav.home')} · {t('app.name')}</title></svelte:head>
 
 <h1 class="mb-5 text-xl font-semibold tracking-tight text-ink">{t('home.title')}</h1>
+
+{#if home.snapshotSavedAt}
+	<StaleBanner savedAt={home.snapshotSavedAt} />
+{/if}
 
 {#if home.failedInstances.length > 0}
 	<div class="mb-5 flex flex-col gap-2">

@@ -5,10 +5,18 @@ import {
 	type MergedPost
 } from '$lib/instances/home.js';
 import type { Instance } from '$lib/instances/types.js';
+import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
 import { getSocket } from '$lib/realtime/registry.svelte.js';
 import { groupByCommunity } from './group-by-community.js';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+const SNAPSHOT_KEY = 'home';
+
+interface HomeSnapshot {
+	recentActivity: MergedPost[];
+	upcomingEvents: MergedEvent[];
+}
 
 /**
  * The merged Home across every added instance/account (ADR 0001, community-
@@ -27,6 +35,10 @@ export function createHomeStore() {
 	let failedInstances = $state<FailedInstance[]>([]);
 	let loadState = $state<LoadState>('idle');
 	let activeFilter = $state<string | null>(null);
+	// Non-null exactly when the buckets above are last-known-good data from
+	// the snapshot cache rather than a fresh fetch (issue #186) — drives
+	// the stale/offline banner. Cleared the moment a fetch succeeds.
+	let snapshotSavedAt = $state<string | null>(null);
 	const liveStops: (() => void)[] = [];
 	// Sequences overlapping loads: a fetch that resolves after a newer load (or
 	// after the store was stopped/unmounted) is discarded, so stale data never
@@ -87,10 +99,36 @@ export function createHomeStore() {
 		// A newer load started, or the store was stopped, while this was in
 		// flight — discard this result rather than clobber fresher state.
 		if (generation !== loadGeneration) return;
+
+		// Every account UNREACHABLE — network failures only, matching
+		// feed-store's gate — is exactly when last-known-good data is worth
+		// falling back to (issue #186). Auth/server failures are real state
+		// the user must see, not an occasion to paper over with a snapshot;
+		// a partial failure already degrades gracefully without one.
+		const allFailed = instances.length > 0 && merged.failedInstances.length === instances.length;
+		const allOffline =
+			allFailed && merged.failedInstances.every((failed) => failed.kind === 'network');
+		if (allOffline) {
+			const cached = loadSnapshot<HomeSnapshot>(SNAPSHOT_KEY);
+			if (cached) {
+				recentActivity = cached.data.recentActivity;
+				upcomingEvents = cached.data.upcomingEvents;
+				failedInstances = merged.failedInstances;
+				snapshotSavedAt = cached.savedAt;
+				loadState = 'ready';
+				return;
+			}
+		}
+
 		recentActivity = merged.recentActivity;
 		upcomingEvents = merged.upcomingEvents;
 		failedInstances = merged.failedInstances;
+		snapshotSavedAt = null;
 		loadState = 'ready';
+		// Never snapshot an all-failed (hence empty) result — a later
+		// offline load would then render an empty page under a stale
+		// banner as if that had ever been real data.
+		if (!allFailed) saveSnapshot(SNAPSHOT_KEY, { recentActivity, upcomingEvents });
 		wireLive(instances);
 	}
 
@@ -112,6 +150,10 @@ export function createHomeStore() {
 		},
 		get isEmpty() {
 			return recentActivity.length === 0 && upcomingEvents.length === 0;
+		},
+		/** Non-null when the current buckets are cached data, not a fresh fetch — see `StaleBanner`. */
+		get snapshotSavedAt() {
+			return snapshotSavedAt;
 		},
 		setFilter(communityKeyId: string | null) {
 			activeFilter = communityKeyId;

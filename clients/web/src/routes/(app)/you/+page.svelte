@@ -95,6 +95,12 @@
 					<a href={resolve(`/you/${instance.id}/devices`)} class="text-accent hover:underline">
 						{t('you.accounts.devices')}
 					</a>
+					<a
+						href={resolve(`/you/${instance.id}/notifications`)}
+						class="text-accent hover:underline"
+					>
+						{t('you.accounts.notifications')}
+					</a>
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				</p>
 				{#snippet trailing()}

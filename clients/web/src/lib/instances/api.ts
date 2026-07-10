@@ -1,4 +1,6 @@
 import { createApiClient } from '$lib/api/client.js';
+import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
+import { unsubscribeFromPush } from '$lib/push/subscription.js';
 import { instanceStore } from './store.js';
 import type { Instance } from './types.js';
 
@@ -72,6 +74,17 @@ export async function fetchServerVersion(baseUrl: string): Promise<string | null
 	return typeof version === 'string' && version ? version : null;
 }
 
+/**
+ * Whether this instance has Web Push configured server-side (issue #186)
+ * — `false`, never a thrown error, when the instance can't answer, same
+ * best-effort shape as `fetchServerVersion`. Doesn't by itself mean this
+ * browser can subscribe: the actual VAPID public key isn't exposed over
+ * the JSON API yet (see the notifications settings page's own gate).
+ */
+export async function fetchPushCapability(baseUrl: string): Promise<boolean> {
+	return (await fetchInstanceMetadata(baseUrl))?.features.web_push ?? false;
+}
+
 export async function requestLink(baseUrl: string, email: string): Promise<void> {
 	return guardNetworkError(async () => {
 		const client = createApiClient(baseUrl);
@@ -132,10 +145,29 @@ export async function exchangeAndAddInstance(
  * locally regardless of whether the revoke call succeeds — a signed-out
  * instance shouldn't stay stuck in the list because its server is
  * unreachable.
+ *
+ * Also unregisters this browser's Web Push subscription, when there is
+ * one (issue #186) — best-effort, same as the device-token revoke. Only
+ * meaningful when `instance.baseUrl`'s origin is the one currently
+ * serving the page: a browser's push subscription belongs to *this*
+ * origin, so it can only ever have been created for whichever added
+ * instance matches it (see `push/notification-routing.ts`'s doc
+ * comment) — signing out of a different, CORS-added instance has no
+ * local subscription to remove.
  */
 export async function revokeAndRemoveInstance(instanceId: string): Promise<void> {
 	const instance = instanceStore.get(instanceId);
 	if (!instance) return;
+
+	if (typeof window !== 'undefined') {
+		try {
+			if (new URL(instance.baseUrl).origin === window.location.origin) {
+				await unsubscribeFromPush(instance);
+			}
+		} catch {
+			// Best-effort, same reasoning as the device-token revoke below.
+		}
+	}
 
 	const client = createApiClient(instance.baseUrl, instance.deviceToken);
 	try {
@@ -144,5 +176,8 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 		// Best-effort: the local removal below is what actually matters.
 	} finally {
 		instanceStore.remove(instanceId);
+		// The offline snapshots mix data across instances — on a shared
+		// device the next signer-in must never inherit them (issue #186).
+		clearSnapshots();
 	}
 }
