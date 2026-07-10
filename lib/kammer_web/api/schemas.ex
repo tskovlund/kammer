@@ -1796,19 +1796,6 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
-  defmodule SetupTokenVerification do
-    @moduledoc false
-    require OpenApiSpex
-
-    OpenApiSpex.schema(%{
-      title: "SetupTokenVerification",
-      description: "Whether a candidate setup token matches the one from the server logs.",
-      type: :object,
-      properties: %{valid: %Schema{type: :boolean}},
-      required: [:valid]
-    })
-  end
-
   defmodule SetupResult do
     @moduledoc false
     require OpenApiSpex

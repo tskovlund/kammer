@@ -31,7 +31,17 @@ defmodule KammerWeb.ApiSpec do
       servers: [%Server{url: "/"}],
       components: %Components{
         securitySchemes: %{
-          "bearer" => %SecurityScheme{type: "http", scheme: "bearer"}
+          "bearer" => %SecurityScheme{type: "http", scheme: "bearer"},
+          "guestToken" => %SecurityScheme{
+            type: "http",
+            scheme: "bearer",
+            description:
+              "The guest management link's token (ADR 0026, issue #230) — " <>
+                "distinct from the account device token above: it authorizes " <>
+                "exactly one guest identity's own records, not an account. " <>
+                "The PWA reads it from the emailed management link's URL " <>
+                "fragment and sends it as a normal Bearer credential."
+          }
         },
         schemas: %{"Error" => Schemas.Error.schema()}
       },
@@ -1348,14 +1358,6 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("The completed instance", Schemas.SetupResult)
           )
       },
-      "/api/v1/setup/verify-token" => %PathItem{
-        post:
-          operation("Check a setup token before submitting the wizard", :setup_verify_token, [],
-            security: [],
-            request_body: body(object(%{token: %Schema{type: :string}})),
-            response: json_response("Whether the token matches", Schemas.SetupTokenVerification)
-          )
-      },
       "/api/v1/legal/{key}" => %PathItem{
         get:
           operation("A public legal page (privacy or imprint)", :legal_show, [path_param(:key)],
@@ -1431,53 +1433,53 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Submitted for moderation", Schemas.GuestConfirmation)
           )
       },
-      "/api/v1/guest/manage/{token}" => %PathItem{
+      "/api/v1/guest/manage" => %PathItem{
         get:
           operation(
             "A guest's full inventory behind their management link (SPEC §12)",
             :guest_manage,
-            [path_param(:token)],
-            security: [],
+            [],
+            security: [%{"guestToken" => []}],
             response: json_response("The guest's data", Schemas.GuestManageState)
           ),
         delete:
           operation(
             "Erase a guest and everything they created",
             :guest_erase,
-            [path_param(:token)],
-            security: [],
+            [],
+            security: [%{"guestToken" => []}],
             response: json_response("Erased", Schemas.StatusResponse)
           )
       },
-      "/api/v1/guest/manage/{token}/rsvps/{event_id}" => %PathItem{
+      "/api/v1/guest/manage/rsvps/{event_id}" => %PathItem{
         put:
           operation(
             "Change a guest RSVP answer",
             :guest_set_rsvp,
-            [path_param(:token), path_param(:event_id)],
-            security: [],
+            [path_param(:event_id)],
+            security: [%{"guestToken" => []}],
             request_body:
               body(object(%{status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}})),
             response: json_response("Refreshed inventory", Schemas.GuestManageState)
           )
       },
-      "/api/v1/guest/manage/{token}/claims/{claim_id}" => %PathItem{
+      "/api/v1/guest/manage/claims/{claim_id}" => %PathItem{
         delete:
           operation(
             "Release a guest signup claim",
             :guest_release_claim,
-            [path_param(:token), path_param(:claim_id)],
-            security: [],
+            [path_param(:claim_id)],
+            security: [%{"guestToken" => []}],
             response: json_response("Refreshed inventory", Schemas.GuestManageState)
           )
       },
-      "/api/v1/guest/manage/{token}/subscriptions/{subscription_id}" => %PathItem{
+      "/api/v1/guest/manage/subscriptions/{subscription_id}" => %PathItem{
         put:
           operation(
             "Change a newsletter subscription's cadence",
             :guest_set_cadence,
-            [path_param(:token), path_param(:subscription_id)],
-            security: [],
+            [path_param(:subscription_id)],
+            security: [%{"guestToken" => []}],
             request_body:
               body(
                 object(%{cadence: %Schema{type: :string, enum: ["per_post", "daily", "weekly"]}})
@@ -1488,8 +1490,8 @@ defmodule KammerWeb.ApiSpec do
           operation(
             "Unsubscribe from a group newsletter",
             :guest_unsubscribe,
-            [path_param(:token), path_param(:subscription_id)],
-            security: [],
+            [path_param(:subscription_id)],
+            security: [%{"guestToken" => []}],
             response: json_response("Refreshed inventory", Schemas.GuestManageState)
           )
       },

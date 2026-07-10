@@ -7,11 +7,21 @@ defmodule KammerWeb.Api.GuestController do
   `GuestLive.Manage`, over JSON instead of redirects.
 
   These are public and tokenless by design (ADR 0024): guests hold no
-  device token. The signed link in the URL is the whole credential
-  (ADR 0013) — a *confirm* link proves control of the email, a
-  *management* link authorizes changing or erasing exactly one guest's
-  records. So these routes live in the plain `:api` pipeline, never
-  `:api_authenticated`.
+  device token. The signed link is the whole credential (ADR 0013) — a
+  *confirm* link proves control of the email, a *management* link
+  authorizes changing or erasing exactly one guest's records. So these
+  routes live in the plain `:api` pipeline, never `:api_authenticated`.
+
+  The confirm tokens are single-use and travel in the request body, as
+  before. The management token is different — it's long-lived, staying
+  valid until the guest erases themselves — so since issue #230 (ADR
+  0026) it travels in the `Authorization: Bearer` header instead of a
+  URL path segment: a path segment would leak a credential that lives
+  indefinitely into server/proxy access logs, browser history, and
+  `Referer`, a risk the single-use confirm tokens don't carry.
+  `fetch_manage_token/1` reads it; a missing or malformed header is
+  answered with the same neutral "no longer valid" a bad token gets, so
+  the header's mere absence reveals nothing.
 
   Every request runs the same context function, authorization, and
   rate limit the LiveView flows use — the controller adds transport,
@@ -152,57 +162,104 @@ defmodule KammerWeb.Api.GuestController do
 
   def confirm_comment(conn, _params), do: token_required(conn)
 
-  ## Management page (SPEC §6/§8/§12) — the management token is the credential
+  ## Management page (SPEC §6/§8/§12) — the management token is the
+  ## credential, carried in the Authorization header (ADR 0026)
 
   @spec manage(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def manage(conn, %{"token" => token}) do
-    case Guests.fetch_manage_state(token) do
-      {:ok, state} -> json(conn, %{data: Serializer.guest_manage_state(state)})
-      {:error, :invalid} -> invalid_link(conn)
-    end
+  def manage(conn, _params) do
+    with_manage_token(conn, fn token ->
+      case Guests.fetch_manage_state(token) do
+        {:ok, state} -> json(conn, %{data: Serializer.guest_manage_state(state)})
+        {:error, :invalid} -> invalid_link(conn)
+      end
+    end)
   end
 
   @spec set_rsvp(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def set_rsvp(conn, %{"token" => token, "event_id" => event_id, "status" => status}) do
-    case Map.fetch(@statuses, status) do
-      {:ok, status_atom} ->
-        with_updated_state(conn, token, Events.update_guest_rsvp(token, event_id, status_atom))
+  def set_rsvp(conn, %{"event_id" => event_id} = params) do
+    # `status` rides the body (the id is a path segment, so always
+    # present); an absent value gets the deliberate message below, not
+    # an ActionClauseError.
+    with_manage_token(conn, fn token ->
+      case Map.fetch(@statuses, params["status"]) do
+        {:ok, status_atom} ->
+          with_updated_state(conn, token, Events.update_guest_rsvp(token, event_id, status_atom))
 
-      :error ->
-        ApiError.send(conn, :bad_request, "status must be one of yes, no, maybe.")
-    end
+        :error ->
+          ApiError.send(conn, :bad_request, "status must be one of yes, no, maybe.")
+      end
+    end)
   end
 
   @spec release_claim(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def release_claim(conn, %{"token" => token, "claim_id" => claim_id}) do
-    with_updated_state(conn, token, Events.unclaim_slot_by_token(token, claim_id))
+  def release_claim(conn, %{"claim_id" => claim_id}) do
+    with_manage_token(conn, fn token ->
+      with_updated_state(conn, token, Events.unclaim_slot_by_token(token, claim_id))
+    end)
   end
 
   @spec set_cadence(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def set_cadence(conn, %{"token" => token, "subscription_id" => id, "cadence" => cadence}) do
-    case Map.fetch(@cadences, cadence) do
-      {:ok, cadence_atom} ->
-        with_updated_state(conn, token, Newsletters.update_cadence(token, id, cadence_atom))
+  def set_cadence(conn, %{"subscription_id" => id} = params) do
+    with_manage_token(conn, fn token ->
+      case Map.fetch(@cadences, params["cadence"]) do
+        {:ok, cadence_atom} ->
+          with_updated_state(conn, token, Newsletters.update_cadence(token, id, cadence_atom))
 
-      :error ->
-        ApiError.send(conn, :bad_request, "cadence must be one of per_post, daily, weekly.")
-    end
+        :error ->
+          ApiError.send(conn, :bad_request, "cadence must be one of per_post, daily, weekly.")
+      end
+    end)
   end
 
   @spec unsubscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def unsubscribe(conn, %{"token" => token, "subscription_id" => id}) do
-    with_updated_state(conn, token, Newsletters.unsubscribe_by_token(token, id))
+  def unsubscribe(conn, %{"subscription_id" => id}) do
+    with_manage_token(conn, fn token ->
+      with_updated_state(conn, token, Newsletters.unsubscribe_by_token(token, id))
+    end)
   end
 
   @spec erase(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def erase(conn, %{"token" => token}) do
-    case Guests.erase_by_token(token) do
-      :ok -> json(conn, %{status: "erased"})
-      {:error, :invalid} -> invalid_link(conn)
-    end
+  def erase(conn, _params) do
+    with_manage_token(conn, fn token ->
+      case Guests.erase_by_token(token) do
+        :ok -> json(conn, %{status: "erased"})
+        {:error, :invalid} -> invalid_link(conn)
+      end
+    end)
   end
 
   ## Shared transport
+
+  # The management token lives in the Authorization header, not the URL
+  # (ADR 0026). A missing or malformed header answers the same neutral
+  # "no longer valid" an invalid token gets — the no-oracle property
+  # must hold for the header's presence too, not just its content.
+  defp with_manage_token(conn, fun) do
+    case fetch_manage_token(conn) do
+      {:ok, token} -> fun.(token)
+      :error -> invalid_link(conn)
+    end
+  end
+
+  # Reads the first `authorization` request header and parses a
+  # `Bearer <token>` scheme (case-insensitive, surrounding whitespace
+  # trimmed) — the management token's transport since ADR 0026.
+  @spec fetch_manage_token(Plug.Conn.t()) :: {:ok, String.t()} | :error
+  defp fetch_manage_token(conn) do
+    with [header | _] <- get_req_header(conn, "authorization"),
+         {:ok, token} <- parse_bearer(header) do
+      {:ok, token}
+    else
+      _ -> :error
+    end
+  end
+
+  defp parse_bearer(header) do
+    case Regex.run(~r/^\s*Bearer\s+(\S+)\s*$/i, header) do
+      [_, token] -> {:ok, token}
+      nil -> :error
+    end
+  end
 
   # After a management mutation, answer with the refreshed inventory —
   # the API twin of the web page's re-render. A token that no longer

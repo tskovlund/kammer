@@ -7,6 +7,11 @@ defmodule KammerWeb.Api.GuestTest do
   emails a management link — then checks the management token lists and
   mutates exactly that guest's data. Invalid tokens get one neutral
   answer; the per-email rate limit is enforced.
+
+  Since issue #230 (ADR 0026) the management token rides an
+  `Authorization: Bearer` header, not the URL — `manage_conn/1` builds
+  the header, and `manage_token/1` reads it from the email link's URL
+  fragment (`#token`, not `/token`).
   """
 
   use KammerWeb.ConnCase, async: true
@@ -65,11 +70,11 @@ defmodule KammerWeb.Api.GuestTest do
           assert body["data"]["guest_name"] == "Gæsten"
           assert body["data"]["redirect_path"] =~ "/events/#{event.id}"
         end)
-        |> manage_token(~r{/guest/manage/([^\s"<]+)})
+        |> manage_token()
 
       body =
-        public_conn()
-        |> get(~p"/api/v1/guest/manage/#{manage_token}")
+        manage_conn(manage_token)
+        |> get(~p"/api/v1/guest/manage")
         |> tap(&assert_operation_response(&1, "guest_manage"))
         |> json_response(200)
 
@@ -77,21 +82,21 @@ defmodule KammerWeb.Api.GuestTest do
       assert event_id == event.id
 
       updated =
-        public_conn()
-        |> put(~p"/api/v1/guest/manage/#{manage_token}/rsvps/#{event.id}", %{"status" => "no"})
+        manage_conn(manage_token)
+        |> put(~p"/api/v1/guest/manage/rsvps/#{event.id}", %{"status" => "no"})
         |> tap(&assert_operation_response(&1, "guest_set_rsvp"))
         |> json_response(200)
 
       assert [%{"status" => "no"}] = updated["data"]["rsvps"]
 
-      public_conn()
-      |> delete(~p"/api/v1/guest/manage/#{manage_token}")
+      manage_conn(manage_token)
+      |> delete(~p"/api/v1/guest/manage")
       |> tap(&assert_operation_response(&1, "guest_erase"))
       |> json_response(200)
 
       # Erased: the token no longer resolves to any inventory.
-      assert public_conn()
-             |> get(~p"/api/v1/guest/manage/#{manage_token}")
+      assert manage_conn(manage_token)
+             |> get(~p"/api/v1/guest/manage")
              |> json_response(404)
     end
 
@@ -157,11 +162,11 @@ defmodule KammerWeb.Api.GuestTest do
         public_conn()
         |> post(~p"/api/v1/guest/comment/confirm", %{"token" => token})
         |> tap(&assert_operation_response(&1, "guest_confirm_comment"))
-        |> manage_token(~r{/guest/manage/([^\s"<]+)})
+        |> manage_token()
 
       body =
-        public_conn()
-        |> get(~p"/api/v1/guest/manage/#{manage_token}")
+        manage_conn(manage_token)
+        |> get(~p"/api/v1/guest/manage")
         |> json_response(200)
 
       assert [%{"pending_approval" => true, "body_markdown" => "Lovely event"}] =
@@ -182,8 +187,8 @@ defmodule KammerWeb.Api.GuestTest do
       victim = claim_manage_token(base, slot)
 
       claim_id =
-        public_conn()
-        |> get(~p"/api/v1/guest/manage/#{victim}")
+        manage_conn(victim)
+        |> get(~p"/api/v1/guest/manage")
         |> json_response(200)
         |> get_in(["data", "claims", Access.at(0), "claim_id"])
 
@@ -191,13 +196,13 @@ defmodule KammerWeb.Api.GuestTest do
       # to another guest: the per-identity scoping in the context must
       # answer a neutral 404 and leave the victim's claim untouched — the
       # token authorizes the caller, never an arbitrary sub-resource id.
-      public_conn()
-      |> delete(~p"/api/v1/guest/manage/#{attacker}/claims/#{claim_id}")
+      manage_conn(attacker)
+      |> delete(~p"/api/v1/guest/manage/claims/#{claim_id}")
       |> json_response(404)
 
       assert [%{"claim_id" => ^claim_id}] =
-               public_conn()
-               |> get(~p"/api/v1/guest/manage/#{victim}")
+               manage_conn(victim)
+               |> get(~p"/api/v1/guest/manage")
                |> json_response(200)
                |> get_in(["data", "claims"])
     end
@@ -210,9 +215,27 @@ defmodule KammerWeb.Api.GuestTest do
                |> post(~p"/api/v1/guest/rsvp/confirm", %{"token" => "not-a-token"})
                |> json_response(404)
 
-      assert public_conn()
-             |> get(~p"/api/v1/guest/manage/not-a-token")
+      assert manage_conn("not-a-token")
+             |> get(~p"/api/v1/guest/manage")
              |> json_response(404)
+    end
+
+    test "a manage request with no Authorization header, or a malformed one, is the same neutral 404" do
+      assert public_conn()
+             |> get(~p"/api/v1/guest/manage")
+             |> json_response(404)
+
+      assert public_conn()
+             |> put_req_header("authorization", "not-a-bearer-header")
+             |> get(~p"/api/v1/guest/manage")
+             |> json_response(404)
+    end
+
+    test "a missing status gets the deliberate 400, not a clause crash" do
+      assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =
+               manage_conn("bogus")
+               |> put(~p"/api/v1/guest/manage/rsvps/#{Ecto.UUID.generate()}", %{})
+               |> json_response(400)
     end
   end
 
@@ -230,6 +253,10 @@ defmodule KammerWeb.Api.GuestTest do
     |> put_req_header("accept", "application/json")
   end
 
+  # The management token's transport since ADR 0026: an Authorization
+  # header, not a URL segment.
+  defp manage_conn(token), do: public_conn() |> put_req_header("authorization", "Bearer #{token}")
+
   defp guest,
     do: %{
       "email" => "gaest#{System.unique_integer([:positive])}@example.org",
@@ -246,7 +273,7 @@ defmodule KammerWeb.Api.GuestTest do
 
     public_conn()
     |> post(~p"/api/v1/guest/claim/confirm", %{"token" => confirm})
-    |> manage_token(~r{/guest/manage/([^\s"<]+)})
+    |> manage_token()
   end
 
   # Asserts the request answered 202 and validates it against the spec,
@@ -258,7 +285,10 @@ defmodule KammerWeb.Api.GuestTest do
   end
 
   defp confirm_token(_conn, regex), do: token_from_email(regex)
-  defp manage_token(_conn, regex), do: token_from_email(regex)
+
+  # The management link carries its token in the URL fragment
+  # (`#token`, ADR 0026), not a path segment.
+  defp manage_token(_conn), do: token_from_email(~r{/guest/manage#([^\s"<]+)})
 
   defp token_from_email(regex) do
     assert_email_sent(fn email ->

@@ -4,6 +4,9 @@ defmodule KammerWeb.Api.NewsletterTest do
   the subscribe → confirm signed-link flow, and cadence/unsubscribe
   management through the shared guest management token. An invalid
   confirm token gets one neutral answer.
+
+  Since issue #230 (ADR 0026) the management token rides an
+  `Authorization: Bearer` header, not the URL — see `manage_conn/1`.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -41,22 +44,22 @@ defmodule KammerWeb.Api.NewsletterTest do
 
         assert path =~ "/g/#{group.slug}"
       end)
-      |> token_from_email(~r{/guest/manage/([^\s"<]+)})
+      |> token_from_email(~r{/guest/manage#([^\s"<]+)})
 
-    body = public_conn() |> get(~p"/api/v1/guest/manage/#{manage_token}") |> json_response(200)
+    body = manage_conn(manage_token) |> get(~p"/api/v1/guest/manage") |> json_response(200)
     assert [%{"cadence" => "weekly", "subscription_id" => id}] = body["data"]["subscriptions"]
 
     changed =
-      public_conn()
-      |> put(~p"/api/v1/guest/manage/#{manage_token}/subscriptions/#{id}", %{"cadence" => "daily"})
+      manage_conn(manage_token)
+      |> put(~p"/api/v1/guest/manage/subscriptions/#{id}", %{"cadence" => "daily"})
       |> tap(&assert_operation_response(&1, "guest_set_cadence"))
       |> json_response(200)
 
     assert [%{"cadence" => "daily"}] = changed["data"]["subscriptions"]
 
     emptied =
-      public_conn()
-      |> delete(~p"/api/v1/guest/manage/#{manage_token}/subscriptions/#{id}")
+      manage_conn(manage_token)
+      |> delete(~p"/api/v1/guest/manage/subscriptions/#{id}")
       |> tap(&assert_operation_response(&1, "guest_unsubscribe"))
       |> json_response(200)
 
@@ -71,6 +74,10 @@ defmodule KammerWeb.Api.NewsletterTest do
   end
 
   defp public_conn, do: put_req_header(build_conn(), "accept", "application/json")
+
+  # The management token's transport since ADR 0026: an Authorization
+  # header, not a URL segment.
+  defp manage_conn(token), do: public_conn() |> put_req_header("authorization", "Bearer #{token}")
 
   defp token_from_email(_conn, regex) do
     assert_email_sent(fn email ->

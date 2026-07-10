@@ -27,21 +27,6 @@ defmodule KammerWeb.Api.SetupTest do
              |> json_response(200)
   end
 
-  test "verify-token accepts the log token and rejects anything else" do
-    token = Setup.ensure_setup_token()
-
-    assert %{"valid" => true} =
-             public_conn()
-             |> post(~p"/api/v1/setup/verify-token", %{"token" => token})
-             |> tap(&assert_operation_response(&1, "setup_verify_token"))
-             |> json_response(200)
-
-    assert %{"valid" => false} =
-             public_conn()
-             |> post(~p"/api/v1/setup/verify-token", %{"token" => "wrong"})
-             |> json_response(200)
-  end
-
   test "completing with the token locks setup; the token no longer works" do
     token = Setup.ensure_setup_token()
 
@@ -78,5 +63,46 @@ defmodule KammerWeb.Api.SetupTest do
     refute Setup.completed?()
   end
 
-  defp public_conn, do: put_req_header(build_conn(), "accept", "application/json")
+  test "the per-IP rate limit is enforced" do
+    Setup.ensure_setup_token()
+    # A distinct TEST-NET-1 address (RFC 5737) so this test's budget
+    # can never collide with the default-IP requests the other tests
+    # in this module make.
+    ip = {192, 0, 2, 77}
+    body = Map.put(@complete_body, "token", "not-the-token")
+
+    for _attempt <- 1..10 do
+      assert public_conn(ip) |> post(~p"/api/v1/setup", body) |> json_response(403)
+    end
+
+    assert %{"error" => %{"code" => "rate_limited"}} =
+             public_conn(ip) |> post(~p"/api/v1/setup", body) |> json_response(429)
+  end
+
+  test "malformed bodies burn rate-limit budget too" do
+    # A token-less or non-string-token body must not be a free way
+    # around the limiter: the budget is spent before the body is
+    # inspected, so exactly the same ceiling applies.
+    Setup.ensure_setup_token()
+    ip = {192, 0, 2, 78}
+
+    for _attempt <- 1..10 do
+      assert public_conn(ip)
+             |> post(~p"/api/v1/setup", %{"token" => 12_345})
+             |> json_response(400)
+    end
+
+    assert %{"error" => %{"code" => "rate_limited"}} =
+             public_conn(ip)
+             |> post(~p"/api/v1/setup", %{"token" => 12_345})
+             |> json_response(429)
+  end
+
+  defp public_conn, do: public_conn({127, 0, 0, 1})
+
+  defp public_conn(ip) do
+    build_conn()
+    |> Map.put(:remote_ip, ip)
+    |> put_req_header("accept", "application/json")
+  end
 end
