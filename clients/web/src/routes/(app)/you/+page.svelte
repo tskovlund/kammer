@@ -45,7 +45,7 @@
 		signingOutId = id;
 		try {
 			await revokeAndRemoveInstance(id);
-			// The (app) layout's guard redirects to /sign-in if this was the
+			// The (app) layout's guard redirects to /welcome if this was the
 			// last account.
 			instances.refresh();
 		} finally {
