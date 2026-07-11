@@ -154,7 +154,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 ## 15. Naming
 
-**Working title: Kammer** — scaffold under module namespace `Kammer`; keep the display name a single config constant so renaming is one commit. (Origin homage: TÅGEKAMMERET; resonances: kammermusik — small ensembles, no conductor; _kammerat_, etymologically "chamber-mate.") Final name pending owner verification (domains, GitHub, Hex, existing products, trademark skim). Shortlist: Kammer, Kammerat, Stemme, Grapevine, Ekko; alternates: Knyt, Felles, Langbord, Torvet, Havn, Tutti, Husting.
+**The name is Kammer** — settled (owner decision, 2026-07-11; exploration record on issue #209, four rounds of alternatives, none beat the incumbent). Module namespace `Kammer`; the display name stays a single config constant (`Kammer.product_name/0`) so a rename remains one commit. (Origin homage: TÅGEKAMMERET; resonances: kammermusik — small ensembles, no conductor; _kammerat_, etymologically "chamber-mate.") **Any future rename is the owner's call alone** — naming is not reopened by agents. Domains, org naming (#203), and landing-page naming (#188) proceed on Kammer.
 
 ## 16. Architecture strategy (standing decisions)
 
