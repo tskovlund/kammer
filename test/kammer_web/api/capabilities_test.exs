@@ -135,6 +135,10 @@ defmodule KammerWeb.Api.CapabilitiesTest do
       assert "manage_group" in can
       assert "manage_members" in can
       assert "post" in can
+      # Managing is not deleting: delete stays with the group owner and
+      # community admins (ADR 0005) — a group admin must not see the
+      # PWA's delete control.
+      refute "delete_group" in can
     end
 
     test "community-admin override grants group powers — except on a sealed group", %{
@@ -157,12 +161,17 @@ defmodule KammerWeb.Api.CapabilitiesTest do
       normal_can = find_group(groups(owner, community), group)["viewer_can"]
       assert "moderate" in normal_can
       assert "manage_group" in normal_can
+      assert "delete_group" in normal_can
 
       sealed_can = find_group(groups(owner, community), sealed)["viewer_can"]
       assert "post" in sealed_can
       refute "moderate" in sealed_can
       refute "manage_group" in sealed_can
       refute "manage_members" in sealed_can
+      # The sole admin power that PIERCES sealing (ADR 0005): a sealed
+      # group can still be deleted by the community owner — the wire
+      # must advertise it, or the PWA hides the one control that works.
+      assert "delete_group" in sealed_can
     end
 
     test "feature toggles gate create_event and upload_file", %{

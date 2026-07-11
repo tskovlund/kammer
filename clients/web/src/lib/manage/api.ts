@@ -276,6 +276,25 @@ export async function setGroupFeatures(
 	});
 }
 
+/**
+ * Deletes a group and everything in it (SPEC §3): group owners, and
+ * community admins — their sole power over sealed groups (ADR 0005).
+ * The client gates its control on the `delete_group` capability.
+ */
+export async function deleteGroup(
+	instance: Instance,
+	communitySlug: string,
+	groupSlug: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}',
+			{ params: { path: { community_slug: communitySlug, group_slug: groupSlug } } }
+		);
+		if (error) throw fail(error, response, 'Could not delete this group.');
+	});
+}
+
 export async function setGroupArchived(
 	instance: Instance,
 	communitySlug: string,
@@ -373,6 +392,75 @@ export async function updateInstanceSettings(
 			body: params
 		});
 		if (error || !data) throw fail(error, response, 'Could not save instance settings.');
+		return data.data;
+	});
+}
+
+// --- Instance-wide moderation (issue #259, SPEC §11) --------------------------
+
+/** Active instance-wide email bans. Operators only — a 403 gates the page. */
+export async function fetchInstanceBans(instance: Instance): Promise<Ban[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/instance/moderation/bans'
+		);
+		if (error || !data) throw fail(error, response, 'Could not load instance bans.');
+		return data.data;
+	});
+}
+
+/**
+ * Bans an email instance-wide (SPEC §11): the server purges the
+ * account's memberships everywhere and blocks rejoin on every
+ * community. Keyed on the email itself — unlike the community ban's
+ * user id — so an address without an account can be blocked too. The
+ * server refuses self-bans, other operators, and community owners, and
+ * answers 422 with an `email` detail when the address already carries
+ * an instance ban.
+ */
+export async function createInstanceBan(
+	instance: Instance,
+	email: string,
+	reason: string | null = null
+): Promise<Ban> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/instance/moderation/bans',
+			{ body: { email, reason } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not ban this email.');
+		return data.data;
+	});
+}
+
+export async function liftInstanceBan(instance: Instance, banId: string): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE(
+			'/api/v1/instance/moderation/bans/{ban_id}',
+			{ params: { path: { ban_id: banId } } }
+		);
+		if (error) throw fail(error, response, 'Could not lift this ban.');
+	});
+}
+
+// --- Legal pages (issue #259, SPEC §13) ---------------------------------------
+
+/**
+ * Publishes a legal page's markdown, replacing the built-in template.
+ * Operators only; a 422's `content_markdown` detail maps to the form's
+ * own copy.
+ */
+export async function updateLegalPage(
+	instance: Instance,
+	key: 'privacy' | 'imprint',
+	contentMarkdown: string
+): Promise<components['schemas']['LegalPage']['data']> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).PUT('/api/v1/legal/{key}', {
+			params: { path: { key } },
+			body: { content_markdown: contentMarkdown }
+		});
+		if (error || !data) throw fail(error, response, 'Could not publish this page.');
 		return data.data;
 	});
 }

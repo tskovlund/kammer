@@ -171,6 +171,7 @@ defmodule KammerWeb.Api.Schemas do
               "moderate",
               "manage_group",
               "manage_members",
+              "delete_group",
               "create_event",
               "upload_file"
             ]
@@ -814,6 +815,15 @@ defmodule KammerWeb.Api.Schemas do
               "the tokenless capability probe — a client gates its \"new " <>
               "community\" entry point on this rather than assuming the policy."
         },
+        instance_operator: %Schema{
+          type: :boolean,
+          description:
+            "Whether the calling device's user operates this instance " <>
+              "(issue #259) — per-viewer like can_create_community, false for " <>
+              "the tokenless probe. Clients gate their operator surfaces " <>
+              "(instance settings/moderation, legal editing) on this instead " <>
+              "of probing an operator-only endpoint for the 403."
+        },
         features: %Schema{
           type: :object,
           properties: %{
@@ -837,6 +847,7 @@ defmodule KammerWeb.Api.Schemas do
         :min_client_version,
         :default_locale,
         :can_create_community,
+        :instance_operator,
         :features
       ]
     })
@@ -1403,7 +1414,9 @@ defmodule KammerWeb.Api.Schemas do
 
     OpenApiSpex.schema(%{
       title: "Ban",
-      description: "A community email ban (issue #183).",
+      description:
+        "An email ban (SPEC §11): community-level (issue #183) or " <>
+          "instance-wide (issue #259) — the same wire shape either way.",
       type: :object,
       properties: %{
         id: %Schema{type: :string, format: :uuid},
@@ -1435,6 +1448,26 @@ defmodule KammerWeb.Api.Schemas do
         reason: %Schema{type: :string, nullable: true}
       },
       required: [:user_id]
+    })
+  end
+
+  defmodule InstanceBanParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "InstanceBanParams",
+      description:
+        "An instance-wide ban is keyed on the email itself (SPEC §11) — " <>
+          "unlike the community ban's user_id — so it can also block " <>
+          "addresses without an account. 422 details land on `email` " <>
+          "when the address is already banned.",
+      type: :object,
+      properties: %{
+        email: %Schema{type: :string, format: :email, description: "The email to ban"},
+        reason: %Schema{type: :string, nullable: true}
+      },
+      required: [:email]
     })
   end
 
@@ -1858,6 +1891,23 @@ defmodule KammerWeb.Api.Schemas do
         }
       },
       required: [:data]
+    })
+  end
+
+  defmodule LegalPageParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "LegalPageParams",
+      description:
+        "A legal-page edit (issue #259, SPEC §13): the authored markdown " <>
+          "that replaces the built-in template. Instance operators only.",
+      type: :object,
+      properties: %{
+        content_markdown: %Schema{type: :string, minLength: 1, maxLength: 100_000}
+      },
+      required: [:content_markdown]
     })
   end
 

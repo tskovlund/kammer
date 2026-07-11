@@ -2,9 +2,9 @@ defmodule KammerWeb.Api.ModerationController do
   @moduledoc """
   The moderation surface over the API (RFC 0001, issue #183): the open
   report queue, resolving (removes the content) or dismissing a report,
-  community email bans, and the append-only audit log. Every decision
-  runs through `Kammer.Moderation` / `Kammer.Audit` — the controller is
-  transport only.
+  community email bans, instance-wide email bans (issue #259), and the
+  append-only audit log. Every decision runs through `Kammer.Moderation`
+  / `Kammer.Audit` — the controller is transport only.
 
   No-oracle (#156/#161): the queue, ban list and audit log are silently
   empty for anyone who can't moderate, and a report or ban row the
@@ -21,6 +21,7 @@ defmodule KammerWeb.Api.ModerationController do
   alias Kammer.Communities
   alias Kammer.Moderation
   alias Kammer.Moderation.CommunityBan
+  alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
@@ -101,6 +102,59 @@ defmodule KammerWeb.Api.ModerationController do
     end)
   end
 
+  ## Instance-wide bans (issue #259, SPEC §11) — the API twin of
+  ## InstanceLive.Moderation. Being an operator is not a secret, and
+  ## there is no hidden row behind the list or the create, so a denied
+  ## caller gets an honest 403 (mirroring `GET /instance/settings`);
+  ## lifting a specific ban keeps the community pattern — a ban the
+  ## caller may not lift is hidden (404), never confirmed.
+
+  @spec instance_bans(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def instance_bans(conn, _params) do
+    user = conn.assigns.current_scope.user
+
+    if Authorization.instance_operator?(user) do
+      bans = Moderation.list_instance_bans(user)
+      json(conn, %{data: Enum.map(bans, &Serializer.instance_ban/1)})
+    else
+      ApiError.send(conn, :forbidden, "You are not allowed to do that.")
+    end
+  end
+
+  @spec instance_ban(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def instance_ban(conn, %{"email" => email} = params) when is_binary(email) do
+    actor = conn.assigns.current_scope.user
+
+    case Moderation.ban_instance(actor, email, normalize_reason(params["reason"])) do
+      {:ok, ban} ->
+        # The banning operator is the actor in hand — no re-fetch to
+        # serialize `banned_by`.
+        conn
+        |> put_status(:created)
+        |> json(%{data: Serializer.instance_ban(%{ban | banned_by_user: actor})})
+
+      error ->
+        ApiError.from_result(conn, error)
+    end
+  end
+
+  def instance_ban(conn, _params),
+    do: ApiError.send(conn, :bad_request, "email is required.")
+
+  @spec instance_unban(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def instance_unban(conn, %{"ban_id" => ban_id}) do
+    actor = conn.assigns.current_scope.user
+
+    with %InstanceBan{} = ban <- Moderation.get_instance_ban(ban_id),
+         {:ok, _lifted} <- Moderation.unban_instance(actor, ban) do
+      json(conn, %{data: %{status: "unbanned"}})
+    else
+      nil -> ApiError.send(conn, :not_found, "Not found.")
+      # A ban the caller may not lift is hidden, not forbidden.
+      {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
+    end
+  end
+
   @spec audit_log(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def audit_log(conn, %{"community_slug" => slug}) do
     with_community(conn, slug, fn community ->
@@ -109,6 +163,17 @@ defmodule KammerWeb.Api.ModerationController do
       json(conn, %{data: Enum.map(events, &Serializer.audit_event/1)})
     end)
   end
+
+  # An all-whitespace reason is no reason — the same normalization the
+  # LiveView form applies before `ban_instance/3`.
+  defp normalize_reason(reason) when is_binary(reason) do
+    case String.trim(reason) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp normalize_reason(_other), do: nil
 
   # Resolve/dismiss share the same shape: fetch the report, confirm it
   # belongs to this community, then run the mutator. A report the caller

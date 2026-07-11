@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
-	import { fetchServerVersion, revokeAndRemoveInstance } from '$lib/instances/api.js';
-	import { fetchInstanceSettings } from '$lib/manage/api.js';
+	import { fetchInstanceStatus, revokeAndRemoveInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { theme, type ThemePreference } from '$lib/ui/theme.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -11,50 +10,34 @@
 
 	let signingOutId = $state<string | null>(null);
 
-	// Each account's server version for the about line (#204) — fetched
-	// best-effort; a server that doesn't answer simply shows no version.
-	// One batch per change to the instance list, written back in a
-	// single assignment: the effect must not read serverVersions, or
-	// each resolving fetch would rerun it and refire the in-flight ones.
+	// Each account's server version for the about line (#204) and the
+	// per-viewer instance_operator flag (#259) that gates the operator
+	// links — one authenticated capability-doc read per instance serves
+	// both, replacing the old probe-the-settings-read-for-a-403 dance.
+	// Fetched best-effort; a server that doesn't answer simply shows no
+	// version and no operator links. One batch per change to the
+	// instance list, written back in a single assignment: the effect
+	// must not read its own results, or each resolving fetch would
+	// rerun it and refire the in-flight ones.
 	let serverVersions = $state<Record<string, string>>({});
+	let operatorIds = $state<string[]>([]);
 
 	$effect(() => {
 		const list = instances.list;
 		void Promise.all(
 			list.map(async (instance) => ({
 				id: instance.id,
-				version: await fetchServerVersion(instance.baseUrl)
+				status: await fetchInstanceStatus(instance)
 			}))
 		).then((results) => {
-			const next: Record<string, string> = {};
-			for (const { id, version } of results) {
-				if (version) next[id] = version;
+			const versions: Record<string, string> = {};
+			const operators: string[] = [];
+			for (const { id, status } of results) {
+				if (status.version) versions[id] = status.version;
+				if (status.instanceOperator) operators.push(id);
 			}
-			serverVersions = next;
-		});
-	});
-
-	// The instance-operator settings link only shows where this account
-	// actually operates the instance. There's no operator capability on
-	// the client, so we gate on the settings read itself: a 200 means
-	// operator, a 403 means not — best-effort, in one batch (see
-	// serverVersions), written back once so a resolving probe never
-	// refires the effect.
-	let operatorIds = $state<string[]>([]);
-
-	$effect(() => {
-		const list = instances.list;
-		void Promise.all(
-			list.map(async (instance) => {
-				try {
-					await fetchInstanceSettings(instance);
-					return instance.id;
-				} catch {
-					return null;
-				}
-			})
-		).then((results) => {
-			operatorIds = results.filter((id): id is string => id !== null);
+			serverVersions = versions;
+			operatorIds = operators;
 		});
 	});
 
@@ -132,6 +115,12 @@
 					{#if operatorIds.includes(instance.id)}
 						<a href={resolve(`/you/${instance.id}/settings`)} class="text-accent hover:underline">
 							{t('you.accounts.instanceSettings')}
+						</a>
+						<a href={resolve(`/you/${instance.id}/moderation`)} class="text-accent hover:underline">
+							{t('you.accounts.instanceModeration')}
+						</a>
+						<a href={resolve(`/you/${instance.id}/legal`)} class="text-accent hover:underline">
+							{t('you.accounts.legalPages')}
 						</a>
 					{/if}
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->

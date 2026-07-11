@@ -2,13 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	approveJoinRequest,
 	createBan,
+	createInstanceBan,
 	denyJoinRequest,
 	fetchJoinRequests,
 	fetchReports,
 	ManageApiError,
 	resolveReport,
 	updateCommunity,
-	updateInstanceSettings
+	updateInstanceSettings,
+	updateLegalPage
 } from './api';
 import type { Instance } from '$lib/instances/types';
 
@@ -130,6 +132,42 @@ describe('manage api', () => {
 		// The field NAME drives the UI; the English message string never renders
 		// (#253). Assert the whole payload so mangled plumbing can't pass.
 		expect(error.details).toEqual({ slug: ['taken'] });
+	});
+
+	it('bans instance-wide by email — the wire carries the address itself, not a user id', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(201, { data: { id: 'ib1', email: 'x@example.com', reason: null } })
+		);
+		const ban = await createInstanceBan(instance(), 'x@example.com');
+		expect(ban.id).toBe('ib1');
+
+		// Unlike the community ban's roster pick, an instance ban can block
+		// an address with no account — so the request body is the email.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.url).toContain('/instance/moderation/bans');
+		await expect(request.json()).resolves.toEqual({ email: 'x@example.com', reason: null });
+	});
+
+	it('publishes a legal page and unwraps the updated page from the envelope', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(200, {
+				data: {
+					key: 'privacy',
+					title: 'Privacy policy',
+					content_markdown: '# Ours',
+					content_html: '<h1>Ours</h1>',
+					published: true
+				}
+			})
+		);
+		const page = await updateLegalPage(instance(), 'privacy', '# Ours');
+		expect(page.published).toBe(true);
+
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('PUT');
+		expect(request.url).toContain('/legal/privacy');
+		await expect(request.json()).resolves.toEqual({ content_markdown: '# Ours' });
 	});
 
 	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {

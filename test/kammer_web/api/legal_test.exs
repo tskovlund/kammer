@@ -1,14 +1,17 @@
 defmodule KammerWeb.Api.LegalTest do
   @moduledoc """
-  Public legal pages over the API (issue #185, SPEC §13): anyone reads
+  Legal pages over the API (issues #185/#259, SPEC §13): anyone reads
   the privacy policy or imprint — the built-in template until an
-  operator publishes their own text, then that. An unknown key is a
-  neutral 404.
+  operator publishes their own text, then that. Publishing is the
+  operator-only PUT twin of `LegalLive.Edit`; an unknown key is a
+  neutral 404 to both verbs.
   """
 
   use KammerWeb.ConnCase, async: true
 
   import Kammer.AccountsFixtures
+  import Kammer.CommunitiesFixtures, only: [instance_operator_fixture: 0]
+  import KammerWeb.ApiHelpers
   import OpenApiSpex.TestAssertions
 
   alias Kammer.Legal
@@ -41,6 +44,53 @@ defmodule KammerWeb.Api.LegalTest do
   test "an unknown key is a neutral 404" do
     assert %{"error" => %{"code" => "not_found"}} =
              public_conn() |> get(~p"/api/v1/legal/nonsense") |> json_response(404)
+  end
+
+  describe "editing (issue #259)" do
+    test "an operator publishes; a non-operator is refused and the template stays" do
+      operator = instance_operator_fixture()
+      member = user_fixture()
+
+      member
+      |> api_conn()
+      |> put(~p"/api/v1/legal/privacy", %{content_markdown: "# Nej"})
+      |> json_response(403)
+
+      refute Legal.published?("privacy")
+
+      body =
+        operator
+        |> api_conn()
+        |> put(~p"/api/v1/legal/privacy", %{content_markdown: "# Vores politik"})
+        |> tap(&assert_operation_response(&1, "legal_update"))
+        |> json_response(200)
+
+      # The answer is the same shape the public read serves — the fresh
+      # text, its rendered HTML, and the flipped published flag.
+      assert body["data"]["published"] == true
+      assert body["data"]["content_markdown"] == "# Vores politik"
+      assert body["data"]["content_html"] =~ "Vores politik"
+      assert Legal.published?("privacy")
+    end
+
+    test "an unknown key answers 404, and empty content 422 naming content_markdown" do
+      operator = instance_operator_fixture()
+
+      operator
+      |> api_conn()
+      |> put(~p"/api/v1/legal/nonsense", %{content_markdown: "# Hvad"})
+      |> json_response(404)
+
+      # An empty body must not silently blank a page — the detail lands
+      # on `content_markdown`, the field a client form maps to copy.
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        operator
+        |> api_conn()
+        |> put(~p"/api/v1/legal/imprint", %{content_markdown: ""})
+        |> json_response(422)
+
+      assert details["content_markdown"]
+    end
   end
 
   defp public_conn, do: put_req_header(build_conn(), "accept", "application/json")

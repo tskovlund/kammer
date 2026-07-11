@@ -303,6 +303,16 @@ defmodule KammerWeb.Router do
     get "/instance/settings", InstanceController, :settings
     put "/instance/settings", InstanceController, :update_settings
 
+    # Instance-wide email bans (issue #259, SPEC §11) — the API twin of
+    # InstanceLive.Moderation. Operator-only, enforced in the context.
+    get "/instance/moderation/bans", ModerationController, :instance_bans
+    post "/instance/moderation/bans", ModerationController, :instance_ban
+    delete "/instance/moderation/bans/:ban_id", ModerationController, :instance_unban
+
+    # Legal-page editing (issue #259, SPEC §13) — the API twin of
+    # LegalLive.Edit; the public read stays unauthenticated above.
+    put "/legal/:key", LegalController, :update
+
     # The caller's own account (issue #182): profile, and devices (#174).
     get "/me", ProfileController, :show
     put "/me", ProfileController, :update
@@ -360,6 +370,7 @@ defmodule KammerWeb.Router do
         # (ADR 0016), archive/unarchive. `features`/`archive` are literal
         # segments — no collision with the member routes below.
         put "/", GroupController, :update
+        delete "/", GroupController, :delete
         put "/features", GroupController, :features
         put "/archive", GroupController, :archive
         delete "/archive", GroupController, :unarchive

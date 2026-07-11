@@ -31,6 +31,9 @@ defmodule Kammer.Moderation.InstanceBan do
     |> cast(attrs, [:email, :reason])
     |> validate_required([:email])
     |> update_change(:email, &String.downcase/1)
+    # The column is varchar(255); without the cap an oversized string is
+    # a raw DB error (500), not a changeset 422.
+    |> validate_length(:email, max: 255)
     |> validate_length(:reason, max: 2_000)
     |> unique_constraint(:email)
   end

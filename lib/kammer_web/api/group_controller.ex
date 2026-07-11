@@ -77,6 +77,21 @@ defmodule KammerWeb.Api.GroupController do
     end)
   end
 
+  @spec delete(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def delete(conn, %{"community_slug" => slug, "group_slug" => group_slug}) do
+    with_group(conn, slug, group_slug, fn user, group ->
+      # Group owners — and community admins, whose sole power over
+      # sealed groups this is (ADR 0005). The context authorizes,
+      # writes the audit entry, and deletes; a viewable group the
+      # caller may not delete gets an honest 403, like the mutators
+      # above.
+      case Groups.delete_group(user, group) do
+        {:ok, _deleted} -> json(conn, %{data: %{status: "deleted"}})
+        error -> ApiError.from_result(conn, error)
+      end
+    end)
+  end
+
   @spec unarchive(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def unarchive(conn, %{"community_slug" => slug, "group_slug" => group_slug}) do
     with_group(conn, slug, group_slug, fn user, group ->

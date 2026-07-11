@@ -10,6 +10,30 @@ and this project adheres to
 
 ### Added
 
+- The four remaining admin-parity surfaces over the API and PWA
+  (issue #259, part of #187), each mirroring its LiveView semantics.
+  Group deletion:
+  `DELETE /api/v1/communities/{slug}/groups/{slug}` — group owners
+  and community admins (their sole power over sealed groups, ADR
+  0005), audit-logged by the context — with a confirm-guarded delete
+  button in the PWA group settings danger area, gated on a new
+  `delete_group` entry in the group's `viewer_can`. Instance-wide
+  email bans (the `InstanceLive.Moderation` twin): operator-only
+  list/create/lift under `/api/v1/instance/moderation/bans`, keyed on
+  the email itself so an address without an account can be blocked,
+  and a PWA instance-moderation page under the account area with the
+  ban form, active-ban list, and 422 field names mapped to our own
+  copy (#253). Legal-page editing (`PUT /api/v1/legal/{key}`,
+  operator-only, the `LegalLive.Edit` twin) with a PWA legal-pages
+  overview — including the LiveView nag's equivalent, a
+  "still showing the built-in template" hint per unpublished page —
+  and a markdown editor linking the public page as preview reference.
+  And a per-viewer `instance_operator` flag on `GET /api/v1/instance`
+  (the `can_create_community` precedent), which the You page now
+  reads from the capability-doc fetch it already made for the version
+  line — replacing the per-instance settings-read 403 probe (#271's
+  review note) and gating the new operator links.
+
 - The PWA profile page now exposes the account's language, timezone,
   and email-digest frequency (issue #260, part of #187) — three
   settings `PUT /api/v1/me` already accepted and digest/notification

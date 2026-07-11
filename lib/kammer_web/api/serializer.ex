@@ -35,6 +35,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Communities.InstanceSettings
   alias Kammer.Decisions.Decision
   alias Kammer.Moderation.CommunityBan
+  alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
   alias Kammer.Events.Event
   alias Kammer.Feed.Comment
@@ -784,6 +785,22 @@ defmodule KammerWeb.Api.Serializer do
   end
 
   @doc """
+  An instance-wide email ban (issue #259, SPEC §11). Instance operators
+  only. Same wire shape as `community_ban/1` — one `Ban` schema covers
+  both.
+  """
+  @spec instance_ban(InstanceBan.t()) :: map()
+  def instance_ban(%InstanceBan{} = ban) do
+    %{
+      id: ban.id,
+      email: ban.email,
+      reason: ban.reason,
+      inserted_at: ban.inserted_at,
+      banned_by: user_ref(ban.banned_by_user)
+    }
+  end
+
+  @doc """
   One append-only audit entry (issue #183). `summary` is the
   plain-language record written at action time; `actor` is `nil` for
   system-initiated actions.
@@ -989,6 +1006,7 @@ defmodule KammerWeb.Api.Serializer do
       {"moderate", Authorization.can?(viewer, :moderate_group, group, relationship)},
       {"manage_group", Authorization.can?(viewer, :manage_group, group, relationship)},
       {"manage_members", Authorization.can?(viewer, :approve_group_members, group, relationship)},
+      {"delete_group", Authorization.can?(viewer, :delete_group, group, relationship)},
       {"create_event",
        Group.feature_enabled?(group, :events) and
          Authorization.can?(viewer, :post_in_group, group, relationship)},

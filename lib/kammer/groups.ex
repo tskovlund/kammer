@@ -307,8 +307,22 @@ defmodule Kammer.Groups do
           {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def delete_group(%User{} = actor, %Group{} = group) do
     with :ok <- Authorization.authorize(actor, :delete_group, group) do
-      audit_group_action(actor, group, "group.deleted", "deleted the group")
-      Repo.delete(group)
+      # One transaction, so the destructive op and its audit record are
+      # atomic: an audit failure rolls the delete back (no unaudited
+      # deletion), and the loser of a racing double-delete rolls its
+      # audit back too (no false "deleted" row) — answering a neutral
+      # 404, since an already-deleted group is indistinguishable from a
+      # nonexistent one.
+      Repo.transact(fn ->
+        case Repo.delete(group, stale_error_field: :id) do
+          {:ok, deleted} ->
+            audit_group_action(actor, deleted, "group.deleted", "deleted the group")
+            {:ok, deleted}
+
+          {:error, _stale} ->
+            {:error, :not_found}
+        end
+      end)
     end
   end
 
