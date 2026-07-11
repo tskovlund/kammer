@@ -41,6 +41,29 @@ and this project adheres to
 
 ### Added
 
+- Account lifecycle over the API and PWA (issue #258, part of #187):
+  the three flows that were LiveView/browser-only — email change,
+  account deletion, and the GDPR export — now exist on the API, so
+  SPEC §12's data rights survive the LiveView cut. `POST
+/me/email-change` emails the new address a single-use confirmation
+  link landing in the PWA (same notify-the-new-address-only semantics
+  and per-user rate limit as the web flow); `POST
+/me/email-change/confirm` consumes the token and — because device
+  tokens are bound to the address they were issued under — answers
+  with a rotated `device_token` for the confirming device while every
+  other device signs out. `DELETE /me` deletes the account via
+  `Kammer.Gdpr.delete_account` after the caller types their own email
+  back (`confirm_email`, 422 on mismatch — possession of the device
+  token is the re-auth, the typed address confirms intent); `GET
+/me/export` streams the same export zip as the browser route. The
+  PWA grows the matching surfaces: an email-change section on the
+  profile page, the `/confirm-email/{token}` landing (which updates
+  the stored instance's email and swaps in the rotated token), and a
+  "Data & account" page per instance with export-to-download and the
+  typed-email delete flow that removes the instance locally on
+  success. EN+DA strings, OpenAPI operations + conformance taps, and
+  API tests covering the full round-trip, deletion semantics, and the
+  export payload.
 - Report intake for event and assignment comments (issue #262, part
   of #187): `POST .../events/{event_id}/comments/{comment_id}/report`
   and `POST .../assignments/{assignment_id}/comments/{comment_id}/report`
@@ -58,7 +81,6 @@ and this project adheres to
   comments and on assignment-discussion comments, reusing the feed's
   inline reason form + confirmation idiom and existing EN/DA strings;
   `schema.d.ts` regenerated.
-
 - PWA join flow (issue #255, part of #187): the invite link admins
   share (`/invite/{token}`) now lands on a real page in the Svelte
   client — until now the PWA had no invite landing and no registration

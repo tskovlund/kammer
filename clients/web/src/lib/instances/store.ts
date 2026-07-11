@@ -81,6 +81,27 @@ function write(instances: Instance[]): void {
 }
 
 /**
+ * The added instances this origin serves — how the tokened
+ * email-landing routes (`/confirm-email/{token}`, issue #258) find the
+ * account whose device token authorizes the confirm call: the emailed
+ * link always points at the instance that sent it, so the page's own
+ * origin names the server. Plural because the store keys entries by
+ * `(baseUrl, user)`, so one server can hold several signed-in accounts
+ * and the caller must try each (the emailed token is bound to exactly
+ * one of them). Trailing paths and mistyped `baseUrl`s never match by
+ * accident (origin comparison, invalid URLs skipped).
+ */
+export function instancesForOrigin(instances: Instance[], origin: string): Instance[] {
+	return instances.filter((instance) => {
+		try {
+			return new URL(instance.baseUrl).origin === origin;
+		} catch {
+			return false;
+		}
+	});
+}
+
+/**
  * Plain (non-reactive) persistence for the added-instance list — the
  * reactive layer lives in instances.svelte.ts. Kept framework-light so
  * it's testable under vitest's node environment without a component-test

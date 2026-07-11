@@ -82,7 +82,7 @@ msgstr ""
 msgid "Confirm and stay signed in"
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:94
+#: lib/kammer/accounts/user_notifier.ex:117
 #, elixir-autogen, elixir-format
 msgid "Confirm your account"
 msgstr ""
@@ -172,8 +172,9 @@ msgid "English"
 msgstr ""
 
 #: lib/kammer/accounts/user_notifier.ex:46
-#: lib/kammer/accounts/user_notifier.ex:78
-#: lib/kammer/accounts/user_notifier.ex:96
+#: lib/kammer/accounts/user_notifier.ex:69
+#: lib/kammer/accounts/user_notifier.ex:101
+#: lib/kammer/accounts/user_notifier.ex:119
 #: lib/kammer/digests.ex:166
 #: lib/kammer/events/event_notifier.ex:34
 #: lib/kammer/guests/guest_notifier.ex:31
@@ -190,7 +191,7 @@ msgstr ""
 msgid "Hi %{name},"
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:102
+#: lib/kammer/accounts/user_notifier.ex:125
 #, elixir-autogen, elixir-format
 msgid "If you didn't create an account with us, please ignore this email."
 msgstr ""
@@ -200,7 +201,7 @@ msgstr ""
 msgid "If you didn't request this change, please ignore this email."
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:84
+#: lib/kammer/accounts/user_notifier.ex:107
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this email, please ignore it."
 msgstr ""
@@ -316,7 +317,7 @@ msgstr ""
 msgid "The link is invalid or it has expired."
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:108
+#: lib/kammer/accounts/user_notifier.ex:131
 #, elixir-autogen, elixir-format
 msgid "The link is valid for 15 minutes and can be used once."
 msgstr ""
@@ -372,12 +373,12 @@ msgstr ""
 msgid "You can change your email by visiting the link below:"
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:97
+#: lib/kammer/accounts/user_notifier.ex:120
 #, elixir-autogen, elixir-format
 msgid "You can confirm your account and sign in by visiting the link below:"
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:79
+#: lib/kammer/accounts/user_notifier.ex:102
 #, elixir-autogen, elixir-format
 msgid "You can sign in to your account by visiting the link below:"
 msgstr ""
@@ -398,7 +399,7 @@ msgstr ""
 msgid "You need to reauthenticate to perform sensitive actions on your account."
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:76
+#: lib/kammer/accounts/user_notifier.ex:99
 #, elixir-autogen, elixir-format
 msgid "Your sign-in link"
 msgstr ""
@@ -4047,13 +4048,13 @@ msgstr ""
 msgid "Try different words — search looks at posts, comments, events, and files."
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:81
-#: lib/kammer/accounts/user_notifier.ex:99
+#: lib/kammer/accounts/user_notifier.ex:104
+#: lib/kammer/accounts/user_notifier.ex:122
 #, elixir-autogen, elixir-format
 msgid "Or enter this sign-in code in the app:"
 msgstr ""
 
-#: lib/kammer/accounts/user_notifier.ex:111
+#: lib/kammer/accounts/user_notifier.ex:134
 #, elixir-autogen, elixir-format
 msgid "The link and code are valid for 15 minutes and can each be used once."
 msgstr ""
@@ -4081,4 +4082,24 @@ msgstr ""
 #: lib/kammer_web/live/report_handlers.ex:75
 #, elixir-autogen, elixir-format
 msgid "The report could not be sent — check the reason text."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:75
+#, elixir-autogen, elixir-format
+msgid "If you did NOT make this change, your account may be compromised — contact your instance's administrator immediately."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:73
+#, elixir-autogen, elixir-format
+msgid "If you made this change, you can ignore this email."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:71
+#, elixir-autogen, elixir-format
+msgid "The email address for your account was just changed to %{new_email}."
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:68
+#, elixir-autogen, elixir-format
+msgid "Your account email was changed"
 msgstr ""

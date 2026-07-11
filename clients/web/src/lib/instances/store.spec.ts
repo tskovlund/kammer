@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { instanceStore } from './store';
+import { instancesForOrigin, instanceStore } from './store';
 import { fakeLocalStorage } from './test-support';
 import type { Instance } from './types';
 
@@ -137,5 +137,24 @@ describe('instanceStore', () => {
 			localStorage.setItem('kammer:instances', JSON.stringify({ some: 'object' }));
 			expect(instanceStore.list()).toEqual([]);
 		});
+	});
+});
+
+describe('instancesForOrigin', () => {
+	it('matches on origin, ignoring any path in baseUrl, and keeps every account on it', () => {
+		const here = fixture({ id: 'here', baseUrl: 'https://kammer.example.com/some/base' });
+		const secondAccount = fixture({
+			id: 'second',
+			user: { id: 'user-2', email: 'b@example.com', displayName: 'Bob' }
+		});
+		const elsewhere = fixture({ id: 'elsewhere', baseUrl: 'https://other.example.com' });
+		expect(
+			instancesForOrigin([elsewhere, here, secondAccount], 'https://kammer.example.com')
+		).toEqual([here, secondAccount]);
+	});
+
+	it('returns nothing when no instance is served from the origin, skipping invalid baseUrls', () => {
+		const broken = fixture({ baseUrl: 'not a url' });
+		expect(instancesForOrigin([broken], 'https://kammer.example.com')).toEqual([]);
 	});
 });

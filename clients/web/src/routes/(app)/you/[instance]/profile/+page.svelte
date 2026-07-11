@@ -7,7 +7,7 @@
 	import type { Community } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
-	import { fetchProfile, updateProfile } from '$lib/people/api.js';
+	import { fetchProfile, requestEmailChange, updateProfile } from '$lib/people/api.js';
 	import type { ContactVisibility, CustomField, Profile } from '$lib/people/types.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -154,6 +154,37 @@
 		}
 	}
 
+	// Email change (issue #258): a request-only form — the address flips
+	// when the emailed confirmation link lands on /confirm-email/{token}.
+	let newEmail = $state('');
+	let emailSending = $state(false);
+	let emailSentTo = $state<string | null>(null);
+	let emailError = $state<string | null>(null);
+
+	async function sendEmailChange(submitEvent: SubmitEvent): Promise<void> {
+		submitEvent.preventDefault();
+		if (!instance) return;
+		emailSending = true;
+		emailSentTo = null;
+		emailError = null;
+		const requested = newEmail.trim();
+		try {
+			await requestEmailChange(instance, requested);
+			emailSentTo = requested;
+			newEmail = '';
+		} catch (error) {
+			if (error instanceof FeedApiError && error.kind === 'validation') {
+				emailError = t('profile.emailChange.error.invalid');
+			} else if (error instanceof FeedApiError && error.kind === 'rate_limited') {
+				emailError = t('profile.emailChange.error.rateLimited');
+			} else {
+				emailError = t('profile.emailChange.error.generic');
+			}
+		} finally {
+			emailSending = false;
+		}
+	}
+
 	const visibilityOptions: { value: ContactVisibility; label: () => string }[] = [
 		{ value: 'hidden', label: () => t('profile.visibility.hidden') },
 		{ value: 'members', label: () => t('profile.visibility.members') },
@@ -294,6 +325,53 @@
 				{/if}
 			</div>
 		</form>
+
+		<section class="mt-10" aria-labelledby="email-change-heading">
+			<h2 id="email-change-heading" class="text-sm font-medium text-ink">
+				{t('profile.emailChange.title')}
+			</h2>
+			<p class="mt-1 text-sm text-ink-muted">
+				{t('profile.emailChange.description', { name: instance.instanceName })}
+			</p>
+			<p class="mt-2 text-sm text-ink">
+				{t('profile.emailChange.current', { email: profile.email })}
+			</p>
+
+			{#if emailError}
+				<div
+					class="mt-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+					role="alert"
+				>
+					{emailError}
+				</div>
+			{/if}
+			{#if emailSentTo}
+				<p
+					class="mt-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-accent"
+					role="status"
+				>
+					{t('profile.emailChange.sent', { email: emailSentTo })}
+				</p>
+			{/if}
+
+			<form class="mt-3 flex items-end gap-2" onsubmit={sendEmailChange} id="email-change-form">
+				<Input
+					id="email-change-input"
+					type="email"
+					label={t('profile.emailChange.newEmail')}
+					bind:value={newEmail}
+					class="flex-1"
+				/>
+				<Button
+					type="submit"
+					variant="secondary"
+					disabled={emailSending || newEmail.trim() === ''}
+					id="email-change-submit"
+				>
+					{t('profile.emailChange.submit')}
+				</Button>
+			</form>
+		</section>
 
 		{#each sections as section (section.community.id)}
 			<section class="mt-10" aria-labelledby="community-profile-{section.community.id}">

@@ -190,6 +190,20 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
+  Rate limit for the self-serve GDPR export, keyed by the requesting
+  user: 3 per hour. An anti-abuse backstop (ADR 0027 tier 3 — fixed,
+  no config knob): `Gdpr.export` reads every one of the user's
+  uploaded files into memory to build the zip, so an unthrottled,
+  scriptable trigger is a memory/CPU amplifier proportional to their
+  upload volume. Three an hour is far more than any human needs and
+  still denies a retry-loop.
+  """
+  @spec hit_data_export(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_data_export(user_id) do
+    hit("data_export:user:#{user_id}", 60 * 60 * 1000, 3)
+  end
+
+  @doc """
   Rate limit for filing moderation reports, keyed by reporter: 20 per
   hour. An anti-abuse backstop (ADR 0027 tier 3 — fixed, no config
   knob): the queue is the moderators' shared attention budget, and one

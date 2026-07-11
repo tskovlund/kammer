@@ -55,6 +55,29 @@ defmodule Kammer.Accounts.UserNotifier do
   end
 
   @doc """
+  Tell the OLD address its account's email just changed (issue #258).
+  The one signal a hijacked account's real owner still receives — the
+  new address gets the confirm link, every other email follows the
+  account — so it names the new address and says what to do if the
+  change wasn't theirs.
+  """
+  @spec deliver_email_changed_notice(User.t(), String.t(), String.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_email_changed_notice(user, old_email, new_email) do
+    Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
+      deliver(old_email, gettext("Your account email was changed"), """
+      #{gettext("Hi %{name},", name: user.display_name)}
+
+      #{gettext("The email address for your account was just changed to %{new_email}.", new_email: new_email)}
+
+      #{gettext("If you made this change, you can ignore this email.")}
+
+      #{gettext("If you did NOT make this change, your account may be compromised — contact your instance's administrator immediately.")}
+      """)
+    end)
+  end
+
+  @doc """
   Deliver instructions to log in with a magic link. Unconfirmed users get
   the confirmation wording; the mechanism is identical. With a `code`
   (the PWA flow, issue #177) the email also shows the short sign-in

@@ -1,13 +1,15 @@
 defmodule KammerWeb.Api.PublicLinks do
   @moduledoc """
   Absolute email links and client-relative redirect paths for the
-  tokenless guest/newsletter/setup API flows (issue #185, ADR 0024).
+  API-initiated email flows (issue #185, ADR 0024): the tokenless
+  guest/newsletter/setup surfaces, plus the account email-change
+  confirmation (issue #258).
 
-  The account-less flows are two-step: a request endpoint emails a
-  signed link, and the recipient follows it into the instance-served
-  PWA (ADR 0024), which calls the matching confirm/manage endpoint. So
-  the confirm and management links these emails carry point at PWA
-  routes under `:pwa_base_path` — the same landing convention
+  These flows are two-step: a request endpoint emails a signed link,
+  and the recipient follows it into the instance-served PWA (ADR
+  0024), which calls the matching confirm/manage endpoint. So the
+  confirm and management links these emails carry point at PWA routes
+  under `:pwa_base_path` — the same landing convention
   `AuthController` uses for API-initiated sign-in emails — not at the
   LiveView routes the web flows still use. The signed token in the URL
   stays the whole credential (ADR 0013); only the host route changes.
@@ -23,7 +25,8 @@ defmodule KammerWeb.Api.PublicLinks do
     rsvp: "/guest/rsvp/confirm/",
     comment: "/guest/comment/confirm/",
     claim: "/guest/claim/confirm/",
-    newsletter: "/newsletter/confirm/"
+    newsletter: "/newsletter/confirm/",
+    email_change: "/confirm-email/"
   }
 
   @doc """
@@ -36,8 +39,11 @@ defmodule KammerWeb.Api.PublicLinks do
   captured link is a magic-link-equivalent bearer secret already, the
   same accepted trade-off as every other one-shot email link here.
   """
-  @spec confirm_url(Plug.Conn.t(), :rsvp | :comment | :claim | :newsletter, String.t()) ::
+  @spec confirm_url(
+          Plug.Conn.t(),
+          :rsvp | :comment | :claim | :newsletter | :email_change,
           String.t()
+        ) :: String.t()
   def confirm_url(conn, kind, token) do
     pwa_url(conn, Map.fetch!(@confirm_paths, kind) <> token)
   end

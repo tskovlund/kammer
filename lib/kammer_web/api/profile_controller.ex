@@ -25,8 +25,8 @@ defmodule KammerWeb.Api.ProfileController do
   alias KammerWeb.ApiAuth
   alias KammerWeb.ApiError
 
-  # The profile fields a caller may set; email changes stay on the web
-  # flow (they require a confirmation email round-trip), and
+  # The profile fields a caller may set; email changes go through
+  # AccountController's confirmation round-trip (issue #258), and
   # instance_operator is never cast from any request.
   @profile_fields ~w(display_name locale timezone digest_frequency feed_sort bio pronouns
                      contact_phone contact_phone_visibility contact_email

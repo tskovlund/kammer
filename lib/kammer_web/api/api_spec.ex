@@ -176,6 +176,77 @@ defmodule KammerWeb.ApiSpec do
           operation("Update the caller's profile and preferences", :me_update, [],
             request_body: body(profile_params()),
             response: single_response(Schemas.Profile)
+          ),
+        delete:
+          operation(
+            "Delete the account (SPEC §12): confirm_email must match the account's address",
+            :me_delete,
+            [],
+            request_body:
+              body(
+                object(%{
+                  confirm_email: %Schema{
+                    type: :string,
+                    format: :email,
+                    description: "The account's own email, typed back to confirm intent"
+                  }
+                })
+              ),
+            response:
+              json_response(
+                "Deleted — identity gone, personal rows cascaded, authored content anonymized",
+                Schemas.StatusResponse
+              )
+          )
+      },
+      "/api/v1/me/email-change" => %PathItem{
+        post:
+          operation(
+            "Request an email change: a confirmation link is emailed to the new address",
+            :email_change_request,
+            [],
+            request_body: body(object(%{email: %Schema{type: :string, format: :email}})),
+            response:
+              json_response(
+                "Confirmation sent — nothing changes until the link is confirmed",
+                Schemas.StatusResponse
+              )
+          )
+      },
+      "/api/v1/me/email-change/confirm" => %PathItem{
+        post:
+          operation(
+            "Confirm an email change by consuming the emailed single-use token",
+            :email_change_confirm,
+            [],
+            request_body: body(token_body()),
+            response:
+              json_response(
+                "Confirmed. Device tokens are bound to the address they were issued " <>
+                  "under, so the change invalidated all of them — swap in the fresh " <>
+                  "device_token; every other device signs out.",
+                %Schema{
+                  type: :object,
+                  properties: %{
+                    data: Schemas.Profile,
+                    device_token: %Schema{
+                      type: :string,
+                      description: "Replacement credential for the confirming device"
+                    }
+                  },
+                  required: [:data, :device_token]
+                }
+              )
+          )
+      },
+      "/api/v1/me/export" => %PathItem{
+        get:
+          operation(
+            "The caller's complete data export (SPEC §12) as one zip",
+            :me_export,
+            [],
+            extra_errors: [400],
+            response: binary_response("The export zip: data.json plus every uploaded file")
           )
       },
       "/api/v1/me/devices" => %PathItem{

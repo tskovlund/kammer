@@ -1,5 +1,6 @@
 import { createApiClient } from '$lib/api/client.js';
 import { fail, guard } from '$lib/api/errors.js';
+import { fetchAuthedObjectUrl } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type {
 	Device,
@@ -155,6 +156,61 @@ export async function updateProfile(instance: Instance, params: ProfileParams): 
 		if (error || !data) throw fail(error, response, 'Could not save your profile.');
 		return data.data;
 	});
+}
+
+/**
+ * Emails the new address a single-use confirmation link (issue #258).
+ * Nothing changes until `/confirm-email/{token}` lands and confirms.
+ */
+export async function requestEmailChange(instance: Instance, email: string): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).POST('/api/v1/me/email-change', {
+			body: { email }
+		});
+		if (error) throw fail(error, response, 'Could not request the email change.');
+	});
+}
+
+/**
+ * Consumes the emailed token. Device tokens are bound to the address
+ * they were issued under, so the server answers with a rotated
+ * `device_token` for this device — the caller must persist it (every
+ * other device signs out).
+ */
+export async function confirmEmailChange(
+	instance: Instance,
+	token: string
+): Promise<{ profile: Profile; deviceToken: string }> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/me/email-change/confirm',
+			{ body: { token } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not confirm the email change.');
+		return { profile: data.data, deviceToken: data.device_token };
+	});
+}
+
+/**
+ * Deletes the account (SPEC §12): the server requires the account's own
+ * email typed back and answers 422 (`validation`) on a mismatch.
+ */
+export async function deleteAccount(instance: Instance, confirmEmail: string): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE('/api/v1/me', {
+			body: { confirm_email: confirmEmail }
+		});
+		if (error) throw fail(error, response, 'Could not delete the account.');
+	});
+}
+
+/**
+ * The GDPR export zip (SPEC §12) as an object URL for a download link —
+ * the endpoint sits behind Bearer auth, so a plain `<a href>` can't
+ * reach it. The caller must `URL.revokeObjectURL` it when done.
+ */
+export async function fetchAccountExportUrl(instance: Instance): Promise<string> {
+	return guard(() => fetchAuthedObjectUrl(instance, '/api/v1/me/export'));
 }
 
 export async function fetchDevices(instance: Instance): Promise<Device[]> {
