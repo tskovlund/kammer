@@ -174,15 +174,22 @@ for the full reasoning: this isn't a lesser version of federation,
 it's a better fit for what Kammer actually needs, considered and
 rejected deliberately rather than left unexamined.
 
-**Confirmed future roadmap (owner-approved scope, not yet designed or
+**V1 scope beyond the web product (owner-set, 2026-07-11; ADR 0028 —
+the product is not finished in its first version without these):**
+native apps — Kotlin/Android, Swift/iOS, API siblings of the Svelte
+client (#131, ADR 0022/0028); the offline write queue — full offline
+support beyond the shipped read-only offline reading (#137, ADR
+0022/0028); chat/DMs (#136, needs its own design pass). ADR 0012's
+sequencing stands: PWA first, the LiveView cut (#187) before native
+work — this sets the finish line, not the order.
+
+**Confirmed post-V1 roadmap (owner-approved scope, not yet designed or
 scheduled — each item has its own tracking issue so nothing here gets
-silently dropped):** native apps — Kotlin/Android, Swift/iOS, API
-siblings of the Svelte client (#131, ADR 0022); offline support beyond
-v1's app-shell-only service worker caching (#137, ADR 0022); chat/DMs
-(#136); E2EE, shape depends on chat/DMs landing first (#132); event
-ticketing/capacity/waitlists (#133); collaborative document editing
-(#134); video upload (#135); storage billing, part of the managed-cloud
-business model (#22); group type templates — presets such as
+silently dropped):** E2EE, shape depends on chat/DMs landing first
+(#132); event ticketing/capacity/waitlists (#133); collaborative
+document editing (#134); video upload (#135); managed hosting /
+Kammer Cloud and its storage billing — **explicitly post-V1** (owner,
+2026-07-11) (#22); group type templates — presets such as
 "Announcement channel", "Discussion forum", "Standard group" that
 bundle posting/comment policies including reply-style options like
 deeper forum threading (#138; ADR 0007 already named curated templates
