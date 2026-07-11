@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { fetchServerVersion, revokeAndRemoveInstance } from '$lib/instances/api.js';
+	import { fetchInstanceSettings } from '$lib/manage/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { theme, type ThemePreference } from '$lib/ui/theme.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -30,6 +31,30 @@
 				if (version) next[id] = version;
 			}
 			serverVersions = next;
+		});
+	});
+
+	// The instance-operator settings link only shows where this account
+	// actually operates the instance. There's no operator capability on
+	// the client, so we gate on the settings read itself: a 200 means
+	// operator, a 403 means not — best-effort, in one batch (see
+	// serverVersions), written back once so a resolving probe never
+	// refires the effect.
+	let operatorIds = $state<string[]>([]);
+
+	$effect(() => {
+		const list = instances.list;
+		void Promise.all(
+			list.map(async (instance) => {
+				try {
+					await fetchInstanceSettings(instance);
+					return instance.id;
+				} catch {
+					return null;
+				}
+			})
+		).then((results) => {
+			operatorIds = results.filter((id): id is string => id !== null);
 		});
 	});
 
@@ -104,6 +129,11 @@
 					<a href={resolve(`/you/${instance.id}/data`)} class="text-accent hover:underline">
 						{t('you.accounts.data')}
 					</a>
+					{#if operatorIds.includes(instance.id)}
+						<a href={resolve(`/you/${instance.id}/settings`)} class="text-accent hover:underline">
+							{t('you.accounts.instanceSettings')}
+						</a>
+					{/if}
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				</p>
 				{#snippet trailing()}

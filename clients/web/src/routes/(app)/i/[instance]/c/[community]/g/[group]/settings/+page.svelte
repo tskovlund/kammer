@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { FeedApiError } from '$lib/api/errors.js';
 	import { fetchGroup } from '$lib/feed/api.js';
 	import {
 		approveJoinRequest,
@@ -115,7 +117,7 @@
 					}
 				}
 			} catch (cause) {
-				if (!cancelled) error = cause instanceof ManageApiError ? cause.kind : 'server';
+				if (!cancelled) error = loadErrorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -125,6 +127,16 @@
 			cancelled = true;
 		};
 	});
+
+	// The load path throws FeedApiError (fetchGroup lives in the shared-
+	// error family), the manage calls ManageApiError — match both so a
+	// 403/404 keeps its kind instead of collapsing to the generic failure
+	// (independent-review finding on #271).
+	function loadErrorKind(cause: unknown): ManageErrorKind {
+		if (cause instanceof ManageApiError) return cause.kind;
+		if (cause instanceof FeedApiError && cause.kind !== 'too_large') return cause.kind;
+		return 'server';
+	}
 
 	async function run<T>(work: () => Promise<T>) {
 		if (!instance || saving) return;
@@ -155,7 +167,20 @@
 			version_retention: versionRetention.trim() === '' ? null : Number(versionRetention)
 		};
 		run(async () => {
-			hydrate(await updateGroup(instance!, communitySlug, groupSlug, params));
+			const updated = await updateGroup(instance!, communitySlug, groupSlug, params);
+			hydrate(updated);
+			// A slug change renames this page's own URL: the route param (and
+			// every href derived from it, like the invites link) still says the
+			// OLD slug — a refresh would 404 and the NEXT save would PUT to the
+			// dead slug. Move to the new address in place.
+			if (updated.slug !== groupSlug) {
+				// An aborted navigation must not read as a save failure — the
+				// PUT already succeeded.
+				await goto(
+					resolve(`/i/${page.params.instance}/c/${communitySlug}/g/${updated.slug}/settings`),
+					{ replaceState: true }
+				).catch(() => {});
+			}
 		});
 	}
 

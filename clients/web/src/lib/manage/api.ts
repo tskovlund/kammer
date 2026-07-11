@@ -35,12 +35,24 @@ export type ManageErrorKind =
 export class ManageApiError extends Error {
 	readonly kind: ManageErrorKind;
 	readonly status: number | null;
+	/**
+	 * Field → messages from a 422's changeset details, `{}` otherwise.
+	 * A settings form maps field NAMES onto its own i18n copy — the
+	 * server message strings are English and must never render (#253).
+	 */
+	readonly details: Record<string, string[]>;
 
-	constructor(kind: ManageErrorKind, message: string, status: number | null = null) {
+	constructor(
+		kind: ManageErrorKind,
+		message: string,
+		status: number | null = null,
+		details: Record<string, string[]> = {}
+	) {
 		super(message);
 		this.name = 'ManageApiError';
 		this.kind = kind;
 		this.status = status;
+		this.details = details;
 	}
 }
 
@@ -62,7 +74,7 @@ function kindForStatus(status: number): ManageErrorKind {
 }
 
 interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
+	error?: { code?: string; message?: string; details?: Record<string, string[]> };
 }
 
 function messageFrom(error: unknown, fallback: string): string {
@@ -77,7 +89,8 @@ function client(instance: Instance) {
 function fail(error: unknown, response: Response | undefined, fallback: string): ManageApiError {
 	const status = response?.status ?? null;
 	const kind = status ? kindForStatus(status) : 'server';
-	return new ManageApiError(kind, messageFrom(error, fallback), status);
+	const details = (error as ErrorEnvelope | undefined)?.error?.details ?? {};
+	return new ManageApiError(kind, messageFrom(error, fallback), status, details);
 }
 
 async function guard<T>(request: () => Promise<T>): Promise<T> {

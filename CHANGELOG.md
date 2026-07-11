@@ -10,6 +10,22 @@ and this project adheres to
 
 ### Added
 
+- Community and instance-operator settings pages in the PWA (issue
+  #259, part of #187), both over API surfaces that already existed —
+  no new server endpoints. The community settings page gained the
+  controls the update endpoint already accepted: web address (slug),
+  default language, "list on the instance landing page", and the
+  real-names request — previously only name, description, and accent
+  were editable, and a 422 now maps the changeset's field names to
+  our own copy (`name`/`slug`) rather than showing a generic error.
+  A new operator-only instance settings page under the account area
+  edits instance name, default language, who may create communities,
+  the storage policy, and content-minimized email mode — reachable
+  only where this account operates the instance (gated on the
+  settings read itself, since there is no operator capability on the
+  client). The LiveView instance settings screen only ever exposed
+  the email toggle; the other four fields had no edit surface before
+  now.
 - Community creation over the API and PWA (issue #259, part of #187):
   a new `POST /api/v1/communities` endpoint, gated by the same
   instance community-creation policy (SPEC §3: operators only / any

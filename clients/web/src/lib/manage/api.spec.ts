@@ -6,6 +6,7 @@ import {
 	fetchReports,
 	ManageApiError,
 	resolveReport,
+	updateCommunity,
 	updateInstanceSettings
 } from './api';
 import type { Instance } from '$lib/instances/types';
@@ -93,6 +94,26 @@ describe('manage api', () => {
 		expect(request.method).toBe('DELETE');
 		expect(request.url).toContain('/join-requests/jr1');
 		expect(request.url).not.toContain('/approval');
+	});
+
+	it('carries a 422 changeset detail so a settings form can key its own copy off the field name', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(422, {
+				error: {
+					code: 'validation',
+					message: 'Slug has already been taken.',
+					details: { slug: ['taken'] }
+				}
+			})
+		);
+		const error = await updateCommunity(instance(), 'my-community', { slug: 'taken' }).catch(
+			(e) => e
+		);
+		expect(error).toBeInstanceOf(ManageApiError);
+		expect(error.kind).toBe('validation');
+		// The field NAME drives the UI; the English message string never renders
+		// (#253). Assert the whole payload so mangled plumbing can't pass.
+		expect(error.details).toEqual({ slug: ['taken'] });
 	});
 
 	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {
