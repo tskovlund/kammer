@@ -10,6 +10,17 @@ and this project adheres to
 
 ### Added
 
+- Anonymous instance landing and community directory over the API and
+  PWA (issue #260, part of #187), porting the signed-out
+  `InstanceLive.Home`: a tokenless `GET /api/v1/public/communities`
+  listing the communities that opted into the landing page
+  (`listed_on_instance`, SPEC §3 — unlisted communities never appear,
+  pinned by test), and a public `/welcome` page with the product-ethos
+  blurb, a sign-in affordance, and the directory linking into the
+  existing public community pages. Visitors without a signed-in
+  instance now land there instead of straight on the sign-in form,
+  matching what the LiveView root showed them.
+
 - The four remaining admin-parity surfaces over the API and PWA
   (issue #259, part of #187), each mirroring its LiveView semantics.
   Group deletion:

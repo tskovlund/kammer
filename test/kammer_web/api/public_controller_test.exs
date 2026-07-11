@@ -26,6 +26,28 @@ defmodule KammerWeb.Api.PublicControllerTest do
     %{community: community}
   end
 
+  describe "GET /api/v1/public/communities" do
+    # The `listed_on_instance` boundary is the whole point of the
+    # directory (SPEC §3, default off): a community that didn't opt in
+    # must NEVER appear, even though its public face stays reachable by
+    # slug on the show endpoint — existing ≠ listed. `public_conn/0`
+    # carries no device token, pinning the endpoint as tokenless.
+    test "lists only listed_on_instance communities, tokenless" do
+      listed = community_fixture(listed_on_instance: true)
+
+      body =
+        public_conn()
+        |> get(~p"/api/v1/public/communities")
+        |> tap(&assert_operation_response(&1, "public_communities_index"))
+        |> json_response(200)
+
+      # Exactly one entry: the opted-in community — the unlisted one
+      # from `setup` stays out.
+      assert [%{"id" => id}] = body["data"]
+      assert id == listed.id
+    end
+  end
+
   describe "GET /api/v1/public/communities/:community_slug" do
     test "shows the community's public face and only its public_listed groups", %{
       community: community

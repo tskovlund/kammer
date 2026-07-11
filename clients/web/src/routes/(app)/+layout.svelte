@@ -9,10 +9,13 @@
 	let { children } = $props();
 
 	// Route guard: the shell is only for signed-in users — no added
-	// instances means nothing to show, so hand over to the sign-in flow.
+	// instances means nothing to show, so hand over to the anonymous
+	// landing (issue #260): ethos, the instance's community directory,
+	// and a sign-in affordance — the same page the signed-out LiveView
+	// root showed.
 	$effect(() => {
 		if (instances.list.length === 0) {
-			void goto(resolve('/sign-in'), { replaceState: true });
+			void goto(resolve('/welcome'), { replaceState: true });
 		}
 	});
 

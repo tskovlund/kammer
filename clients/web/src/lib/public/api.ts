@@ -91,6 +91,21 @@ function client(baseUrl: string) {
 	return createApiClient(baseUrl);
 }
 
+/**
+ * The instance's community directory (issue #260): communities that
+ * opted into the anonymous landing page via `listed_on_instance`
+ * (SPEC §3, default off) — what the signed-out `InstanceLive.Home`
+ * listed. Unlisted communities never appear here, though each stays
+ * reachable by slug via `fetchPublicCommunity`.
+ */
+export async function fetchPublicCommunities(baseUrl: string): Promise<Community[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(baseUrl).GET('/api/v1/public/communities');
+		if (error || !data) throw fail(error, response, 'Could not load the community directory.');
+		return data.data;
+	});
+}
+
 export async function fetchPublicCommunity(
 	baseUrl: string,
 	communitySlug: string

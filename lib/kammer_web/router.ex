@@ -253,6 +253,11 @@ defmodule KammerWeb.Router do
     # publicly readable 404s identically to a nonexistent one — no
     # oracle (issue #156/#161).
     scope "/public" do
+      # The instance's community directory (issue #260): communities
+      # that opted into the anonymous landing page (SPEC §3:
+      # `listed_on_instance`, default off) — what the signed-out
+      # `InstanceLive.Home` listed, so the PWA landing can too.
+      get "/communities", PublicController, :communities
       get "/communities/:community_slug", PublicController, :community
       get "/communities/:community_slug/groups/:group_slug", PublicController, :group
 

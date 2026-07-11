@@ -46,6 +46,19 @@ defmodule KammerWeb.Api.PublicController do
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
+  @doc """
+  The instance's community directory (issue #260, part of #187): the
+  communities that opted into the anonymous landing page (SPEC §3:
+  `listed_on_instance`, default off) — the same list the signed-out
+  `InstanceLive.Home` shows. Communities that didn't opt in never
+  appear here, though each remains reachable by slug below (like
+  `public_link` groups, existing ≠ listed).
+  """
+  @spec communities(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def communities(conn, _params) do
+    json(conn, %{data: Enum.map(Communities.list_public_communities(), &Serializer.community/1)})
+  end
+
   @spec community(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def community(conn, %{"community_slug" => slug}) do
     with_community(conn, slug, fn community ->
