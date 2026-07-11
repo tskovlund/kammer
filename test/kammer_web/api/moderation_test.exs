@@ -486,6 +486,102 @@ defmodule KammerWeb.Api.ModerationTest do
     end
   end
 
+  describe "instance-wide bans (issue #259)" do
+    setup :context
+
+    test "an oversized email is a 422 naming the field, not a database error" do
+      operator = instance_operator_fixture()
+
+      # The column is varchar(255); without the changeset cap this was a
+      # raw Postgrex value-too-long error rendered as a 500.
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        operator
+        |> api_conn()
+        |> post(~p"/api/v1/instance/moderation/bans", %{
+          email: String.duplicate("a", 250) <> "@example.org"
+        })
+        |> json_response(422)
+
+      assert details["email"]
+    end
+
+    test "an operator bans an email, lists it, and lifts it", %{author: author} do
+      operator = instance_operator_fixture()
+
+      created =
+        operator
+        |> api_conn()
+        |> post(~p"/api/v1/instance/moderation/bans", %{
+          email: author.email,
+          reason: "  Chikane  "
+        })
+        |> tap(&assert_operation_response(&1, "instance_ban"))
+        |> json_response(201)
+
+      assert created["data"]["email"] == author.email
+      # Whitespace-padded reasons are trimmed, like the LiveView form.
+      assert created["data"]["reason"] == "Chikane"
+      assert created["data"]["banned_by"]["id"] == operator.id
+
+      listed =
+        operator
+        |> api_conn()
+        |> get(~p"/api/v1/instance/moderation/bans")
+        |> tap(&assert_operation_response(&1, "instance_bans"))
+        |> json_response(200)
+
+      assert [%{"id" => ban_id}] = listed["data"]
+
+      operator
+      |> api_conn()
+      |> delete(~p"/api/v1/instance/moderation/bans/#{ban_id}")
+      |> tap(&assert_operation_response(&1, "instance_unban"))
+      |> json_response(200)
+
+      assert Moderation.list_instance_bans(operator) == []
+    end
+
+    test "banning the same address twice answers 422 naming the email field", %{author: author} do
+      operator = instance_operator_fixture()
+      path = ~p"/api/v1/instance/moderation/bans"
+
+      operator |> api_conn() |> post(path, %{email: author.email}) |> json_response(201)
+
+      # The repeat conflicts on the unique email index; the detail must
+      # land on `email` — the field a client form maps to its own copy.
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        operator |> api_conn() |> post(path, %{email: author.email}) |> json_response(422)
+
+      assert details["email"]
+    end
+
+    test "a non-operator gets 403 on list and create, and 404 lifting a real ban", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+      {:ok, ban} = Moderation.ban_instance(operator, "ude@example.com", nil)
+
+      author
+      |> api_conn()
+      |> get(~p"/api/v1/instance/moderation/bans")
+      |> json_response(403)
+
+      author
+      |> api_conn()
+      |> post(~p"/api/v1/instance/moderation/bans", %{email: "nogen@example.com"})
+      |> json_response(403)
+
+      # A specific ban row a non-operator may not lift stays hidden —
+      # the same not-found a nonexistent id gets.
+      author
+      |> api_conn()
+      |> delete(~p"/api/v1/instance/moderation/bans/#{ban.id}")
+      |> json_response(404)
+
+      assert Moderation.get_instance_ban(ban.id)
+    end
+  end
+
   describe "audit log" do
     setup :context
 

@@ -73,6 +73,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/instance/moderation/bans/{ban_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Lift an instance-wide ban */
+		delete: operations['instance_unban'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/auth/passkey/challenge': {
 		parameters: {
 			query?: never;
@@ -376,7 +393,8 @@ export interface paths {
 		};
 		/** A public legal page (privacy or imprint) */
 		get: operations['legal_show'];
-		put?: never;
+		/** Publish a legal page's text (operators only), replacing the built-in template */
+		put: operations['legal_update'];
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -987,7 +1005,8 @@ export interface paths {
 		/** Update group settings */
 		put: operations['groups_update'];
 		post?: never;
-		delete?: never;
+		/** Delete a group and all of its content — group owners, and community admins (their sole power over sealed groups, ADR 0005) */
+		delete: operations['groups_delete'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -1800,6 +1819,24 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/instance/moderation/bans': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Active instance-wide email bans (operators only) */
+		get: operations['instance_bans'];
+		put?: never;
+		/** Ban an email instance-wide (operators only): purges the account's memberships everywhere and blocks rejoin on every community */
+		post: operations['instance_ban'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/members/{user_id}': {
 		parameters: {
 			query?: never;
@@ -2467,6 +2504,8 @@ export interface components {
 				web_push: boolean;
 			};
 			instance_name: string;
+			/** @description Whether the calling device's user operates this instance (issue #259) — per-viewer like can_create_community, false for the tokenless probe. Clients gate their operator surfaces (instance settings/moderation, legal editing) on this instead of probing an operator-only endpoint for the 403. */
+			instance_operator: boolean;
 			/** @description Advisory SemVer floor for the native-app handshake (#203): clients below it should fence themselves — the server does not reject them. Null means any client is fine. */
 			min_client_version: string | null;
 			version: string;
@@ -2516,6 +2555,7 @@ export interface components {
 				| 'moderate'
 				| 'manage_group'
 				| 'manage_members'
+				| 'delete_group'
 				| 'create_event'
 				| 'upload_file'
 			)[];
@@ -2852,6 +2892,13 @@ export interface components {
 			};
 		};
 		/**
+		 * LegalPageParams
+		 * @description A legal-page edit (issue #259, SPEC §13): the authored markdown that replaces the built-in template. Instance operators only.
+		 */
+		LegalPageParams: {
+			content_markdown: string;
+		};
+		/**
 		 * AuditEvent
 		 * @description One append-only audit entry (issue #183, SPEC §11).
 		 */
@@ -2984,7 +3031,7 @@ export interface components {
 		};
 		/**
 		 * Ban
-		 * @description A community email ban (issue #183).
+		 * @description An email ban (SPEC §11): community-level (issue #183) or instance-wide (issue #259) — the same wire shape either way.
 		 */
 		Ban: {
 			banned_by?: {
@@ -3056,6 +3103,18 @@ export interface components {
 		 */
 		StatusOnly: {
 			status: string;
+		};
+		/**
+		 * InstanceBanParams
+		 * @description An instance-wide ban is keyed on the email itself (SPEC §11) — unlike the community ban's user_id — so it can also block addresses without an account. 422 details land on `email` when the address is already banned.
+		 */
+		InstanceBanParams: {
+			/**
+			 * Format: email
+			 * @description The email to ban
+			 */
+			email: string;
+			reason?: string | null;
 		};
 		/**
 		 * PollParams
@@ -3512,6 +3571,57 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	instance_unban: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				ban_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -5010,6 +5120,86 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	legal_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				key: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['LegalPageParams'];
+			};
+		};
+		responses: {
+			/** @description The updated legal page */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['LegalPage'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -8140,6 +8330,58 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	groups_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -11871,6 +12113,136 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['AuthExchangeResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	instance_bans: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Ban'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	instance_ban: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['InstanceBanParams'];
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Ban'];
+					};
 				};
 			};
 			/** @description Error envelope */

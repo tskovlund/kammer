@@ -38,6 +38,12 @@ defmodule KammerWeb.Api.InstanceController do
       min_client_version: Kammer.min_client_version(),
       default_locale: settings.default_locale,
       can_create_community: Authorization.can_create_community?(scope, settings),
+      # Per-viewer like `can_create_community` (issue #259): whether the
+      # calling device's user operates this instance, so a client can
+      # show its operator surfaces (instance settings/moderation, legal
+      # editing) without probing an operator-only endpoint for the 403.
+      # False for the tokenless probe.
+      instance_operator: Authorization.instance_operator?(scope),
       features: %{
         guest_rsvp: true,
         web_push: push_enabled,

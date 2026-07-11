@@ -6,6 +6,7 @@
 	import {
 		ManageApiError,
 		approveJoinRequest,
+		deleteGroup,
 		denyJoinRequest,
 		fetchJoinRequests,
 		loadErrorKind,
@@ -203,6 +204,27 @@
 		});
 	}
 
+	async function onDelete() {
+		if (!instance || !group || saving) return;
+		// The same guard the LiveView's data-confirm poses — deletion is
+		// irreversible and takes all content with it.
+		if (!window.confirm(t('manage.group.deleteConfirm'))) return;
+		saving = true;
+		error = null;
+		try {
+			await deleteGroup(instance, communitySlug, groupSlug);
+			// The group is gone, and this page's URL with it. The groups tab
+			// is the PWA's nearest equivalent of the LiveView's post-delete
+			// landing (the community's groups list — no such per-community
+			// page exists here). `saving` stays true so nothing double-fires
+			// while the navigation settles.
+			await goto(resolve('/groups')).catch(() => {});
+		} catch (cause) {
+			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			saving = false;
+		}
+	}
+
 	async function resolveRequest(request: JoinRequest, approve: boolean) {
 		if (!instance) return;
 		saving = true;
@@ -389,10 +411,15 @@
 		<a href={invitesHref} class="text-sm text-accent hover:underline">
 			{t('manage.group.invitesLink')}
 		</a>
-		<div>
+		<div class="flex flex-wrap gap-2">
 			<Button variant="danger" disabled={saving} onclick={toggleArchived}>
 				{group.archived ? t('manage.group.unarchive') : t('manage.group.archive')}
 			</Button>
+			{#if group.viewer_can.includes('delete_group')}
+				<Button variant="danger" disabled={saving} onclick={onDelete}>
+					{t('manage.group.delete')}
+				</Button>
+			{/if}
 		</div>
 	</div>
 {/if}

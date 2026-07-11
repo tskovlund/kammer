@@ -34,9 +34,9 @@ async function guardNetworkError<T>(request: () => Promise<T>, message: string):
  * "undefined", nor show a bogus version) — callers decide whether
  * `null` is fatal.
  */
-async function fetchInstanceMetadata(baseUrl: string) {
+async function fetchInstanceMetadata(baseUrl: string, deviceToken?: string) {
 	try {
-		const client = createApiClient(baseUrl);
+		const client = createApiClient(baseUrl, deviceToken);
 		const { data, error } = await client.GET('/api/v1/instance');
 		if (error || !data || typeof data.instance_name !== 'string' || !data.instance_name) {
 			return null;
@@ -66,13 +66,24 @@ export async function probeInstance(
 }
 
 /**
- * The server's product version for the You page's about line (#204).
- * Best effort by design: `null`, never a thrown error, when the
- * instance can't answer — a version footnote must not break settings.
+ * The signed-in view of the capability doc for the You page: the
+ * server's product version for the about line (#204) and whether this
+ * account operates the instance (#259) — the per-viewer
+ * `instance_operator` flag that gates the operator links (instance
+ * settings/moderation, legal pages), replacing the old
+ * probe-the-settings-read-for-a-403 dance. One request serves both.
+ * Best effort by design: a safe default shape, never a thrown error,
+ * when the instance can't answer — a footnote or a hidden link must
+ * not break the You page.
  */
-export async function fetchServerVersion(baseUrl: string): Promise<string | null> {
-	const version = (await fetchInstanceMetadata(baseUrl))?.version;
-	return typeof version === 'string' && version ? version : null;
+export async function fetchInstanceStatus(
+	instance: Instance
+): Promise<{ version: string | null; instanceOperator: boolean }> {
+	const data = await fetchInstanceMetadata(instance.baseUrl, instance.deviceToken);
+	return {
+		version: typeof data?.version === 'string' && data.version ? data.version : null,
+		instanceOperator: data?.instance_operator ?? false
+	};
 }
 
 /**
@@ -81,7 +92,7 @@ export async function fetchServerVersion(baseUrl: string): Promise<string | null
  * browser needs for `PushManager.subscribe`. Best-effort — a disabled
  * shape (`{ enabled: false, vapidPublicKey: null }`), never a thrown
  * error, when the instance can't answer, same stance as
- * `fetchServerVersion`.
+ * `fetchInstanceStatus`.
  */
 export async function fetchPushConfig(
 	baseUrl: string

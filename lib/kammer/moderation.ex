@@ -268,15 +268,21 @@ defmodule Kammer.Moderation do
     community = Repo.get!(Community, ban.community_id)
 
     if Authorization.can?(actor, :manage_community, community) do
-      with {:ok, lifted} <- Repo.delete(ban) do
-        Audit.record(
-          community,
-          actor,
-          "member.unbanned",
-          "#{actor.display_name} lifted the ban on #{ban.email}"
-        )
+      # stale_error_field: a concurrently-lifted ban folds into the same
+      # 404 as a nonexistent one instead of raising (500).
+      case Repo.delete(ban, stale_error_field: :id) do
+        {:ok, lifted} ->
+          Audit.record(
+            community,
+            actor,
+            "member.unbanned",
+            "#{actor.display_name} lifted the ban on #{ban.email}"
+          )
 
-        {:ok, lifted}
+          {:ok, lifted}
+
+        {:error, _stale} ->
+          {:error, :not_found}
       end
     else
       {:error, :unauthorized}
@@ -380,7 +386,11 @@ defmodule Kammer.Moderation do
           {:ok, InstanceBan.t()} | {:error, :unauthorized}
   def unban_instance(%User{} = actor, %InstanceBan{} = ban) do
     if Authorization.instance_operator?(actor) do
-      Repo.delete(ban)
+      # See unban/2: a concurrent lift folds into the nonexistent-ban 404.
+      case Repo.delete(ban, stale_error_field: :id) do
+        {:ok, lifted} -> {:ok, lifted}
+        {:error, _stale} -> {:error, :not_found}
+      end
     else
       {:error, :unauthorized}
     end

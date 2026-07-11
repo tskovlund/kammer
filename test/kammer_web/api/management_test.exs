@@ -212,6 +212,49 @@ defmodule KammerWeb.Api.ManagementTest do
       |> json_response(404)
     end
 
+    test "a group owner deletes the group; a group admin only gets 403", %{
+      community: community,
+      group: group
+    } do
+      group_owner = group_member_fixture(group, :owner)
+      group_admin = group_member_fixture(group, :admin)
+
+      # A group admin manages the group but doesn't own it — delete is
+      # owner-or-community-admin only, and the group is visible to them,
+      # so the refusal is an honest 403, not a hiding 404.
+      group_admin
+      |> api_conn()
+      |> delete(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}")
+      |> json_response(403)
+
+      body =
+        group_owner
+        |> api_conn()
+        |> delete(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}")
+        |> tap(&assert_operation_response(&1, "groups_delete"))
+        |> json_response(200)
+
+      assert body["data"] == %{"status" => "deleted"}
+      refute Kammer.Repo.get(Kammer.Groups.Group, group.id)
+    end
+
+    test "a community admin deletes a sealed group — the one admin power that pierces sealing",
+         %{community: community, owner: owner} do
+      sealed = group_fixture(community, %{sealed: true})
+
+      owner
+      |> api_conn()
+      |> delete(~p"/api/v1/communities/#{community.slug}/groups/#{sealed.slug}")
+      |> json_response(200)
+
+      refute Kammer.Repo.get(Kammer.Groups.Group, sealed.id)
+      # The context records the deletion in the community audit log.
+      assert Enum.any?(
+               Kammer.Audit.list_events(owner, community),
+               &(&1.action == "group.deleted")
+             )
+    end
+
     test "a sealed flag in an update body is ignored — sealed is create-only", %{
       community: community,
       owner: owner,
@@ -261,6 +304,25 @@ defmodule KammerWeb.Api.ManagementTest do
       |> api_conn()
       |> put(~p"/api/v1/instance/settings", %{instance_name: "Nej"})
       |> json_response(403)
+    end
+
+    test "the capability doc reports instance_operator per viewer (issue #259)" do
+      operator = instance_operator_fixture()
+      member = Kammer.AccountsFixtures.user_fixture()
+
+      # Clients gate their operator surfaces on this flag instead of
+      # probing an operator-only endpoint for the 403.
+      assert operator
+             |> api_conn()
+             |> get(~p"/api/v1/instance")
+             |> json_response(200)
+             |> Map.fetch!("instance_operator")
+
+      refute member
+             |> api_conn()
+             |> get(~p"/api/v1/instance")
+             |> json_response(200)
+             |> Map.fetch!("instance_operator")
     end
   end
 

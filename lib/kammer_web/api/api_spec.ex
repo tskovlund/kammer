@@ -571,6 +571,14 @@ defmodule KammerWeb.ApiSpec do
           operation("Update group settings", :groups_update, group_params(),
             request_body: body(Schemas.GroupParams),
             response: single_response(Schemas.Group)
+          ),
+        delete:
+          operation(
+            "Delete a group and all of its content — group owners, and " <>
+              "community admins (their sole power over sealed groups, ADR 0005)",
+            :groups_delete,
+            group_params(),
+            response: single_response(Schemas.StatusOnly)
           )
       },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/features" => %PathItem{
@@ -649,6 +657,34 @@ defmodule KammerWeb.ApiSpec do
               path_param(:community_slug)
             ],
             response: data_response(Schemas.AuditEvent)
+          )
+      },
+      "/api/v1/instance/moderation/bans" => %PathItem{
+        get:
+          operation(
+            "Active instance-wide email bans (operators only)",
+            :instance_bans,
+            [],
+            response: data_response(Schemas.Ban)
+          ),
+        post:
+          operation(
+            "Ban an email instance-wide (operators only): purges the " <>
+              "account's memberships everywhere and blocks rejoin on every community",
+            :instance_ban,
+            [],
+            status: 201,
+            request_body: body(Schemas.InstanceBanParams),
+            response: single_response(Schemas.Ban)
+          )
+      },
+      "/api/v1/instance/moderation/bans/{ban_id}" => %PathItem{
+        delete:
+          operation(
+            "Lift an instance-wide ban",
+            :instance_unban,
+            [path_param(:ban_id)],
+            response: single_response(Schemas.StatusOnly)
           )
       },
       "/api/v1/instance/settings" => %PathItem{
@@ -1491,6 +1527,14 @@ defmodule KammerWeb.ApiSpec do
           operation("A public legal page (privacy or imprint)", :legal_show, [path_param(:key)],
             security: [],
             response: json_response("The legal page", Schemas.LegalPage)
+          ),
+        put:
+          operation(
+            "Publish a legal page's text (operators only), replacing the built-in template",
+            :legal_update,
+            [path_param(:key)],
+            request_body: body(Schemas.LegalPageParams),
+            response: json_response("The updated legal page", Schemas.LegalPage)
           )
       },
       "/api/v1/communities/{community_slug}/events/{event_id}/guest-rsvp" => %PathItem{

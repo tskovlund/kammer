@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	InstanceApiError,
 	exchangeAndAddInstance,
-	fetchServerVersion,
+	fetchInstanceStatus,
 	probeInstance,
 	requestLink,
 	revokeAndRemoveInstance
@@ -59,22 +59,43 @@ describe('probeInstance', () => {
 	});
 });
 
-describe('fetchServerVersion', () => {
+describe('fetchInstanceStatus', () => {
 	beforeEach(() => {
 		vi.stubGlobal('fetch', vi.fn());
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
-	it('returns the instance version', async () => {
+	const instance = {
+		id: 'i1',
+		baseUrl: 'https://kammer.example.com',
+		instanceName: 'Example',
+		deviceToken: 'token-1',
+		user: { id: 'u1', email: 'a@example.com', displayName: 'Alice' },
+		addedAt: '2026-01-01T00:00:00Z'
+	};
+
+	it('returns the version and the per-viewer operator flag', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ instance_name: 'Example Club', version: '0.1.0-dev' })
+			jsonResponse({ instance_name: 'Example Club', version: '0.1.0-dev', instance_operator: true })
 		);
-		await expect(fetchServerVersion('https://kammer.example.com')).resolves.toBe('0.1.0-dev');
+		await expect(fetchInstanceStatus(instance)).resolves.toEqual({
+			version: '0.1.0-dev',
+			instanceOperator: true
+		});
+
+		// The read must carry the device token — instance_operator is
+		// per-viewer, and a regression to the tokenless client would
+		// silently report false forever.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.headers.get('authorization')).toBe('Bearer token-1');
 	});
 
-	it('returns null instead of throwing when the instance is unreachable', async () => {
+	it('returns a safe default shape instead of throwing when the instance is unreachable', async () => {
 		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
-		await expect(fetchServerVersion('https://unreachable.example.com')).resolves.toBeNull();
+		await expect(fetchInstanceStatus(instance)).resolves.toEqual({
+			version: null,
+			instanceOperator: false
+		});
 	});
 });
 
