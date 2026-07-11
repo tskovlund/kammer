@@ -7,11 +7,22 @@
 	import type { Community } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
+	import type { MessageKey } from '$lib/i18n/format.js';
 	import { fetchProfile, requestEmailChange, updateProfile } from '$lib/people/api.js';
-	import type { ContactVisibility, CustomField, Profile } from '$lib/people/types.js';
+	import {
+		browserTimezones,
+		timezoneOptions as buildTimezoneOptions
+	} from '$lib/people/timezones.js';
+	import type {
+		ContactVisibility,
+		CustomField,
+		DigestFrequency,
+		Profile
+	} from '$lib/people/types.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
+	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
 	const instance = $derived(
@@ -35,6 +46,11 @@
 	let displayName = $state('');
 	let bio = $state('');
 	let pronouns = $state('');
+	// Plain strings so they bind to <Select> — the option lists keep the
+	// values within the server's enums; save() narrows the digest one.
+	let locale = $state('');
+	let timezone = $state('');
+	let digestFrequency = $state('');
 	let contactPhone = $state('');
 	let contactPhoneVisibility = $state<ContactVisibility>('hidden');
 	let contactEmail = $state('');
@@ -50,6 +66,9 @@
 		displayName = next.display_name;
 		bio = next.bio ?? '';
 		pronouns = next.pronouns ?? '';
+		locale = next.locale;
+		timezone = next.timezone;
+		digestFrequency = next.digest_frequency;
 		contactPhone = next.contact_phone ?? '';
 		contactPhoneVisibility = next.contact_phone_visibility;
 		contactEmail = next.contact_email ?? '';
@@ -114,6 +133,9 @@
 		try {
 			const next = await updateProfile(instance, {
 				display_name: displayName.trim(),
+				locale,
+				timezone,
+				digest_frequency: digestFrequency as DigestFrequency,
 				bio: bio.trim() || null,
 				pronouns: pronouns.trim() || null,
 				contact_phone: contactPhone.trim() || null,
@@ -126,10 +148,34 @@
 			seed(next);
 			saved = true;
 		} catch (error) {
-			saveError = error instanceof FeedApiError ? error.message : t('profile.error.body');
+			saveError = saveErrorCopy(error);
 		} finally {
 			saving = false;
 		}
+	}
+
+	// A 422's field NAMES map onto our copy; the server's message strings
+	// never render (#253's direction).
+	const validationErrorKeys: Partial<Record<string, MessageKey>> = {
+		timezone: 'profile.error.timezone',
+		locale: 'profile.error.language',
+		digest_frequency: 'profile.error.digest'
+	};
+
+	function saveErrorCopy(error: unknown): string {
+		if (error instanceof FeedApiError && error.kind === 'validation') {
+			// hasOwn: detail keys come from a server this multi-instance
+			// client can't trust — a key like "constructor" would otherwise
+			// hit the prototype chain and feed t() a non-key, silently
+			// blanking the error banner.
+			const key = Object.keys(error.details)
+				.map((field) =>
+					Object.hasOwn(validationErrorKeys, field) ? validationErrorKeys[field] : undefined
+				)
+				.find((candidate) => candidate !== undefined);
+			return t(key ?? 'profile.error.validation');
+		}
+		return t('profile.error.body');
 	}
 
 	async function saveSection(section: CommunityProfileSection): Promise<void> {
@@ -190,6 +236,29 @@
 		{ value: 'members', label: () => t('profile.visibility.members') },
 		{ value: 'admins', label: () => t('profile.visibility.admins') }
 	];
+
+	// The locales the server accepts (its allowed_locales config).
+	const localeOptions = $derived([
+		{ value: 'en', label: t('profile.settings.language.en') },
+		{ value: 'da', label: t('profile.settings.language.da') }
+	]);
+
+	const digestOptions = $derived([
+		{ value: 'off', label: t('profile.settings.digest.off') },
+		{ value: 'daily', label: t('profile.settings.digest.daily') },
+		{ value: 'weekly', label: t('profile.settings.digest.weekly') }
+	]);
+
+	// The browser's IANA zone list — the same database the server
+	// validates against — with the SAVED zone (profile, not the live
+	// binding) prepended when the browser doesn't list it: the stored
+	// value must stay pickable while the user browses other options.
+	const timezoneOptions = $derived(
+		buildTimezoneOptions(profile?.timezone ?? null, browserTimezones()).map((zone) => ({
+			value: zone,
+			label: zone
+		}))
+	);
 
 	const selectClass =
 		'h-11 rounded-lg border border-line bg-surface px-2 text-sm text-ink transition-colors duration-150 hover:border-ink-faint/60';
@@ -310,6 +379,35 @@
 					{/if}
 				</div>
 			{/each}
+
+			<h2 class="mt-4 text-sm font-medium text-ink">{t('profile.settings.title')}</h2>
+			<p class="-mt-3 text-sm text-ink-muted">
+				{t('profile.settings.description', { name: instance.instanceName })}
+			</p>
+
+			<Select
+				id="profile-locale"
+				label={t('profile.settings.language')}
+				hint={t('profile.settings.language.hint', { name: instance.instanceName })}
+				options={localeOptions}
+				bind:value={locale}
+			/>
+
+			<Select
+				id="profile-timezone"
+				label={t('profile.settings.timezone')}
+				hint={t('profile.settings.timezone.hint')}
+				options={timezoneOptions}
+				bind:value={timezone}
+			/>
+
+			<Select
+				id="profile-digest"
+				label={t('profile.settings.digest')}
+				hint={t('profile.settings.digest.hint')}
+				options={digestOptions}
+				bind:value={digestFrequency}
+			/>
 
 			<div class="flex items-center gap-3">
 				<Button
