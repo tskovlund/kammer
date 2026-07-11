@@ -101,11 +101,30 @@ defmodule KammerWeb.Api.AssignmentsTest do
       assignments_context(visibility: :private)
 
     created = create_assignment(creator, community, group)
+    id = created["data"]["id"]
     outsider = user_fixture()
 
     outsider
     |> api_conn()
-    |> get(~p"/api/v1/communities/#{community.slug}/assignments/#{created["data"]["id"]}")
+    |> get(~p"/api/v1/communities/#{community.slug}/assignments/#{id}")
+    |> json_response(404)
+
+    # Reporting one of its comments reads the same — 404, never a 403
+    # that would confirm the hidden discussion exists.
+    comment =
+      creator
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/assignments/#{id}/comments", %{
+        body_markdown: "Skjult"
+      })
+      |> json_response(201)
+
+    outsider
+    |> api_conn()
+    |> post(
+      ~p"/api/v1/communities/#{community.slug}/assignments/#{id}/comments/#{comment["data"]["id"]}/report",
+      %{reason: "x"}
+    )
     |> json_response(404)
   end
 

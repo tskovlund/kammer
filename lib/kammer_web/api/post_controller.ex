@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.PostController do
   alias Kammer.Groups
   alias Kammer.Moderation
   alias KammerWeb.Api.Pagination
+  alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -238,12 +239,12 @@ defmodule KammerWeb.Api.PostController do
   def report(conn, %{"post_id" => post_id, "reason" => reason} = params)
       when is_binary(reason) do
     with_visible_post(conn, params, post_id, fn _group, post, user ->
-      reported(conn, Moderation.report_post(user, post, reason))
+      ReportIntake.respond(conn, Moderation.report_post(user, post, reason))
     end)
   end
 
   def report(conn, _params),
-    do: ApiError.send(conn, :bad_request, "Send a `reason` string.")
+    do: ReportIntake.reject_missing_reason(conn)
 
   @spec report_comment(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def report_comment(
@@ -252,36 +253,14 @@ defmodule KammerWeb.Api.PostController do
       )
       when is_binary(reason) do
     with_visible_comment(conn, params, post_id, comment_id, fn _group, _post, comment, user ->
-      reported(conn, Moderation.report_comment(user, comment, reason))
+      ReportIntake.respond(conn, Moderation.report_comment(user, comment, reason))
     end)
   end
 
   def report_comment(conn, _params),
-    do: ApiError.send(conn, :bad_request, "Send a `reason` string.")
+    do: ReportIntake.reject_missing_reason(conn)
 
   ## Internals
-
-  # The neutral report acknowledgement (issue #256). A repeat report of
-  # the same subject answers exactly like the first — the moderators
-  # already have it, and the LiveView flow treats that the same way —
-  # so only the unique-constraint changeset collapses into success;
-  # a genuinely invalid reason still answers 422.
-  defp reported(conn, result) do
-    case result do
-      {:ok, _report} ->
-        conn |> put_status(201) |> json(%{data: %{status: "reported"}})
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        if Moderation.duplicate_report?(changeset) do
-          conn |> put_status(201) |> json(%{data: %{status: "reported"}})
-        else
-          {:error, changeset}
-        end
-
-      error ->
-        error
-    end
-  end
 
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
@@ -329,8 +308,12 @@ defmodule KammerWeb.Api.PostController do
     end)
   end
 
-  defp find_comment(post, comment_id),
-    do: Enum.find(post.comments, &(&1.id == comment_id))
+  # Guarded like the event/assignment siblings: a future fetch that skips
+  # the comments preload must degrade to the no-oracle 404, not raise.
+  defp find_comment(%{comments: comments}, comment_id) when is_list(comments),
+    do: Enum.find(comments, &(&1.id == comment_id))
+
+  defp find_comment(_post, _comment_id), do: nil
 
   defp respond_with_post(conn, user, group, post_id) do
     with {:ok, post} <- Feed.fetch_visible_post(user, group, post_id) do

@@ -1419,6 +1419,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/assignments/{assignment_id}/comments/{comment_id}/report': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Report an assignment comment to the moderators (reporting it again answers the same) */
+		post: operations['assignments_report_comment'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/membership': {
 		parameters: {
 			query?: never;
@@ -2001,6 +2018,23 @@ export interface paths {
 		put?: never;
 		/** Ban a member */
 		post: operations['moderation_ban'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}/report': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Report an event comment to the moderators (reporting it again answers the same) */
+		post: operations['events_report_comment'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -9700,6 +9734,93 @@ export interface operations {
 			};
 		};
 	};
+	assignments_report_comment: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				assignment_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description What's wrong — the moderators see exactly this text */
+					reason?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	community_leave: {
 		parameters: {
 			query?: never;
@@ -12752,6 +12873,93 @@ export interface operations {
 				content: {
 					'application/json': {
 						data: components['schemas']['Ban'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_report_comment: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				event_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description What's wrong — the moderators see exactly this text */
+					reason?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
 					};
 				};
 			};

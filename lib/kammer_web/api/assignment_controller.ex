@@ -2,7 +2,8 @@ defmodule KammerWeb.Api.AssignmentController do
   @moduledoc """
   Assignments over the API (RFC 0001, issue #184): the group's task
   list and full parity — create, edit, delete, claim/unclaim,
-  complete/reopen, and the shared comment engine (ADR 0007). Every
+  complete/reopen, the shared comment engine (ADR 0007), and
+  reporting a comment to the moderators (issue #262). Every
   decision runs through `Kammer.Assignments` and `Kammer.Authorization`;
   the controller adds transport, never policy.
 
@@ -19,7 +20,10 @@ defmodule KammerWeb.Api.AssignmentController do
   alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Communities.Community
+  alias Kammer.Feed.Comment
   alias Kammer.Groups
+  alias Kammer.Moderation
+  alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -132,7 +136,36 @@ defmodule KammerWeb.Api.AssignmentController do
     end)
   end
 
+  @spec report_comment(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def report_comment(conn, %{"comment_id" => comment_id, "reason" => reason} = params)
+      when is_binary(reason) do
+    with_assignment(conn, params, fn assignment, _group, user ->
+      case find_comment(assignment.comments, comment_id) do
+        %Comment{} = comment ->
+          ReportIntake.respond(conn, Moderation.report_comment(user, comment, reason))
+
+        nil ->
+          {:error, :not_found}
+      end
+    end)
+  end
+
+  def report_comment(conn, _params),
+    do: ReportIntake.reject_missing_reason(conn)
+
   ## Internals
+
+  # Resolution stays within the visible assignment's own preloaded list,
+  # so a foreign or unknown comment 404s (no-oracle, like the event and
+  # post siblings). Note the list is unfiltered today — events and
+  # assignments have no pending guest comments to hide (those are
+  # post-only, feed.ex's confirm_guest_comment); revisit the preload if
+  # guest commenting ever extends here. The guard keeps a future
+  # non-preloading fetch from turning a 404 into a raise.
+  defp find_comment(comments, comment_id) when is_list(comments),
+    do: Enum.find(comments, &(&1.id == comment_id))
+
+  defp find_comment(_comments, _comment_id), do: nil
 
   defp assignment_data(assignment, group, user) do
     Serializer.assignment(assignment, user, group, Authorization.relationship(user, group))

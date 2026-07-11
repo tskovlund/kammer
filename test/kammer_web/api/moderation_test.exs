@@ -17,8 +17,12 @@ defmodule KammerWeb.Api.ModerationTest do
   import KammerWeb.ApiHelpers
   import OpenApiSpex.TestAssertions
 
+  alias Kammer.Assignments
+  alias Kammer.Events
   alias Kammer.Feed
+  alias Kammer.Groups.Group
   alias Kammer.Moderation
+  alias Kammer.Repo
 
   defp context(_tags) do
     {community, owner} = community_with_owner_fixture()
@@ -127,6 +131,188 @@ defmodule KammerWeb.Api.ModerationTest do
         member
         |> api_conn()
         |> post(report_path(community, group, post), %{reason: "En for meget"})
+        |> json_response(429)
+
+      assert body["error"]["code"] == "rate_limited"
+    end
+  end
+
+  describe "filing reports on event and assignment comments (issue #262)" do
+    setup :context
+
+    test "a member reports an event comment", %{
+      community: community,
+      owner: owner,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+
+      {:ok, event} =
+        Events.create_event(author, group, %{
+          "title" => "Fest",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 48, :hour)
+        })
+
+      {:ok, comment} = Events.create_comment(author, event, %{"body_markdown" => "Grov tone"})
+
+      path =
+        ~p"/api/v1/communities/#{community.slug}/events/#{event.id}/comments/#{comment.id}/report"
+
+      body =
+        member
+        |> api_conn()
+        |> post(path, %{reason: "Chikane"})
+        |> tap(&assert_operation_response(&1, "events_report_comment"))
+        |> json_response(201)
+
+      assert body["data"] == %{"status" => "reported"}
+
+      # Duplicate collapse itself is pinned once, on the post sibling —
+      # all four intake endpoints share ReportIntake.respond/2; this test
+      # earns its place by pinning the ROUTE (wiring + queue landing).
+      open = Moderation.list_open_reports(owner, community)
+      assert Enum.any?(open, &(&1.comment_id == comment.id))
+    end
+
+    test "a member reports an assignment comment", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      # Assignments are off by default (ADR 0016) — a group with the
+      # tool enabled hosts the reported discussion.
+      group =
+        community
+        |> group_fixture()
+        |> Group.features_changeset(%{"features" => ["feed", "assignments"]})
+        |> Repo.update!()
+        |> Map.put(:community, community)
+
+      group_membership_fixture(group, author)
+      member = group_member_fixture(group)
+
+      {:ok, assignment} = Assignments.create_assignment(author, group, %{"title" => "Kaffe"})
+
+      {:ok, comment} =
+        Assignments.create_comment(author, assignment, %{"body_markdown" => "Grov tone"})
+
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/assignments/#{assignment.id}/comments/#{comment.id}/report",
+        %{reason: "Chikane"}
+      )
+      |> tap(&assert_operation_response(&1, "assignments_report_comment"))
+      |> json_response(201)
+
+      open = Moderation.list_open_reports(owner, community)
+      assert Enum.any?(open, &(&1.comment_id == comment.id))
+    end
+
+    test "a comment belonging to a different event 404s — resolution stays within the subject",
+         %{community: community, group: group, author: author} do
+      member = group_member_fixture(group)
+      starts = DateTime.add(DateTime.utc_now(:second), 48, :hour)
+
+      {:ok, event_a} =
+        Events.create_event(author, group, %{"title" => "A", "starts_at" => starts})
+
+      {:ok, event_b} =
+        Events.create_event(author, group, %{"title" => "B", "starts_at" => starts})
+
+      {:ok, b_comment} = Events.create_comment(author, event_b, %{"body_markdown" => "På B"})
+
+      # A real, visible comment reached through the WRONG event's URL must
+      # answer the same neutral 404 as a nonexistent one — the lookup is
+      # scoped to the named subject's own comments, never resolved
+      # globally by id (the invariant a future global-resolution refactor
+      # would silently break).
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/events/#{event_a.id}/comments/#{b_comment.id}/report",
+        %{reason: "?"}
+      )
+      |> json_response(404)
+
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/events/#{event_a.id}/comments/#{b_comment.id}/report",
+        %{"reason" => 42}
+      )
+      |> json_response(400)
+    end
+
+    test "a comment belonging to a different assignment 404s the same way", %{
+      community: community,
+      author: author
+    } do
+      group =
+        community
+        |> group_fixture()
+        |> Group.features_changeset(%{"features" => ["feed", "assignments"]})
+        |> Repo.update!()
+        |> Map.put(:community, community)
+
+      group_membership_fixture(group, author)
+      member = group_member_fixture(group)
+      {:ok, assignment_a} = Assignments.create_assignment(author, group, %{"title" => "A"})
+      {:ok, assignment_b} = Assignments.create_assignment(author, group, %{"title" => "B"})
+
+      {:ok, b_comment} =
+        Assignments.create_comment(author, assignment_b, %{"body_markdown" => "På B"})
+
+      # Same scoped-resolution invariant as the event twin above — the
+      # assignment controller has its own lookup, so it needs its own pin.
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/assignments/#{assignment_a.id}/comments/#{b_comment.id}/report",
+        %{reason: "?"}
+      )
+      |> json_response(404)
+
+      # And a missing/non-string reason 400s before any lookup, on both
+      # new endpoints (the fallback clauses are one-per-controller).
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/assignments/#{assignment_a.id}/comments/#{b_comment.id}/report",
+        %{}
+      )
+      |> json_response(400)
+    end
+
+    test "event-comment reports draw from the same per-reporter budget as post reports", %{
+      community: community,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Mål"})
+
+      {:ok, event} =
+        Events.create_event(author, group, %{
+          "title" => "Fest",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 48, :hour)
+        })
+
+      {:ok, comment} = Events.create_comment(author, event, %{"body_markdown" => "Grov"})
+
+      # Spend the whole budget on POST reports — the limiter is keyed on
+      # the reporter, not the subject kind, so the event-comment report
+      # finds nothing left.
+      for _attempt <- 1..20, do: Moderation.report_post(member, post, "spam")
+
+      body =
+        member
+        |> api_conn()
+        |> post(
+          ~p"/api/v1/communities/#{community.slug}/events/#{event.id}/comments/#{comment.id}/report",
+          %{reason: "En for meget"}
+        )
         |> json_response(429)
 
       assert body["error"]["code"] == "rate_limited"

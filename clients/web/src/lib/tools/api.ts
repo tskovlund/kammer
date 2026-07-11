@@ -304,6 +304,36 @@ export async function commentAssignment(
 	});
 }
 
+/**
+ * Report an assignment comment to the moderators (issue #262). The server
+ * answers a bare `{status: "reported"}` — reporting the same comment again
+ * answers the same — so there is nothing to merge back into the assignment.
+ */
+export async function reportAssignmentComment(
+	instance: Instance,
+	communitySlug: string,
+	assignmentId: string,
+	commentId: string,
+	reason: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/assignments/{assignment_id}/comments/{comment_id}/report',
+			{
+				params: {
+					path: {
+						community_slug: communitySlug,
+						assignment_id: assignmentId,
+						comment_id: commentId
+					}
+				},
+				body: { reason }
+			}
+		);
+		if (error) throw fail(error, response, 'Could not send your report.');
+	});
+}
+
 export async function deleteAssignment(
 	instance: Instance,
 	communitySlug: string,

@@ -123,6 +123,19 @@ export function createEventStore(instance: Instance, communitySlug: string, even
 		}
 	}
 
+	// Reporting (issue #262) changes nothing in the event — the report goes
+	// to the moderation queue — so success is just `true` for the caller's
+	// own confirmation UI; failures land in the shared `actionError` banner.
+	async function reportComment(commentId: string, reason: string): Promise<boolean> {
+		try {
+			await api.reportComment(instance, communitySlug, eventId, commentId, reason);
+			return true;
+		} catch (error) {
+			report(error);
+			return false;
+		}
+	}
+
 	return {
 		get event() {
 			return event;
@@ -147,7 +160,8 @@ export function createEventStore(instance: Instance, communitySlug: string, even
 		comment,
 		editComment,
 		deleteComment,
-		reactComment
+		reactComment,
+		reportComment
 	};
 }
 

@@ -3,7 +3,8 @@ defmodule KammerWeb.Api.EventController do
   Events over the API (RFC 0001, issue #180): listings, details and
   member RSVP, plus full write parity — create/edit/delete (single and
   recurring, ADR 0019), per-occurrence cancel/reinstate, signup-slot
-  claim/unclaim and management, and the shared comment engine — all
+  claim/unclaim and management, the shared comment engine, and
+  reporting a comment to the moderators (issue #262) — all
   through the same context functions and authorization the UI uses; the
   controller adds transport, never policy.
 
@@ -24,6 +25,8 @@ defmodule KammerWeb.Api.EventController do
   alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Groups
+  alias Kammer.Moderation
+  alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -240,6 +243,17 @@ defmodule KammerWeb.Api.EventController do
 
   def react_comment(conn, _params),
     do: ApiError.send(conn, :bad_request, "Send an `emoji` string.")
+
+  @spec report_comment(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def report_comment(conn, %{"comment_id" => comment_id, "reason" => reason} = params)
+      when is_binary(reason) do
+    with_event_comment(conn, params, comment_id, fn _community, _event, comment, user ->
+      ReportIntake.respond(conn, Moderation.report_comment(user, comment, reason))
+    end)
+  end
+
+  def report_comment(conn, _params),
+    do: ReportIntake.reject_missing_reason(conn)
 
   ## Internals
 

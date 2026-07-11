@@ -7,6 +7,7 @@
 	import * as api from '$lib/tools/api.js';
 	import type { Assignment, Comment, ToolsErrorKind } from '$lib/tools/api.js';
 	import Button from '$lib/ui/Button.svelte';
+	import CommentComposer from '$lib/feed/components/CommentComposer.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Markdown from '$lib/ui/Markdown.svelte';
@@ -101,6 +102,31 @@
 			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
 		} finally {
 			commenting = false;
+		}
+	}
+
+	// Reporting a comment to the moderators (issue #262) — the same
+	// CommentComposer-driven reason form + confirmation idiom the feed's
+	// CommentItem uses, so the two report panels can't drift.
+	let reportingCommentId = $state<string | null>(null);
+	let reportedCommentIds = $state<Record<string, boolean>>({});
+
+	function toggleReport(commentId: string) {
+		reportingCommentId = reportingCommentId === commentId ? null : commentId;
+	}
+
+	async function sendReport(commentId: string, reason: string): Promise<boolean> {
+		actionError = null;
+		try {
+			await api.reportAssignmentComment(instance!, communitySlug, assignmentId, commentId, reason);
+			reportedCommentIds = { ...reportedCommentIds, [commentId]: true };
+			// Only close the form this submit belongs to — the user may have
+			// opened another comment's form while this request was in flight.
+			if (reportingCommentId === commentId) reportingCommentId = null;
+			return true;
+		} catch (cause) {
+			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+			return false;
 		}
 	}
 
@@ -227,6 +253,36 @@
 									<p class="mt-1 text-sm text-ink-faint">{t('assignments.comment.removed')}</p>
 								{:else}
 									<Markdown source={comment.body_markdown} class="mt-1 text-sm" />
+
+									<div class="mt-2 text-xs text-ink-faint">
+										<button
+											type="button"
+											class="hover:text-ink-muted"
+											onclick={() => toggleReport(comment.id)}
+										>
+											{t('feed.report.action')}
+										</button>
+									</div>
+
+									{#if reportingCommentId === comment.id}
+										<div
+											class="mt-2 flex flex-col gap-2 rounded-lg border border-line bg-paper px-3 py-2.5"
+										>
+											<p class="text-sm font-medium text-ink">{t('feed.report.title')}</p>
+											<CommentComposer
+												id="report-comment-{comment.id}"
+												placeholder={t('feed.report.placeholder')}
+												submitLabel={t('feed.report.send')}
+												compact
+												onSubmit={(reason) => sendReport(comment.id, reason)}
+												onCancel={() => (reportingCommentId = null)}
+											/>
+										</div>
+									{:else if reportedCommentIds[comment.id]}
+										<p class="mt-1.5 text-sm text-accent" role="status">
+											{t('feed.report.thanks')}
+										</p>
+									{/if}
 								{/if}
 							</Card>
 						</li>
