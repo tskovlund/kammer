@@ -32,6 +32,9 @@ defmodule Kammer.Moderation.CommunityBan do
     |> validate_required([:email])
     |> update_change(:email, &String.downcase/1)
     |> validate_length(:reason, max: 2_000)
-    |> unique_constraint([:community_id, :email])
+    # error_key so the 422 detail lands on `email`, the human-meaningful
+    # half of the composite — Ecto's default is the FIRST field
+    # (`community_id`), which no client form can map to an input.
+    |> unique_constraint([:community_id, :email], error_key: :email)
   end
 end

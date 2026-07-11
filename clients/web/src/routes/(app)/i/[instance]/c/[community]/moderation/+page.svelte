@@ -4,21 +4,27 @@
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import {
+		ManageApiError,
+		createBan,
 		dismissReport,
 		fetchBans,
 		fetchReports,
 		liftBan,
+		loadErrorKind,
 		resolveReport,
-		ManageApiError,
 		type Ban,
 		type ManageErrorKind,
 		type Report
 	} from '$lib/manage/api.js';
+	import { fetchRoster } from '$lib/people/api.js';
+	import type { Member } from '$lib/people/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import Input from '$lib/ui/Input.svelte';
+	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
 	const instance = $derived(
@@ -28,6 +34,7 @@
 	let community = $state<Community | null>(null);
 	let reports = $state<Report[]>([]);
 	let bans = $state<Ban[]>([]);
+	let members = $state<Member[]>([]);
 	let loading = $state(true);
 	// Load failure — replaces the page. A per-action failure uses
 	// `actionError` instead, so one failed resolve/dismiss doesn't discard
@@ -38,8 +45,21 @@
 	// whole list.
 	let busy = $state<string[]>([]);
 
+	// Ban-creation form (SPEC §11): the target must be picked from the
+	// roster, so only admins (who fetch it) see the form at all.
+	let banUserId = $state('');
+	let banReason = $state('');
+	let banning = $state(false);
+	let banError = $state<string | null>(null);
+
 	const communitySlug = $derived(page.params.community!);
 	const canManage = $derived(community?.viewer_can.includes('manage_community') ?? false);
+
+	// Only plain members can be banned — the server refuses admins and
+	// owners (demote first, deliberately two steps) and self-bans.
+	const banCandidates = $derived(
+		members.filter((member) => member.role === 'member' && member.user.id !== instance?.user.id)
+	);
 
 	$effect(() => {
 		const inst = instance;
@@ -49,21 +69,33 @@
 		let cancelled = false;
 		loading = true;
 		error = null;
+		// A re-run means a different community (or a refreshed instance
+		// list) — the ban form must not carry a selection, typed reason,
+		// error, or in-flight lock across (a stale selection would leave
+		// the Ban button enabled while onBan silently no-ops).
+		banUserId = '';
+		banReason = '';
+		banError = null;
+		banning = false;
 
 		(async () => {
 			try {
 				const resolvedCommunity = await fetchCommunity(inst, slug);
 				if (cancelled) return;
 				community = resolvedCommunity;
-				const [resolvedReports, resolvedBans] = await Promise.all([
+				const manage = resolvedCommunity.viewer_can.includes('manage_community');
+				const [resolvedReports, resolvedBans, resolvedRoster] = await Promise.all([
 					fetchReports(inst, slug),
-					fetchBans(inst, slug)
+					fetchBans(inst, slug),
+					// The roster only feeds the ban form, which only admins see.
+					manage ? fetchRoster(inst, slug) : Promise.resolve(null)
 				]);
 				if (cancelled) return;
 				reports = resolvedReports;
 				bans = resolvedBans;
+				members = resolvedRoster?.members ?? [];
 			} catch (cause) {
-				if (!cancelled) error = cause instanceof ManageApiError ? cause.kind : 'server';
+				if (!cancelled) error = loadErrorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -112,8 +144,59 @@
 		});
 	}
 
+	async function onBan(event: SubmitEvent) {
+		event.preventDefault();
+		const target = banCandidates.find((candidate) => candidate.user.id === banUserId);
+		if (!instance || !target || banning) return;
+		if (!window.confirm(t('manage.moderation.ban.confirm', { name: target.user.display_name })))
+			return;
+		// A POST that resolves after the admin navigated to ANOTHER
+		// community's moderation page must not touch its state — unlike the
+		// act() handlers (whose filters no-op harmlessly), a prepend would
+		// plant this community's ban row in the other list. The load effect
+		// owns the reset on navigation; a stale settle changes nothing.
+		const submittedTo = `${instance.id}/${communitySlug}`;
+		const stale = () => `${instance?.id}/${communitySlug}` !== submittedTo;
+		banning = true;
+		banError = null;
+		try {
+			const ban = await createBan(
+				instance,
+				communitySlug,
+				target.user.id,
+				banReason.trim() || null
+			);
+			if (stale()) return;
+			bans = [ban, ...bans];
+			members = members.filter((candidate) => candidate.user.id !== target.user.id);
+			banUserId = '';
+			banReason = '';
+		} catch (cause) {
+			if (stale()) return;
+			// A 422's field names key our own copy — the server's English
+			// message never renders (#253). `email` means the address already
+			// carries a ban; `reason` is the 2000-character cap.
+			if (cause instanceof ManageApiError && cause.kind === 'validation' && cause.details.email) {
+				banError = t('manage.moderation.ban.errorAlreadyBanned');
+			} else if (
+				cause instanceof ManageApiError &&
+				cause.kind === 'validation' &&
+				cause.details.reason
+			) {
+				banError = t('manage.moderation.ban.errorReason');
+			} else {
+				banError = t('manage.error.body');
+			}
+		} finally {
+			if (!stale()) banning = false;
+		}
+	}
+
 	const backHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${page.params.community}/settings`)
+	);
+	const auditHref = $derived(
+		resolve(`/i/${page.params.instance}/c/${page.params.community}/moderation/audit`)
 	);
 </script>
 
@@ -212,12 +295,50 @@
 				{/each}
 			</Card>
 		{/if}
+
+		{#if canManage && banCandidates.length > 0}
+			<form class="mt-4 flex max-w-lg flex-col gap-3" onsubmit={onBan}>
+				<h3 class="text-sm font-medium text-ink">{t('manage.moderation.ban.title')}</h3>
+				<Select
+					id="ban-member"
+					label={t('manage.moderation.ban.member')}
+					bind:value={banUserId}
+					options={[
+						{ value: '', label: t('manage.moderation.ban.choose') },
+						...banCandidates.map((candidate) => ({
+							value: candidate.user.id,
+							label: candidate.user.display_name
+						}))
+					]}
+				/>
+				<Input
+					id="ban-reason"
+					label={t('manage.moderation.ban.reason')}
+					bind:value={banReason}
+					maxlength={2000}
+				/>
+				<div class="flex items-center gap-3">
+					<Button type="submit" variant="danger" disabled={banning || banUserId === ''}>
+						{t('manage.moderation.ban.submit')}
+					</Button>
+					{#if banError}
+						<span class="text-sm text-danger" role="alert">{banError}</span>
+					{/if}
+				</div>
+			</form>
+		{/if}
 	</section>
 
 	{#if canManage}
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a href={backHref} class="mt-6 inline-block text-sm text-accent hover:underline">
-			{t('manage.community.link')}
-		</a>
+		<div class="mt-6 flex flex-col items-start gap-2">
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href={auditHref} class="text-sm text-accent hover:underline">
+				{t('manage.moderation.audit.link')}
+			</a>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href={backHref} class="text-sm text-accent hover:underline">
+				{t('manage.community.link')}
+			</a>
+		</div>
 	{/if}
 {/if}

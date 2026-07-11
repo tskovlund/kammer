@@ -10,6 +10,31 @@ and this project adheres to
 
 ### Added
 
+- The PWA profile page now exposes the account's language, timezone,
+  and email-digest frequency (issue #260, part of #187) — three
+  settings `PUT /api/v1/me` already accepted and digest/notification
+  emails already read, but which had no edit surface outside the
+  LiveView settings screen. Language and digest mirror the LiveView
+  option lists (English/Danish; off/daily/weekly Mondays); the
+  timezone upgrades LiveView's free-text input to a select over the
+  browser's IANA zone list, and the hints spell out that this
+  language governs emails from the server while the app's own display
+  language stays a device-local choice on the You tab. A 422 on save
+  now maps the changeset's field names onto our own copy instead of
+  rendering the server's message string (#253).
+- Ban creation and an audit-log page in the PWA's moderation surface
+  (issue #259, part of #187), both over API endpoints that already
+  existed with no PWA caller. The moderation page gained a "ban a
+  member" form (admins only): pick a plain member from the roster —
+  the server refuses admins, owners, and self-bans, mirroring the
+  LiveView semantics — with an optional reason the LiveView flow
+  never exposed, and a 422's field names map to our own copy
+  (already-banned email, over-long reason). A new audit-log page
+  under `moderation/audit`, linked from the moderation page like the
+  LiveView's inline audit section, lists the community's append-only
+  admin actions (summary, action code, relative timestamp) for
+  community admins.
+
 - Community and instance-operator settings pages in the PWA (issue
   #259, part of #187), both over API surfaces that already existed —
   no new server endpoints. The community settings page gained the

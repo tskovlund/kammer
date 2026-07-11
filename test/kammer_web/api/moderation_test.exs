@@ -435,6 +435,29 @@ defmodule KammerWeb.Api.ModerationTest do
       |> json_response(403)
     end
 
+    test "banning the same address twice answers 422 naming the email field", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      owner
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/moderation/bans", %{user_id: author.id})
+      |> json_response(201)
+
+      # The repeat (two admins racing, or a stale roster) conflicts on
+      # the (community, email) unique index. The 422 detail must land on
+      # `email` — the field a client form can actually map to copy — not
+      # Ecto's first-composite-field default (`community_id`).
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        owner
+        |> api_conn()
+        |> post(~p"/api/v1/communities/#{community.slug}/moderation/bans", %{user_id: author.id})
+        |> json_response(422)
+
+      assert details["email"]
+    end
+
     test "a non-admin ban is refused 403 even for an unknown user id — no existence oracle",
          %{community: community, author: author} do
       # Authorization precedes the target lookup, so a missing id and a
