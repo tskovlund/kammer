@@ -41,6 +41,23 @@ and this project adheres to
 
 ### Added
 
+- PWA join flow (issue #255, part of #187): the invite link admins
+  share (`/invite/{token}`) now lands on a real page in the Svelte
+  client — until now the PWA had no invite landing and no registration
+  form, so post-cut no new member could have joined. The landing
+  previews what the invite opens (community/group, real-names note)
+  via the until-now-unused public preview endpoint, with dead tokens
+  collapsing into one calm "no longer valid" state; a visitor already
+  signed in to this instance gets a one-tap accept, everyone else
+  branches into sign-in or a new registration form (display name +
+  email → magic link, `POST /auth/register`'s first client). The
+  invite token rides sessionStorage through the email round-trip, so
+  arriving back via the magic link accepts automatically and lands in
+  the joined community/group; the sign-in screen also gains a
+  create-account branch when the probed instance reports open
+  registration. EN+DA strings, and a new e2e spec
+  (`04-join.spec.ts`) drives the whole newcomer path — invite link →
+  register → magic link → joined.
 - Report creation over the API and the PWA report flow (issue #256,
   part of #187): `POST .../posts/{post_id}/report` and
   `POST .../posts/{post_id}/comments/{comment_id}/report` file a

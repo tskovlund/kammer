@@ -4,8 +4,11 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
+	import { FeedApiError } from '$lib/api/errors.js';
 	import { exchangeAndAddInstance, probeInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
+	import { acceptInvite, joinedHref } from '$lib/invites/api.js';
+	import { takePendingInvite } from '$lib/invites/pending.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -28,8 +31,39 @@
 		const origin = window.location.origin;
 		try {
 			const { instanceName } = await probeInstance(origin);
-			await exchangeAndAddInstance(origin, token, instanceName);
+			const instance = await exchangeAndAddInstance(origin, token, instanceName);
 			instances.refresh();
+
+			// A join attempt in flight (issue #255): the invite landing page
+			// remembered its token before sending the visitor through
+			// registration/sign-in — accept it now and land in the joined
+			// community. The sign-in itself succeeded either way, so a
+			// failed accept must not fail the exchange — but it must not be
+			// silent either (the newcomer registered specifically to join):
+			// land back on the invite page, which renders the signed-in
+			// state with the refusal spelled out.
+			const pendingInvite = takePendingInvite();
+			if (pendingInvite) {
+				try {
+					const accepted = await acceptInvite(instance, pendingInvite);
+					// eslint-disable-next-line svelte/no-navigation-without-resolve -- joinedHref resolves internally
+					await goto(joinedHref(instance.id, accepted), { replaceState: true });
+				} catch (cause) {
+					// Carry the refusal kind so the landing can say what
+					// happened instead of showing a bare one-tap button (a
+					// dead token 404s at the preview and needs no hint).
+					const refused =
+						cause instanceof FeedApiError && cause.kind === 'forbidden'
+							? 'email'
+							: cause instanceof FeedApiError && cause.kind === 'not_found'
+								? null
+								: 'other';
+					const suffix = refused ? `?refused=${refused}` : '';
+					// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolve() handles the route; the query suffix is a fixed literal
+					await goto(resolve(`/invite/${pendingInvite}`) + suffix, { replaceState: true });
+				}
+				return;
+			}
 			await goto(resolve('/'), { replaceState: true });
 		} catch {
 			failed = true;

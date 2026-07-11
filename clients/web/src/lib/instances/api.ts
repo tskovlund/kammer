@@ -1,4 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
+import { FeedApiError, fail, guard } from '$lib/api/errors.js';
 import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { unsubscribeFromPush } from '$lib/push/subscription.js';
 import { instanceStore } from './store.js';
@@ -93,6 +94,56 @@ export async function requestLink(baseUrl: string, email: string): Promise<void>
 		});
 		if (error) throw new InstanceApiError('Could not request a sign-in link.');
 	}, 'Could not request a sign-in link.');
+}
+
+/**
+ * Creates an account (email + display name, SPEC §4 — no password,
+ * SPEC §2) and has the instance email a magic sign-in link, the same
+ * passwordless confirmation the sign-in flow uses: callers land on the
+ * identical "check your email" step afterwards.
+ *
+ * Unlike the deliberately neutral sign-in endpoints, `POST
+ * /auth/register` answers 422 with changeset details, so a
+ * `validation`-kind `FeedApiError` carries `details` (field →
+ * messages); map fields with `registerErrorKeys` below.
+ */
+export async function registerAccount(
+	baseUrl: string,
+	params: { email: string; displayName: string }
+): Promise<void> {
+	return guard(async () => {
+		const client = createApiClient(baseUrl);
+		const { error, response } = await client.POST('/api/v1/auth/register', {
+			body: { email: params.email, display_name: params.displayName }
+		});
+		if (error) throw fail(error, response, 'Could not create the account.');
+	});
+}
+
+/**
+ * The one registration-error → i18n-key mapping, shared by the two
+ * registration forms (sign-in page and invite landing) so the same
+ * server answer never reads differently between them. Returns i18n
+ * KEYS — the caller translates; server message strings never render.
+ */
+export function registerErrorKeys(cause: unknown): {
+	nameKey: 'register.error.displayName' | null;
+	emailKey: 'register.error.email' | null;
+	formKey: 'register.error.generic' | 'register.error.rateLimited' | null;
+} {
+	if (cause instanceof FeedApiError && cause.kind === 'validation') {
+		const nameKey = cause.details.display_name ? 'register.error.displayName' : null;
+		const emailKey = cause.details.email ? 'register.error.email' : null;
+		return {
+			nameKey,
+			emailKey,
+			formKey: nameKey || emailKey ? null : 'register.error.generic'
+		};
+	}
+	if (cause instanceof FeedApiError && cause.kind === 'rate_limited') {
+		return { nameKey: null, emailKey: null, formKey: 'register.error.rateLimited' };
+	}
+	return { nameKey: null, emailKey: null, formKey: 'register.error.generic' };
 }
 
 /**

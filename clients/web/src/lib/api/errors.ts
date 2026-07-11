@@ -25,12 +25,24 @@ export type FeedErrorKind =
 export class FeedApiError extends Error {
 	readonly kind: FeedErrorKind;
 	readonly status: number | null;
+	/**
+	 * Field → messages from a 422's changeset details, `{}` otherwise.
+	 * UI maps field NAMES onto its own i18n copy — the message strings
+	 * are server-English and must never render (#253's direction).
+	 */
+	readonly details: Record<string, string[]>;
 
-	constructor(kind: FeedErrorKind, message: string, status: number | null = null) {
+	constructor(
+		kind: FeedErrorKind,
+		message: string,
+		status: number | null = null,
+		details: Record<string, string[]> = {}
+	) {
 		super(message);
 		this.name = 'FeedApiError';
 		this.kind = kind;
 		this.status = status;
+		this.details = details;
 	}
 }
 
@@ -54,7 +66,7 @@ export function kindForStatus(status: number): FeedErrorKind {
 }
 
 interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
+	error?: { code?: string; message?: string; details?: Record<string, string[]> };
 }
 
 /** Turn an openapi-fetch `{ error, response }` into a typed FeedApiError. */
@@ -65,8 +77,8 @@ export function fail(
 ): FeedApiError {
 	const status = response?.status ?? null;
 	const kind = status ? kindForStatus(status) : 'server';
-	const message = (error as ErrorEnvelope | undefined)?.error?.message ?? fallback;
-	return new FeedApiError(kind, message, status);
+	const envelope = (error as ErrorEnvelope | undefined)?.error;
+	return new FeedApiError(kind, envelope?.message ?? fallback, status, envelope?.details ?? {});
 }
 
 export async function guard<T>(request: () => Promise<T>): Promise<T> {
