@@ -12,6 +12,7 @@ export type NotificationLevel = components['schemas']['NotificationLevel'];
 export type Role = Member['role'];
 export type NotificationLevelValue = NotificationLevel['level'];
 export type ContactVisibility = Profile['contact_phone_visibility'];
+export type DigestFrequency = Profile['digest_frequency'];
 
 /** The roster response: rows plus the viewer-visible field definitions. */
 export interface Roster {
@@ -22,6 +23,9 @@ export interface Roster {
 /** The editable subset of the own-profile shape (PUT /me). */
 export interface ProfileParams {
 	display_name?: string;
+	locale?: string;
+	timezone?: string;
+	digest_frequency?: DigestFrequency;
 	bio?: string | null;
 	pronouns?: string | null;
 	contact_phone?: string | null;
