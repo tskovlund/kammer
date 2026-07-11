@@ -49,6 +49,25 @@ export async function allowGuestComments(deviceToken: string): Promise<void> {
 	});
 }
 
+interface CreatedInvite {
+	data: { token: string };
+}
+
+/**
+ * Mints the community invite the join spec's newcomer follows. Invite
+ * creation through the UI is a real PWA surface (the community invites
+ * page), but 04-join.spec.ts is about the *invitee's* path — this is a
+ * seed, same rationale as `createFixtureEvent`.
+ */
+export async function createCommunityInvite(deviceToken: string): Promise<string> {
+	const { data } = await authedJson<CreatedInvite>(
+		deviceToken,
+		`/communities/${COMMUNITY.slug}/invites`,
+		{ method: 'POST', body: JSON.stringify({}) }
+	);
+	return data.token;
+}
+
 interface CreatedEvent {
 	data: { id: string };
 }

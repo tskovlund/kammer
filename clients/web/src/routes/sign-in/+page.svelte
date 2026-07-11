@@ -2,7 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { exchangeAndAddInstance, probeInstance, requestLink } from '$lib/instances/api.js';
+	import {
+		exchangeAndAddInstance,
+		probeInstance,
+		registerAccount,
+		registerErrorKeys,
+		requestLink
+	} from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { extractMagicToken, normalizeInstanceUrl } from '$lib/instances/signin.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -11,15 +17,22 @@
 	// Three steps, one screen: address → email → check-your-email. The
 	// paste field on the last step covers emails opened on another device
 	// or in a mail client that strips deep links; the /sign-in/[token]
-	// route covers links opened directly in this PWA.
-	let step = $state<'instance' | 'email' | 'confirm'>('instance');
+	// route covers links opened directly in this PWA. When the probed
+	// instance has open registration, the email step also branches into a
+	// create-account form (issue #255) that ends on the same confirm step
+	// — registering emails the identical magic link.
+	let step = $state<'instance' | 'email' | 'register' | 'confirm'>('instance');
 	let address = $state('');
 	let email = $state('');
+	let displayName = $state('');
 	let paste = $state('');
 	let baseUrl = $state('');
 	let instanceName = $state('');
+	let registrationOpen = $state(false);
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+	let nameError = $state<string | null>(null);
+	let emailError = $state<string | null>(null);
 	let resent = $state(false);
 
 	async function submitInstance(event: SubmitEvent): Promise<void> {
@@ -35,9 +48,30 @@
 			const probe = await probeInstance(normalized);
 			baseUrl = normalized;
 			instanceName = probe.instanceName;
+			registrationOpen = probe.registrationOpen;
 			step = 'email';
 		} catch {
 			error = t('signin.instance.error.unreachable');
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function submitRegister(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		busy = true;
+		error = null;
+		nameError = null;
+		emailError = null;
+		try {
+			await registerAccount(baseUrl, { email, displayName });
+			step = 'confirm';
+			resent = false;
+		} catch (cause) {
+			const keys = registerErrorKeys(cause);
+			nameError = keys.nameKey ? t(keys.nameKey) : null;
+			emailError = keys.emailKey ? t(keys.emailKey) : null;
+			error = keys.formKey ? t(keys.formKey) : null;
 		} finally {
 			busy = false;
 		}
@@ -91,9 +125,13 @@
 		}
 	}
 
-	function backTo(target: 'instance' | 'email'): void {
+	// Also the way *into* the register step — the shared point is that
+	// switching steps drops any stale error/confirmation state.
+	function backTo(target: 'instance' | 'email' | 'register'): void {
 		step = target;
 		error = null;
+		nameError = null;
+		emailError = null;
 		resent = false;
 	}
 </script>
@@ -151,9 +189,46 @@
 		<Button id="signin-email-submit" variant="primary" type="submit" disabled={busy}>
 			{t('signin.email.submit')}
 		</Button>
+		{#if registrationOpen}
+			<Button id="signin-email-register" variant="ghost" onclick={() => backTo('register')}>
+				{t('signin.email.register')}
+			</Button>
+		{/if}
 		<Button id="signin-email-back" variant="ghost" onclick={() => backTo('instance')}>
 			{t('common.back')}
 		</Button>
+	</form>
+{:else if step === 'register'}
+	<h1 class="text-lg font-semibold text-ink">{t('register.title')}</h1>
+	<p class="mt-1 text-sm leading-relaxed text-ink-muted">{t('register.description')}</p>
+	<form id="signin-register-form" class="mt-6 flex flex-col gap-4" onsubmit={submitRegister}>
+		<Input
+			id="signin-register-display-name"
+			label={t('register.displayName')}
+			bind:value={displayName}
+			error={nameError}
+			type="text"
+			autocomplete="name"
+			required
+		/>
+		<Input
+			id="signin-register-email"
+			label={t('register.email')}
+			bind:value={email}
+			error={emailError}
+			type="email"
+			autocomplete="email"
+			required
+		/>
+		<Button id="signin-register-submit" variant="primary" type="submit" disabled={busy}>
+			{t('register.submit')}
+		</Button>
+		<Button id="signin-register-back" variant="ghost" onclick={() => backTo('email')}>
+			{t('common.back')}
+		</Button>
+		<p class="text-sm text-danger" role="alert" aria-live="polite">
+			{#if error}{error}{/if}
+		</p>
 	</form>
 {:else}
 	<h1 class="text-lg font-semibold text-ink">{t('signin.confirm.title')}</h1>
