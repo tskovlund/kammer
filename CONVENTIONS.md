@@ -55,6 +55,14 @@ tooling wherever possible; the rest is enforced in review.
   `ApiError` the only error shape; `Pagination` the only cursor code.
   New endpoints follow the existing controller pattern — thin, all
   policy in contexts/authorization.
+- **Wire shapes decode into strongly-typed clients without edge-case
+  overrides** (owner-confirmed, 2026-07-11): a field is one JSON type,
+  always — never `false | string`, never present-sometimes without
+  being declared optional, never a shape that would force a Swift
+  `Codable`/Kotlin serializer to special-case it. The native V1
+  clients (ADR 0025/0028) generate from the OpenAPI document, so the
+  conformance + bijection suites are the enforcement; this bullet is
+  the _why_.
 - **Comments/reactions** are one engine (ADR 0007) — reuse for any new
   commentable/reactable thing.
 - **Non-access-control visibility redaction** (e.g. which profile
