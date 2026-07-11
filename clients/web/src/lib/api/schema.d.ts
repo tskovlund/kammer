@@ -672,7 +672,8 @@ export interface paths {
 		/** Update the caller's profile and preferences */
 		put: operations['me_update'];
 		post?: never;
-		delete?: never;
+		/** Delete the account (SPEC §12): confirm_email must match the account's address */
+		delete: operations['me_delete'];
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -991,6 +992,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/email-change': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Request an email change: a confirmation link is emailed to the new address */
+		post: operations['email_change_request'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/members/{user_id}/role': {
 		parameters: {
 			query?: never;
@@ -1174,6 +1192,23 @@ export interface paths {
 		/** Approve a join request, creating the membership (422 when the person is banned) */
 		put: operations['join_requests_approve'];
 		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/me/email-change/confirm': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Confirm an email change by consuming the emailed single-use token */
+		post: operations['email_change_confirm'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1713,6 +1748,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/export': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's complete data export (SPEC §12) as one zip */
+		get: operations['me_export'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/auth/register': {
 		parameters: {
 			query?: never;
@@ -2155,7 +2207,7 @@ export interface components {
 		};
 		/**
 		 * Profile
-		 * @description The caller's own account and base profile (SPEC §4) — contact visibilities included because it is theirs. Email changes stay on the web flow.
+		 * @description The caller's own account and base profile (SPEC §4) — contact visibilities included because it is theirs. Email changes go through the email-change confirmation round-trip (issue #258).
 		 */
 		Profile: {
 			bio?: string | null;
@@ -6364,6 +6416,90 @@ export interface operations {
 			};
 		};
 	};
+	me_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/**
+					 * Format: email
+					 * @description The account's own email, typed back to confirm intent
+					 */
+					confirm_email?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Deleted — identity gone, personal rows cascaded, authored content anonymized */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	public_community_show: {
 		parameters: {
 			query?: never;
@@ -7914,6 +8050,87 @@ export interface operations {
 			};
 		};
 	};
+	email_change_request: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** Format: email */
+					email?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Confirmation sent — nothing changes until the link is confirmed */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	members_update_role: {
 		parameters: {
 			query?: never;
@@ -8805,6 +9022,90 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	email_change_confirm: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					token?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Confirmed. Device tokens are bound to the address they were issued under, so the change invalidated all of them — swap in the fresh device_token; every other device signs out. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Profile'];
+						/** @description Replacement credential for the confirming device */
+						device_token: string;
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -11270,6 +11571,62 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	me_export: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The export zip: data.json plus every uploaded file */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
 				};
 			};
 			/** @description Error envelope */

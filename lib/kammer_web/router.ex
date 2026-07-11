@@ -309,6 +309,15 @@ defmodule KammerWeb.Router do
     get "/me/devices", ProfileController, :devices
     delete "/me/devices/:device_id", ProfileController, :revoke_device
 
+    # Account lifecycle (issue #258, SPEC §12): email change, export,
+    # deletion. The email-change confirm is authenticated — the emailed
+    # token is bound to the requesting account, so the PWA landing page
+    # sends it back with the device token it already holds.
+    post "/me/email-change", AccountController, :request_email_change
+    post "/me/email-change/confirm", AccountController, :confirm_email_change
+    get "/me/export", AccountController, :export
+    delete "/me", AccountController, :delete
+
     post "/invites/:token/accept", InviteController, :accept
 
     get "/communities", CommunityController, :index

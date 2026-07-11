@@ -1102,8 +1102,8 @@ defmodule KammerWeb.Api.Schemas do
       title: "Profile",
       description:
         "The caller's own account and base profile (SPEC §4) — contact " <>
-          "visibilities included because it is theirs. Email changes stay " <>
-          "on the web flow.",
+          "visibilities included because it is theirs. Email changes go " <>
+          "through the email-change confirmation round-trip (issue #258).",
       type: :object,
       properties: %{
         id: %Schema{type: :string, format: :uuid},

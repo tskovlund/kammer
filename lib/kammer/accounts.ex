@@ -167,12 +167,17 @@ defmodule Kammer.Accounts do
   If the token matches, the user email is updated and the token is deleted.
   """
   @spec update_user_email(User.t(), String.t()) :: {:ok, User.t()} | {:error, term()}
-  def update_user_email(user, token) do
+  def update_user_email(%User{id: user_id} = user, token) do
     context = "change:#{user.email}"
 
     Repo.transact(fn ->
       with {:ok, query} <- UserToken.verify_change_email_token_query(token, context),
-           %UserToken{sent_to: email} <- Repo.one(query),
+           # Scope the match to the caller: the context already embeds
+           # this user's current (unique) email, but binding the query to
+           # user_id too means no future write path that changes an email
+           # outside this function can leave a token a re-registrant of the
+           # freed address could consume (defense in depth, review of #258).
+           %UserToken{sent_to: email, user_id: ^user_id} <- Repo.one(query),
            {:ok, user} <- Repo.update(User.email_changeset(user, %{email: email})),
            {_count, _result} <-
              Repo.delete_all(from(UserToken, where: [user_id: ^user.id, context: ^context])) do
@@ -526,6 +531,25 @@ defmodule Kammer.Accounts do
   end
 
   @doc """
+  Deletes every API device token for the user except `keep_id` — used
+  after an email change, which invalidates all api-device tokens at
+  once (they're bound to the address via `sent_to`). Without this the
+  dead rows linger in `list_user_devices`, so the Devices page would
+  show signed-out phones as if still active. Session tokens are NOT
+  touched: they aren't email-bound, so a browser session survives the
+  change and stays a live, listable device.
+  """
+  @spec purge_stale_api_devices(User.t(), Ecto.UUID.t()) :: {non_neg_integer(), nil}
+  def purge_stale_api_devices(%User{} = user, keep_id) do
+    Repo.delete_all(
+      from(token in UserToken,
+        where:
+          token.user_id == ^user.id and token.context == "api-device" and token.id != ^keep_id
+      )
+    )
+  end
+
+  @doc """
   The token row behind a valid API device token, or `nil` — lets the
   device listing mark which entry is the caller's own credential.
   """
@@ -575,15 +599,32 @@ defmodule Kammer.Accounts do
       {:ok, %{to: ..., body: ...}}
 
   """
-  @spec deliver_user_update_email_instructions(User.t(), String.t(), (String.t() -> String.t())) ::
-          {:ok, Swoosh.Email.t()} | {:error, :rate_limited | term()}
-  def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
+  @spec deliver_user_update_email_instructions(
+          User.t(),
+          String.t(),
+          (String.t() -> String.t()),
+          keyword()
+        ) :: {:ok, Swoosh.Email.t()} | {:error, :rate_limited | term()}
+  def deliver_user_update_email_instructions(
+        %User{} = user,
+        current_email,
+        update_email_url_fun,
+        opts \\ []
+      )
       when is_function(update_email_url_fun, 1) do
     # Keyed on the acting user, not the target: the recipient is a
     # user-chosen new address, so this caps one account from turning the
     # change-email form into an arbitrary-recipient email relay (#97).
     # Checked before the insert so a refused request writes no token row.
-    case RateLimit.hit_email_change(user.id) do
+    # The API path (`AccountController`) consumes the limit itself,
+    # before its uniqueness check, and passes `check_rate_limit: false`
+    # so it isn't charged twice; the web flow keeps the check here.
+    limit_result =
+      if Keyword.get(opts, :check_rate_limit, true),
+        do: RateLimit.hit_email_change(user.id),
+        else: {:allow, 0}
+
+    case limit_result do
       {:allow, _count} ->
         {encoded_token, user_token} = UserToken.build_email_token(user, "change:#{current_email}")
 

@@ -101,6 +101,9 @@
 					>
 						{t('you.accounts.notifications')}
 					</a>
+					<a href={resolve(`/you/${instance.id}/data`)} class="text-accent hover:underline">
+						{t('you.accounts.data')}
+					</a>
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				</p>
 				{#snippet trailing()}
