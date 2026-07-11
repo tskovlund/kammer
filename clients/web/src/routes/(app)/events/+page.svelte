@@ -7,6 +7,7 @@
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import FailedInstancesBanner from '$lib/ui/FailedInstancesBanner.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
@@ -55,24 +56,10 @@
 	<StaleBanner savedAt={events.snapshotSavedAt} />
 {/if}
 
-{#if events.failedInstances.length > 0}
-	<div class="mb-5 flex flex-col gap-2">
-		{#each events.failedInstances as failure (failure.instance.id)}
-			<div
-				class="rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-sm text-ink-muted"
-				role="status"
-			>
-				{#if failure.kind === 'auth'}
-					{t('home.failed.auth', { name: failure.instance.instanceName })}
-				{:else if failure.kind === 'network'}
-					{t('home.failed.network', { name: failure.instance.instanceName })}
-				{:else}
-					{t('home.failed.server', { name: failure.instance.instanceName })}
-				{/if}
-			</div>
-		{/each}
-	</div>
-{/if}
+<FailedInstancesBanner
+	failures={events.failedInstances}
+	onRetry={() => events.load(instances.list)}
+/>
 
 {#if events.loadState === 'loading' && events.isEmpty}
 	<div class="flex flex-col gap-3">

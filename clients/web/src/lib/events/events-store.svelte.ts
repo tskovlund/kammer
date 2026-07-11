@@ -1,5 +1,6 @@
+import { failureKind } from '$lib/api/errors.js';
 import { FeedApiError } from '$lib/feed/api.js';
-import type { FailedInstance, InstanceFailureKind } from '$lib/instances/home.js';
+import type { FailedInstance } from '$lib/instances/home.js';
 import type { Instance } from '$lib/instances/types.js';
 import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
 import { fetchCommunities, fetchCommunityEvents } from './api.js';
@@ -19,14 +20,6 @@ export interface CommunityChip {
 }
 
 const COMMUNITY_FETCH_TIMEOUT_MS = 10_000;
-
-function failureKind(error: unknown): InstanceFailureKind {
-	if (error instanceof FeedApiError) {
-		if (error.kind === 'auth') return 'auth';
-		if (error.kind === 'network') return 'network';
-	}
-	return 'server';
-}
 
 async function loadInstance(
 	instance: Instance

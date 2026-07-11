@@ -6,6 +6,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { reconnectInstance } from '$lib/realtime/registry.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import FailedInstancesBanner from '$lib/ui/FailedInstancesBanner.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
@@ -29,38 +30,13 @@
 	<StaleBanner savedAt={home.snapshotSavedAt} />
 {/if}
 
-{#if home.failedInstances.length > 0}
-	<div class="mb-5 flex flex-col gap-2">
-		{#each home.failedInstances as failure (failure.instance.id)}
-			<div
-				class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-sm"
-				role="status"
-			>
-				<span class="text-ink-muted">
-					{#if failure.kind === 'auth'}
-						{t('home.failed.auth', { name: failure.instance.instanceName })}
-					{:else if failure.kind === 'network'}
-						{t('home.failed.network', { name: failure.instance.instanceName })}
-					{:else}
-						{t('home.failed.server', { name: failure.instance.instanceName })}
-					{/if}
-				</span>
-				{#if failure.kind !== 'auth'}
-					<button
-						type="button"
-						class="shrink-0 text-accent hover:underline"
-						onclick={() => {
-							reconnectInstance(failure.instance);
-							home.load(instances.list);
-						}}
-					>
-						{t('common.retry')}
-					</button>
-				{/if}
-			</div>
-		{/each}
-	</div>
-{/if}
+<FailedInstancesBanner
+	failures={home.failedInstances}
+	onRetry={(failure) => {
+		reconnectInstance(failure.instance);
+		home.load(instances.list);
+	}}
+/>
 
 {#if home.loadState === 'loading' && home.allBuckets.length === 0}
 	<div class="flex flex-col gap-4">
