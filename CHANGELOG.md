@@ -41,6 +41,16 @@ and this project adheres to
 
 ### Added
 
+- PWA notification center (issue #257, part of #187): the
+  Notifications tab, previously a pure empty-state stub, is now the
+  real in-app list — `NotificationLive.Index` parity over the #173
+  API. Notifications merge newest-first across every added account
+  (same multi-instance shape as Home/Events, per-instance #159
+  failure kinds surfaced without blanking the rest), with unread
+  emphasis, optimistic mark-read on tap, mark-all-read fanned out per
+  instance, and tap-through into the right account's group feed or
+  event page. EN + DA strings; store merge/mark-read logic covered by
+  Vitest specs.
 - Operator-configurable tier-2 deployment settings (issue #234, ADR
   0027): the throughput/policy rate limits, token lifetimes, and
   retention windows an operator legitimately tunes now read from

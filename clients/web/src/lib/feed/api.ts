@@ -1,87 +1,18 @@
 import { createApiClient } from '$lib/api/client.js';
+import { FeedApiError, fail, guard, kindForStatus } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Comment, Community, Poll, Post, StoredFile } from './types.js';
 
+// Re-exported from the shared home so existing import sites keep working;
+// see $lib/api/errors.ts for the class and the status->kind mapping.
+export { FeedApiError, type FeedErrorKind } from '$lib/api/errors.js';
+
 type Group = components['schemas']['Group'];
 export type { Group };
 
-/**
- * How a feed write/read failed. The UI reacts differently per kind: `auth`
- * re-prompts sign-in for that instance (ties into the #159 failure kinds and
- * the socket's `noteAuthFailure`), `forbidden` explains a missing right,
- * `validation`/`too_large`/`rate_limited` are friendly composer errors, and
- * `network`/`server` are retryable.
- */
-export type FeedErrorKind =
-	| 'auth'
-	| 'forbidden'
-	| 'not_found'
-	| 'validation'
-	| 'too_large'
-	| 'rate_limited'
-	| 'network'
-	| 'server';
-
-export class FeedApiError extends Error {
-	readonly kind: FeedErrorKind;
-	readonly status: number | null;
-
-	constructor(kind: FeedErrorKind, message: string, status: number | null = null) {
-		super(message);
-		this.name = 'FeedApiError';
-		this.kind = kind;
-		this.status = status;
-	}
-}
-
-function kindForStatus(status: number): FeedErrorKind {
-	switch (status) {
-		case 401:
-			return 'auth';
-		case 403:
-			return 'forbidden';
-		case 404:
-			return 'not_found';
-		case 413:
-			return 'too_large';
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-function messageFrom(error: unknown, fallback: string): string {
-	const envelope = error as ErrorEnvelope | undefined;
-	return envelope?.error?.message ?? fallback;
-}
-
 function client(instance: Instance) {
 	return createApiClient(instance.baseUrl, instance.deviceToken);
-}
-
-/** Turn an openapi-fetch `{ error, response }` into a typed FeedApiError. */
-function fail(error: unknown, response: Response | undefined, fallback: string): FeedApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	return new FeedApiError(kind, messageFrom(error, fallback), status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof FeedApiError) throw cause;
-		// fetch() itself rejected — DNS, refused connection, offline.
-		throw new FeedApiError('network', 'Could not reach this community.', null);
-	}
 }
 
 interface GroupRef {

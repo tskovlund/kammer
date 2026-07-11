@@ -1,5 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
-import { FeedApiError, type FeedErrorKind } from '$lib/feed/api.js';
+import { fail, guard } from '$lib/api/errors.js';
 import type { Instance } from '$lib/instances/types.js';
 import type {
 	Device,
@@ -11,43 +11,6 @@ import type {
 	Role,
 	Roster
 } from './types.js';
-
-function kindForStatus(status: number): FeedErrorKind {
-	switch (status) {
-		case 401:
-			return 'auth';
-		case 403:
-			return 'forbidden';
-		case 404:
-			return 'not_found';
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-function fail(error: unknown, response: Response | undefined, fallback: string): FeedApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	const message = (error as ErrorEnvelope | undefined)?.error?.message ?? fallback;
-	return new FeedApiError(kind, message, status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof FeedApiError) throw cause;
-		throw new FeedApiError('network', 'Could not reach this community.', null);
-	}
-}
 
 function client(instance: Instance) {
 	return createApiClient(instance.baseUrl, instance.deviceToken);
