@@ -1070,6 +1070,18 @@ defmodule KammerWeb.ApiSpec do
               response: single_response(Schemas.Comment)
             )
         },
+      "/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}/report" =>
+        %PathItem{
+          post:
+            operation(
+              "Report an event comment to the moderators (reporting it again answers the same)",
+              :events_report_comment,
+              event_comment_params(),
+              status: 201,
+              request_body: body(report_body()),
+              response: single_response(Schemas.StatusOnly)
+            )
+        },
       "/api/v1/notifications" => %PathItem{
         get:
           operation(
@@ -1307,6 +1319,18 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.Comment)
           )
       },
+      "/api/v1/communities/{community_slug}/assignments/{assignment_id}/comments/{comment_id}/report" =>
+        %PathItem{
+          post:
+            operation(
+              "Report an assignment comment to the moderators (reporting it again answers the same)",
+              :assignments_report_comment,
+              assignment_comment_params(),
+              status: 201,
+              request_body: body(report_body()),
+              response: single_response(Schemas.StatusOnly)
+            )
+        },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/decisions" => %PathItem{
         get:
           operation(
@@ -1859,6 +1883,8 @@ defmodule KammerWeb.ApiSpec do
   defp poll_params, do: [path_param(:community_slug), path_param(:poll_id)]
 
   defp assignment_params, do: [path_param(:community_slug), path_param(:assignment_id)]
+
+  defp assignment_comment_params, do: assignment_params() ++ [path_param(:comment_id)]
 
   defp decision_params, do: [path_param(:community_slug), path_param(:decision_id)]
 

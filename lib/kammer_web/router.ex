@@ -447,6 +447,7 @@ defmodule KammerWeb.Router do
       put "/comments/:comment_id", EventController, :update_comment
       delete "/comments/:comment_id", EventController, :delete_comment
       post "/comments/:comment_id/reactions", EventController, :react_comment
+      post "/comments/:comment_id/report", EventController, :report_comment
     end
 
     # Collaborative tools and global search (issue #184), each per-group
@@ -487,6 +488,7 @@ defmodule KammerWeb.Router do
       put "/completion", AssignmentController, :complete
       delete "/completion", AssignmentController, :reopen
       post "/comments", AssignmentController, :create_comment
+      post "/comments/:comment_id/report", AssignmentController, :report_comment
     end
 
     get "/communities/:community_slug/groups/:group_slug/decisions", DecisionController, :index

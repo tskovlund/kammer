@@ -41,6 +41,24 @@ and this project adheres to
 
 ### Added
 
+- Report intake for event and assignment comments (issue #262, part
+  of #187): `POST .../events/{event_id}/comments/{comment_id}/report`
+  and `POST .../assignments/{assignment_id}/comments/{comment_id}/report`
+  close the gap #263's contract trace found — the shared comment
+  engine (ADR 0007) already let members report these comments in
+  LiveView, but the API only exposed the post/post-comment intake, so
+  the moderation queue would have lost event/assignment-comment
+  reports at the LiveView cut. Same `Moderation.report_comment/3`
+  behind both: neutral `201 {status: "reported"}`, a repeat report
+  answers identically, an invisible subject 404s byte-identically
+  (no-oracle, #156/#161), and filing draws from the same 20/h
+  per-reporter budget as every other report (the shared acknowledgement
+  now lives in `KammerWeb.Api.ReportIntake`, one definition for all
+  four intake endpoints). PWA: the Report action now shows on event
+  comments and on assignment-discussion comments, reusing the feed's
+  inline reason form + confirmation idiom and existing EN/DA strings;
+  `schema.d.ts` regenerated.
+
 - PWA join flow (issue #255, part of #187): the invite link admins
   share (`/invite/{token}`) now lands on a real page in the Svelte
   client — until now the PWA had no invite landing and no registration

@@ -49,6 +49,7 @@
 				onReply={locked
 					? undefined
 					: (body) => store.comment({ body_markdown: body, parent_comment_id: thread.comment.id })}
+				onReport={(reason) => store.reportComment(thread.comment.id, reason)}
 			/>
 
 			{#if thread.replies.length > 0}
@@ -70,6 +71,7 @@
 							onReact={(emoji) => store.reactComment(reply.id, emoji)}
 							onEdit={(body) => store.editComment(reply.id, body)}
 							onDelete={() => store.deleteComment(reply.id)}
+							onReport={(reason) => store.reportComment(reply.id, reason)}
 						/>
 					{/each}
 				</div>

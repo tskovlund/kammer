@@ -279,6 +279,32 @@ export async function reactComment(
 }
 
 /**
+ * Report an event comment to the moderators (issue #262). The server answers
+ * a bare `{status: "reported"}` — reporting the same comment again answers
+ * the same — so there is nothing to merge back into the event.
+ */
+export async function reportComment(
+	instance: Instance,
+	communitySlug: string,
+	eventId: string,
+	commentId: string,
+	reason: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/events/{event_id}/comments/{comment_id}/report',
+			{
+				params: {
+					path: { community_slug: communitySlug, event_id: eventId, comment_id: commentId }
+				},
+				body: { reason }
+			}
+		);
+		if (error) throw fail(error, response, 'Could not send your report.');
+	});
+}
+
+/**
  * The server serves an ICS file for a single event at a plain browser route
  * (no Bearer auth — a calendar app fetches it directly). We just link to it.
  */

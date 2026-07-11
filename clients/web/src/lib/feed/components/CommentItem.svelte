@@ -16,7 +16,7 @@
 		onDelete: () => void;
 		/** Absent for replies (one reply level only, SPEC §5). */
 		onReply?: (body: string) => Promise<boolean>;
-		/** Report to the moderators (issue #256) — absent where no report endpoint exists (events). */
+		/** Report to the moderators (issues #256/#262). */
 		onReport?: (reason: string) => Promise<boolean>;
 	}
 

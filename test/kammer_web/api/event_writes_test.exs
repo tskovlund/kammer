@@ -410,6 +410,7 @@ defmodule KammerWeb.Api.EventWritesTest do
       private = group_fixture(community, visibility: :private)
       insider = group_member_fixture(private)
       %{event: event} = create_event(insider, community, private)
+      {:ok, comment} = Events.create_comment(insider, event, %{"body_markdown" => "Hemmelig"})
 
       member
       |> api_conn()
@@ -421,6 +422,14 @@ defmodule KammerWeb.Api.EventWritesTest do
       |> post(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/comments", %{
         "body_markdown" => "x"
       })
+      |> json_response(404)
+
+      member
+      |> api_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/events/#{event.id}/comments/#{comment.id}/report",
+        %{"reason" => "x"}
+      )
       |> json_response(404)
     end
   end
