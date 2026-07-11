@@ -78,6 +78,8 @@ defmodule KammerWeb.Api.Serializer do
   def group(group, viewer \\ nil, relationship \\ nil)
 
   def group(%Group{} = group, viewer, relationship) do
+    capabilities = group_capabilities(viewer, group, relationship)
+
     %{
       id: group.id,
       name: group.name,
@@ -89,7 +91,7 @@ defmodule KammerWeb.Api.Serializer do
       sealed: group.sealed,
       archived: Group.archived?(group),
       my_role: relationship && relationship.group_role,
-      viewer_can: group_capabilities(viewer, group, relationship),
+      viewer_can: capabilities,
       # Static facts about the group, not the viewer (issue #185 slice
       # B): whether an account-less guest could RSVP/comment/subscribe
       # here at all, so a client can decide whether to render those
@@ -102,6 +104,31 @@ defmodule KammerWeb.Api.Serializer do
       guest_comment_allowed: Authorization.can_guest_comment?(group),
       guest_subscribe_allowed: Authorization.can_guest_subscribe?(group)
     }
+    |> put_group_settings(group, capabilities)
+  end
+
+  # The group's editable settings (issue #259) are a manager-only
+  # surface — the settings form pre-fills from them. They must NOT ride
+  # the tokenless public group shape (`Serializer.group/1` from
+  # `PublicController`), where emitting them would disclose a public
+  # group's moderation posture (`approval_queue`) and file-retention
+  # config to anonymous callers. Gate on `:manage_group` — the exact
+  # capability the settings screen itself keys off — so the fields
+  # appear for, and only for, a viewer who can actually edit them.
+  defp put_group_settings(map, group, capabilities) do
+    # `capabilities` is the string list `group_capabilities/3` emits (the
+    # same one that lands in `viewer_can`), so match the string, not the
+    # `:manage_group` atom.
+    if "manage_group" in capabilities do
+      Map.merge(map, %{
+        posting_policy: group.posting_policy,
+        comment_policy: group.comment_policy,
+        approval_queue: group.approval_queue,
+        version_retention: group.version_retention
+      })
+    else
+      map
+    end
   end
 
   @doc """

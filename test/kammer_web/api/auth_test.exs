@@ -42,6 +42,12 @@ defmodule KammerWeb.Api.AuthTest do
       assert body["features"]["web_push"] == false
       assert %{"vapid_public_key" => nil} = body["features"]
 
+      # The tokenless probe has no user, so the per-viewer
+      # community-creation capability (issue #259) is false — a client
+      # gates its "new community" entry point on this, not on guessing
+      # the instance policy.
+      assert body["can_create_community"] == false
+
       # mix.exs is the single source of truth (issue #204) — the API
       # must report exactly what the project was built from — and the
       # min-client floor is present-but-null until a release sets it.

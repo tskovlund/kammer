@@ -8,6 +8,32 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Community creation over the API and PWA (issue #259, part of #187):
+  a new `POST /api/v1/communities` endpoint, gated by the same
+  instance community-creation policy (SPEC §3: operators only / any
+  user) the LiveView flow honors — the creator becomes the
+  community's owner — plus a `communities/new` PWA screen reachable
+  from the groups tab. The instance capability doc
+  (`GET /api/v1/instance`) now reports a per-viewer
+  `can_create_community` boolean so the client gates its "new
+  community" entry point instead of guessing the policy.
+- The PWA group settings page now covers the full settings surface
+  the API already accepted (issue #259, part of #187): visibility,
+  join/posting/comment policy, web address (slug), approval queue,
+  and file-version retention — previously only name, description,
+  features, and archive were editable. The page also lists pending
+  join requests with approve/deny, and links to a new group invites
+  screen (mirroring the community invites page). The group serializer
+  and its OpenAPI `Group` schema now expose `posting_policy`,
+  `comment_policy`, `approval_queue`, and `version_retention` so the
+  form can pre-fill them — emitted only to a viewer who can manage the
+  group (`viewer_can` includes `manage_group`), so a public group's
+  moderation posture and retention config never ride the tokenless
+  public shape; no new server capability was added — the update
+  endpoint already accepted every one of these fields.
+
 ### Security
 
 - `Event.location_url` now rejects anything but `http`/`https` on

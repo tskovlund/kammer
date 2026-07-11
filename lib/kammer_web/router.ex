@@ -321,6 +321,7 @@ defmodule KammerWeb.Router do
     post "/invites/:token/accept", InviteController, :accept
 
     get "/communities", CommunityController, :index
+    post "/communities", CommunityController, :create
     get "/communities/:community_slug/groups", CommunityController, :groups
     post "/communities/:community_slug/groups", GroupController, :create
 

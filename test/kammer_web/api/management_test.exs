@@ -17,6 +17,67 @@ defmodule KammerWeb.Api.ManagementTest do
   alias Kammer.Communities
   alias Kammer.Invitations
 
+  describe "community creation" do
+    test "the instance policy decides who may create; the creator becomes owner" do
+      operator = instance_operator_fixture()
+      ordinary = Kammer.AccountsFixtures.user_fixture()
+
+      # Default policy is operators-only: an operator succeeds and the
+      # `can_create_community` capability reports it before they try.
+      assert operator
+             |> api_conn()
+             |> get(~p"/api/v1/instance")
+             |> json_response(200)
+             |> Map.fetch!("can_create_community")
+
+      created =
+        operator
+        |> api_conn()
+        |> post(~p"/api/v1/communities", %{name: "Sejlklubben", slug: unique_slug("sailing")})
+        |> tap(&assert_operation_response(&1, "communities_create"))
+        |> json_response(201)
+
+      assert created["data"]["name"] == "Sejlklubben"
+      # The creator owns it — the capability the owner alone holds.
+      assert "manage_community" in created["data"]["viewer_can"]
+
+      # An ordinary user under operators-only is refused, and the
+      # capability told them so.
+      refute ordinary
+             |> api_conn()
+             |> get(~p"/api/v1/instance")
+             |> json_response(200)
+             |> Map.fetch!("can_create_community")
+
+      ordinary
+      |> api_conn()
+      |> post(~p"/api/v1/communities", %{name: "Nej", slug: unique_slug("nope")})
+      |> json_response(403)
+
+      # Opening the policy lets any user create.
+      allow_any_user_community_creation()
+
+      ordinary
+      |> api_conn()
+      |> post(~p"/api/v1/communities", %{name: "Vores klub", slug: unique_slug("ours")})
+      |> json_response(201)
+    end
+
+    test "an invalid slug is rejected with 422 naming the slug field" do
+      operator = instance_operator_fixture()
+
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        operator
+        |> api_conn()
+        |> post(~p"/api/v1/communities", %{name: "Bad", slug: "No Spaces Allowed"})
+        |> json_response(422)
+
+      # Pin the failure to the slug — not just any 422 — so the test can't
+      # pass on an unrelated validation error.
+      assert details["slug"]
+    end
+  end
+
   describe "community settings" do
     test "an admin updates settings; a member is refused" do
       {community, owner} = community_with_owner_fixture()
@@ -79,13 +140,29 @@ defmodule KammerWeb.Api.ManagementTest do
       owner: owner,
       group: group
     } do
-      owner
-      |> api_conn()
-      |> put(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}", %{
-        description: "Opdateret"
-      })
-      |> tap(&assert_operation_response(&1, "groups_update"))
-      |> json_response(200)
+      updated =
+        owner
+        |> api_conn()
+        |> put(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}", %{
+          description: "Opdateret",
+          visibility: "private",
+          join_policy: "request_approval",
+          posting_policy: "admins_only",
+          comment_policy: "off",
+          approval_queue: true,
+          version_retention: 5
+        })
+        |> tap(&assert_operation_response(&1, "groups_update"))
+        |> json_response(200)
+
+      # The full settings surface (issue #259) round-trips through the
+      # serializer, not just name/description.
+      assert updated["data"]["visibility"] == "private"
+      assert updated["data"]["join_policy"] == "request_approval"
+      assert updated["data"]["posting_policy"] == "admins_only"
+      assert updated["data"]["comment_policy"] == "off"
+      assert updated["data"]["approval_queue"] == true
+      assert updated["data"]["version_retention"] == 5
 
       features =
         owner

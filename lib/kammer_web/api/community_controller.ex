@@ -19,6 +19,27 @@ defmodule KammerWeb.Api.CommunityController do
   # managed elsewhere and never cast here.
   @update_fields ~w(name slug description accent_color default_locale listed_on_instance require_real_names)
 
+  # Creation accepts the same editable settings (issue #259); the
+  # instance community-creation policy — not a field — decides who may.
+  @create_fields @update_fields
+
+  @spec create(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def create(conn, params) do
+    user = conn.assigns.current_scope.user
+
+    case Communities.create_community(user, Map.take(params, @create_fields)) do
+      {:ok, community} ->
+        conn
+        |> put_status(:created)
+        |> json(%{
+          data: Serializer.community(community, user, Authorization.relationship(user, community))
+        })
+
+      error ->
+        ApiError.from_result(conn, error)
+    end
+  end
+
   @spec index(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def index(conn, _params) do
     user = conn.assigns.current_scope.user

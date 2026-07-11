@@ -533,6 +533,15 @@ defmodule KammerWeb.ApiSpec do
         get:
           operation("The device owner's communities", :communities_index, [],
             response: data_response(Schemas.Community)
+          ),
+        post:
+          operation(
+            "Create a community (gated by the instance policy; the creator becomes its owner)",
+            :communities_create,
+            [],
+            status: 201,
+            request_body: body(Schemas.CommunityParams),
+            response: single_response(Schemas.Community)
           )
       },
       "/api/v1/communities/{community_slug}" => %PathItem{

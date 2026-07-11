@@ -16,6 +16,7 @@ import type { Instance } from '$lib/instances/types.js';
  */
 
 export type Report = components['schemas']['Report'];
+export type JoinRequest = components['schemas']['JoinRequest'];
 export type Ban = components['schemas']['Ban'];
 export type AuditEvent = components['schemas']['AuditEvent'];
 export type InstanceSettings = components['schemas']['InstanceSettings'];
@@ -241,6 +242,62 @@ export async function setGroupArchived(
 		const { data, error, response } = await call;
 		if (error || !data) throw fail(error, response, 'Could not change the archive state.');
 		return data.data;
+	});
+}
+
+// --- Group join requests ----------------------------------------------------
+
+export async function fetchJoinRequests(
+	instance: Instance,
+	communitySlug: string,
+	groupSlug: string
+): Promise<JoinRequest[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests',
+			{ params: { path: { community_slug: communitySlug, group_slug: groupSlug } } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not load the join requests.');
+		return data.data;
+	});
+}
+
+/** Approve a pending request, creating the membership (422 when banned). */
+export async function approveJoinRequest(
+	instance: Instance,
+	communitySlug: string,
+	groupSlug: string,
+	requestId: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).PUT(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}/approval',
+			{
+				params: {
+					path: { community_slug: communitySlug, group_slug: groupSlug, request_id: requestId }
+				}
+			}
+		);
+		if (error) throw fail(error, response, 'Could not approve this request.');
+	});
+}
+
+export async function denyJoinRequest(
+	instance: Instance,
+	communitySlug: string,
+	groupSlug: string,
+	requestId: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/join-requests/{request_id}',
+			{
+				params: {
+					path: { community_slug: communitySlug, group_slug: groupSlug, request_id: requestId }
+				}
+			}
+		);
+		if (error) throw fail(error, response, 'Could not deny this request.');
 	});
 }
 

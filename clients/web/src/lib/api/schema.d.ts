@@ -48,7 +48,8 @@ export interface paths {
 		/** The device owner's communities */
 		get: operations['communities_index'];
 		put?: never;
-		post?: never;
+		/** Create a community (gated by the instance policy; the creator becomes its owner) */
+		post: operations['communities_create'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -2454,6 +2455,8 @@ export interface components {
 		/** Instance */
 		Instance: {
 			api_versions: string[];
+			/** @description Whether the calling device's user may create a community on this instance (SPEC §3 policy: operators only / any user). False for the tokenless capability probe — a client gates its "new community" entry point on this rather than assuming the policy. */
+			can_create_community: boolean;
 			default_locale: string;
 			features: {
 				guest_rsvp: boolean;
@@ -2470,7 +2473,14 @@ export interface components {
 		};
 		/** Group */
 		Group: {
+			/** @description Whether new posts wait in a moderation queue before they appear (SPEC §3). Manager-only (see `posting_policy`). */
+			approval_queue?: boolean;
 			archived: boolean;
+			/**
+			 * @description Who may comment (issue #259). Manager-only (see `posting_policy`).
+			 * @enum {string}
+			 */
+			comment_policy?: 'members' | 'members_and_guests' | 'off';
 			description?: string | null;
 			features: string[];
 			/** @description Whether an account-less guest may comment on this group's posts (SPEC §3) */
@@ -2489,8 +2499,15 @@ export interface components {
 			 */
 			my_role?: 'owner' | 'admin' | 'member' | null;
 			name: string;
+			/**
+			 * @description Who may post (issue #259). Manager-only: present exactly when `viewer_can` includes `manage_group`, so it never rides the tokenless public group shape.
+			 * @enum {string}
+			 */
+			posting_policy?: 'all_members' | 'admins_only';
 			sealed: boolean;
 			slug: string;
+			/** @description How many prior file versions the group keeps (ADR 0017); null means the instance default. Manager-only (see `posting_policy`). */
+			version_retention?: number | null;
 			/** @description Actions the calling viewer may take in this group (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `create_event`/`upload_file` also reflect the group's feature toggles. Empty when the viewer's rights weren't resolved. */
 			viewer_can: (
 				| 'join'
@@ -3332,6 +3349,86 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	communities_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['CommunityParams'];
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Community'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};

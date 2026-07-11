@@ -121,6 +121,41 @@ export async function createInvite(
 	});
 }
 
+/** Active invites into a single group (issue #259). */
+export async function fetchGroupInvites(instance: Instance, ref: GroupRef): Promise<Invite[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/invites',
+			{ params: { path: { community_slug: ref.community, group_slug: ref.group } } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not load the invites.');
+		return data.data;
+	});
+}
+
+/**
+ * Creates a group invite: redeeming it joins the group (and the
+ * community). `invited_email` delivers it and binds redemption to that
+ * address.
+ */
+export async function createGroupInvite(
+	instance: Instance,
+	ref: GroupRef,
+	params: { invited_email?: string; max_uses?: number } = {}
+): Promise<Invite> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/invites',
+			{
+				params: { path: { community_slug: ref.community, group_slug: ref.group } },
+				body: params
+			}
+		);
+		if (error || !data) throw fail(error, response, 'Could not create that invite.');
+		return data.data;
+	});
+}
+
 export async function revokeInvite(
 	instance: Instance,
 	communitySlug: string,
