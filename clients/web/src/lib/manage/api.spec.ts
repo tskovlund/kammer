@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchReports, ManageApiError, resolveReport, updateInstanceSettings } from './api';
+import {
+	approveJoinRequest,
+	denyJoinRequest,
+	fetchJoinRequests,
+	fetchReports,
+	ManageApiError,
+	resolveReport,
+	updateInstanceSettings
+} from './api';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -53,6 +61,38 @@ describe('manage api', () => {
 			kind: 'rate_limited',
 			message: 'Too many attempts. Try again later.'
 		});
+	});
+
+	it('unwraps pending join requests from the data envelope', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(200, {
+				data: [{ id: 'jr1', user: { id: 'u9', display_name: 'Nora' }, requested_at: 'now' }]
+			})
+		);
+		const requests = await fetchJoinRequests(instance(), 'my-community', 'crew');
+		expect(requests[0]?.user.display_name).toBe('Nora');
+	});
+
+	it('maps a 422 on approval to validation — the requester is banned', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(422, 'banned', 'That person is banned.'));
+		await expect(
+			approveJoinRequest(instance(), 'my-community', 'crew', 'jr1')
+		).rejects.toMatchObject({ kind: 'validation', status: 422 });
+	});
+
+	it('denies a request with a DELETE to the request path — not approve’s verb or URL', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+		await expect(
+			denyJoinRequest(instance(), 'my-community', 'crew', 'jr1')
+		).resolves.toBeUndefined();
+
+		// Distinguishes deny from approve: a DELETE on the request itself,
+		// never a PUT to its /approval sub-resource. A mis-wire to approve's
+		// verb or URL fails here.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('DELETE');
+		expect(request.url).toContain('/join-requests/jr1');
+		expect(request.url).not.toContain('/approval');
 	});
 
 	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {

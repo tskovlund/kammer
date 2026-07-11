@@ -103,6 +103,13 @@ defmodule Kammer.Authorization do
   @doc """
   Whether the actor may create a community on this instance
   (SPEC §3: instance setting — operators only / any user).
+
+  This is the policy gate only. `Communities.create_community/2`
+  additionally refuses instance-banned creators (#172) under a row
+  lock — enforcement the capability deliberately doesn't model, since
+  that would cost a moderation lookup on every `GET /instance` probe.
+  The gap fails closed: a banned creator may see `can_create_community:
+  true` and then get a 403, never the reverse.
   """
   @spec can_create_community?(actor(), InstanceSettings.t()) :: boolean()
   def can_create_community?(actor, %InstanceSettings{} = settings) do

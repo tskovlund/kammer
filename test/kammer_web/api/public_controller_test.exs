@@ -59,11 +59,25 @@ defmodule KammerWeb.Api.PublicControllerTest do
     } do
       group = group_fixture(community, visibility: :public_listed)
 
-      public_conn()
-      |> get(~p"/api/v1/public/communities/#{community.slug}/groups/#{group.slug}")
-      |> tap(&assert_operation_response(&1, "public_group_show"))
-      |> json_response(200)
-      |> then(&assert &1["data"]["id"] == group.id)
+      data =
+        public_conn()
+        |> get(~p"/api/v1/public/communities/#{community.slug}/groups/#{group.slug}")
+        |> tap(&assert_operation_response(&1, "public_group_show"))
+        |> json_response(200)
+        |> Map.fetch!("data")
+
+      assert data["id"] == group.id
+
+      # The manager-only settings fields (issue #259) must NOT ride the
+      # tokenless public shape — emitting a public group's moderation
+      # posture or file-retention config to anonymous callers would be a
+      # disclosure. They appear only when `viewer_can` includes
+      # `manage_group` (asserted on the authenticated path in
+      # management_test).
+      refute Map.has_key?(data, "posting_policy")
+      refute Map.has_key?(data, "comment_policy")
+      refute Map.has_key?(data, "approval_queue")
+      refute Map.has_key?(data, "version_retention")
     end
 
     test "a public_link group is directly readable by slug, same boundary as its RSS feed", %{

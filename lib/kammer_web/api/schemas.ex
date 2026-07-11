@@ -123,6 +123,32 @@ defmodule KammerWeb.Api.Schemas do
           type: :string,
           enum: ["invite_only", "request_approval", "open"]
         },
+        posting_policy: %Schema{
+          type: :string,
+          enum: ["all_members", "admins_only"],
+          description:
+            "Who may post (issue #259). Manager-only: present exactly when " <>
+              "`viewer_can` includes `manage_group`, so it never rides the " <>
+              "tokenless public group shape."
+        },
+        comment_policy: %Schema{
+          type: :string,
+          enum: ["members", "members_and_guests", "off"],
+          description: "Who may comment (issue #259). Manager-only (see `posting_policy`)."
+        },
+        approval_queue: %Schema{
+          type: :boolean,
+          description:
+            "Whether new posts wait in a moderation queue before they appear " <>
+              "(SPEC §3). Manager-only (see `posting_policy`)."
+        },
+        version_retention: %Schema{
+          type: :integer,
+          nullable: true,
+          description:
+            "How many prior file versions the group keeps (ADR 0017); null means " <>
+              "the instance default. Manager-only (see `posting_policy`)."
+        },
         features: %Schema{type: :array, items: %Schema{type: :string}},
         sealed: %Schema{type: :boolean},
         archived: %Schema{type: :boolean},
@@ -780,6 +806,14 @@ defmodule KammerWeb.Api.Schemas do
               "not reject them. Null means any client is fine."
         },
         default_locale: %Schema{type: :string},
+        can_create_community: %Schema{
+          type: :boolean,
+          description:
+            "Whether the calling device's user may create a community on this " <>
+              "instance (SPEC §3 policy: operators only / any user). False for " <>
+              "the tokenless capability probe — a client gates its \"new " <>
+              "community\" entry point on this rather than assuming the policy."
+        },
         features: %Schema{
           type: :object,
           properties: %{
@@ -802,6 +836,7 @@ defmodule KammerWeb.Api.Schemas do
         :api_versions,
         :min_client_version,
         :default_locale,
+        :can_create_community,
         :features
       ]
     })

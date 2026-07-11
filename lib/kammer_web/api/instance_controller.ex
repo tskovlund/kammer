@@ -26,12 +26,18 @@ defmodule KammerWeb.Api.InstanceController do
     settings = Communities.get_instance_settings()
     push_enabled = Notifications.push_enabled?()
 
+    # For the tokenless capability probe the scope carries no user
+    # (`%Scope{user: nil}`); `can_create_community?` unwraps it and
+    # answers false when there is no user.
+    scope = conn.assigns.current_scope
+
     json(conn, %{
       instance_name: settings.instance_name || "Kammer",
       version: Kammer.version(),
       api_versions: ["v1"],
       min_client_version: Kammer.min_client_version(),
       default_locale: settings.default_locale,
+      can_create_community: Authorization.can_create_community?(scope, settings),
       features: %{
         guest_rsvp: true,
         web_push: push_enabled,
