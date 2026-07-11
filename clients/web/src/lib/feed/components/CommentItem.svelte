@@ -16,6 +16,8 @@
 		onDelete: () => void;
 		/** Absent for replies (one reply level only, SPEC §5). */
 		onReply?: (body: string) => Promise<boolean>;
+		/** Report to the moderators (issue #256) — absent where no report endpoint exists (events). */
+		onReport?: (reason: string) => Promise<boolean>;
 	}
 
 	let {
@@ -25,12 +27,25 @@
 		onReact,
 		onEdit,
 		onDelete,
-		onReply
+		onReply,
+		onReport
 	}: Props = $props();
 
 	const isMine = $derived(comment.author?.type === 'user' && comment.author.id === currentUserId);
 	let editing = $state(false);
 	let replying = $state(false);
+	let reporting = $state(false);
+	let reported = $state(false);
+
+	async function sendReport(reason: string): Promise<boolean> {
+		if (!onReport) return false;
+		const ok = await onReport(reason);
+		if (ok) {
+			reporting = false;
+			reported = true;
+		}
+		return ok;
+	}
 
 	async function saveEdit(body: string): Promise<boolean> {
 		const ok = await onEdit(body);
@@ -103,8 +118,33 @@
 							{t('common.delete')}
 						</button>
 					{/if}
+					{#if onReport}
+						<button
+							type="button"
+							class="hover:text-ink-muted"
+							onclick={() => (reporting = !reporting)}
+						>
+							{t('feed.report.action')}
+						</button>
+					{/if}
 				</div>
 			</div>
+
+			{#if reporting && onReport}
+				<div class="mt-2 flex flex-col gap-2 rounded-lg border border-line bg-paper px-3 py-2.5">
+					<p class="text-sm font-medium text-ink">{t('feed.report.title')}</p>
+					<CommentComposer
+						id="report-comment-{comment.id}"
+						placeholder={t('feed.report.placeholder')}
+						submitLabel={t('feed.report.send')}
+						compact
+						onSubmit={sendReport}
+						onCancel={() => (reporting = false)}
+					/>
+				</div>
+			{:else if reported}
+				<p class="mt-1.5 text-sm text-accent" role="status">{t('feed.report.thanks')}</p>
+			{/if}
 
 			{#if replying && onReply}
 				<div class="mt-2">

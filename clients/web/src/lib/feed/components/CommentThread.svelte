@@ -44,6 +44,7 @@
 				onDelete={() => store.deleteComment(post.id, thread.comment.id)}
 				onReply={(body) =>
 					store.comment(post.id, { body_markdown: body, parent_comment_id: thread.comment.id })}
+				onReport={(reason) => store.reportComment(post.id, thread.comment.id, reason)}
 			/>
 
 			{#if thread.replies.length > 0}
@@ -65,6 +66,7 @@
 							onReact={(emoji) => store.reactComment(post.id, reply.id, emoji)}
 							onEdit={(body) => store.editComment(post.id, reply.id, body)}
 							onDelete={() => store.deleteComment(post.id, reply.id)}
+							onReport={(reason) => store.reportComment(post.id, reply.id, reason)}
 						/>
 					{/each}
 				</div>

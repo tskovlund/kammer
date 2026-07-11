@@ -826,6 +826,18 @@ defmodule KammerWeb.ApiSpec do
                 })
             )
         },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/report" =>
+        %PathItem{
+          post:
+            operation(
+              "Report a post to the moderators (reporting it again answers the same)",
+              :posts_report,
+              post_params(),
+              status: 201,
+              request_body: body(report_body()),
+              response: single_response(Schemas.StatusOnly)
+            )
+        },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments" =>
         %PathItem{
           post:
@@ -871,6 +883,18 @@ defmodule KammerWeb.ApiSpec do
               comment_params(),
               request_body: body(object(%{emoji: %Schema{type: :string}})),
               response: single_response(Schemas.Comment)
+            )
+        },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/report" =>
+        %PathItem{
+          post:
+            operation(
+              "Report a comment to the moderators (reporting it again answers the same)",
+              :comments_report,
+              comment_params(),
+              status: 201,
+              request_body: body(report_body()),
+              response: single_response(Schemas.StatusOnly)
             )
         },
       "/api/v1/files/{file_id}" => %PathItem{
@@ -1845,6 +1869,17 @@ defmodule KammerWeb.ApiSpec do
       title: %Schema{type: :string},
       notes_markdown: %Schema{type: :string, nullable: true},
       due_at: %Schema{type: :string, format: :"date-time", nullable: true}
+    })
+  end
+
+  # Filing a moderation report (issue #256): posts and comments share
+  # the one body.
+  defp report_body do
+    object(%{
+      reason: %Schema{
+        type: :string,
+        description: "What's wrong — the moderators see exactly this text"
+      }
     })
   end
 

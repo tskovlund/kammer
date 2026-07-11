@@ -27,6 +27,7 @@ defmodule Kammer.Moderation do
   alias Kammer.Moderation.CommunityBan
   alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
+  alias Kammer.RateLimit
   alias Kammer.Repo
 
   ## Reports
@@ -36,11 +37,12 @@ defmodule Kammer.Moderation do
   report; one open report per person per subject.
   """
   @spec report_post(User.t(), Post.t(), String.t()) ::
-          {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def report_post(%User{} = reporter, %Post{} = post, reason) do
     group = Repo.get!(Group, post.group_id)
 
-    with :ok <- Authorization.authorize(reporter, :view_group, group) do
+    with :ok <- Authorization.authorize(reporter, :view_group, group),
+         :ok <- check_report_rate_limit(reporter.id) do
       %Report{
         community_id: group.community_id,
         reporter_user_id: reporter.id,
@@ -55,11 +57,12 @@ defmodule Kammer.Moderation do
   Files a report on a comment (same rules as posts).
   """
   @spec report_comment(User.t(), Comment.t(), String.t()) ::
-          {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def report_comment(%User{} = reporter, %Comment{} = comment, reason) do
     {group, _subject_id} = Feed.comment_context(comment)
 
-    with :ok <- Authorization.authorize(reporter, :view_group, group) do
+    with :ok <- Authorization.authorize(reporter, :view_group, group),
+         :ok <- check_report_rate_limit(reporter.id) do
       %Report{
         community_id: group.community_id,
         reporter_user_id: reporter.id,
@@ -68,6 +71,32 @@ defmodule Kammer.Moderation do
       |> Report.changeset(%{reason: reason})
       |> Repo.insert()
     end
+  end
+
+  # Authorization runs first, so a refused caller never burns budget
+  # and the limiter can't be used to probe what someone may see. After
+  # that, every attempt counts — a duplicate report spends the budget
+  # too (`Kammer.RateLimit.hit_report_create/1`).
+  defp check_report_rate_limit(user_id) do
+    case RateLimit.hit_report_create(user_id) do
+      {:allow, _count} -> :ok
+      {:deny, _retry} -> {:error, :rate_limited}
+    end
+  end
+
+  @doc """
+  Whether a report-changeset rejection means "this reporter already
+  has an open report on this subject" — matched by the two named
+  partial-unique constraints, not the error class, so a future unique
+  constraint on reports can't be silently mistaken for a duplicate
+  (callers collapse duplicates into a friendly no-op).
+  """
+  @spec duplicate_report?(Ecto.Changeset.t()) :: boolean()
+  def duplicate_report?(%Ecto.Changeset{} = changeset) do
+    Enum.any?(changeset.errors, fn {_field, {_message, meta}} ->
+      meta[:constraint] == :unique and
+        meta[:constraint_name] in ["reports_one_open_per_post", "reports_one_open_per_comment"]
+    end)
   end
 
   @doc """

@@ -1,11 +1,14 @@
 defmodule KammerWeb.Api.ModerationTest do
   @moduledoc """
-  The moderation surface over the API (issue #183): the report queue,
-  resolve/dismiss, community bans, and the audit log. The contract that
-  matters is authorization — every endpoint answers to a moderator and
-  hides from everyone else — plus the no-oracle stance: a report or ban
-  a non-moderator can't act on is 404, never a 403 that would confirm
-  it exists.
+  The moderation surface over the API: intake (filing a report on a
+  post or comment, issue #256) and the queue side (issue #183) — the
+  report queue, resolve/dismiss, community bans, and the audit log.
+  The contract that matters is authorization — every queue endpoint
+  answers to a moderator and hides from everyone else — plus the
+  no-oracle stance: a report or ban a non-moderator can't act on is
+  404, never a 403 that would confirm it exists. (Intake's own
+  no-oracle case — reporting an invisible post 404s — lives with the
+  other post-write verbs in `FeedWritesTest`.)
   """
 
   use KammerWeb.ConnCase, async: true
@@ -26,6 +29,108 @@ defmodule KammerWeb.Api.ModerationTest do
     {:ok, report} = Moderation.report_post(reporter, post, "Det her er spam")
 
     %{community: community, owner: owner, group: group, author: author, report: report}
+  end
+
+  defp report_path(community, group, post) do
+    ~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/posts/#{post.id}/report"
+  end
+
+  defp report_path(community, group, post, comment) do
+    ~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/posts/#{post.id}/comments/#{comment.id}/report"
+  end
+
+  describe "filing reports (issue #256)" do
+    setup :context
+
+    test "a member reports a post; a repeat answers the same and stays one open report", %{
+      community: community,
+      owner: owner,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Mistænkeligt"})
+      path = report_path(community, group, post)
+
+      body =
+        member
+        |> api_conn()
+        |> post(path, %{reason: "Ligner svindel"})
+        |> tap(&assert_operation_response(&1, "posts_report"))
+        |> json_response(201)
+
+      assert body["data"] == %{"status" => "reported"}
+
+      # The duplicate collapses into the same neutral answer…
+      member |> api_conn() |> post(path, %{reason: "Stadig svindel"}) |> json_response(201)
+
+      open = Moderation.list_open_reports(owner, community)
+      assert Enum.count(open, &(&1.post_id == post.id)) == 1
+
+      # …but a genuinely invalid reason is still refused.
+      member |> api_conn() |> post(path, %{reason: ""}) |> json_response(422)
+    end
+
+    test "a member reports a comment", %{
+      community: community,
+      owner: owner,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Vært"})
+      {:ok, comment} = Feed.create_comment(author, post, %{"body_markdown" => "Grov tone"})
+
+      member
+      |> api_conn()
+      |> post(report_path(community, group, post, comment), %{reason: "Chikane"})
+      |> tap(&assert_operation_response(&1, "comments_report"))
+      |> json_response(201)
+
+      open = Moderation.list_open_reports(owner, community)
+      assert Enum.any?(open, &(&1.comment_id == comment.id))
+    end
+
+    test "a missing or non-string reason is a 400, before any visibility work", %{
+      community: community,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Vært"})
+
+      member
+      |> api_conn()
+      |> post(report_path(community, group, post), %{})
+      |> json_response(400)
+
+      member
+      |> api_conn()
+      |> post(report_path(community, group, post), %{reason: 42})
+      |> json_response(400)
+    end
+
+    test "an exhausted report budget answers 429 at the endpoint", %{
+      community: community,
+      group: group,
+      author: author
+    } do
+      member = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Mål"})
+
+      # Spend the per-reporter budget through the context — every
+      # attempt counts, duplicates included — then prove the endpoint
+      # maps the refusal onto 429.
+      for _attempt <- 1..20, do: Moderation.report_post(member, post, "spam")
+
+      body =
+        member
+        |> api_conn()
+        |> post(report_path(community, group, post), %{reason: "En for meget"})
+        |> json_response(429)
+
+      assert body["error"]["code"] == "rate_limited"
+    end
   end
 
   describe "report queue" do

@@ -2,8 +2,9 @@ defmodule KammerWeb.Api.PostController do
   @moduledoc """
   The group feed over the API (RFC 0001, issue #178): cursor-paginated
   reads plus full write parity — posts (create/edit/delete/pin),
-  comments (create/edit/delete), reactions, poll votes, and
-  acknowledgments — all through the same context functions and
+  comments (create/edit/delete), reactions, poll votes,
+  acknowledgments, and reporting either to the moderators (issue
+  #256) — all through the same context functions and
   authorization the UI uses; the controller adds transport, never
   policy. Writes address posts through `Feed.fetch_visible_post/3`, so
   a post the caller cannot see answers exactly like one that doesn't
@@ -16,6 +17,7 @@ defmodule KammerWeb.Api.PostController do
   alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Groups
+  alias Kammer.Moderation
   alias KammerWeb.Api.Pagination
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
@@ -232,7 +234,54 @@ defmodule KammerWeb.Api.PostController do
     end)
   end
 
+  @spec report(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def report(conn, %{"post_id" => post_id, "reason" => reason} = params)
+      when is_binary(reason) do
+    with_visible_post(conn, params, post_id, fn _group, post, user ->
+      reported(conn, Moderation.report_post(user, post, reason))
+    end)
+  end
+
+  def report(conn, _params),
+    do: ApiError.send(conn, :bad_request, "Send a `reason` string.")
+
+  @spec report_comment(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def report_comment(
+        conn,
+        %{"post_id" => post_id, "comment_id" => comment_id, "reason" => reason} = params
+      )
+      when is_binary(reason) do
+    with_visible_comment(conn, params, post_id, comment_id, fn _group, _post, comment, user ->
+      reported(conn, Moderation.report_comment(user, comment, reason))
+    end)
+  end
+
+  def report_comment(conn, _params),
+    do: ApiError.send(conn, :bad_request, "Send a `reason` string.")
+
   ## Internals
+
+  # The neutral report acknowledgement (issue #256). A repeat report of
+  # the same subject answers exactly like the first — the moderators
+  # already have it, and the LiveView flow treats that the same way —
+  # so only the unique-constraint changeset collapses into success;
+  # a genuinely invalid reason still answers 422.
+  defp reported(conn, result) do
+    case result do
+      {:ok, _report} ->
+        conn |> put_status(201) |> json(%{data: %{status: "reported"}})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if Moderation.duplicate_report?(changeset) do
+          conn |> put_status(201) |> json(%{data: %{status: "reported"}})
+        else
+          {:error, changeset}
+        end
+
+      error ->
+        error
+    end
+  end
 
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user

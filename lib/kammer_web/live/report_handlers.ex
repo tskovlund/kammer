@@ -62,11 +62,24 @@ defmodule KammerWeb.ReportHandlers do
          |> assign(:reporting, nil)
          |> put_flash(:info, gettext("Thanks — the moderators will take a look."))}
 
-      {:error, %Ecto.Changeset{}} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if Moderation.duplicate_report?(changeset) do
+          {:noreply,
+           socket
+           |> assign(:reporting, nil)
+           |> put_flash(:info, gettext("You already reported this — the moderators have it."))}
+        else
+          {:noreply,
+           socket
+           |> assign(:reporting, nil)
+           |> put_flash(:error, gettext("The report could not be sent — check the reason text."))}
+        end
+
+      {:error, :rate_limited} ->
         {:noreply,
          socket
          |> assign(:reporting, nil)
-         |> put_flash(:info, gettext("You already reported this — the moderators have it."))}
+         |> put_flash(:error, gettext("Too many attempts. Please try again later."))}
 
       _error ->
         {:noreply,

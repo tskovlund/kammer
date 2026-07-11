@@ -190,6 +190,19 @@ defmodule Kammer.RateLimit do
   end
 
   @doc """
+  Rate limit for filing moderation reports, keyed by reporter: 20 per
+  hour. An anti-abuse backstop (ADR 0027 tier 3 — fixed, no config
+  knob): the queue is the moderators' shared attention budget, and one
+  person filing more than 20 reports an hour is flooding it, not
+  moderating. Every attempt counts — duplicate reports burn the budget
+  too, like the sign-in code limiter.
+  """
+  @spec hit_report_create(Ecto.UUID.t()) :: {:allow, non_neg_integer()} | {:deny, timeout()}
+  def hit_report_create(user_id) do
+    hit("report_create:user:#{user_id}", 60 * 60 * 1000, 20)
+  end
+
+  @doc """
   Rate limit for completing first-run setup, keyed by client IP: 10 per
   hour, the same fixed budget as `hit_signup_ip/1`. This is defense-in-
   depth for the pre-setup window — the setup token printed to the
