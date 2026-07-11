@@ -318,8 +318,6 @@
 	"you.notifications.wrongOrigin.visit": "Open {name} to manage push notifications there",
 	"you.notifications.serverDisabled.title": "Push notifications aren't turned on",
 	"you.notifications.serverDisabled.body": "This server hasn't configured push notifications yet.",
-	"you.notifications.comingSoon.title": "Almost there",
-	"you.notifications.comingSoon.body": "This server supports push notifications, but this client can't subscribe to them quite yet — a small update is on the way.",
 	"you.notifications.status.on": "Push notifications are on",
 	"you.notifications.status.off": "Push notifications are off",
 	"you.notifications.enable": "Enable",

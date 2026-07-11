@@ -35,6 +35,13 @@ defmodule KammerWeb.Api.AuthTest do
       assert body["api_versions"] == ["v1"]
       assert body["features"]["registration"] == "open"
 
+      # web_push reflects real server config; the VAPID public key the
+      # PWA needs for PushManager.subscribe rides alongside it (#251),
+      # and is null exactly when push isn't configured. The test env has
+      # no VAPID keys, so both are the disabled shape.
+      assert body["features"]["web_push"] == false
+      assert %{"vapid_public_key" => nil} = body["features"]
+
       # mix.exs is the single source of truth (issue #204) — the API
       # must report exactly what the project was built from — and the
       # min-client floor is present-but-null until a release sets it.

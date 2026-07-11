@@ -2459,6 +2459,8 @@ export interface components {
 				guest_rsvp: boolean;
 				/** @enum {string} */
 				registration: 'open' | 'web_only';
+				/** @description Raw VAPID public key for PushManager.subscribe; null when web_push is false (issue #251). */
+				vapid_public_key: string | null;
 				web_push: boolean;
 			};
 			instance_name: string;
