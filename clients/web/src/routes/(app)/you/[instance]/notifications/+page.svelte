@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { fetchPushCapability } from '$lib/instances/api.js';
+	import { fetchPushConfig } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import {
 		currentSubscription,
@@ -35,14 +35,10 @@
 
 	const supported = isPushSupported();
 
-	// Blocked on issue #251: GET /api/v1/instance exposes whether push is
-	// configured (`serverEnabled` below) but not the actual VAPID public
-	// key `PushManager.subscribe()` needs — so there's nowhere to get a
-	// key from yet. `subscribeToPush`/`enable` below already take it as a
-	// parameter; flip this once #251 lands and thread the real value in.
-	const VAPID_KEY_AVAILABLE = false;
-
 	let serverEnabled = $state<boolean | null>(null);
+	// The raw VAPID key (#251) once the instance metadata is read — the
+	// enable button stays disabled until it's in hand.
+	let vapidPublicKey = $state<string | null>(null);
 	let subscribed = $state(false);
 	let busy = $state(false);
 	let actionError = $state<string | null>(null);
@@ -51,8 +47,9 @@
 		const inst = instance;
 		if (!inst || !originMatches || !supported) return;
 
-		void fetchPushCapability(inst.baseUrl).then((enabled) => {
-			serverEnabled = enabled;
+		void fetchPushConfig(inst.baseUrl).then((config) => {
+			serverEnabled = config.enabled;
+			vapidPublicKey = config.vapidPublicKey;
 		});
 		void currentSubscription().then((subscription) => {
 			subscribed = subscription !== null;
@@ -144,11 +141,6 @@
 			title={t('you.notifications.serverDisabled.title')}
 			body={t('you.notifications.serverDisabled.body')}
 		/>
-	{:else if !VAPID_KEY_AVAILABLE}
-		<Card class="p-4 text-sm text-ink-muted">
-			<p class="font-medium text-ink">{t('you.notifications.comingSoon.title')}</p>
-			<p class="mt-1">{t('you.notifications.comingSoon.body')}</p>
-		</Card>
 	{:else}
 		{#if actionError}
 			<div
@@ -168,7 +160,12 @@
 					{t('you.notifications.disable')}
 				</Button>
 			{:else}
-				<Button variant="primary" size="sm" disabled={busy} onclick={() => void enable('')}>
+				<Button
+					variant="primary"
+					size="sm"
+					disabled={busy || !vapidPublicKey}
+					onclick={() => vapidPublicKey && void enable(vapidPublicKey)}
+				>
 					{t('you.notifications.enable')}
 				</Button>
 			{/if}

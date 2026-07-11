@@ -318,8 +318,6 @@
 	"you.notifications.wrongOrigin.visit": "Åbn {name} for at håndtere push-notifikationer der",
 	"you.notifications.serverDisabled.title": "Push-notifikationer er ikke slået til",
 	"you.notifications.serverDisabled.body": "Denne server har endnu ikke konfigureret push-notifikationer.",
-	"you.notifications.comingSoon.title": "Næsten klar",
-	"you.notifications.comingSoon.body": "Denne server understøtter push-notifikationer, men denne klient kan endnu ikke abonnere på dem — en lille opdatering er på vej.",
 	"you.notifications.status.on": "Push-notifikationer er slået til",
 	"you.notifications.status.off": "Push-notifikationer er slået fra",
 	"you.notifications.enable": "Slå til",

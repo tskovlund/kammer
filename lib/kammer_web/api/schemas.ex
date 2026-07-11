@@ -785,9 +785,15 @@ defmodule KammerWeb.Api.Schemas do
           properties: %{
             guest_rsvp: %Schema{type: :boolean},
             web_push: %Schema{type: :boolean},
+            vapid_public_key: %Schema{
+              type: :string,
+              nullable: true,
+              description:
+                "Raw VAPID public key for PushManager.subscribe; null when web_push is false (issue #251)."
+            },
             registration: %Schema{type: :string, enum: ["open", "web_only"]}
           },
-          required: [:guest_rsvp, :web_push, :registration]
+          required: [:guest_rsvp, :web_push, :vapid_public_key, :registration]
         }
       },
       required: [

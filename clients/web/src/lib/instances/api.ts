@@ -76,14 +76,21 @@ export async function fetchServerVersion(baseUrl: string): Promise<string | null
 }
 
 /**
- * Whether this instance has Web Push configured server-side (issue #186)
- * — `false`, never a thrown error, when the instance can't answer, same
- * best-effort shape as `fetchServerVersion`. Doesn't by itself mean this
- * browser can subscribe: the actual VAPID public key isn't exposed over
- * the JSON API yet (see the notifications settings page's own gate).
+ * This instance's Web Push configuration (issues #186/#251): whether
+ * it's enabled server-side and, if so, the raw VAPID public key the
+ * browser needs for `PushManager.subscribe`. Best-effort — a disabled
+ * shape (`{ enabled: false, vapidPublicKey: null }`), never a thrown
+ * error, when the instance can't answer, same stance as
+ * `fetchServerVersion`.
  */
-export async function fetchPushCapability(baseUrl: string): Promise<boolean> {
-	return (await fetchInstanceMetadata(baseUrl))?.features.web_push ?? false;
+export async function fetchPushConfig(
+	baseUrl: string
+): Promise<{ enabled: boolean; vapidPublicKey: string | null }> {
+	const features = (await fetchInstanceMetadata(baseUrl))?.features;
+	return {
+		enabled: features?.web_push ?? false,
+		vapidPublicKey: features?.vapid_public_key ?? null
+	};
 }
 
 export async function requestLink(baseUrl: string, email: string): Promise<void> {

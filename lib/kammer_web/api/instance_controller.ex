@@ -12,6 +12,7 @@ defmodule KammerWeb.Api.InstanceController do
   use KammerWeb, :controller
 
   alias Kammer.Authorization
+  alias Kammer.Notifications
   alias Kammer.Communities
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
@@ -23,6 +24,7 @@ defmodule KammerWeb.Api.InstanceController do
   @spec show(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def show(conn, _params) do
     settings = Communities.get_instance_settings()
+    push_enabled = Notifications.push_enabled?()
 
     json(conn, %{
       instance_name: settings.instance_name || "Kammer",
@@ -32,7 +34,11 @@ defmodule KammerWeb.Api.InstanceController do
       default_locale: settings.default_locale,
       features: %{
         guest_rsvp: true,
-        web_push: true,
+        web_push: push_enabled,
+        # The raw VAPID public key the PWA needs for
+        # `PushManager.subscribe` (issue #251) — null when push isn't
+        # configured, so a client can't try to subscribe against nothing.
+        vapid_public_key: if(push_enabled, do: Notifications.vapid_public_key()),
         registration: "open"
       }
     })

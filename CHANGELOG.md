@@ -41,6 +41,14 @@ and this project adheres to
 
 ### Added
 
+- The `GET /api/v1/instance` `features` object now carries
+  `vapid_public_key` (issue #251, part of #186): the raw VAPID public
+  key the PWA needs for `PushManager.subscribe`, `null` when push
+  isn't configured server-side (and `web_push` now reflects real
+  server config rather than a hardcoded `true`). The notifications
+  settings page reads it and enables the push toggle — the last piece
+  the #186 client work was blocked on.
+
 - Account lifecycle over the API and PWA (issue #258, part of #187):
   the three flows that were LiveView/browser-only — email change,
   account deletion, and the GDPR export — now exist on the API, so
