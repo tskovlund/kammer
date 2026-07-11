@@ -35,10 +35,21 @@
 	let menuOpen = $state(false);
 	let menuTrigger = $state<HTMLButtonElement>();
 	let editing = $state(false);
+	let reporting = $state(false);
+	let reported = $state(false);
 
 	async function saveEdit(body: string): Promise<boolean> {
 		const ok = await store.editPost(post.id, body);
 		if (ok) editing = false;
+		return ok;
+	}
+
+	async function sendReport(reason: string): Promise<boolean> {
+		const ok = await store.reportPost(post.id, reason);
+		if (ok) {
+			reporting = false;
+			reported = true;
+		}
 		return ok;
 	}
 </script>
@@ -126,6 +137,19 @@
 							>
 								{post.pinned ? t('feed.unpin') : t('feed.pin')}
 							</button>
+							{#if !post.deleted}
+								<button
+									type="button"
+									role="menuitem"
+									class="px-3 py-2 text-left text-ink hover:bg-ink/5"
+									onclick={() => {
+										reporting = true;
+										menuOpen = false;
+									}}
+								>
+									{t('feed.report.action')}
+								</button>
+							{/if}
 							{#if isMine && !post.deleted}
 								<button
 									type="button"
@@ -243,6 +267,22 @@
 						: t('feed.comment.add')}
 				</button>
 			</footer>
+		{/if}
+
+		{#if reporting}
+			<div class="flex flex-col gap-2 rounded-lg border border-line bg-paper px-3 py-2.5">
+				<p class="text-sm font-medium text-ink">{t('feed.report.title')}</p>
+				<CommentComposer
+					id="report-post-{post.id}"
+					placeholder={t('feed.report.placeholder')}
+					submitLabel={t('feed.report.send')}
+					compact
+					onSubmit={sendReport}
+					onCancel={() => (reporting = false)}
+				/>
+			</div>
+		{:else if reported}
+			<p class="text-sm text-accent" role="status">{t('feed.report.thanks')}</p>
 		{/if}
 
 		{#if showComments && !post.deleted}

@@ -483,7 +483,9 @@ defmodule KammerWeb.Api.FeedWritesTest do
         {:get, "#{base}/#{pending.id}/acknowledgments", nil},
         {:put, "#{base}/#{pending.id}/comments/#{comment.id}", %{"body_markdown" => "x"}},
         {:delete, "#{base}/#{pending.id}/comments/#{comment.id}", nil},
-        {:post, "#{base}/#{pending.id}/comments/#{comment.id}/reactions", %{"emoji" => "👍"}}
+        {:post, "#{base}/#{pending.id}/comments/#{comment.id}/reactions", %{"emoji" => "👍"}},
+        {:post, "#{base}/#{pending.id}/report", %{"reason" => "x"}},
+        {:post, "#{base}/#{pending.id}/comments/#{comment.id}/report", %{"reason" => "x"}}
       ]
 
       for {method, url, request_body} <- requests do
@@ -527,6 +529,11 @@ defmodule KammerWeb.Api.FeedWritesTest do
       other
       |> api_conn()
       |> post("#{path}/#{post.id}/comments/#{pending_comment.id}/reactions", %{"emoji" => "👍"})
+      |> json_response(404)
+
+      other
+      |> api_conn()
+      |> post("#{path}/#{post.id}/comments/#{pending_comment.id}/report", %{"reason" => "?"})
       |> json_response(404)
     end
   end

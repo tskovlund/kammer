@@ -41,6 +41,22 @@ and this project adheres to
 
 ### Added
 
+- Report creation over the API and the PWA report flow (issue #256,
+  part of #187): `POST .../posts/{post_id}/report` and
+  `POST .../posts/{post_id}/comments/{comment_id}/report` file a
+  moderation report through the same `Kammer.Moderation` functions
+  the LiveView flow uses — the group-feed slice of the gap where the
+  moderation queue would have had no intake once LiveView goes
+  (event- and assignment-comment reporting still needs its API
+  sibling; tracked separately). The answer is a neutral
+  `{status: "reported"}` (201) — a repeat report of the same subject
+  answers identically, and an invisible post/comment 404s like every
+  other feed write (no oracle, #156/#161). Filing is rate-limited to
+  20 reports per reporter per hour — a fixed anti-abuse backstop (ADR
+  0027 tier 3), enforced in the context so every surface shares it.
+  The PWA's member group feed gains the matching UI: a Report action
+  in the post menu and on every comment, an inline reason form, and a
+  confirmation once it's sent (EN + DA).
 - PWA notification center (issue #257, part of #187): the
   Notifications tab, previously a pure empty-state stub, is now the
   real in-app list — `NotificationLive.Index` parity over the #173

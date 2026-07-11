@@ -405,11 +405,13 @@ defmodule KammerWeb.Router do
         put "/poll/votes", PostController, :vote
         put "/acknowledgment", PostController, :acknowledge
         get "/acknowledgments", PostController, :acknowledgments
+        post "/report", PostController, :report
 
         post "/comments", PostController, :create_comment
         put "/comments/:comment_id", PostController, :update_comment
         delete "/comments/:comment_id", PostController, :delete_comment
         post "/comments/:comment_id/reactions", PostController, :react_comment
+        post "/comments/:comment_id/report", PostController, :report_comment
       end
     end
 

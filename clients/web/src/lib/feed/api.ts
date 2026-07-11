@@ -332,6 +332,58 @@ export async function reactToComment(
 }
 
 /**
+ * Report a post to the moderators (issue #256). The server answers a bare
+ * `{status: "reported"}` — reporting the same post again answers the same —
+ * so there is nothing to merge back into the feed.
+ */
+export async function reportPost(
+	instance: Instance,
+	ref: GroupRef,
+	postId: string,
+	reason: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/report',
+			{
+				params: {
+					path: { community_slug: ref.community, group_slug: ref.group, post_id: postId }
+				},
+				body: { reason }
+			}
+		);
+		if (error) throw fail(error, response, 'Could not send your report.');
+	});
+}
+
+/** Report a comment to the moderators — the comment sibling of `reportPost`. */
+export async function reportComment(
+	instance: Instance,
+	ref: GroupRef,
+	postId: string,
+	commentId: string,
+	reason: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/report',
+			{
+				params: {
+					path: {
+						community_slug: ref.community,
+						group_slug: ref.group,
+						post_id: postId,
+						comment_id: commentId
+					}
+				},
+				body: { reason }
+			}
+		);
+		if (error) throw fail(error, response, 'Could not send your report.');
+	});
+}
+
+/**
  * Upload one attachment (multipart). Done with `fetch` rather than the typed
  * client so we keep direct access to the status code — 413 (too large) is a
  * distinct, friendly composer error. `transient` skips the group file space

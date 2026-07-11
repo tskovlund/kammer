@@ -854,6 +854,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/report': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Report a post to the moderators (reporting it again answers the same) */
+		post: operations['posts_report'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/pin': {
 		parameters: {
 			query?: never;
@@ -1283,6 +1300,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/public/files/{file_id}/download': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A public post attachment as a forced download */
+		get: operations['public_files_download'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/events': {
 		parameters: {
 			query?: never;
@@ -1343,6 +1377,23 @@ export interface paths {
 		};
 		/** An image's thumbnail (WebP) */
 		get: operations['files_thumbnail'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/public/files/{file_id}/thumbnail': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A public post attachment's image thumbnail (WebP) */
+		get: operations['public_files_thumbnail'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -1485,6 +1536,23 @@ export interface paths {
 		post?: never;
 		/** Delete a post — soft/tombstone (author) or `?hard=true` (moderator) */
 		delete: operations['posts_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/comments/{comment_id}/report': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Report a comment to the moderators (reporting it again answers the same) */
+		post: operations['comments_report'];
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -1741,6 +1809,23 @@ export interface paths {
 		put?: never;
 		/** Toggle my emoji reaction on an event comment */
 		post: operations['events_react_comment'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/public/files/{file_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A public post attachment's display bytes (inline images, downloads otherwise) */
+		get: operations['public_files_show'];
+		put?: never;
+		post?: never;
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -7213,6 +7298,93 @@ export interface operations {
 			};
 		};
 	};
+	posts_report: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description What's wrong — the moderators see exactly this text */
+					reason?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	posts_pin: {
 		parameters: {
 			query?: never;
@@ -9130,6 +9302,55 @@ export interface operations {
 			};
 		};
 	};
+	public_files_download: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The file bytes as an attachment */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	events_index: {
 		parameters: {
 			query?: never;
@@ -9295,6 +9516,55 @@ export interface operations {
 		};
 	};
 	files_thumbnail: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The thumbnail bytes */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	public_files_thumbnail: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -10162,6 +10432,94 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	comments_report: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+				post_id: string;
+				comment_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description What's wrong — the moderators see exactly this text */
+					reason?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StatusOnly'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -11383,6 +11741,55 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	public_files_show: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				file_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description The file — served with its own content type */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};

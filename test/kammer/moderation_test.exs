@@ -58,6 +58,30 @@ defmodule Kammer.ModerationTest do
       assert {:error, :unauthorized} = Moderation.report_post(outsider, post, "?")
     end
 
+    test "a refused attempt burns no report budget — authorization answers first", %{
+      reporter: reporter,
+      post: post
+    } do
+      # The limiter sits behind authorization on purpose (a refused caller
+      # must not drain anything). Pinned by exhausting MORE than the hourly
+      # budget in refused attempts on a foreign post, then reporting a
+      # visible one: were the limiter consulted first, those refusals would
+      # have spent the reporter's budget and this last report would answer
+      # {:error, :rate_limited} instead of succeeding.
+      {foreign_community, _owner} = community_with_owner_fixture()
+      foreign_group = group_fixture(foreign_community, visibility: :community)
+      foreign_author = group_member_fixture(foreign_group)
+
+      {:ok, foreign_post} =
+        Feed.create_post(foreign_author, foreign_group, %{"body_markdown" => "x"})
+
+      for _attempt <- 1..25 do
+        assert {:error, :unauthorized} = Moderation.report_post(reporter, foreign_post, "?")
+      end
+
+      assert {:ok, _report} = Moderation.report_post(reporter, post, "Det her er spam")
+    end
+
     test "comments are reportable too", %{group: group, reporter: reporter, post: post} do
       {:ok, comment} =
         Feed.create_comment(reporter, Feed.get_post!(group, post.id), %{

@@ -244,6 +244,33 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		}
 	}
 
+	// Reporting (issue #256) changes nothing in the feed — the report goes
+	// to the moderation queue — so success is just `true` for the caller's
+	// own confirmation UI; failures land in the shared `actionError` banner.
+	async function reportPost(postId: string, reason: string): Promise<boolean> {
+		try {
+			await api.reportPost(instance, ref, postId, reason);
+			return true;
+		} catch (error) {
+			handle(error);
+			return false;
+		}
+	}
+
+	async function reportComment(
+		postId: string,
+		commentId: string,
+		reason: string
+	): Promise<boolean> {
+		try {
+			await api.reportComment(instance, ref, postId, commentId, reason);
+			return true;
+		} catch (error) {
+			handle(error);
+			return false;
+		}
+	}
+
 	function mergeComment(postId: string, comment: Comment): void {
 		const post = find(postId);
 		if (!post) return;
@@ -363,6 +390,8 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 		publish,
 		editPost,
 		deletePost,
+		reportPost,
+		reportComment,
 		comment,
 		editComment,
 		deleteComment,
