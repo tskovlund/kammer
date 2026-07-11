@@ -179,7 +179,14 @@ the product is not finished in its first version without these):**
 native apps — Kotlin/Android, Swift/iOS, API siblings of the Svelte
 client (#131, ADR 0022/0028); the offline write queue — full offline
 support beyond the shipped read-only offline reading (#137, ADR
-0022/0028); chat/DMs (#136, needs its own design pass). ADR 0012's
+0022/0028); chat/DMs (#136, needs its own design pass); operator
+telemetry (#67, owner-set 2026-07-11) — industry-grade **operational**
+observability: a Prometheus metrics endpoint (PromEx over the
+`:telemetry` events Phoenix/Ecto/Oban/BEAM already emit), spans on
+Kammer's own hot paths, a shipped Grafana dashboard and alerting
+examples in the deploy docs. Explicitly bounded by the product ethos:
+no user-behavior analytics ever, no distributed-tracing ceremony on a
+single-node monolith, no hosted-APM dependencies. ADR 0012's
 sequencing stands: PWA first, the LiveView cut (#187) before native
 work — this sets the finish line, not the order.
 
