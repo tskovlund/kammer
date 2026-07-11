@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Added
 
+- Ban creation and an audit-log page in the PWA's moderation surface
+  (issue #259, part of #187), both over API endpoints that already
+  existed with no PWA caller. The moderation page gained a "ban a
+  member" form (admins only): pick a plain member from the roster —
+  the server refuses admins, owners, and self-bans, mirroring the
+  LiveView semantics — with an optional reason the LiveView flow
+  never exposed, and a 422's field names map to our own copy
+  (already-banned email, over-long reason). A new audit-log page
+  under `moderation/audit`, linked from the moderation page like the
+  LiveView's inline audit section, lists the community's append-only
+  admin actions (summary, action code, relative timestamp) for
+  community admins.
+
 - Community and instance-operator settings pages in the PWA (issue
   #259, part of #187), both over API surfaces that already existed —
   no new server endpoints. The community settings page gained the

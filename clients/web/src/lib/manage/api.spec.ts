@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	approveJoinRequest,
+	createBan,
 	denyJoinRequest,
 	fetchJoinRequests,
 	fetchReports,
@@ -94,6 +95,21 @@ describe('manage api', () => {
 		expect(request.method).toBe('DELETE');
 		expect(request.url).toContain('/join-requests/jr1');
 		expect(request.url).not.toContain('/approval');
+	});
+
+	it('bans by user id — the wire carries user_id and reason, and the created ban comes back', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(201, { data: { id: 'b1', email: 'x@example.com', reason: 'spam' } })
+		);
+		const ban = await createBan(instance(), 'my-community', 'u9', 'spam');
+		expect(ban.id).toBe('b1');
+
+		// The server resolves the target by user_id and records the ban
+		// against their email — the client never sends an email address.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.url).toContain('/moderation/bans');
+		await expect(request.json()).resolves.toEqual({ user_id: 'u9', reason: 'spam' });
 	});
 
 	it('carries a 422 changeset detail so a settings form can key its own copy off the field name', async () => {

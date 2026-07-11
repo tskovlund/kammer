@@ -1,4 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
+import { FeedApiError } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 
@@ -54,6 +55,20 @@ export class ManageApiError extends Error {
 		this.status = status;
 		this.details = details;
 	}
+}
+
+/**
+ * Classifies a load-path failure that may come from either error family:
+ * manage pages routinely pair a feed-family fetch (`fetchCommunity`/
+ * `fetchGroup`, which throw `FeedApiError`) with manage calls. Collapses
+ * to a `ManageErrorKind` so a page keys its error states off one union
+ * (`too_large` can't occur on a read and maps to `server`). Extracted
+ * after the fourth per-page copy (#271's pattern, then #259 slice C).
+ */
+export function loadErrorKind(cause: unknown): ManageErrorKind {
+	if (cause instanceof ManageApiError) return cause.kind;
+	if (cause instanceof FeedApiError && cause.kind !== 'too_large') return cause.kind;
+	return 'server';
 }
 
 function kindForStatus(status: number): ManageErrorKind {
@@ -150,6 +165,31 @@ export async function fetchBans(instance: Instance, communitySlug: string): Prom
 			{ params: { path: { community_slug: communitySlug } } }
 		);
 		if (error || !data) throw fail(error, response, 'Could not load bans.');
+		return data.data;
+	});
+}
+
+/**
+ * Bans a member by user id (SPEC §11): the server removes their
+ * membership and records the ban against their email. Community admins
+ * only; the server refuses admins/owners and self-bans, and answers
+ * 422 with an `email` detail when that address is already banned.
+ */
+export async function createBan(
+	instance: Instance,
+	communitySlug: string,
+	userId: string,
+	reason: string | null = null
+): Promise<Ban> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/moderation/bans',
+			{
+				params: { path: { community_slug: communitySlug } },
+				body: { user_id: userId, reason }
+			}
+		);
+		if (error || !data) throw fail(error, response, 'Could not ban this member.');
 		return data.data;
 	});
 }

@@ -2,12 +2,12 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import {
-		updateCommunity,
 		ManageApiError,
+		loadErrorKind,
+		updateCommunity,
 		type CommunityParams,
 		type ManageErrorKind
 	} from '$lib/manage/api.js';
@@ -82,16 +82,6 @@
 			cancelled = true;
 		};
 	});
-
-	// The load path throws FeedApiError (fetchCommunity lives in the
-	// shared-error family), the manage calls ManageApiError — match both
-	// so a 403/404 keeps its kind instead of collapsing to the generic
-	// failure (independent-review finding on #271).
-	function loadErrorKind(cause: unknown): ManageErrorKind {
-		if (cause instanceof ManageApiError) return cause.kind;
-		if (cause instanceof FeedApiError && cause.kind !== 'too_large') return cause.kind;
-		return 'server';
-	}
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
