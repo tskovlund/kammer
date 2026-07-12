@@ -36,6 +36,7 @@
 	"events.detail.partOfSeries": "Part of a recurring series.",
 	"events.detail.addToCalendar": "Add to calendar",
 	"events.detail.manage": "Manage",
+	"events.subscribe.personalHeading": "Subscribe in your calendar app",
 	"events.subscribe.groupButton": "Subscribe to this calendar",
 	"events.subscribe.personalButton": "Subscribe to my calendar",
 	"events.subscribe.personalButtonNamed": "Subscribe to my calendar on {name}",

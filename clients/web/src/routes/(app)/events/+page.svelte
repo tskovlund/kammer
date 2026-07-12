@@ -161,6 +161,9 @@
      lives on one instance, so this is per-instance when several are added. -->
 {#if instances.list.length > 0}
 	<section class="mt-8 flex flex-col gap-2 border-t border-line pt-5">
+		<h2 class="text-xs font-semibold tracking-wide text-ink-faint uppercase">
+			{t('events.subscribe.personalHeading')}
+		</h2>
 		{#each instances.list as inst (inst.id)}
 			<CalendarSubscribe
 				id="personal-calendar-{inst.id}"

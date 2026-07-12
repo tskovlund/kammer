@@ -11,9 +11,9 @@ and this project adheres to
 ### Added
 
 - Calendar subscription (iCal) links in the PWA (issue #260 port 3,
-  part of #187, SPEC §6). New authenticated endpoints — `GET
-/api/v1/me/calendar-token` and a group sibling — hand the signed-in
-  caller their subscription URL for the secret-token iCal feeds the
+  part of #187, SPEC §6). New authenticated endpoints —
+  `GET /api/v1/me/calendar-token` and a group sibling — hand the
+  signed-in caller their subscription URL for the secret-token iCal feeds the
   browser routes already serve: a personal merged-events feed, and any
   group's whose events they can see. The PWA gains a "Subscribe" control
   on each group's page (when its events feature is on) and on the

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import CalendarSubscribe from './CalendarSubscribe.svelte';
 
@@ -27,7 +27,7 @@ describe('CalendarSubscribe', () => {
 			'https://kammer.example.com/calendar/user/tok.ics'
 		);
 		// The "open" link scheme-swaps https → webcal:// for one-tap add.
-		expect(screen.getByText('Open in calendar app').closest('a')?.getAttribute('href')).toBe(
+		expect(document.querySelector('#cal-open')?.getAttribute('href')).toBe(
 			'webcal://kammer.example.com/calendar/user/tok.ics'
 		);
 	});
@@ -36,9 +36,13 @@ describe('CalendarSubscribe', () => {
 		const load = vi.fn().mockRejectedValue(new Error('nope'));
 		render(CalendarSubscribe, { props: { load, label: 'Subscribe', id: 'cal' } });
 
-		await fireEvent.click(document.querySelector('#cal-reveal')!);
+		const reveal = document.querySelector('#cal-reveal')!;
+		await fireEvent.click(reveal);
 
-		await waitFor(() => expect(screen.getByText(/try again/i)).toBeTruthy());
+		// The reveal control flips to the error label; no URL is revealed.
+		await waitFor(() =>
+			expect(reveal.textContent?.trim()).toBe("Couldn't load the link. Try again.")
+		);
 		expect(document.querySelector('#cal')).toBeNull();
 	});
 });
