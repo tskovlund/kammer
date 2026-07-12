@@ -73,11 +73,12 @@ defmodule KammerWeb.Api.EventController do
       # a feature-off group, or a caller who can't even view the group is
       # :not_found (404, no-oracle like the event read); a viewer who
       # isn't a manager is :unauthorized (403). Because view + manage are
-      # both settled here, attendance_matrix's own list_members view check
-      # always passes — it can neither 403 nor raise.
+      # both settled there, attendance_matrix can't 403 or raise here. The
+      # occurrence list is loaded once and handed to the matrix so it isn't
+      # queried twice.
       with {:ok, series} <- Events.fetch_manageable_series(user, community, series_id),
-           {:ok, matrix} <- Events.attendance_matrix(user, series) do
-        occurrences = Events.list_series_occurrences(series)
+           occurrences = Events.list_series_occurrences(series),
+           {:ok, matrix} <- Events.attendance_matrix(user, series, occurrences) do
         json(conn, %{data: Serializer.event_series(series, occurrences, matrix)})
       else
         error -> ApiError.from_result(conn, error)

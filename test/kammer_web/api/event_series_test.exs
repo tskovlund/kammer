@@ -15,6 +15,7 @@ defmodule KammerWeb.Api.EventSeriesTest do
   import OpenApiSpex.TestAssertions
 
   alias Kammer.Events
+  alias Kammer.Groups.GroupMembership
   alias Kammer.Repo
 
   defp series_context do
@@ -106,6 +107,34 @@ defmodule KammerWeb.Api.EventSeriesTest do
       outsider = member_fixture(community)
 
       outsider
+      |> api_conn()
+      |> get(~p"/api/v1/communities/#{community.slug}/events/series/#{series.id}")
+      |> json_response(404)
+    end
+
+    test "a former creator who has left a private group gets 404, not a 500", %{
+      community: community
+    } do
+      # The creator still passes the manage gate (creator? is a bare id
+      # match) but can no longer view the private group, so the series must
+      # 404 — and must not raise where attendance_matrix lists members.
+      private = group_fixture(community, %{visibility: :private})
+      creator = group_member_fixture(private)
+      starts_at = DateTime.add(DateTime.utc_now(:second), 24, :hour)
+      until = starts_at |> DateTime.add(14, :day) |> DateTime.to_date()
+
+      {:ok, [first | _]} =
+        Events.create_recurring_event(
+          creator,
+          private,
+          %{"title" => "Rehearsal", "starts_at" => starts_at},
+          %{"frequency" => "weekly", "until" => Date.to_iso8601(until)}
+        )
+
+      series = Events.get_series(first)
+      GroupMembership |> Repo.get_by!(user_id: creator.id, group_id: private.id) |> Repo.delete!()
+
+      creator
       |> api_conn()
       |> get(~p"/api/v1/communities/#{community.slug}/events/series/#{series.id}")
       |> json_response(404)

@@ -498,8 +498,12 @@ defmodule Kammer.Events do
   column, each cell the member's RSVP status for that occurrence (or
   `nil` if they haven't answered). Restricted to whoever manages the
   series.
+
+  Pass `occurrences` when the caller has already loaded the full series
+  list (the series page does, for its occurrence table) to avoid a second
+  identical query; omit it and the matrix loads its own.
   """
-  @spec attendance_matrix(User.t(), EventSeries.t()) ::
+  @spec attendance_matrix(User.t(), EventSeries.t(), [Event.t()] | nil) ::
           {:ok,
            %{
              series: EventSeries.t(),
@@ -507,27 +511,28 @@ defmodule Kammer.Events do
              rows: [%{member: User.t(), statuses: %{Ecto.UUID.t() => EventRsvp.status() | nil}}]
            }}
           | {:error, :unauthorized}
-  def attendance_matrix(%User{} = actor, %EventSeries{} = series) do
+  def attendance_matrix(%User{} = actor, %EventSeries{} = series, occurrences \\ nil) do
     group = Repo.get!(Group, series.group_id)
 
-    if can_manage_series?(actor, series, group) do
+    # Self-safe: `list_members` re-checks `:view_group`, so a manager who
+    # can't view (a departed private-group creator) gets :unauthorized here
+    # rather than a raise — even though both callers already gate view.
+    with true <- can_manage_series?(actor, series, group),
+         {:ok, memberships} <- Groups.list_members(actor, group) do
       now = DateTime.utc_now(:second)
 
-      occurrences =
-        series
-        |> list_series_occurrences()
+      upcoming =
+        (occurrences || list_series_occurrences(series))
         |> Enum.reject(& &1.cancelled_at)
         |> Enum.filter(&(DateTime.compare(&1.starts_at, now) != :lt))
 
-      occurrence_ids = Enum.map(occurrences, & &1.id)
+      occurrence_ids = Enum.map(upcoming, & &1.id)
 
       rsvp_by_user_and_occurrence =
-        occurrences
+        upcoming
         |> Enum.flat_map(& &1.rsvps)
         |> Enum.filter(& &1.user_id)
         |> Map.new(&{{&1.user_id, &1.event_id}, &1.status})
-
-      {:ok, memberships} = Groups.list_members(actor, group)
 
       rows =
         Enum.map(memberships, fn membership ->
@@ -540,9 +545,10 @@ defmodule Kammer.Events do
           %{member: membership.user, statuses: statuses}
         end)
 
-      {:ok, %{series: series, occurrences: occurrences, rows: rows}}
+      {:ok, %{series: series, occurrences: upcoming, rows: rows}}
     else
-      {:error, :unauthorized}
+      false -> {:error, :unauthorized}
+      {:error, _reason} -> {:error, :unauthorized}
     end
   end
 

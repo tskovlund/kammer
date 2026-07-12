@@ -42,6 +42,9 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 			// Refetch rather than patch — cancelling drops the occurrence from the
 			// matrix columns — but assign in place instead of going through load(),
 			// so the current view stays rendered rather than blanking to skeletons.
+			// If the write lands but this refetch fails, the banner shows and the
+			// view stays on the pre-toggle state; the cancel is idempotent, so a
+			// re-click (or reload) reconciles — better than blanking the page.
 			detail = await api.fetchEventSeries(instance, communitySlug, seriesId);
 		} catch (error) {
 			actionError =
