@@ -24,6 +24,8 @@ export type InstanceSettings = components['schemas']['InstanceSettings'];
 export type Community = components['schemas']['Community'];
 export type Group = components['schemas']['Group'];
 export type CommunityParams = components['schemas']['CommunityParams'];
+export type CustomField = components['schemas']['CustomField'];
+export type CustomFieldParams = components['schemas']['CustomFieldParams'];
 export type GroupParams = components['schemas']['GroupParams'];
 export type InstanceSettingsParams = components['schemas']['InstanceSettingsParams'];
 export type GroupFeature = NonNullable<
@@ -236,6 +238,82 @@ export async function updateCommunity(
 		);
 		if (error || !data) throw fail(error, response, 'Could not save the community settings.');
 		return data.data;
+	});
+}
+
+// --- Custom profile fields (issue #259, ADR 0020) ---------------------------
+
+/** The community's custom profile-field definitions. Managers only. */
+export async function fetchCustomFields(
+	instance: Instance,
+	communitySlug: string
+): Promise<CustomField[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/communities/{community_slug}/custom-fields',
+			{ params: { path: { community_slug: communitySlug } } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not load the profile fields.');
+		return data.data;
+	});
+}
+
+/**
+ * Adds a custom profile field. A `single_select` needs a non-empty
+ * `options` list — the server answers 422 with an `options` (or `label`)
+ * detail the form maps to its own copy.
+ */
+export async function createCustomField(
+	instance: Instance,
+	communitySlug: string,
+	params: CustomFieldParams
+): Promise<CustomField> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/custom-fields',
+			{ params: { path: { community_slug: communitySlug } }, body: params }
+		);
+		if (error || !data) throw fail(error, response, 'Could not add this field.');
+		return data.data;
+	});
+}
+
+/**
+ * Edits a field's label, visibility, or required flag — a partial
+ * update, so pass only what changes. Type and options are fixed at
+ * creation (changing them would orphan existing answers). Making a
+ * field required after members have joined never locks anyone out; it
+ * just starts nudging them to fill it in (ADR 0020). A 422's `label`
+ * detail maps to the form's own copy.
+ */
+export async function updateCustomField(
+	instance: Instance,
+	communitySlug: string,
+	fieldId: string,
+	params: Partial<Pick<CustomField, 'label' | 'visibility' | 'required'>>
+): Promise<CustomField> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).PUT(
+			'/api/v1/communities/{community_slug}/custom-fields/{id}',
+			{ params: { path: { community_slug: communitySlug, id: fieldId } }, body: params }
+		);
+		if (error || !data) throw fail(error, response, 'Could not update this field.');
+		return data.data;
+	});
+}
+
+/** Deletes a field and every member's answer to it. */
+export async function deleteCustomField(
+	instance: Instance,
+	communitySlug: string,
+	fieldId: string
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE(
+			'/api/v1/communities/{community_slug}/custom-fields/{id}',
+			{ params: { path: { community_slug: communitySlug, id: fieldId } } }
+		);
+		if (error) throw fail(error, response, 'Could not delete this field.');
 	});
 }
 
