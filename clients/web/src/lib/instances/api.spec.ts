@@ -3,18 +3,32 @@ import {
 	InstanceApiError,
 	exchangeAndAddInstance,
 	fetchInstanceStatus,
+	passkeySignInAndAddInstance,
 	probeInstance,
 	requestLink,
 	revokeAndRemoveInstance
 } from './api';
 import { instanceStore } from './store';
 import { fakeLocalStorage } from './test-support';
+import { getPasskeyAssertion } from './webauthn';
+
+// The browser ceremony (`navigator.credentials.get` + base64url marshaling)
+// is exercised in webauthn.spec.ts; here it's a seam so these tests pin the
+// API orchestration around it — challenge, assert, verify, store.
+vi.mock('./webauthn', () => ({ getPasskeyAssertion: vi.fn() }));
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: { 'content-type': 'application/json' }
 	});
+}
+
+// openapi-fetch may hand the underlying fetch either (url, init) or a single
+// Request it constructed — normalize both so a test can read the sent body.
+function sentRequest(call: [input: RequestInfo | URL, init?: RequestInit]): Request {
+	const [input, init] = call;
+	return input instanceof Request ? input : new Request(String(input), init);
 }
 
 describe('probeInstance', () => {
@@ -186,6 +200,128 @@ describe('exchangeAndAddInstance', () => {
 		const instances = instanceStore.list();
 		expect(instances).toHaveLength(1);
 		expect(instances[0].deviceToken).toBe('new-token');
+	});
+});
+
+describe('passkeySignInAndAddInstance', () => {
+	const assertion = {
+		credential_id: 'cred',
+		authenticator_data: 'authdata',
+		signature: 'sig',
+		client_data_json: 'cdj'
+	};
+
+	beforeEach(() => {
+		vi.stubGlobal('localStorage', fakeLocalStorage());
+		instanceStore.clear();
+		vi.stubGlobal('fetch', vi.fn());
+		vi.mocked(getPasskeyAssertion).mockReset();
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('runs the challenge → assert → verify ceremony and adds the instance', async () => {
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(
+				jsonResponse({ challenge: 'chal', challenge_token: 'ctok', rp_id: 'kammer.example.com' })
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({
+					device_token: 'device-token-123',
+					user: { id: 'user-1', email: 'a@example.com', display_name: 'Alice' }
+				})
+			);
+		vi.mocked(getPasskeyAssertion).mockResolvedValueOnce(assertion);
+
+		const instance = await passkeySignInAndAddInstance(
+			'https://kammer.example.com',
+			'Example Club',
+			'My iPhone'
+		);
+
+		// The browser was asked to sign the exact challenge + rp_id the
+		// server minted — not values invented client-side.
+		expect(getPasskeyAssertion).toHaveBeenCalledWith('chal', 'kammer.example.com');
+
+		// Verify echoes the opaque challenge_token verbatim and carries the
+		// assertion fields plus the device name.
+		const verify = sentRequest(vi.mocked(fetch).mock.calls[1]);
+		expect(verify.url).toBe('https://kammer.example.com/api/v1/auth/passkey/verify');
+		expect(await verify.json()).toEqual({
+			challenge_token: 'ctok',
+			device_name: 'My iPhone',
+			credential_id: 'cred',
+			authenticator_data: 'authdata',
+			signature: 'sig',
+			client_data_json: 'cdj'
+		});
+
+		expect(instance.deviceToken).toBe('device-token-123');
+		expect(instance.instanceName).toBe('Example Club');
+		expect(instanceStore.list()).toHaveLength(1);
+	});
+
+	it('collapses a server-rejected assertion into the same neutral failure, storing nothing', async () => {
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(
+				jsonResponse({ challenge: 'chal', challenge_token: 'ctok', rp_id: 'kammer.example.com' })
+			)
+			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
+		vi.mocked(getPasskeyAssertion).mockResolvedValueOnce(assertion);
+
+		// Same message as the browser-yields-nothing case below — no oracle
+		// for which passkeys or accounts exist, mirroring the server's
+		// uniform 401.
+		await expect(
+			passkeySignInAndAddInstance('https://kammer.example.com', 'Example Club')
+		).rejects.toThrow('That passkey sign-in did not work.');
+		expect(instanceStore.list()).toEqual([]);
+	});
+
+	it('aborts before verifying when the browser yields no credential', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ challenge: 'chal', challenge_token: 'ctok', rp_id: 'kammer.example.com' })
+		);
+		vi.mocked(getPasskeyAssertion).mockResolvedValueOnce(null);
+
+		await expect(
+			passkeySignInAndAddInstance('https://kammer.example.com', 'Example Club')
+		).rejects.toThrow('That passkey sign-in did not work.');
+		// Only the challenge went out — with no assertion there is nothing to
+		// verify, and nothing is stored.
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(instanceStore.list()).toEqual([]);
+	});
+
+	it('collapses a dismissed prompt (a thrown ceremony) into the same neutral failure', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ challenge: 'chal', challenge_token: 'ctok', rp_id: 'kammer.example.com' })
+		);
+		// Cancelling the OS prompt *rejects* navigator.credentials.get, so it
+		// leaves getPasskeyAssertion as a thrown DOMException — a different
+		// mechanism than the explicit sentinel throws, neutralized only by
+		// guardNetworkError's catch. It must still reach the one neutral
+		// message and store nothing (no leak of the raw cancel reason).
+		vi.mocked(getPasskeyAssertion).mockRejectedValueOnce(
+			new DOMException('The operation was cancelled.', 'NotAllowedError')
+		);
+
+		await expect(
+			passkeySignInAndAddInstance('https://kammer.example.com', 'Example Club')
+		).rejects.toThrow('That passkey sign-in did not work.');
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(instanceStore.list()).toEqual([]);
+	});
+
+	it('fails neutrally without touching the authenticator when the challenge cannot be minted', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(new Response('nope', { status: 500 }));
+
+		await expect(
+			passkeySignInAndAddInstance('https://kammer.example.com', 'Example Club')
+		).rejects.toThrow('That passkey sign-in did not work.');
+		// A challenge that never arrived must not raise an OS prompt — the
+		// ceremony is short-circuited before the authenticator is touched.
+		expect(getPasskeyAssertion).not.toHaveBeenCalled();
+		expect(instanceStore.list()).toEqual([]);
 	});
 });
 
