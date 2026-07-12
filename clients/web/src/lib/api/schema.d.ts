@@ -332,6 +332,24 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/passkeys': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's registered passkeys (issue #260 port 5b) */
+		get: operations['passkeys_index'];
+		put?: never;
+		/** Finish passkey enrollment: verify the attestation and store the credential. Every failure — stale/tampered token, bad attestation, duplicate credential — is one neutral 422 */
+		post: operations['passkeys_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/guest/manage': {
 		parameters: {
 			query?: never;
@@ -1304,6 +1322,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/passkeys/challenge': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Start passkey enrollment (WebAuthn registration options, ADR 0018) */
+		post: operations['passkeys_challenge'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/events/{event_id}/slots': {
 		parameters: {
 			query?: never;
@@ -1855,6 +1890,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/passkeys/{passkey_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		post?: never;
+		/** Remove a registered passkey by id (owner-scoped) */
+		delete: operations['passkeys_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/me/devices/{device_id}': {
 		parameters: {
 			query?: never;
@@ -2346,6 +2398,22 @@ export interface components {
 			title: string;
 			/** @description Advisory actions the caller may take (issue #199) — `respond` while open, `manage` (close/convert) for creator or moderator. Empty when the viewer's rights weren't resolved. */
 			viewer_can: ('respond' | 'manage')[];
+		};
+		/**
+		 * PasskeyRegistrationChallenge
+		 * @description WebAuthn registration options (ADR 0018, issue #260 port 5b): feed these to navigator.credentials.create, then send the attestation together with `challenge_token` (opaque, short-lived) to the create-passkey operation. `challenge`, `user_id`, and every id in `exclude_credentials` are base64url, no padding.
+		 */
+		PasskeyRegistrationChallenge: {
+			/** @description base64url, no padding */
+			challenge: string;
+			challenge_token: string;
+			/** @description Already-registered credential ids, to prevent double-enrollment */
+			exclude_credentials: string[];
+			rp_id: string;
+			user_display_name: string | null;
+			/** @description base64url, no padding */
+			user_id: string;
+			user_name: string;
 		};
 		/**
 		 * EventSeriesDetail
@@ -3362,6 +3430,19 @@ export interface components {
 			/** @enum {string} */
 			role: 'owner' | 'admin' | 'member';
 			user: components['schemas']['MemberUser'];
+		};
+		/**
+		 * Passkey
+		 * @description A registered WebAuthn credential (ADR 0018, issue #260 port 5b) as its owner manages it. The credential material itself (credential id, public key) is never exposed — only the nickname and timestamps.
+		 */
+		Passkey: {
+			/** Format: date-time */
+			created_at: string;
+			/** Format: uuid */
+			id: string;
+			/** Format: date-time */
+			last_used_at?: string | null;
+			nickname?: string | null;
 		};
 		/** Poll */
 		Poll: {
@@ -4980,6 +5061,145 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	passkeys_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Passkey'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	passkeys_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description base64url, no padding */
+					attestation_object: string;
+					/** @description Returned verbatim from the challenge operation */
+					challenge_token: string;
+					/** @description base64url, no padding */
+					client_data_json: string;
+					/** @description Optional label the owner gives the passkey */
+					nickname?: string | null;
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['Passkey'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};
@@ -9940,6 +10160,55 @@ export interface operations {
 			};
 		};
 	};
+	passkeys_challenge: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['PasskeyRegistrationChallenge'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	events_create_slot: {
 		parameters: {
 			query?: never;
@@ -12544,6 +12813,55 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	passkeys_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				passkey_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Revoked */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};

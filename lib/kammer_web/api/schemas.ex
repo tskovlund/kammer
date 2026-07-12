@@ -1285,6 +1285,65 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule Passkey do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Passkey",
+      description:
+        "A registered WebAuthn credential (ADR 0018, issue #260 port 5b) as its " <>
+          "owner manages it. The credential material itself (credential id, public " <>
+          "key) is never exposed — only the nickname and timestamps.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        nickname: %Schema{type: :string, nullable: true},
+        created_at: %Schema{type: :string, format: :"date-time"},
+        last_used_at: %Schema{type: :string, format: :"date-time", nullable: true}
+      },
+      required: [:id, :created_at]
+    })
+  end
+
+  defmodule PasskeyRegistrationChallenge do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "PasskeyRegistrationChallenge",
+      description:
+        "WebAuthn registration options (ADR 0018, issue #260 port 5b): feed these to " <>
+          "navigator.credentials.create, then send the attestation together with " <>
+          "`challenge_token` (opaque, short-lived) to the create-passkey operation. " <>
+          "`challenge`, `user_id`, and every id in `exclude_credentials` are " <>
+          "base64url, no padding.",
+      type: :object,
+      properties: %{
+        challenge: %Schema{type: :string, description: "base64url, no padding"},
+        rp_id: %Schema{type: :string},
+        challenge_token: %Schema{type: :string},
+        user_id: %Schema{type: :string, description: "base64url, no padding"},
+        user_name: %Schema{type: :string},
+        user_display_name: %Schema{type: :string, nullable: true},
+        exclude_credentials: %Schema{
+          type: :array,
+          items: %Schema{type: :string, description: "base64url, no padding"},
+          description: "Already-registered credential ids, to prevent double-enrollment"
+        }
+      },
+      required: [
+        :challenge,
+        :rp_id,
+        :challenge_token,
+        :user_id,
+        :user_name,
+        :user_display_name,
+        :exclude_credentials
+      ]
+    })
+  end
+
   defmodule NotificationLevel do
     @moduledoc false
     require OpenApiSpex

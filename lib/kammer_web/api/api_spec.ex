@@ -285,6 +285,61 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Revoked", Schemas.StatusResponse)
           )
       },
+      "/api/v1/me/passkeys/challenge" => %PathItem{
+        post:
+          operation(
+            "Start passkey enrollment (WebAuthn registration options, ADR 0018)",
+            :passkeys_challenge,
+            [],
+            response: single_response(Schemas.PasskeyRegistrationChallenge)
+          )
+      },
+      "/api/v1/me/passkeys" => %PathItem{
+        get:
+          operation(
+            "The caller's registered passkeys (issue #260 port 5b)",
+            :passkeys_index,
+            [],
+            response: data_response(Schemas.Passkey)
+          ),
+        post:
+          operation(
+            "Finish passkey enrollment: verify the attestation and store the credential. " <>
+              "Every failure — stale/tampered token, bad attestation, duplicate credential — " <>
+              "is one neutral 422",
+            :passkeys_create,
+            [],
+            status: 201,
+            request_body:
+              body(%Schema{
+                type: :object,
+                properties: %{
+                  challenge_token: %Schema{
+                    type: :string,
+                    description: "Returned verbatim from the challenge operation"
+                  },
+                  attestation_object: %Schema{type: :string, description: "base64url, no padding"},
+                  client_data_json: %Schema{type: :string, description: "base64url, no padding"},
+                  nickname: %Schema{
+                    type: :string,
+                    nullable: true,
+                    description: "Optional label the owner gives the passkey"
+                  }
+                },
+                required: [:challenge_token, :attestation_object, :client_data_json]
+              }),
+            response: single_response(Schemas.Passkey)
+          )
+      },
+      "/api/v1/me/passkeys/{passkey_id}" => %PathItem{
+        delete:
+          operation(
+            "Remove a registered passkey by id (owner-scoped)",
+            :passkeys_delete,
+            [path_param(:passkey_id)],
+            response: json_response("Revoked", Schemas.StatusResponse)
+          )
+      },
       "/api/v1/invites/{token}" => %PathItem{
         get:
           operation(

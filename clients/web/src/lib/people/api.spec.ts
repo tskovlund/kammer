@@ -1,0 +1,109 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	beginPasskeyRegistration,
+	completePasskeyRegistration,
+	deletePasskey,
+	fetchPasskeys
+} from './api.js';
+import type { Instance } from '$lib/instances/types.js';
+
+function jsonResponse(body: unknown, status = 200) {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'content-type': 'application/json' }
+	});
+}
+
+function fixture(overrides: Partial<Instance> = {}): Instance {
+	return {
+		id: 'instance-1',
+		baseUrl: 'https://kammer.example.com',
+		instanceName: 'Example',
+		deviceToken: 'token-1',
+		user: { id: 'user-1', email: 'a@example.com', displayName: 'Alice' },
+		addedAt: '2026-01-01T00:00:00Z',
+		...overrides
+	};
+}
+
+beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+afterEach(() => vi.unstubAllGlobals());
+
+describe('passkey enrollment', () => {
+	it('begins registration against the challenge endpoint and returns the options', async () => {
+		const challenge = {
+			challenge: 'chal',
+			rp_id: 'kammer.example.com',
+			challenge_token: 'token',
+			user_id: 'AQID',
+			user_name: 'a@example.com',
+			user_display_name: 'Alice',
+			exclude_credentials: []
+		};
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ data: challenge }));
+
+		await expect(beginPasskeyRegistration(fixture())).resolves.toEqual(challenge);
+		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
+		expect(request.method).toBe('POST');
+		expect(request.url).toBe('https://kammer.example.com/api/v1/me/passkeys/challenge');
+	});
+
+	it('completes registration by posting the attestation and returns the stored passkey', async () => {
+		const passkey = {
+			id: 'passkey-1',
+			nickname: 'My phone',
+			created_at: '2026-01-02T00:00:00Z',
+			last_used_at: null
+		};
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ data: passkey }, 201));
+
+		const body = {
+			challenge_token: 'token',
+			attestation_object: 'AQID',
+			client_data_json: 'BAU',
+			nickname: 'My phone'
+		};
+		await expect(completePasskeyRegistration(fixture(), body)).resolves.toEqual(passkey);
+		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
+		expect(request.url).toBe('https://kammer.example.com/api/v1/me/passkeys');
+		expect(await request.json()).toEqual(body);
+	});
+
+	it('surfaces the server-neutral 422 as a validation error, not the raw message', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ error: { code: 'invalid_params', message: 'Could not register.' } }, 422)
+		);
+
+		await expect(
+			completePasskeyRegistration(fixture(), {
+				challenge_token: 't',
+				attestation_object: 'a',
+				client_data_json: 'c'
+			})
+		).rejects.toMatchObject({ kind: 'validation', status: 422 });
+	});
+});
+
+describe('fetchPasskeys', () => {
+	it('lists the caller passkeys', async () => {
+		const passkeys = [
+			{ id: 'p1', nickname: null, created_at: '2026-01-01T00:00:00Z', last_used_at: null }
+		];
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ data: passkeys }));
+
+		await expect(fetchPasskeys(fixture())).resolves.toEqual(passkeys);
+		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
+		expect(request.url).toBe('https://kammer.example.com/api/v1/me/passkeys');
+	});
+});
+
+describe('deletePasskey', () => {
+	it('deletes by id against the scoped endpoint', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ status: 'revoked' }));
+
+		await expect(deletePasskey(fixture(), 'passkey-1')).resolves.toBeUndefined();
+		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
+		expect(request.method).toBe('DELETE');
+		expect(request.url).toBe('https://kammer.example.com/api/v1/me/passkeys/passkey-1');
+	});
+});

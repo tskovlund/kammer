@@ -25,6 +25,7 @@ defmodule KammerWeb.Api.Serializer do
 
   alias Kammer.Authorization
   alias Kammer.Accounts.User
+  alias Kammer.Accounts.UserPasskey
   alias Kammer.Accounts.UserToken
   alias Kammer.Assignments.Assignment
   alias Kammer.Audit.AuditEvent
@@ -1027,6 +1028,22 @@ defmodule KammerWeb.Api.Serializer do
       device_name: token.user_agent,
       created_at: token.inserted_at,
       current: token.id == current_id
+    }
+  end
+
+  @doc """
+  A registered passkey (ADR 0018, issue #260 port 5b) as its owner
+  manages it: the `nickname` they gave it and its timestamps. The
+  `credential_id` and `public_key_cose` stay internal — they're the
+  authentication material, never wire data.
+  """
+  @spec passkey(UserPasskey.t()) :: map()
+  def passkey(%UserPasskey{} = passkey) do
+    %{
+      id: passkey.id,
+      nickname: passkey.nickname,
+      created_at: passkey.inserted_at,
+      last_used_at: passkey.last_used_at
     }
   end
 

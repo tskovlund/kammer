@@ -7,6 +7,8 @@ import type {
 	Invite,
 	NotificationLevel,
 	NotificationLevelValue,
+	Passkey,
+	PasskeyRegistrationChallenge,
 	Profile,
 	ProfileParams,
 	Role,
@@ -262,6 +264,64 @@ export async function revokeDevice(instance: Instance, deviceId: string): Promis
 			params: { path: { device_id: deviceId } }
 		});
 		if (error) throw fail(error, response, 'Could not revoke that device.');
+	});
+}
+
+/** The caller's registered passkeys (ADR 0018, issue #260 port 5b). */
+export async function fetchPasskeys(instance: Instance): Promise<Passkey[]> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET('/api/v1/me/passkeys');
+		if (error || !data) throw fail(error, response, 'Could not load your passkeys.');
+		return data.data;
+	});
+}
+
+/**
+ * Starts passkey enrollment: the server mints WebAuthn registration
+ * options and a signed `challenge_token` that carries the ceremony state.
+ * Feed the options to `createPasskey`, then hand the attestation (plus the
+ * same token) to `completePasskeyRegistration`.
+ */
+export async function beginPasskeyRegistration(
+	instance: Instance
+): Promise<PasskeyRegistrationChallenge> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST('/api/v1/me/passkeys/challenge');
+		if (error || !data) throw fail(error, response, 'Could not start passkey registration.');
+		return data.data;
+	});
+}
+
+/**
+ * Finishes passkey enrollment: verifies the attestation against the
+ * challenge and stores the credential, returning it. The server collapses
+ * every failure into one neutral 422, so `fail` surfaces a generic
+ * message with no oracle for which step went wrong.
+ */
+export async function completePasskeyRegistration(
+	instance: Instance,
+	body: {
+		challenge_token: string;
+		attestation_object: string;
+		client_data_json: string;
+		nickname?: string | null;
+	}
+): Promise<Passkey> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST('/api/v1/me/passkeys', {
+			body
+		});
+		if (error || !data) throw fail(error, response, 'Could not register this passkey.');
+		return data.data;
+	});
+}
+
+export async function deletePasskey(instance: Instance, passkeyId: string): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(instance).DELETE('/api/v1/me/passkeys/{passkey_id}', {
+			params: { path: { passkey_id: passkeyId } }
+		});
+		if (error) throw fail(error, response, 'Could not remove that passkey.');
 	});
 }
 

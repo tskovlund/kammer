@@ -49,6 +49,16 @@ platform authenticators (synced passkeys) never increment it.
 **UI**: passkeys live on the existing Devices page (sudo-mode gated),
 not a separate page.
 
+> **Note (2026-07-12, #260 port 5b):** the PWA port of enrollment
+> (`/api/v1/me/passkeys`, on the PWA devices page) ships **without**
+> sudo-mode — the API has no recent-re-auth concept, and its long-lived
+> device token gates credential _and_ device management alike
+> (`/me/devices` revoke is device-token-gated too). Adding a passkey
+> therefore doesn't escalate beyond what the device token already grants.
+> Whether the PWA should add a step-up before credential changes is an
+> open call tracked in #294; until then this ADR's "sudo-mode gated"
+> describes the LiveView surface only.
+
 ## Consequences
 
 - Registration and login share zero controller code but both terminate

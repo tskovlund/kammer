@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { base64UrlToBytes, bytesToBase64Url, getPasskeyAssertion } from './webauthn';
+import { base64UrlToBytes, bytesToBase64Url, createPasskey, getPasskeyAssertion } from './webauthn';
 
 describe('base64url encoding', () => {
 	it('encodes to the unpadded, URL-safe alphabet WebAuthn puts on the wire', () => {
@@ -57,5 +57,61 @@ describe('getPasskeyAssertion', () => {
 	it('returns null when the browser produces no credential', async () => {
 		vi.stubGlobal('navigator', { credentials: { get: vi.fn().mockResolvedValue(null) } });
 		await expect(getPasskeyAssertion('chal', 'rp')).resolves.toBeNull();
+	});
+});
+
+describe('createPasskey', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	const options = {
+		challenge: 'chal',
+		rpId: 'kammer.example.com',
+		userId: 'AQID',
+		userName: 'a@example.com',
+		userDisplayName: 'Alice',
+		excludeCredentials: ['Bg']
+	};
+
+	it('drives registration and marshals the attestation into the create fields', async () => {
+		const create = vi.fn().mockResolvedValue({
+			response: {
+				attestationObject: new Uint8Array([1, 2, 3]).buffer,
+				clientDataJSON: new Uint8Array([4, 5]).buffer
+			}
+		});
+		vi.stubGlobal('navigator', { credentials: { create } });
+
+		const result = await createPasskey(options);
+
+		const publicKey = create.mock.calls[0][0].publicKey;
+		expect(publicKey.rp.id).toBe('kammer.example.com');
+		expect(publicKey.rp.name).toBe('Kammer');
+		expect(publicKey.authenticatorSelection.userVerification).toBe('preferred');
+		expect(publicKey.timeout).toBe(60_000);
+		// The server's challenge and the account's user id are decoded from
+		// base64url back into the bytes the authenticator signs over.
+		expect(Array.from(publicKey.challenge as Uint8Array)).toEqual(
+			Array.from(base64UrlToBytes('chal'))
+		);
+		expect(Array.from(publicKey.user.id as Uint8Array)).toEqual(
+			Array.from(base64UrlToBytes('AQID'))
+		);
+		expect(publicKey.user.name).toBe('a@example.com');
+		expect(publicKey.user.displayName).toBe('Alice');
+		// Discoverable credential (usernameless sign-in can find it later),
+		// ES256 + RS256 — the algorithms Wax verifies.
+		expect(publicKey.authenticatorSelection.residentKey).toBe('required');
+		expect(publicKey.pubKeyCredParams.map((p: { alg: number }) => p.alg)).toEqual([-7, -257]);
+		// Already-registered ids are excluded, decoded from base64url.
+		expect(Array.from(publicKey.excludeCredentials[0].id as Uint8Array)).toEqual(
+			Array.from(base64UrlToBytes('Bg'))
+		);
+
+		expect(result).toEqual({ attestation_object: 'AQID', client_data_json: 'BAU' });
+	});
+
+	it('returns null when the browser produces no credential', async () => {
+		vi.stubGlobal('navigator', { credentials: { create: vi.fn().mockResolvedValue(null) } });
+		await expect(createPasskey(options)).resolves.toBeNull();
 	});
 });
