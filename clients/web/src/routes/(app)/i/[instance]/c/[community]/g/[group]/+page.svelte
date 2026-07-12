@@ -10,6 +10,8 @@
 		type Group
 	} from '$lib/feed/api.js';
 	import { createFeedStore, type FeedStore } from '$lib/feed/feed-store.svelte.js';
+	import { fetchGroupCalendarToken } from '$lib/events/api.js';
+	import CalendarSubscribe from '$lib/events/CalendarSubscribe.svelte';
 	import Composer from '$lib/feed/components/Composer.svelte';
 	import PostCard from '$lib/feed/components/PostCard.svelte';
 	import type { Community } from '$lib/feed/types.js';
@@ -339,6 +341,18 @@
 						<p class="text-sm text-ink-muted" role="status">{membershipNotice}</p>
 					{/if}
 				</div>
+
+				{#if group?.features?.includes('events') && instance}
+					{@const inst = instance}
+					<div class="mt-2">
+						<CalendarSubscribe
+							id="group-calendar"
+							label={t('events.subscribe.groupButton')}
+							load={() => fetchGroupCalendarToken(inst, ref.community, ref.group)}
+						/>
+					</div>
+				{/if}
+
 				{#if canManageGroup || canModerate || canManageCommunity}
 					<nav
 						class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-sm"

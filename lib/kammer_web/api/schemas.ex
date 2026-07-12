@@ -931,6 +931,26 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule CalendarToken do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "CalendarToken",
+      type: :object,
+      properties: %{
+        token: %Schema{type: :string, description: "The secret iCal feed token"},
+        url: %Schema{
+          type: :string,
+          format: :uri,
+          description:
+            "The ready-to-subscribe .ics feed URL (scheme-swap to webcal:// if desired)"
+        }
+      },
+      required: [:token, :url]
+    })
+  end
+
   defmodule HomeGroupSummary do
     @moduledoc false
     require OpenApiSpex

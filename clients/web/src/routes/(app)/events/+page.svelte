@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { dayOffsetFromToday } from '$lib/events/agenda.js';
+	import { fetchMyCalendarToken } from '$lib/events/api.js';
+	import CalendarSubscribe from '$lib/events/CalendarSubscribe.svelte';
 	import { createEventsStore } from '$lib/events/events-store.svelte.js';
 	import type { MergedEvent } from '$lib/events/types.js';
 	import { formatDate, formatTime } from '$lib/i18n/datetime.js';
@@ -153,4 +155,23 @@
 			</section>
 		{/each}
 	</div>
+{/if}
+
+<!-- Subscribe to the personal merged-events feed (#260). Each iCal feed
+     lives on one instance, so this is per-instance when several are added. -->
+{#if instances.list.length > 0}
+	<section class="mt-8 flex flex-col gap-2 border-t border-line pt-5">
+		<h2 class="text-xs font-semibold tracking-wide text-ink-faint uppercase">
+			{t('events.subscribe.personalHeading')}
+		</h2>
+		{#each instances.list as inst (inst.id)}
+			<CalendarSubscribe
+				id="personal-calendar-{inst.id}"
+				label={instances.list.length > 1
+					? t('events.subscribe.personalButtonNamed', { name: inst.instanceName })
+					: t('events.subscribe.personalButton')}
+				load={() => fetchMyCalendarToken(inst)}
+			/>
+		{/each}
+	</section>
 {/if}
