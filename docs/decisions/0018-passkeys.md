@@ -52,7 +52,7 @@ not a separate page.
 > **Note (2026-07-12, #260 port 5b):** the PWA port of enrollment
 > (`/api/v1/me/passkeys`, on the PWA devices page) ships **without**
 > sudo-mode — the API has no recent-re-auth concept, and its long-lived
-> device token gates credential *and* device management alike
+> device token gates credential _and_ device management alike
 > (`/me/devices` revoke is device-token-gated too). Adding a passkey
 > therefore doesn't escalate beyond what the device token already grants.
 > Whether the PWA should add a step-up before credential changes is an
