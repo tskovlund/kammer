@@ -2,7 +2,13 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { fetchPublicGroup, fetchPublicGroupPosts, type Group } from '$lib/public/api.js';
+	import {
+		fetchPublicGroup,
+		fetchPublicGroupPosts,
+		requestNewsletterSubscription,
+		type Group,
+		type NewsletterCadence
+	} from '$lib/public/api.js';
 	import type { Post } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import Avatar from '$lib/ui/Avatar.svelte';
@@ -11,7 +17,9 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PublicShell from '$lib/ui/PublicShell.svelte';
 	import RelativeTime from '$lib/ui/RelativeTime.svelte';
+	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import GuestRequestForm from '$lib/public/components/GuestRequestForm.svelte';
 
 	// The tokenless public group page (issue #185 slice B): the group's
 	// public face plus its feed, cursor-paginated the same way the
@@ -22,9 +30,20 @@
 	let posts = $state<Post[]>([]);
 	let nextCursor = $state<string | null>(null);
 	let loadingMore = $state(false);
+	// Kept as `string` (not the `NewsletterCadence` union) because the
+	// shared `Select`'s `bind:value` writes back a plain `string`; narrowed
+	// again at the API boundary in `submitSubscription`, the same pattern
+	// the group-settings/new-group forms use for their policy selects.
+	let cadence = $state<string>('per_post');
 
 	const communitySlug = $derived(page.params.community!);
 	const groupSlug = $derived(page.params.group!);
+
+	const cadenceOptions = $derived([
+		{ value: 'per_post', label: t('public.group.subscribe.cadence.perPost') },
+		{ value: 'daily', label: t('public.group.subscribe.cadence.daily') },
+		{ value: 'weekly', label: t('public.group.subscribe.cadence.weekly') }
+	]);
 
 	onMount(async () => {
 		try {
@@ -64,6 +83,19 @@
 
 	function postHref(postId: string): string {
 		return resolve(`/c/${communitySlug}/g/${groupSlug}/p/${postId}`);
+	}
+
+	async function submitSubscription(identity: {
+		email: string;
+		displayName: string;
+	}): Promise<void> {
+		await requestNewsletterSubscription(
+			window.location.origin,
+			communitySlug,
+			groupSlug,
+			identity,
+			cadence as NewsletterCadence
+		);
 	}
 </script>
 
@@ -140,6 +172,36 @@
 					</Button>
 				</div>
 			{/if}
+		{/if}
+
+		{#if group.guest_subscribe_allowed}
+			<section
+				class="mt-8 border-t border-line pt-6"
+				aria-labelledby="public-group-subscribe-heading"
+			>
+				<h2 id="public-group-subscribe-heading" class="text-sm font-semibold text-ink">
+					{t('public.group.subscribe.title')}
+				</h2>
+				<p class="mt-1 text-sm text-ink-muted">{t('public.group.subscribe.body')}</p>
+				<div class="mt-3">
+					<GuestRequestForm
+						idPrefix="public-group-subscribe"
+						onSubmit={submitSubscription}
+						submitLabel={t('public.group.subscribe.submit')}
+						successTitle={t('public.group.subscribe.success.title')}
+						successBody={t('public.group.subscribe.success.body')}
+					>
+						{#snippet extra()}
+							<Select
+								id="public-group-subscribe-cadence"
+								label={t('public.group.subscribe.cadenceLabel')}
+								options={cadenceOptions}
+								bind:value={cadence}
+							/>
+						{/snippet}
+					</GuestRequestForm>
+				</div>
+			</section>
 		{/if}
 	{/if}
 </PublicShell>

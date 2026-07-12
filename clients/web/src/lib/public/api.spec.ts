@@ -4,7 +4,8 @@ import {
 	fetchPublicCommunity,
 	fetchPublicGroupPosts,
 	requestGuestComment,
-	requestGuestRsvp
+	requestGuestRsvp,
+	requestNewsletterSubscription
 } from './api';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -125,5 +126,47 @@ describe('requestGuestComment', () => {
 				'Nice post!'
 			)
 		).rejects.toThrow(PublicApiError);
+	});
+});
+
+describe('requestNewsletterSubscription', () => {
+	it('POSTs the identity and cadence to the tokenless newsletter path', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ status: 'confirmation_sent' }, 202));
+		await requestNewsletterSubscription(
+			'https://kammer.example.com',
+			'our-club',
+			'general',
+			{ email: 'alice@example.com', displayName: 'Alice' },
+			'weekly'
+		);
+		const [request] = vi.mocked(fetch).mock.calls[0];
+		const req = request as Request;
+		expect(req.method).toBe('POST');
+		expect(req.url).toBe(
+			'https://kammer.example.com/api/v1/communities/our-club/groups/general/newsletter'
+		);
+		expect(await req.clone().json()).toEqual({
+			email: 'alice@example.com',
+			display_name: 'Alice',
+			cadence: 'weekly'
+		});
+		// Tokenless like every other public request: no device token rides
+		// along with an anonymous subscription.
+		expect(req.headers.get('authorization')).toBeNull();
+	});
+
+	it('surfaces a 429 as a rate_limited PublicApiError', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ error: { code: 'rate_limited', message: 'Too many attempts.' } }, 429)
+		);
+		await expect(
+			requestNewsletterSubscription(
+				'https://kammer.example.com',
+				'our-club',
+				'general',
+				{ email: 'alice@example.com', displayName: 'Alice' },
+				'per_post'
+			)
+		).rejects.toMatchObject({ kind: 'rate_limited', status: 429 });
 	});
 });

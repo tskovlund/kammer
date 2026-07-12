@@ -5,6 +5,7 @@ import type { Event } from '$lib/events/types.js';
 
 export type Group = components['schemas']['Group'];
 export type RsvpStatus = 'yes' | 'no' | 'maybe';
+export type NewsletterCadence = 'per_post' | 'daily' | 'weekly';
 
 export interface PublicCommunity {
 	community: Community;
@@ -258,5 +259,33 @@ export async function requestGuestComment(
 			}
 		);
 		if (error) throw fail(error, response, 'Could not send your comment.');
+	});
+}
+
+// The fourth guest request POST from a public content page — a
+// tokenless newsletter subscription off the group page, twin of the
+// three `requestGuest*` calls above (same neutral 202, same no-oracle
+// on whether the email is already subscribed). It lives here, not in
+// `$lib/newsletter/api.ts`, because it's initiated from the public
+// browse surface like the others; that module is the confirm-landing
+// surface. `cadence` is optional — the server defaults to per-post
+// (`Kammer.Newsletters`) — and the guest can change it later from the
+// management page the confirmation email links to.
+export async function requestNewsletterSubscription(
+	baseUrl: string,
+	communitySlug: string,
+	groupSlug: string,
+	identity: GuestIdentity,
+	cadence: NewsletterCadence
+): Promise<void> {
+	return guard(async () => {
+		const { error, response } = await client(baseUrl).POST(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/newsletter',
+			{
+				params: { path: { community_slug: communitySlug, group_slug: groupSlug } },
+				body: { email: identity.email, display_name: identity.displayName, cadence }
+			}
+		);
+		if (error) throw fail(error, response, 'Could not send your subscription.');
 	});
 }
