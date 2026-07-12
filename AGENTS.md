@@ -197,7 +197,22 @@ you automatically, so they are your responsibility to arm.
   prefer one wasted check over a green PR idling unmerged. Re-arm the
   check-in each time it fires until the PR is merged or closed.
   Recurring triggers bound to a prior session die with it; a new
-  session arms its own.
+  session arms its own. **Never `delete_trigger` a stale check-in**
+  (owner-stated, 2026-07-12: each delete needs owner approval, so it's
+  pure churn). `send_later` check-ins are _one-shot_ — they auto-disable
+  after firing once — so when a PR merges before its check-in fires, the
+  straggler just fires once and you no-op it ("stale, already merged");
+  that's cheaper than an approval-gated delete, and harmless. Don't
+  delete-and-re-arm to "refresh" a check-in for a new head either
+  (however the head moved — a force-push, an ordinary push, or
+  `update_pull_request_branch`): a check-in acts on the PR's _current_
+  head regardless of the SHA in its text, so the existing one already
+  does the right thing. The only legitimate `delete_trigger` is when the
+  owner tells you to stop watching a PR mid-flight. Prefer per-PR
+  one-shot check-ins over one generic recurring trigger: the recurring
+  one fires on a fixed schedule even with no open PR (visible noise),
+  is less responsive than a check-in tuned to expected CI time, and
+  still needs disabling when idle.
 - **Owner-reply scans** (hourly during owner-away stretches): GitHub
   comments are not pushed to the session. Scan from the _previous
   scan's actual timestamp_, not a fixed window — a fixed window missed
