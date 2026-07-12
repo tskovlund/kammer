@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Notification } from './api.js';
 
@@ -73,7 +73,7 @@ describe('createNotificationsStore', () => {
 		const ok = instance('ok', 'OK');
 		const bad = instance('bad', 'Bad');
 		mockPage.mockImplementation(async (inst) => {
-			if (inst.id === 'bad') throw new FeedApiError('auth', 'signed out', 401);
+			if (inst.id === 'bad') throw new ApiError('auth', 'signed out', 401);
 			return { notifications: [notification('n1', '2026-06-01T10:00:00Z')], nextCursor: null };
 		});
 
@@ -123,7 +123,7 @@ describe('createNotificationsStore', () => {
 		const store = createNotificationsStore();
 		await store.load([a]);
 
-		mockMarkRead.mockRejectedValue(new FeedApiError('server', 'boom', 500));
+		mockMarkRead.mockRejectedValue(new ApiError('server', 'boom', 500));
 		await store.markRead(store.items[0]);
 		await vi.waitFor(() => expect(mockPage).toHaveBeenCalledTimes(2));
 		// The reload's payload (read=false, per the mock) is the truth shown.
@@ -182,7 +182,7 @@ describe('createNotificationsStore', () => {
 				notifications: [notification('new', '2026-06-03T10:00:00Z')],
 				nextCursor: 'c1'
 			})
-			.mockRejectedValueOnce(new FeedApiError('network', 'timeout', null))
+			.mockRejectedValueOnce(new ApiError('network', 'timeout', null))
 			.mockResolvedValueOnce({
 				notifications: [notification('older', '2026-06-01T10:00:00Z')],
 				nextCursor: null

@@ -2,7 +2,7 @@ import type { Instance } from '$lib/instances/types.js';
 import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
 import { getSocket, noteInstanceAuthFailure } from '$lib/realtime/registry.svelte.js';
 import * as api from './api.js';
-import { FeedApiError, type CreatePostInput, type FeedErrorKind } from './api.js';
+import { ApiError, type CreatePostInput, type ApiErrorKind } from './api.js';
 import { SvelteSet } from 'svelte/reactivity';
 import { applyOptimisticVote, toggleReaction } from './interactions.js';
 import { appendPage, reconcilePostEcho, sortFeed } from './reconcile.js';
@@ -14,7 +14,7 @@ interface GroupRef {
 }
 
 export interface FeedActionError {
-	kind: FeedErrorKind;
+	kind: ApiErrorKind;
 	message: string;
 }
 
@@ -34,7 +34,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	let posts = $state<Post[]>([]);
 	let sort = $state<FeedSort>('chronological');
 	let loadState = $state<LoadState>('idle');
-	let loadErrorKind = $state<FeedErrorKind | null>(null);
+	let loadErrorKind = $state<ApiErrorKind | null>(null);
 	let nextCursor = $state<string | null>(null);
 	let loadingMore = $state(false);
 	let actionError = $state<FeedActionError | null>(null);
@@ -77,7 +77,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	}
 
 	function handle(error: unknown): void {
-		if (error instanceof FeedApiError) {
+		if (error instanceof ApiError) {
 			if (error.kind === 'auth') noteInstanceAuthFailure(instance);
 			actionError = { kind: error.kind, message: error.message };
 		} else {
@@ -97,7 +97,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 			loadState = 'ready';
 			saveSnapshot(snapshotKey, page.posts);
 		} catch (error) {
-			if (error instanceof FeedApiError) {
+			if (error instanceof ApiError) {
 				loadErrorKind = error.kind;
 				if (error.kind === 'auth') noteInstanceAuthFailure(instance);
 				// Unreachable, specifically — not an auth/validation error — is

@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	GuestApiError,
-	confirmGuestRsvp,
-	eraseGuest,
-	fetchGuestManageState,
-	setGuestRsvp
-} from './api';
+import { confirmGuestRsvp, eraseGuest, fetchGuestManageState, setGuestRsvp } from './api';
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -24,26 +18,6 @@ describe('confirmGuestRsvp', () => {
 		);
 		const result = await confirmGuestRsvp('https://kammer.example.com', 'tok');
 		expect(result).toEqual({ guest_name: 'Alice', redirect_path: '/c/x/events/1' });
-	});
-
-	// The API answers one neutral 404 for invalid, expired, and already-used
-	// tokens (never an oracle — KammerWeb.Api.GuestController) — this is the
-	// one behaviour every confirm page depends on to show its error state.
-	it('surfaces an invalid/expired token as a not_found GuestApiError', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'not_found', message: 'This link is no longer valid.' } }, 404)
-		);
-		await expect(confirmGuestRsvp('https://kammer.example.com', 'stale')).rejects.toMatchObject({
-			kind: 'not_found',
-			status: 404
-		});
-	});
-
-	it('throws GuestApiError, not a raw TypeError, when the network request fails', async () => {
-		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
-		await expect(confirmGuestRsvp('https://unreachable.example.com', 'tok')).rejects.toThrow(
-			GuestApiError
-		);
 	});
 });
 

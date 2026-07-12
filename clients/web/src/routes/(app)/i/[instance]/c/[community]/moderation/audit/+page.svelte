@@ -1,14 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
-	import {
-		fetchAuditLog,
-		loadErrorKind,
-		type AuditEvent,
-		type ManageErrorKind
-	} from '$lib/manage/api.js';
+	import { fetchAuditLog, type AuditEvent } from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Card from '$lib/ui/Card.svelte';
@@ -23,7 +19,7 @@
 	let community = $state<Community | null>(null);
 	let events = $state<AuditEvent[]>([]);
 	let loading = $state(true);
-	let error = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
 
 	const canManage = $derived(community?.viewer_can.includes('manage_community') ?? false);
 
@@ -48,7 +44,7 @@
 				community = resolvedCommunity;
 				events = resolvedEvents;
 			} catch (cause) {
-				if (!cancelled) error = loadErrorKind(cause);
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}

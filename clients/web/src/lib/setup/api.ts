@@ -1,59 +1,13 @@
 import { createApiClient } from '$lib/api/client.js';
+import { fail, guard } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 
 export type SetupResult = components['schemas']['SetupResult']['data'];
 
-export type SetupErrorKind = 'forbidden' | 'validation' | 'rate_limited' | 'network' | 'server';
-
-export class SetupApiError extends Error {
-	readonly kind: SetupErrorKind;
-	readonly status: number | null;
-
-	constructor(kind: SetupErrorKind, message: string, status: number | null = null) {
-		super(message);
-		this.name = 'SetupApiError';
-		this.kind = kind;
-		this.status = status;
-	}
-}
-
-function kindForStatus(status: number): SetupErrorKind {
-	switch (status) {
-		case 403:
-			return 'forbidden';
-		case 400:
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-function messageFrom(error: unknown, fallback: string): string {
-	const envelope = error as ErrorEnvelope | undefined;
-	return envelope?.error?.message ?? fallback;
-}
-
-function fail(error: unknown, response: Response | undefined, fallback: string): SetupApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	return new SetupApiError(kind, messageFrom(error, fallback), status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof SetupApiError) throw cause;
-		throw new SetupApiError('network', 'Could not reach this instance.', null);
-	}
-}
+// First-run setup errors through the shared `ApiError` (#270). It carries a
+// one-shot setup token, not a device token, so there is no `auth` kind — a
+// bad or already-consumed token comes back as a neutral `forbidden` (see
+// `completeSetup`).
 
 /** Whether first-run setup has already completed (SPEC §13). */
 export async function fetchSetupStatus(baseUrl: string): Promise<boolean> {

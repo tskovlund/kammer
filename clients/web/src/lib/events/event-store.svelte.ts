@@ -1,4 +1,4 @@
-import { FeedApiError, type FeedErrorKind } from '$lib/feed/api.js';
+import { ApiError, type ApiErrorKind } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import * as api from './api.js';
 import { applyRsvp, upsertComment } from './event-logic.js';
@@ -16,11 +16,11 @@ type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 export function createEventStore(instance: Instance, communitySlug: string, eventId: string) {
 	let event = $state<Event | null>(null);
 	let loadState = $state<LoadState>('idle');
-	let loadErrorKind = $state<FeedErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: FeedErrorKind } | null>(null);
+	let loadErrorKind = $state<ApiErrorKind | null>(null);
+	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
 
 	function report(error: unknown): void {
-		if (error instanceof FeedApiError) actionError = { message: error.message, kind: error.kind };
+		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
 		else actionError = { message: 'Something went wrong.', kind: 'server' };
 	}
 
@@ -31,7 +31,7 @@ export function createEventStore(instance: Instance, communitySlug: string, even
 			event = await api.fetchEvent(instance, communitySlug, eventId);
 			loadState = 'ready';
 		} catch (error) {
-			loadErrorKind = error instanceof FeedApiError ? error.kind : 'server';
+			loadErrorKind = error instanceof ApiError ? error.kind : 'server';
 			loadState = 'error';
 		}
 	}

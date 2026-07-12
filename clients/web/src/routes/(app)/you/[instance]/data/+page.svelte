@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/api/errors.js';
+	import { ApiError } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { revokeAndRemoveInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
@@ -69,7 +69,7 @@
 			await goto(resolve('/you'));
 		} catch (error) {
 			deleteError =
-				error instanceof FeedApiError && error.kind === 'validation'
+				error instanceof ApiError && error.kind === 'validation'
 					? t('account.delete.error.mismatch')
 					: t('account.delete.error.generic');
 			deleting = false;

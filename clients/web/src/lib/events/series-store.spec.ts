@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { EventSeriesDetail } from './types.js';
 
@@ -57,9 +57,7 @@ describe('createSeriesStore', () => {
 	});
 
 	it('surfaces a 403 as a forbidden load error, not a crash', async () => {
-		vi.mocked(api.fetchEventSeries).mockRejectedValue(
-			new FeedApiError('forbidden', 'Not yours.', 403)
-		);
+		vi.mocked(api.fetchEventSeries).mockRejectedValue(new ApiError('forbidden', 'Not yours.', 403));
 		const store = createSeriesStore(instance(), 'c', 's1');
 
 		await store.load();
@@ -101,7 +99,7 @@ describe('createSeriesStore', () => {
 
 	it('surfaces a failed toggle as a dismissible action error without blanking the detail', async () => {
 		vi.mocked(api.fetchEventSeries).mockResolvedValue(detail());
-		vi.mocked(api.setCancelled).mockRejectedValue(new FeedApiError('forbidden', 'Not yours.', 403));
+		vi.mocked(api.setCancelled).mockRejectedValue(new ApiError('forbidden', 'Not yours.', 403));
 
 		const store = createSeriesStore(instance(), 'c', 's1');
 		await store.load();

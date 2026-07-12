@@ -1,12 +1,12 @@
 import { createApiClient } from '$lib/api/client.js';
-import { FeedApiError, fail, guard, kindForStatus } from '$lib/api/errors.js';
+import { ApiError, fail, guard, kindForStatus } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Comment, Community, Poll, Post, StoredFile } from './types.js';
 
 // Re-exported from the shared home so existing import sites keep working;
 // see $lib/api/errors.ts for the class and the status->kind mapping.
-export { FeedApiError, type FeedErrorKind } from '$lib/api/errors.js';
+export { ApiError, type ApiErrorKind } from '$lib/api/errors.js';
 
 type Group = components['schemas']['Group'];
 export type { Group };
@@ -29,7 +29,7 @@ export async function fetchCommunity(instance: Instance, slug: string): Promise<
 		const { data, error, response } = await client(instance).GET('/api/v1/communities');
 		if (error || !data) throw fail(error, response, 'Could not load communities.');
 		const match = data.data.find((community) => community.slug === slug);
-		if (!match) throw new FeedApiError('not_found', 'Community not found.', 404);
+		if (!match) throw new ApiError('not_found', 'Community not found.', 404);
 		return match;
 	});
 }
@@ -51,7 +51,7 @@ export async function fetchGroup(
 		);
 		if (error || !data) throw fail(error, response, 'Could not load groups.');
 		const match = data.data.find((group) => group.slug === groupSlug);
-		if (!match) throw new FeedApiError('not_found', 'Group not found.', 404);
+		if (!match) throw new ApiError('not_found', 'Group not found.', 404);
 		return match;
 	});
 }
@@ -412,7 +412,7 @@ export async function uploadFile(
 			body: form
 		});
 	} catch {
-		throw new FeedApiError('network', 'Could not reach this community.', null);
+		throw new ApiError('network', 'Could not reach this community.', null);
 	}
 
 	if (!response.ok) {
@@ -443,7 +443,7 @@ export async function fetchAuthedObjectUrl(instance: Instance, path: string): Pr
 	const response = await fetch(fileUrl(instance, path), {
 		headers: { authorization: `Bearer ${instance.deviceToken}` }
 	});
-	if (!response.ok) throw new FeedApiError(kindForStatus(response.status), 'Could not load file.');
+	if (!response.ok) throw new ApiError(kindForStatus(response.status), 'Could not load file.');
 	const blob = await response.blob();
 	return URL.createObjectURL(blob);
 }

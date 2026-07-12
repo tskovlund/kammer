@@ -10,7 +10,7 @@ export type InviteAccept = components['schemas']['InviteAcceptResponse'];
 /**
  * The invite endpoints (issue #255, the client twin of
  * `KammerWeb.Api.InviteController`), erroring through the shared
- * `FeedApiError` machinery. What the kinds mean HERE: the server
+ * `ApiError` machinery. What the kinds mean HERE: the server
  * deliberately collapses revoked, expired, used-up, and unknown tokens
  * into one neutral 404 — so `not_found` reads as "this invitation is no
  * longer valid" — and `forbidden` is the accept endpoint's only

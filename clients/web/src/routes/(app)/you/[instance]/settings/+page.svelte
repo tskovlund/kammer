@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import type { MessageKey } from '$lib/i18n/format.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import {
 		fetchInstanceSettings,
 		updateInstanceSettings,
-		ManageApiError,
 		type InstanceSettings,
-		type InstanceSettingsParams,
-		type ManageErrorKind
+		type InstanceSettingsParams
 	} from '$lib/manage/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -30,7 +29,7 @@
 	// There is no operator capability on the client; the settings read
 	// itself is the gate — a non-operator gets a 403, which we surface as
 	// the forbidden empty state rather than an editable form.
-	let error = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
 
@@ -65,7 +64,7 @@
 				if (cancelled) return;
 				hydrate(resolved);
 			} catch (cause) {
-				if (!cancelled) error = cause instanceof ManageApiError ? cause.kind : 'server';
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -97,7 +96,7 @@
 			hydrate(await updateInstanceSettings(instance, params));
 			saved = true;
 		} catch (cause) {
-			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			error = errorKind(cause);
 		} finally {
 			saving = false;
 		}

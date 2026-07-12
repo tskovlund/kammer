@@ -2,15 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { ApiError, errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
-	import {
-		ManageApiError,
-		loadErrorKind,
-		updateCommunity,
-		type CommunityParams,
-		type ManageErrorKind
-	} from '$lib/manage/api.js';
+	import { updateCommunity, type CommunityParams } from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import CustomFieldsManager from '$lib/manage/CustomFieldsManager.svelte';
@@ -26,7 +21,7 @@
 
 	let community = $state<Community | null>(null);
 	let loading = $state(true);
-	let error = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
 	// Field-level 422 copy: our own i18n keyed on the changeset field
@@ -73,7 +68,7 @@
 				if (cancelled) return;
 				hydrate(resolved);
 			} catch (cause) {
-				if (!cancelled) error = loadErrorKind(cause);
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -118,12 +113,12 @@
 				}).catch(() => {});
 			}
 		} catch (cause) {
-			if (cause instanceof ManageApiError && cause.kind === 'validation') {
+			if (cause instanceof ApiError && cause.kind === 'validation') {
 				nameError = cause.details.name ? t('manage.community.error.name') : null;
 				slugError = cause.details.slug ? t('manage.community.error.slug') : null;
 				if (!nameError && !slugError) error = 'validation';
 			} else {
-				error = cause instanceof ManageApiError ? cause.kind : 'server';
+				error = errorKind(cause);
 			}
 		} finally {
 			saving = false;

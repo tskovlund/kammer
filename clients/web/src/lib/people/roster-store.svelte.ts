@@ -1,4 +1,4 @@
-import { FeedApiError, type FeedErrorKind } from '$lib/feed/api.js';
+import { ApiError, type ApiErrorKind } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import * as api from './api.js';
 import type { CustomField, Member, Role, Roster } from './types.js';
@@ -16,15 +16,15 @@ export function createRosterStore(instance: Instance, communitySlug: string) {
 	let roster = $state<Roster | null>(null);
 	let filter = $state<Record<string, string>>({});
 	let loadState = $state<LoadState>('idle');
-	let loadErrorKind = $state<FeedErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: FeedErrorKind } | null>(null);
+	let loadErrorKind = $state<ApiErrorKind | null>(null);
+	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
 	let busy = $state(false);
 	// Discards a fetch that resolves after a newer filter change, so a slow
 	// unfiltered response never overwrites the filtered one on screen.
 	let generation = 0;
 
 	function report(error: unknown): void {
-		if (error instanceof FeedApiError) actionError = { message: error.message, kind: error.kind };
+		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
 		else actionError = { message: 'Something went wrong.', kind: 'server' };
 	}
 
@@ -39,7 +39,7 @@ export function createRosterStore(instance: Instance, communitySlug: string) {
 			loadState = 'ready';
 		} catch (error) {
 			if (mine !== generation) return;
-			loadErrorKind = error instanceof FeedApiError ? error.kind : 'server';
+			loadErrorKind = error instanceof ApiError ? error.kind : 'server';
 			loadState = 'error';
 		}
 	}

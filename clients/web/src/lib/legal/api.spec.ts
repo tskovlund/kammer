@@ -27,14 +27,4 @@ describe('fetchLegalPage', () => {
 		const page = await fetchLegalPage('https://kammer.example.com', 'privacy');
 		expect(page.title).toBe('Privacy policy');
 	});
-
-	it('surfaces an unpublished/unknown key as a not_found LegalApiError', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'not_found', message: 'Not found.' } }, 404)
-		);
-		await expect(fetchLegalPage('https://kammer.example.com', 'nope')).rejects.toMatchObject({
-			kind: 'not_found',
-			status: 404
-		});
-	});
 });

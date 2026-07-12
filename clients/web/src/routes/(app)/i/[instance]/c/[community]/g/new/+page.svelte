@@ -2,9 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { ApiError } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
-	import { ManageApiError, createGroup, type GroupParams } from '$lib/manage/api.js';
+	import { createGroup, type GroupParams } from '$lib/manage/api.js';
 	import type { MessageKey } from '$lib/i18n/format.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
@@ -148,13 +149,13 @@
 			const group = await createGroup(instance, communitySlug, params);
 			await goto(resolve(`/i/${instance.id}/c/${communitySlug}/g/${group.slug}`));
 		} catch (cause) {
-			if (cause instanceof ManageApiError && cause.kind === 'validation') {
+			if (cause instanceof ApiError && cause.kind === 'validation') {
 				// Map field NAMES onto our copy; server message strings never
 				// render (#253's direction).
 				nameError = cause.details.name ? t('groups.new.error.name') : null;
 				slugError = cause.details.slug ? t('groups.new.error.slug') : null;
 				if (!nameError && !slugError) formError = t('groups.new.error.generic');
-			} else if (cause instanceof ManageApiError && cause.kind === 'forbidden') {
+			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				formError = t('groups.new.error.forbidden');
 			} else {
 				formError = t('groups.new.error.generic');

@@ -2,12 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		completeSetup,
-		fetchSetupStatus,
-		SetupApiError,
-		type SetupResult
-	} from '$lib/setup/api.js';
+	import { ApiError } from '$lib/api/errors.js';
+	import { completeSetup, fetchSetupStatus, type SetupResult } from '$lib/setup/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -109,10 +105,10 @@
 			// A bad or already-consumed setup token surfaces here as a
 			// neutral 403 `forbidden` — there is no earlier token-check step
 			// to catch it at (see the module doc comment above).
-			if (cause instanceof SetupApiError && cause.kind === 'forbidden') {
+			if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				communityError = t('setup.token.error');
 			} else {
-				communityError = cause instanceof SetupApiError ? cause.message : t('setup.error.body');
+				communityError = cause instanceof ApiError ? cause.message : t('setup.error.body');
 			}
 		} finally {
 			communityBusy = false;

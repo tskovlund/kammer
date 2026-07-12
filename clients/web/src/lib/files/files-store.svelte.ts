@@ -1,4 +1,4 @@
-import { FeedApiError, type FeedErrorKind } from '$lib/feed/api.js';
+import { ApiError, type ApiErrorKind } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import * as api from './api.js';
 import type { FileListing, Folder, LibraryFile } from './types.js';
@@ -23,8 +23,8 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 	let listing = $state<FileListing | null>(null);
 	let folderId = $state<string | null>(null);
 	let loadState = $state<LoadState>('idle');
-	let loadErrorKind = $state<FeedErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: FeedErrorKind } | null>(null);
+	let loadErrorKind = $state<ApiErrorKind | null>(null);
+	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
 	let busy = $state(false);
 	let detail = $state<LibraryFile | null>(null);
 	// Discards a listing fetch that resolves after a newer navigation, so an
@@ -32,7 +32,7 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 	let generation = 0;
 
 	function report(error: unknown): void {
-		if (error instanceof FeedApiError) actionError = { message: error.message, kind: error.kind };
+		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
 		else actionError = { message: 'Something went wrong.', kind: 'server' };
 	}
 
@@ -48,7 +48,7 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 			loadState = 'ready';
 		} catch (error) {
 			if (mine !== generation) return;
-			loadErrorKind = error instanceof FeedApiError ? error.kind : 'server';
+			loadErrorKind = error instanceof ApiError ? error.kind : 'server';
 			loadState = 'error';
 		}
 	}

@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchGroup, type Group } from '$lib/feed/api.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import * as api from '$lib/tools/api.js';
-	import type { Assignment, ToolsErrorKind } from '$lib/tools/api.js';
+	import type { Assignment } from '$lib/tools/api.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
@@ -21,8 +22,8 @@
 	let group = $state<Group | null>(null);
 	let assignments = $state<Assignment[]>([]);
 	let loading = $state(true);
-	let loadError = $state<ToolsErrorKind | null>(null);
-	let actionError = $state<ToolsErrorKind | null>(null);
+	let loadError = $state<ApiErrorKind | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state<string[]>([]);
 
 	let creating = $state(false);
@@ -54,7 +55,7 @@
 				group = resolvedGroup;
 				assignments = list;
 			} catch (cause) {
-				if (!cancelled) loadError = api.toolsErrorKind(cause);
+				if (!cancelled) loadError = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -80,7 +81,7 @@
 		try {
 			await run();
 		} catch (cause) {
-			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+			actionError = errorKind(cause);
 		} finally {
 			mark(id, false);
 		}

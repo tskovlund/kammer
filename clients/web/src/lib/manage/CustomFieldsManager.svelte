@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { ApiError } from '$lib/api/errors.js';
 	import {
 		fetchCustomFields,
 		createCustomField,
 		updateCustomField,
 		deleteCustomField,
-		ManageApiError,
 		type CustomField,
 		type CustomFieldParams
 	} from '$lib/manage/api.js';
@@ -104,7 +104,7 @@
 			visibility = 'members';
 			required = false;
 		} catch (cause) {
-			if (cause instanceof ManageApiError && cause.kind === 'validation') {
+			if (cause instanceof ApiError && cause.kind === 'validation') {
 				labelError = cause.details.label ? t('manage.fields.error.label') : null;
 				optionsError = cause.details.options ? t('manage.fields.error.options') : null;
 				if (!labelError && !optionsError) addFailed = true;
@@ -170,7 +170,7 @@
 			fields = replaceField(fields, updated);
 			editingId = null;
 		} catch (cause) {
-			if (cause instanceof ManageApiError && cause.kind === 'validation' && cause.details.label) {
+			if (cause instanceof ApiError && cause.kind === 'validation' && cause.details.label) {
 				editLabelError = t('manage.fields.error.label');
 			} else {
 				actionError = { id: field.id, text: t('manage.fields.saveError') };

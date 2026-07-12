@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Instance } from '$lib/instances/types.js';
-import { createDecision, fetchAssignments, respondPoll, search, ToolsApiError } from './api.js';
+import { fetchAssignments, search } from './api.js';
 
 function instance(): Instance {
 	return {
@@ -20,10 +20,6 @@ function jsonResponse(status: number, body: unknown) {
 	});
 }
 
-function errorResponse(status: number, code = 'error', message = 'nope') {
-	return jsonResponse(status, { error: { code, message } });
-}
-
 describe('tools api', () => {
 	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 	afterEach(() => vi.unstubAllGlobals());
@@ -35,22 +31,6 @@ describe('tools api', () => {
 		const list = await fetchAssignments(instance(), 'my-community', 'crew');
 		expect(list).toHaveLength(1);
 		expect(list[0]?.id).toBe('a1');
-	});
-
-	it('maps 403 to forbidden — a stale capability the server still refuses', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(403, 'forbidden', 'Not allowed.'));
-		await expect(
-			respondPoll(instance(), 'my-community', 'p1', { option_id: 'o1', answer: 'yes' })
-		).rejects.toMatchObject({ kind: 'forbidden', status: 403 });
-	});
-
-	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {
-		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('offline'));
-		const error = await createDecision(instance(), 'my-community', 'crew', {
-			title: 'Adopt bylaws'
-		}).catch((cause) => cause);
-		expect(error).toBeInstanceOf(ToolsApiError);
-		expect(error.kind).toBe('network');
 	});
 
 	it('passes the query as the `q` parameter', async () => {

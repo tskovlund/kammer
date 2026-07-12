@@ -1,4 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
+import { fail, guard } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 
 export type GuestConfirmation = components['schemas']['GuestConfirmation']['data'];
@@ -7,65 +8,14 @@ export type GuestRsvpStatus = GuestManageState['rsvps'][number]['status'];
 export type GuestCadence = GuestManageState['subscriptions'][number]['cadence'];
 
 /**
- * How a guest (tokenless) call failed. These flows never carry a device
- * token (ADR 0024) — the signed link/token in the URL is the whole
- * credential — so there is no `auth`/`forbidden` kind here, only
- * `not_found` for an invalid, expired, or already-used token (the API
- * answers one neutral 404 for all of those, never an oracle — see
- * `KammerWeb.Api.GuestController`), plus the usual transport kinds.
+ * These guest (tokenless) flows throw the shared `ApiError`. They never
+ * carry a device token (ADR 0024) — the signed link/token in the URL is
+ * the whole credential — and the server never issues 401/403 here, so the
+ * `auth`/`forbidden` kinds never arise: an invalid, expired, or
+ * already-used token is one neutral `not_found` (the API answers a single
+ * 404 for all of those, never an oracle — see
+ * `KammerWeb.Api.GuestController`), alongside the usual transport kinds.
  */
-export type GuestErrorKind = 'not_found' | 'validation' | 'rate_limited' | 'network' | 'server';
-
-export class GuestApiError extends Error {
-	readonly kind: GuestErrorKind;
-	readonly status: number | null;
-
-	constructor(kind: GuestErrorKind, message: string, status: number | null = null) {
-		super(message);
-		this.name = 'GuestApiError';
-		this.kind = kind;
-		this.status = status;
-	}
-}
-
-function kindForStatus(status: number): GuestErrorKind {
-	switch (status) {
-		case 404:
-			return 'not_found';
-		case 400:
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-function messageFrom(error: unknown, fallback: string): string {
-	const envelope = error as ErrorEnvelope | undefined;
-	return envelope?.error?.message ?? fallback;
-}
-
-function fail(error: unknown, response: Response | undefined, fallback: string): GuestApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	return new GuestApiError(kind, messageFrom(error, fallback), status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof GuestApiError) throw cause;
-		throw new GuestApiError('network', 'Could not reach this community.', null);
-	}
-}
-
 function client(baseUrl: string, manageToken?: string) {
 	return createApiClient(baseUrl, manageToken);
 }

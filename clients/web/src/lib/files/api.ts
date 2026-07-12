@@ -1,5 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
-import { FeedApiError, fail, guard } from '$lib/api/errors.js';
+import { ApiError, fail, guard } from '$lib/api/errors.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { FileListing, Folder, LibraryFile } from './types.js';
 
@@ -177,7 +177,7 @@ export async function uploadFile(
 				body: form
 			});
 		} catch {
-			throw new FeedApiError('network', 'Could not reach this community.', null);
+			throw new ApiError('network', 'Could not reach this community.', null);
 		}
 
 		if (!response.ok) {

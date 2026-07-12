@@ -216,6 +216,28 @@ and this project adheres to
   public shape; no new server capability was added — the update
   endpoint already accepted every one of these fields.
 
+### Changed
+
+- PWA API error handling collapsed into one shared `ApiError` (issue
+  #270, part of #187). The ~10 near-identical per-module error classes —
+  each carrying its own copy of the status→kind mapping, envelope
+  parsing, and `fetch`-rejection guard — are gone; every client API
+  surface (authenticated and tokenless alike) now throws the single
+  `ApiError` from `$lib/api/errors`, and the two duck-typing bridges that
+  existed only to reconcile the separate classes (`manage`'s
+  `loadErrorKind`, `tools`' `toolsErrorKind`) collapse into one shared
+  `errorKind` collapser. The duplicated status-to-kind mapping tests are
+  retired in favor of one canonical spec. Net −600 lines. No user-visible
+  behavior change beyond one first-run-setup network-error string now
+  reading the shared "Could not reach this community." wording (converged
+  with the other raw-`.message` render sites by the #253 field-error
+  follow-up). A few internal mappings also unify — a swallowed `push`
+  network string, `400` no longer aliased to the `validation` kind on the
+  four tokenless surfaces that did so, and `too_large` now preserved
+  through the collapsed bridges — but no current consumer distinguishes
+  them. This is the shared mechanism the inline 422 field-error work
+  (#253) builds on.
+
 ### Security
 
 - `Event.location_url` now rejects anything but `http`/`https` on

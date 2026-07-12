@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/api/errors.js';
+	import { ApiError } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { instancesForOrigin, instanceStore } from '$lib/instances/store.js';
@@ -74,7 +74,7 @@
 				busy = false;
 				return;
 			} catch (cause) {
-				if (!(cause instanceof FeedApiError) || cause.kind !== 'not_found') sawTransient = true;
+				if (!(cause instanceof ApiError) || cause.kind !== 'not_found') sawTransient = true;
 			}
 		}
 

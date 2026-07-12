@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPost, FeedApiError, uploadFile } from './api';
+import { uploadFile } from './api';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -22,48 +22,12 @@ function errorResponse(status: number, code = 'error', message = 'nope') {
 	});
 }
 
-describe('feed api error mapping', () => {
+// `uploadFile` is the one feed call with a hand-rolled fetch + error path
+// (multipart, not the openapi-fetch client), so it keeps its own tests. The
+// status→kind mapping shared by every other call lives in `api/errors.spec`.
+describe('feed uploads', () => {
 	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 	afterEach(() => vi.unstubAllGlobals());
-
-	it('maps 422 to a validation error and surfaces the server message', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			errorResponse(422, 'unprocessable', 'Body is required.')
-		);
-		await expect(createPost(instance(), ref, { body_markdown: '' })).rejects.toMatchObject({
-			kind: 'validation',
-			message: 'Body is required.',
-			status: 422
-		});
-	});
-
-	it('maps 403 to a forbidden error', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(403, 'forbidden', 'Not allowed.'));
-		await expect(createPost(instance(), ref, { body_markdown: 'x' })).rejects.toMatchObject({
-			kind: 'forbidden'
-		});
-	});
-
-	it('maps 401 to an auth error so the instance can be re-signed-in', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(401));
-		await expect(createPost(instance(), ref, { body_markdown: 'x' })).rejects.toMatchObject({
-			kind: 'auth'
-		});
-	});
-
-	it('maps 429 to a rate-limited error', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(429));
-		await expect(createPost(instance(), ref, { body_markdown: 'x' })).rejects.toMatchObject({
-			kind: 'rate_limited'
-		});
-	});
-
-	it('treats a rejected fetch as a network error', async () => {
-		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
-		const error = await createPost(instance(), ref, { body_markdown: 'x' }).catch((e) => e);
-		expect(error).toBeInstanceOf(FeedApiError);
-		expect(error.kind).toBe('network');
-	});
 
 	it('maps a 413 upload to a too_large error', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(413, 'too_large', 'Too big.'));

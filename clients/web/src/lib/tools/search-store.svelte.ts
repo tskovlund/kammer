@@ -1,19 +1,11 @@
+import { failureKind } from '$lib/api/errors.js';
 import { fetchCommunities, fetchGroups } from '$lib/events/api.js';
-import { FeedApiError } from '$lib/feed/api.js';
-import type { FailedInstance, InstanceFailureKind } from '$lib/instances/home.js';
+import type { FailedInstance } from '$lib/instances/home.js';
 import type { Instance } from '$lib/instances/types.js';
-import { search as searchCommunity, ToolsApiError } from './api.js';
+import { search as searchCommunity } from './api.js';
 import { buildBuckets, type CommunitySearch, type SearchBucket } from './search.js';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
-
-function failureKind(error: unknown): InstanceFailureKind {
-	if (error instanceof FeedApiError || error instanceof ToolsApiError) {
-		if (error.kind === 'auth') return 'auth';
-		if (error.kind === 'network') return 'network';
-	}
-	return 'server';
-}
 
 async function searchInstance(
 	instance: Instance,

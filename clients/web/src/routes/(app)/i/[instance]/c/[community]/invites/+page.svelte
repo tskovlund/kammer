@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError, fetchCommunity } from '$lib/feed/api.js';
+	import { ApiError, fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
@@ -62,7 +62,7 @@
 	}
 
 	function report(error: unknown): void {
-		actionError = error instanceof FeedApiError ? error.message : t('groups.error.body');
+		actionError = error instanceof ApiError ? error.message : t('groups.error.body');
 	}
 
 	async function newLink(): Promise<void> {

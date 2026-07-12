@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { ApiError } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { PublicApiError, type GuestIdentity } from '$lib/public/api.js';
+	import type { GuestIdentity } from '$lib/public/api.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
@@ -56,7 +57,7 @@
 			phase = 'success';
 		} catch (cause) {
 			errorMessage =
-				cause instanceof PublicApiError && cause.kind === 'rate_limited'
+				cause instanceof ApiError && cause.kind === 'rate_limited'
 					? t('public.guestForm.error.rateLimited')
 					: t('public.guestForm.error.generic');
 			phase = 'error';

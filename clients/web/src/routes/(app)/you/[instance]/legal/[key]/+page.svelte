@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { ApiError } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { fetchInstanceStatus } from '$lib/instances/api.js';
 	import { fetchLegalPage, type LegalPage, type LegalPageKey } from '$lib/legal/api.js';
-	import { ManageApiError, updateLegalPage } from '$lib/manage/api.js';
+	import { updateLegalPage } from '$lib/manage/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -93,12 +94,12 @@
 			// A 422's field name keys our own copy (#253): content_markdown
 			// means empty or over the 100k-character cap.
 			if (
-				cause instanceof ManageApiError &&
+				cause instanceof ApiError &&
 				cause.kind === 'validation' &&
 				cause.details.content_markdown
 			) {
 				saveError = t('manage.legal.errorContent');
-			} else if (cause instanceof ManageApiError && cause.kind === 'forbidden') {
+			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				saveError = t('manage.legal.forbiddenBody');
 			} else {
 				saveError = t('manage.error.body');

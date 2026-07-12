@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/feed/api.js';
+	import { ApiError } from '$lib/feed/api.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
@@ -89,7 +89,7 @@
 			await revokeDevice(instance, device.id);
 			devices = await fetchDevices(instance);
 		} catch (error) {
-			actionError = error instanceof FeedApiError ? error.message : t('devices.error.body');
+			actionError = error instanceof ApiError ? error.message : t('devices.error.body');
 		} finally {
 			busy = false;
 		}
@@ -163,7 +163,7 @@
 				/* keep the current list; it refreshes on reload */
 			}
 		} catch (error) {
-			passkeyError = error instanceof FeedApiError ? error.message : t('passkeys.error');
+			passkeyError = error instanceof ApiError ? error.message : t('passkeys.error');
 		} finally {
 			passkeyBusy = false;
 		}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { fetchAuthedObjectUrl, FeedApiError, fetchGroup, type Group } from '$lib/feed/api.js';
+	import { fetchAuthedObjectUrl, ApiError, fetchGroup, type Group } from '$lib/feed/api.js';
 	import { createFilesStore, type FilesStore } from '$lib/files/files-store.svelte.js';
 	import FolderMenu from '$lib/files/components/FolderMenu.svelte';
 	import VersionSheet from '$lib/files/components/VersionSheet.svelte';
@@ -22,12 +22,12 @@
 
 	let store = $state<FilesStore | null>(null);
 	let group = $state<Group | null>(null);
-	let metaError = $state<FeedErrorKind | null>(null);
+	let metaError = $state<ApiErrorKind | null>(null);
 	let fileInput = $state<HTMLInputElement>();
 	let creatingFolder = $state(false);
 	let newFolderName = $state('');
 
-	type FeedErrorKind = FeedApiError['kind'];
+	type ApiErrorKind = ApiError['kind'];
 
 	// Resolve the group (name + files-feature gate happen server-side), build
 	// the store, and load the root. Re-runs on instance/route change; the
@@ -53,7 +53,7 @@
 				store = localStore;
 				await localStore.load(null);
 			} catch (error) {
-				if (!cancelled) metaError = error instanceof FeedApiError ? error.kind : 'server';
+				if (!cancelled) metaError = error instanceof ApiError ? error.kind : 'server';
 			}
 		})();
 

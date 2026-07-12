@@ -1,5 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
-import { FeedApiError, fail, guard } from '$lib/api/errors.js';
+import { ApiError, fail, guard } from '$lib/api/errors.js';
 import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { unsubscribeFromPush } from '$lib/push/subscription.js';
 import { instanceStore } from './store.js';
@@ -123,7 +123,7 @@ export async function requestLink(baseUrl: string, email: string): Promise<void>
  *
  * Unlike the deliberately neutral sign-in endpoints, `POST
  * /auth/register` answers 422 with changeset details, so a
- * `validation`-kind `FeedApiError` carries `details` (field →
+ * `validation`-kind `ApiError` carries `details` (field →
  * messages); map fields with `registerErrorKeys` below.
  */
 export async function registerAccount(
@@ -150,7 +150,7 @@ export function registerErrorKeys(cause: unknown): {
 	emailKey: 'register.error.email' | null;
 	formKey: 'register.error.generic' | 'register.error.rateLimited' | null;
 } {
-	if (cause instanceof FeedApiError && cause.kind === 'validation') {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
 		const nameKey = cause.details.display_name ? 'register.error.displayName' : null;
 		const emailKey = cause.details.email ? 'register.error.email' : null;
 		return {
@@ -159,7 +159,7 @@ export function registerErrorKeys(cause: unknown): {
 			formKey: nameKey || emailKey ? null : 'register.error.generic'
 		};
 	}
-	if (cause instanceof FeedApiError && cause.kind === 'rate_limited') {
+	if (cause instanceof ApiError && cause.kind === 'rate_limited') {
 		return { nameKey: null, emailKey: null, formKey: 'register.error.rateLimited' };
 	}
 	return { nameKey: null, emailKey: null, formKey: 'register.error.generic' };

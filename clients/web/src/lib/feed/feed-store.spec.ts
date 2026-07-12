@@ -32,7 +32,7 @@ vi.mock('./api.js', async (importActual) => {
 });
 
 import * as api from './api.js';
-import { FeedApiError } from './api.js';
+import { ApiError } from './api.js';
 import { noteInstanceAuthFailure } from '$lib/realtime/registry.svelte.js';
 import { createFeedStore } from './feed-store.svelte.js';
 
@@ -148,7 +148,7 @@ describe('optimistic reaction rollback vs. concurrent reaction (finding 2)', () 
 		// in-flight reaction).
 		vi.mocked(api.reactToPost).mockImplementation(async () => {
 			pushEcho(post({ reactions: { '👍': 1 }, my_reactions: [] }));
-			throw new FeedApiError('server', 'nope', 500);
+			throw new ApiError('server', 'nope', 500);
 		});
 
 		await store.react('p1', '❤️');
@@ -162,7 +162,7 @@ describe('optimistic reaction rollback vs. concurrent reaction (finding 2)', () 
 
 	it('rolls our reaction back cleanly when no echo intervenes', async () => {
 		const store = await readyStore(post({ reactions: {}, my_reactions: [] }));
-		vi.mocked(api.reactToPost).mockRejectedValue(new FeedApiError('server', 'nope', 500));
+		vi.mocked(api.reactToPost).mockRejectedValue(new ApiError('server', 'nope', 500));
 
 		await store.react('p1', '❤️');
 
@@ -181,7 +181,7 @@ describe('optimistic comment-reaction rollback vs. concurrent echo (reactComment
 		// viewer's reaction on the same comment (server truth without ours).
 		vi.mocked(api.reactToComment).mockImplementation(async () => {
 			pushEcho(withComment(comment({ reactions: { '👍': 1 }, my_reactions: [] })));
-			throw new FeedApiError('server', 'nope', 500);
+			throw new ApiError('server', 'nope', 500);
 		});
 
 		await store.reactComment('p1', 'c1', '❤️');
@@ -194,7 +194,7 @@ describe('optimistic comment-reaction rollback vs. concurrent echo (reactComment
 
 	it('rolls our comment reaction back cleanly when no echo intervenes', async () => {
 		const store = await readyStore(withComment(comment({ reactions: {}, my_reactions: [] })));
-		vi.mocked(api.reactToComment).mockRejectedValue(new FeedApiError('server', 'nope', 500));
+		vi.mocked(api.reactToComment).mockRejectedValue(new ApiError('server', 'nope', 500));
 
 		await store.reactComment('p1', 'c1', '❤️');
 
@@ -208,7 +208,7 @@ describe('load auth failure → socket auth bridge', () => {
 	it('marks the instance auth-failed when the initial load is rejected as unauthorized', async () => {
 		// The REST→socket bridge: a 401 on load must tell the realtime registry
 		// so the socket layer stops retrying with the same dead credentials.
-		vi.mocked(api.fetchFeedPage).mockRejectedValue(new FeedApiError('auth', 'unauthorized', 401));
+		vi.mocked(api.fetchFeedPage).mockRejectedValue(new ApiError('auth', 'unauthorized', 401));
 		const inst = instance();
 		const store = createFeedStore(inst, ref, 'g1');
 
@@ -254,7 +254,7 @@ describe('optimistic vote rollback vs. concurrent vote (finding 2)', () => {
 					}
 				})
 			);
-			throw new FeedApiError('server', 'nope', 500);
+			throw new ApiError('server', 'nope', 500);
 		});
 
 		await store.vote('p1', ['o1']);

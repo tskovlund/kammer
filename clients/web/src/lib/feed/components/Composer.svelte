@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { FeedApiError, uploadFile } from '$lib/feed/api.js';
+	import { ApiError, uploadFile } from '$lib/feed/api.js';
 	import type { FeedStore } from '$lib/feed/feed-store.svelte.js';
 	import type { StoredFile } from '$lib/feed/types.js';
 	import type { Instance } from '$lib/instances/types.js';
@@ -82,7 +82,7 @@
 				uploads = [...uploads, await uploadFile(instance, ref, file)];
 			} catch (error) {
 				uploadError =
-					error instanceof FeedApiError
+					error instanceof ApiError
 						? error.kind === 'too_large'
 							? t('feed.compose.uploadTooLarge', { name: file.name })
 							: error.message

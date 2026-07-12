@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Event, RsvpStatus } from './types.js';
 
@@ -69,7 +69,7 @@ describe('optimistic RSVP rollback', () => {
 		let midFlight: RsvpStatus | null | undefined;
 		vi.mocked(api.rsvp).mockImplementation(async () => {
 			midFlight = store.event?.my_rsvp;
-			throw new FeedApiError('server', 'nope', 500);
+			throw new ApiError('server', 'nope', 500);
 		});
 
 		await store.rsvp('yes');

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { CustomField, Member, Roster } from './types.js';
 
@@ -102,7 +102,7 @@ describe('createRosterStore', () => {
 		expect(vi.mocked(api.fetchRoster)).toHaveBeenCalled();
 		expect(store.actionError).toBeNull();
 
-		vi.mocked(api.updateMemberRole).mockRejectedValue(new FeedApiError('forbidden', 'Nej.', 403));
+		vi.mocked(api.updateMemberRole).mockRejectedValue(new ApiError('forbidden', 'Nej.', 403));
 		await store.changeRole(member('a'), 'member');
 		expect(store.actionError?.kind).toBe('forbidden');
 	});
