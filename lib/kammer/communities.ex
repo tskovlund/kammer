@@ -407,6 +407,23 @@ defmodule Kammer.Communities do
   end
 
   @doc """
+  Fetches a community's custom field by id, scoped to the community —
+  `nil` if it doesn't exist, isn't a valid id, or belongs to another
+  community, so a cross-community id is a clean not-found rather than a
+  leak. Read-only; the `:manage_community` check rides the update and
+  delete calls that consume the returned struct.
+  """
+  @spec get_custom_field(Community.t(), term()) :: CustomField.t() | nil
+  def get_custom_field(%Community{} = community, id) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> Repo.get_by(CustomField, id: uuid, community_id: community.id)
+      :error -> nil
+    end
+  end
+
+  def get_custom_field(%Community{}, _id), do: nil
+
+  @doc """
   Builds a changeset for a custom field, for form rendering.
   """
   @spec change_custom_field(CustomField.t(), map()) :: Ecto.Changeset.t()

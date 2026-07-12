@@ -370,6 +370,14 @@ defmodule KammerWeb.Router do
       post "/invites", InviteController, :create
       delete "/invites/:invite_id", InviteController, :revoke
 
+      # Custom profile-field definitions (issue #259, ADR 0020): the
+      # roster's columns, manager-only. `custom-fields` is a literal
+      # segment — no collision with the member routes.
+      get "/custom-fields", CustomFieldController, :index
+      post "/custom-fields", CustomFieldController, :create
+      put "/custom-fields/:id", CustomFieldController, :update
+      delete "/custom-fields/:id", CustomFieldController, :delete
+
       scope "/groups/:group_slug" do
         # Group management (issue #183): settings, feature toggles
         # (ADR 0016), archive/unarchive. `features`/`archive` are literal

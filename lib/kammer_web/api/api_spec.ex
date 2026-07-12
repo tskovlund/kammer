@@ -365,6 +365,48 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.CommunityProfile)
           )
       },
+      "/api/v1/communities/{community_slug}/custom-fields" => %PathItem{
+        get:
+          operation(
+            "The community's custom profile-field definitions (managers; issue #259)",
+            :custom_fields_index,
+            [path_param(:community_slug)],
+            response: data_response(Schemas.CustomField)
+          ),
+        post:
+          operation(
+            "Add a custom profile field (managers)",
+            :custom_fields_create,
+            [path_param(:community_slug)],
+            status: 201,
+            request_body: body(Schemas.CustomFieldParams),
+            response: single_response(Schemas.CustomField)
+          )
+      },
+      "/api/v1/communities/{community_slug}/custom-fields/{id}" => %PathItem{
+        put:
+          operation(
+            "Edit a custom field's label, visibility, or required flag (managers; type and options are fixed at creation)",
+            :custom_fields_update,
+            [path_param(:community_slug), path_param(:id)],
+            request_body:
+              body(
+                object(%{
+                  label: %Schema{type: :string},
+                  visibility: %Schema{type: :string, enum: ["members", "admins"]},
+                  required: %Schema{type: :boolean}
+                })
+              ),
+            response: single_response(Schemas.CustomField)
+          ),
+        delete:
+          operation(
+            "Delete a custom field and every answer to it (managers)",
+            :custom_fields_delete,
+            [path_param(:community_slug), path_param(:id)],
+            response: json_response("Deleted", Schemas.StatusResponse)
+          )
+      },
       "/api/v1/communities/{community_slug}/invites" => %PathItem{
         get:
           operation(
