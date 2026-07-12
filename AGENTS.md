@@ -190,11 +190,14 @@ These keep an autonomous session from stalling; none is delivered to
 you automatically, so they are your responsibility to arm.
 
 - **After opening any PR: subscribe to its activity AND arm a
-  `send_later` self check-in (~15–20 min out).** Webhooks deliver CI
-  _failures_ and comments but never CI _success_ — without the
-  check-in a green PR just sits unmerged. Re-arm the check-in each
-  time it fires until the PR is merged or closed. Recurring triggers
-  bound to a prior session die with it; a new session arms its own.
+  `send_later` self check-in — a few minutes out, not 15–20**
+  (owner-stated, 2026-07-12). Webhooks deliver CI _failures_ and
+  comments but never CI _success_ — without the check-in a green PR
+  just sits unmerged — and CI here is fast, so err toward too-frequent:
+  prefer one wasted check over a green PR idling unmerged. Re-arm the
+  check-in each time it fires until the PR is merged or closed.
+  Recurring triggers bound to a prior session die with it; a new
+  session arms its own.
 - **Owner-reply scans** (hourly during owner-away stretches): GitHub
   comments are not pushed to the session. Scan from the _previous
   scan's actual timestamp_, not a fixed window — a fixed window missed
@@ -529,7 +532,12 @@ asked for once and must never need to be asked for again.
   Tailwind standalone binary; the npm CLI chokes on the vendored
   daisyUI bundle). CI builds assets; regenerate `docs/screenshots/` via
   the manually-dispatched Screenshots workflow rather than locally —
-  see [docs/development.md](docs/development.md) for how.
+  see [docs/development.md](docs/development.md) for how. But don't
+  treat the PR template's "UI changed visibly → regenerate screenshots"
+  item as a per-PR gate right now: screenshots get a single batch
+  refresh before v1 (owner-stated, 2026-07-12), so just note UI changes
+  in the PR and let that batch cover them — no per-PR regen, and don't
+  block a merge on it.
 - If GitHub tool access shows as disconnected, it needs
   re-authorization from the owner (`claude mcp` / `/mcp` — cannot be
   done from an agent session); local git still works without it.

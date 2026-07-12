@@ -169,3 +169,10 @@ regenerate: run `scripts/screenshots.sh` locally, or dispatch the
 **Screenshots** workflow on the PR branch (Actions → Screenshots →
 Run workflow) — it runs the same script and commits the diff back to
 the branch. Same deliberate act, works from a phone.
+
+**Deferred pre-v1 (owner-stated, 2026-07-12):** in practice the
+per-PR regeneration above is on hold — screenshots get a single batch
+refresh before v1, so don't regenerate per PR right now; note UI
+changes in the PR and let that batch cover them, and don't block a
+merge on stale screenshots. (See AGENTS.md's remote-container notes;
+the agent container can't build CSS locally anyway.)
