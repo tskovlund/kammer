@@ -85,6 +85,9 @@ describe('createPasskey', () => {
 
 		const publicKey = create.mock.calls[0][0].publicKey;
 		expect(publicKey.rp.id).toBe('kammer.example.com');
+		expect(publicKey.rp.name).toBe('Kammer');
+		expect(publicKey.authenticatorSelection.userVerification).toBe('preferred');
+		expect(publicKey.timeout).toBe(60_000);
 		// The server's challenge and the account's user id are decoded from
 		// base64url back into the bytes the authenticator signs over.
 		expect(Array.from(publicKey.challenge as Uint8Array)).toEqual(

@@ -111,12 +111,10 @@
 				userDisplayName: challenge.user_display_name ?? challenge.user_name,
 				excludeCredentials: challenge.exclude_credentials
 			});
-			// Null means the browser produced no credential (dismissed or
-			// unusable) — the neutral message, no server call.
-			if (!attestation) {
-				passkeyError = t('passkeys.error');
-				return;
-			}
+			// Null means the browser produced no credential — almost always a
+			// dismissed prompt. A deliberate cancel isn't a failure, so stay
+			// silent (as the sign-in flow and the LiveView it ports both do).
+			if (!attestation) return;
 			await completePasskeyRegistration(instance, {
 				challenge_token: challenge.challenge_token,
 				attestation_object: attestation.attestation_object,
@@ -124,14 +122,30 @@
 				nickname: nickname.trim() || null
 			});
 			nickname = '';
-			passkeys = await fetchPasskeys(instance);
-		} catch {
-			// Every failure — dismissed prompt, rejected attestation, network —
-			// collapses to one neutral message, mirroring the server's 422.
-			passkeyError = t('passkeys.error');
+			// The credential is registered; a refetch failure here must not
+			// report the (successful) add as failed — the list just refreshes
+			// on the next load.
+			try {
+				passkeys = await fetchPasskeys(instance);
+			} catch {
+				/* keep the current list; it refreshes on reload */
+			}
+		} catch (error) {
+			// A user dismissing the browser's passkey prompt (NotAllowedError /
+			// AbortError) is a deliberate cancel, not a failure — stay silent,
+			// as the LiveView it ports did. Anything else collapses to one
+			// neutral message, mirroring the server's 422.
+			if (!isUserCancellation(error)) passkeyError = t('passkeys.error');
 		} finally {
 			passkeyBusy = false;
 		}
+	}
+
+	// A WebAuthn prompt the user dismissed throws NotAllowedError (or
+	// AbortError on timeout); treat those as a quiet cancel, not an error.
+	function isUserCancellation(error: unknown): boolean {
+		const name = (error as { name?: string } | null)?.name;
+		return name === 'NotAllowedError' || name === 'AbortError';
 	}
 
 	async function removePasskey(passkey: Passkey): Promise<void> {
@@ -141,7 +155,13 @@
 		passkeyError = null;
 		try {
 			await deletePasskey(instance, passkey.id);
-			passkeys = await fetchPasskeys(instance);
+			// Removed server-side; a refetch failure must not report the
+			// (successful) removal as failed — the list refreshes on reload.
+			try {
+				passkeys = await fetchPasskeys(instance);
+			} catch {
+				/* keep the current list; it refreshes on reload */
+			}
 		} catch (error) {
 			passkeyError = error instanceof FeedApiError ? error.message : t('passkeys.error');
 		} finally {

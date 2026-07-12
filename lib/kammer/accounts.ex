@@ -289,7 +289,7 @@ defmodule Kammer.Accounts do
 
   def register_passkey(%User{} = user, attestation_object, client_data_json, challenge, nickname) do
     with {:ok, {auth_data, _attestation_result}} <-
-           Wax.register(attestation_object, client_data_json, challenge) do
+           verify_registration(attestation_object, client_data_json, challenge) do
       credential = auth_data.attested_credential_data
 
       %UserPasskey{user_id: user.id}
@@ -302,6 +302,18 @@ defmodule Kammer.Accounts do
       |> Ecto.Changeset.unique_constraint(:credential_id)
       |> Repo.insert()
     end
+  end
+
+  # Wax.register/3 returns {:error, _} for a crypto failure, but *raises*
+  # (a bare CBOR map-match inside it) on an attestation that is valid
+  # base64url + valid CBOR yet not the expected map shape — reachable with
+  # a crafted attestation_object. Rescue so that too is a clean {:error, _}
+  # rather than a 500, keeping this function true to its @spec and the
+  # caller's neutral-failure contract.
+  defp verify_registration(attestation_object, client_data_json, challenge) do
+    Wax.register(attestation_object, client_data_json, challenge)
+  rescue
+    _error -> {:error, :invalid_attestation}
   end
 
   @doc """
@@ -323,11 +335,20 @@ defmodule Kammer.Accounts do
   """
   @spec delete_passkey(User.t(), Ecto.UUID.t()) :: :ok
   def delete_passkey(%User{} = user, passkey_id) do
-    Repo.delete_all(
-      from(passkey in UserPasskey,
-        where: passkey.id == ^passkey_id and passkey.user_id == ^user.id
-      )
-    )
+    # Cast first (mirrors revoke_user_device/2): a malformed id matches
+    # nothing, the same idempotent no-op as a well-formed id that isn't the
+    # caller's — never a binary_id CastError.
+    case Ecto.UUID.cast(passkey_id) do
+      {:ok, uuid} ->
+        Repo.delete_all(
+          from(passkey in UserPasskey,
+            where: passkey.id == ^uuid and passkey.user_id == ^user.id
+          )
+        )
+
+      :error ->
+        :noop
+    end
 
     :ok
   end

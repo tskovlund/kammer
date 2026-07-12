@@ -83,6 +83,53 @@ defmodule KammerWeb.Api.PasskeyTest do
       refute Map.has_key?(body["data"], "credential_id")
     end
 
+    test "a blank nickname is stored as nil, not an empty string", %{conn: conn, user: user} do
+      %{"data" => challenge} =
+        conn |> post(~p"/api/v1/me/passkeys/challenge") |> json_response(200)
+
+      ceremony = ceremony_for(challenge)
+
+      body =
+        conn
+        |> post(~p"/api/v1/me/passkeys", %{
+          "challenge_token" => challenge["challenge_token"],
+          "attestation_object" => Base.url_encode64(ceremony.attestation_object, padding: false),
+          "client_data_json" => Base.url_encode64(ceremony.client_data_json, padding: false),
+          "nickname" => "   "
+        })
+        |> json_response(201)
+
+      assert body["data"]["nickname"] == nil
+      assert [%{nickname: nil}] = Accounts.list_passkeys(user)
+    end
+
+    test "a valid token with a structurally-bogus attestation is a neutral 422, not a 500", %{
+      conn: conn,
+      user: user
+    } do
+      %{"data" => challenge} =
+        conn |> post(~p"/api/v1/me/passkeys/challenge") |> json_response(200)
+
+      ceremony = ceremony_for(challenge)
+
+      # A real client_data_json but an attestation that is valid base64url +
+      # valid CBOR yet not the map Wax expects (an empty CBOR map). This used
+      # to raise a MatchError inside Wax.register and escape as a 500,
+      # breaking the neutral-failure contract; it must collapse to the same
+      # 422 as every other failure.
+      body =
+        conn
+        |> post(~p"/api/v1/me/passkeys", %{
+          "challenge_token" => challenge["challenge_token"],
+          "attestation_object" => Base.url_encode64(<<0xA0>>, padding: false),
+          "client_data_json" => Base.url_encode64(ceremony.client_data_json, padding: false)
+        })
+        |> json_response(422)
+
+      assert body["error"]["code"] == "invalid_params"
+      assert Accounts.list_passkeys(user) == []
+    end
+
     test "a tampered challenge token is a neutral 422 that stores nothing", %{
       conn: conn,
       user: user
@@ -140,9 +187,17 @@ defmodule KammerWeb.Api.PasskeyTest do
       assert %{"status" => "revoked"} =
                conn
                |> delete(~p"/api/v1/me/passkeys/#{passkey.id}")
+               |> tap(&assert_operation_response(&1, "passkeys_delete"))
                |> json_response(200)
 
       assert Accounts.list_passkeys(user) == []
+    end
+
+    test "a malformed id is the same idempotent 200, never a cast error", %{conn: conn} do
+      assert %{"status" => "revoked"} =
+               conn
+               |> delete(~p"/api/v1/me/passkeys/not-a-uuid")
+               |> json_response(200)
     end
 
     test "cannot delete another user's passkey", %{conn: conn} do

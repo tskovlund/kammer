@@ -144,11 +144,14 @@ defmodule KammerWeb.Api.PasskeyController do
     end
   end
 
-  # A blank nickname is no nickname — store nil, not "".
+  # A blank nickname is no nickname — store nil, not "". Truncate rather
+  # than let an over-long label fail the insert (which the neutral 422
+  # would then report as if the whole registration were bad).
+  @nickname_max_length 100
   defp nickname(params) do
     case params["nickname"] do
       value when is_binary(value) ->
-        case String.trim(value) do
+        case value |> String.trim() |> String.slice(0, @nickname_max_length) do
           "" -> nil
           trimmed -> trimmed
         end
