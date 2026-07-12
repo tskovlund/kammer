@@ -1106,6 +1106,15 @@ defmodule KammerWeb.ApiSpec do
             response: data_response(Schemas.Event)
           )
       },
+      "/api/v1/communities/{community_slug}/events/series/{series_id}" => %PathItem{
+        get:
+          operation(
+            "A recurring series' organizer view (occurrences + attendance matrix)",
+            :events_series,
+            [path_param(:community_slug), path_param(:series_id)],
+            response: single_response(Schemas.EventSeriesDetail)
+          )
+      },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/events" => %PathItem{
         post:
           operation(

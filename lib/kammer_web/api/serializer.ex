@@ -38,6 +38,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
   alias Kammer.Events.Event
+  alias Kammer.Events.EventSeries
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Poll
   alias Kammer.Feed.Post
@@ -371,6 +372,61 @@ defmodule KammerWeb.Api.Serializer do
           do: Enum.map(event.comments, &comment(&1, viewer)),
           else: []
         )
+    }
+  end
+
+  @doc """
+  The organizer view of a recurring series (SPEC §6, ADR 0019): the
+  series rule, every occurrence (with RSVP counts and cancel state), and
+  the attendance matrix from `Events.attendance_matrix/2` — group members
+  by upcoming occurrence, each cell the member's RSVP status. Members
+  only per SPEC §6; guest RSVPs count toward an occurrence's `rsvp_counts`
+  but are never matrix rows (the context already filters them out).
+  """
+  @spec event_series(EventSeries.t(), [Event.t()], %{
+          series: EventSeries.t(),
+          occurrences: [Event.t()],
+          rows: [%{member: User.t(), statuses: map()}]
+        }) :: map()
+  def event_series(%EventSeries{} = series, occurrences, matrix) do
+    %{
+      series: %{
+        id: series.id,
+        group_id: series.group_id,
+        frequency: series.frequency,
+        until: series.until
+      },
+      occurrences: Enum.map(occurrences, &series_occurrence/1),
+      attendance: attendance(matrix)
+    }
+  end
+
+  defp series_occurrence(%Event{} = event) do
+    %{
+      id: event.id,
+      starts_at: event.starts_at,
+      ends_at: event.ends_at,
+      all_day: event.all_day,
+      cancelled: event.cancelled_at != nil,
+      rsvp_counts: rsvp_counts(event)
+    }
+  end
+
+  # The matrix rows carry a status map keyed by occurrence id; the wire
+  # shape is an array aligned by index to `attendance.occurrences`, so a
+  # client renders columns without depending on object key order.
+  defp attendance(%{occurrences: occurrences, rows: rows}) do
+    occurrence_ids = Enum.map(occurrences, & &1.id)
+
+    %{
+      occurrences: Enum.map(occurrences, &%{id: &1.id, starts_at: &1.starts_at}),
+      rows:
+        Enum.map(rows, fn row ->
+          %{
+            member: user_ref(row.member),
+            statuses: Enum.map(occurrence_ids, &row.statuses[&1])
+          }
+        end)
     }
   end
 

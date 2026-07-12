@@ -715,6 +715,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/events/series/{series_id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A recurring series' organizer view (occurrences + attendance matrix) */
+		get: operations['events_series'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/assignments/{assignment_id}/completion': {
 		parameters: {
 			query?: never;
@@ -2329,6 +2346,62 @@ export interface components {
 			title: string;
 			/** @description Advisory actions the caller may take (issue #199) — `respond` while open, `manage` (close/convert) for creator or moderator. Empty when the viewer's rights weren't resolved. */
 			viewer_can: ('respond' | 'manage')[];
+		};
+		/**
+		 * EventSeriesDetail
+		 * @description A recurring series' organizer view (SPEC §6, ADR 0019): the series rule, every occurrence (with RSVP counts and cancel state), and the attendance matrix — group members by upcoming occurrence, each cell the member's RSVP. Members only; guest RSVPs count toward an occurrence's rsvp_counts but are never matrix rows. Organizer-only (the series' creator or a group moderator).
+		 */
+		EventSeriesDetail: {
+			/** @description The matrix: upcoming non-cancelled occurrences as columns, members as rows */
+			attendance: {
+				/** @description The matrix columns — upcoming, non-cancelled occurrences, soonest first */
+				occurrences: {
+					/** Format: uuid */
+					id: string;
+					/** Format: date-time */
+					starts_at: string;
+				}[];
+				/** @description One row per group member */
+				rows: {
+					member: components['schemas']['UserRef'];
+					/** @description The member's RSVP per matrix occurrence, aligned by index to attendance.occurrences; null where they haven't answered */
+					statuses: ('yes' | 'no' | 'maybe' | null)[];
+				}[];
+			};
+			/** @description Every occurrence, soonest first — including past and cancelled ones */
+			occurrences: {
+				all_day: boolean;
+				cancelled: boolean;
+				/** Format: date-time */
+				ends_at?: string | null;
+				/** Format: uuid */
+				id: string;
+				rsvp_counts: {
+					maybe: number;
+					no: number;
+					yes: number;
+				};
+				/** Format: date-time */
+				starts_at: string;
+			}[];
+			series: components['schemas']['EventSeries'];
+		};
+		/**
+		 * EventSeries
+		 * @description A recurring event series' rule (ADR 0019): its cadence and last date.
+		 */
+		EventSeries: {
+			/** @enum {string} */
+			frequency: 'weekly' | 'biweekly' | 'monthly';
+			/** Format: uuid */
+			group_id: string;
+			/** Format: uuid */
+			id: string;
+			/**
+			 * Format: date
+			 * @description Last date the series may run
+			 */
+			until: string;
 		};
 		/**
 		 * Profile
@@ -6919,6 +6992,58 @@ export interface operations {
 				content: {
 					'application/json': {
 						data: components['schemas']['PublicCommunity'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	events_series: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				series_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['EventSeriesDetail'];
 					};
 				};
 			};

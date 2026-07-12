@@ -1620,6 +1620,111 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule EventSeries do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "EventSeries",
+      description: "A recurring event series' rule (ADR 0019): its cadence and last date.",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        group_id: %Schema{type: :string, format: :uuid},
+        frequency: %Schema{type: :string, enum: ["weekly", "biweekly", "monthly"]},
+        until: %Schema{type: :string, format: :date, description: "Last date the series may run"}
+      },
+      required: [:id, :group_id, :frequency, :until]
+    })
+  end
+
+  defmodule EventSeriesDetail do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "EventSeriesDetail",
+      description:
+        "A recurring series' organizer view (SPEC §6, ADR 0019): the series rule, " <>
+          "every occurrence (with RSVP counts and cancel state), and the attendance " <>
+          "matrix — group members by upcoming occurrence, each cell the member's RSVP. " <>
+          "Members only; guest RSVPs count toward an occurrence's rsvp_counts but are " <>
+          "never matrix rows. Organizer-only (the series' creator or a group moderator).",
+      type: :object,
+      properties: %{
+        series: EventSeries,
+        occurrences: %Schema{
+          type: :array,
+          description: "Every occurrence, soonest first — including past and cancelled ones",
+          items: %Schema{
+            type: :object,
+            properties: %{
+              id: %Schema{type: :string, format: :uuid},
+              starts_at: %Schema{type: :string, format: :"date-time"},
+              ends_at: %Schema{type: :string, format: :"date-time", nullable: true},
+              all_day: %Schema{type: :boolean},
+              cancelled: %Schema{type: :boolean},
+              rsvp_counts: %Schema{
+                type: :object,
+                properties: %{
+                  yes: %Schema{type: :integer},
+                  maybe: %Schema{type: :integer},
+                  no: %Schema{type: :integer}
+                },
+                required: [:yes, :maybe, :no]
+              }
+            },
+            required: [:id, :starts_at, :all_day, :cancelled, :rsvp_counts]
+          }
+        },
+        attendance: %Schema{
+          type: :object,
+          description:
+            "The matrix: upcoming non-cancelled occurrences as columns, members as rows",
+          properties: %{
+            occurrences: %Schema{
+              type: :array,
+              description:
+                "The matrix columns — upcoming, non-cancelled occurrences, soonest first",
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  id: %Schema{type: :string, format: :uuid},
+                  starts_at: %Schema{type: :string, format: :"date-time"}
+                },
+                required: [:id, :starts_at]
+              }
+            },
+            rows: %Schema{
+              type: :array,
+              description: "One row per group member",
+              items: %Schema{
+                type: :object,
+                properties: %{
+                  member: UserRef,
+                  statuses: %Schema{
+                    type: :array,
+                    description:
+                      "The member's RSVP per matrix occurrence, aligned by index to " <>
+                        "attendance.occurrences; null where they haven't answered",
+                    items: %Schema{
+                      type: :string,
+                      enum: ["yes", "no", "maybe"],
+                      nullable: true
+                    }
+                  }
+                },
+                required: [:member, :statuses]
+              }
+            }
+          },
+          required: [:occurrences, :rows]
+        }
+      },
+      required: [:series, :occurrences, :attendance]
+    })
+  end
+
   defmodule AvailabilityPoll do
     @moduledoc false
     require OpenApiSpex

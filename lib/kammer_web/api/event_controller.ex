@@ -8,6 +8,11 @@ defmodule KammerWeb.Api.EventController do
   through the same context functions and authorization the UI uses; the
   controller adds transport, never policy.
 
+  A recurring series' organizer view (`:series`, issue #260, SPEC §6)
+  hands back the series rule, all its occurrences, and the attendance
+  matrix — organizer-only (creator or moderator), gated by the same
+  `Events.fetch_manageable_series/3` the LiveView used.
+
   Every event-addressed write resolves the event through
   `Events.fetch_viewable_event/3`, so an event the caller cannot see
   answers 404 to every verb, exactly like one that doesn't exist (the
@@ -55,6 +60,25 @@ defmodule KammerWeb.Api.EventController do
 
         error ->
           ApiError.from_result(conn, error)
+      end
+    end)
+  end
+
+  @spec series(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def series(conn, %{"community_slug" => slug, "series_id" => series_id}) do
+    with_community(conn, slug, fn community ->
+      user = conn.assigns.current_scope.user
+
+      # `fetch_manageable_series` is the organizer gate (creator or
+      # moderator, events feature on): an absent series or a feature-off
+      # group is :not_found (404), a non-manager :unauthorized (403).
+      # attendance_matrix re-checks the same gate, so it can't 403 here.
+      with {:ok, series} <- Events.fetch_manageable_series(user, community, series_id),
+           {:ok, matrix} <- Events.attendance_matrix(user, series) do
+        occurrences = Events.list_series_occurrences(series)
+        json(conn, %{data: Serializer.event_series(series, occurrences, matrix)})
+      else
+        error -> ApiError.from_result(conn, error)
       end
     end)
   end

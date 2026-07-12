@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchGroupCalendarToken, fetchMyCalendarToken } from './api';
+import { fetchEventSeries, fetchGroupCalendarToken, fetchMyCalendarToken } from './api';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -51,5 +51,29 @@ describe('calendar subscription tokens', () => {
 
 		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
 		expect(request.url).toContain('/communities/our-club/groups/brass/calendar-token');
+	});
+});
+
+describe('fetchEventSeries', () => {
+	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('GETs the organizer series endpoint and unwraps the detail envelope', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({
+				data: {
+					series: { id: 's1', group_id: 'g1', frequency: 'weekly', until: '2026-08-01' },
+					occurrences: [],
+					attendance: { occurrences: [], rows: [] }
+				}
+			})
+		);
+
+		const result = await fetchEventSeries(instance(), 'our-club', 's1');
+		expect(result.series.frequency).toBe('weekly');
+
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('GET');
+		expect(request.url).toContain('/communities/our-club/events/series/s1');
 	});
 });
