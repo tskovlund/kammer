@@ -98,4 +98,21 @@ describe('createSeriesStore', () => {
 		expect(store.detail?.occurrences[0].cancelled).toBe(true);
 		expect(store.detail?.attendance.occurrences).toHaveLength(0);
 	});
+
+	it('surfaces a failed toggle as a dismissible action error without blanking the detail', async () => {
+		vi.mocked(api.fetchEventSeries).mockResolvedValue(detail());
+		vi.mocked(api.setCancelled).mockRejectedValue(new FeedApiError('forbidden', 'Not yours.', 403));
+
+		const store = createSeriesStore(instance(), 'c', 's1');
+		await store.load();
+		await store.toggleCancelled('o1', true);
+
+		expect(store.actionError).toEqual({ message: 'Not yours.', kind: 'forbidden' });
+		// The view stays put — a failed mutation never drops the loaded detail.
+		expect(store.detail?.occurrences[0].cancelled).toBe(false);
+		expect(store.loadState).toBe('ready');
+
+		store.clearActionError();
+		expect(store.actionError).toBeNull();
+	});
 });

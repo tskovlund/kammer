@@ -111,7 +111,11 @@ defmodule Kammer.Events do
   @doc """
   Fetches a series the actor may manage, for the series/attendance
   page — its creator or a group moderator (SPEC §6: "organizer
-  attendance matrix").
+  attendance matrix"). A caller who can't even view the group is
+  `:not_found`, not `:unauthorized`: the no-oracle stance the event read
+  takes (#156/#161), so a series' existence never leaks to someone who
+  can't see its occurrences. Only a viewer who isn't a manager gets
+  `:unauthorized`.
   """
   @spec fetch_manageable_series(User.t() | nil, Community.t(), Ecto.UUID.t()) ::
           {:ok, EventSeries.t()} | {:error, :not_found | :unauthorized}
@@ -119,11 +123,24 @@ defmodule Kammer.Events do
     with %EventSeries{} = series <- get_series_in_community(community, series_id),
          group = Repo.get!(Group, series.group_id),
          :ok <- Authorization.feature_gate(group, :events),
+         :ok <- viewable_or_hidden(actor, group),
          true <- can_manage_series?(actor, series, group) || {:error, :unauthorized} do
       {:ok, series}
     else
       nil -> {:error, :not_found}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # A non-viewer is hidden (404), not forbidden (403). This also keeps a
+  # departed private-group creator — who still passes can_manage_series?
+  # via `creator?` but can no longer view the group — from reaching
+  # attendance_matrix, whose `list_members` view check would otherwise
+  # raise on the {:ok, _} = match.
+  defp viewable_or_hidden(actor, group) do
+    case Authorization.authorize(actor, :view_group, group) do
+      :ok -> :ok
+      {:error, :unauthorized} -> {:error, :not_found}
     end
   end
 

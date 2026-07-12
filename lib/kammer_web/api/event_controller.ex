@@ -69,10 +69,12 @@ defmodule KammerWeb.Api.EventController do
     with_community(conn, slug, fn community ->
       user = conn.assigns.current_scope.user
 
-      # `fetch_manageable_series` is the organizer gate (creator or
-      # moderator, events feature on): an absent series or a feature-off
-      # group is :not_found (404), a non-manager :unauthorized (403).
-      # attendance_matrix re-checks the same gate, so it can't 403 here.
+      # `fetch_manageable_series` is the organizer gate: an absent series,
+      # a feature-off group, or a caller who can't even view the group is
+      # :not_found (404, no-oracle like the event read); a viewer who
+      # isn't a manager is :unauthorized (403). Because view + manage are
+      # both settled here, attendance_matrix's own list_members view check
+      # always passes — it can neither 403 nor raise.
       with {:ok, series} <- Events.fetch_manageable_series(user, community, series_id),
            {:ok, matrix} <- Events.attendance_matrix(user, series) do
         occurrences = Events.list_series_occurrences(series)

@@ -44,7 +44,7 @@
 						<th scope="row" class="p-2 text-left font-normal whitespace-nowrap text-ink">
 							{row.member?.display_name}
 						</th>
-						{#each row.statuses as status, i (attendance.occurrences[i].id)}
+						{#each row.statuses as status, i (attendance.occurrences[i]?.id)}
 							<td class="p-2 text-center">
 								<span aria-label={statusLabel(status)} title={statusLabel(status)}>
 									{glyph(status)}

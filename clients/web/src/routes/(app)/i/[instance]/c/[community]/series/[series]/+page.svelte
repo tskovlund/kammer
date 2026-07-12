@@ -68,13 +68,13 @@
 		{t('nav.events')}
 	</a>
 
-	{#if store?.loadState === 'loading'}
+	{#if !store || store.loadState === 'loading'}
 		<div class="flex flex-col gap-4">
 			<Skeleton class="h-7 w-1/2" />
 			<Skeleton class="h-4 w-1/3" />
 			<Skeleton class="h-24 w-full" />
 		</div>
-	{:else if store?.loadState === 'error' || !detail}
+	{:else if store.loadState === 'error' || !detail}
 		{#if store?.loadErrorKind === 'forbidden'}
 			<EmptyState
 				title={t('events.series.forbidden.title')}
@@ -153,6 +153,7 @@
 							<Button
 								variant="secondary"
 								size="sm"
+								disabled={store?.busy}
 								onclick={() => store?.toggleCancelled(occurrence.id, !occurrence.cancelled)}
 							>
 								{occurrence.cancelled ? t('events.series.restore') : t('events.series.cancel')}

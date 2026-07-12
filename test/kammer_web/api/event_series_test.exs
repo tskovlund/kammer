@@ -79,6 +79,36 @@ defmodule KammerWeb.Api.EventSeriesTest do
       column = Enum.find_index(attendance["occurrences"], &(&1["id"] == first.id))
       creator_row = Enum.find(attendance["rows"], &(&1["member"]["id"] == creator.id))
       assert Enum.at(creator_row["statuses"], column) == "yes"
+      # An un-answered occurrence serializes as a null cell, not a gap.
+      assert Enum.any?(creator_row["statuses"], &is_nil/1)
+    end
+
+    test "a caller who cannot view the group gets 404, never a 403 confirm-oracle", %{
+      community: community
+    } do
+      # A private group's series must be invisible to a community member who
+      # is not in the group: its occurrences 404 for them, so the series does
+      # too — a 403 here would confirm the series exists (no-oracle, #156/#161).
+      private = group_fixture(community, %{visibility: :private})
+      creator = group_member_fixture(private)
+      starts_at = DateTime.add(DateTime.utc_now(:second), 24, :hour)
+      until = starts_at |> DateTime.add(14, :day) |> DateTime.to_date()
+
+      {:ok, [first | _]} =
+        Events.create_recurring_event(
+          creator,
+          private,
+          %{"title" => "Rehearsal", "starts_at" => starts_at},
+          %{"frequency" => "weekly", "until" => Date.to_iso8601(until)}
+        )
+
+      series = Events.get_series(first)
+      outsider = member_fixture(community)
+
+      outsider
+      |> api_conn()
+      |> get(~p"/api/v1/communities/#{community.slug}/events/series/#{series.id}")
+      |> json_response(404)
     end
 
     test "a member who does not manage the series is forbidden", %{

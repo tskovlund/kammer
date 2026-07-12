@@ -19,6 +19,7 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 	let loadState = $state<LoadState>('idle');
 	let loadErrorKind = $state<FeedErrorKind | null>(null);
 	let actionError = $state<{ message: string; kind: FeedErrorKind } | null>(null);
+	let busy = $state(false);
 
 	async function load(): Promise<void> {
 		loadState = 'loading';
@@ -33,16 +34,22 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 	}
 
 	async function toggleCancelled(occurrenceId: string, cancelled: boolean): Promise<void> {
+		if (busy) return;
+		busy = true;
+		actionError = null;
 		try {
 			await api.setCancelled(instance, communitySlug, occurrenceId, cancelled);
-			// Refetch rather than patch: cancelling drops the occurrence from the
-			// matrix columns, so no local edit could keep both views true.
-			await load();
+			// Refetch rather than patch — cancelling drops the occurrence from the
+			// matrix columns — but assign in place instead of going through load(),
+			// so the current view stays rendered rather than blanking to skeletons.
+			detail = await api.fetchEventSeries(instance, communitySlug, seriesId);
 		} catch (error) {
 			actionError =
 				error instanceof FeedApiError
 					? { message: error.message, kind: error.kind }
 					: { message: 'Something went wrong.', kind: 'server' };
+		} finally {
+			busy = false;
 		}
 	}
 
@@ -58,6 +65,9 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 		},
 		get actionError() {
 			return actionError;
+		},
+		get busy() {
+			return busy;
 		},
 		clearActionError() {
 			actionError = null;
