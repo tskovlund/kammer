@@ -43,6 +43,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - Stable public URLs; community slugs namespace all routes (`/c/{community}/...`).
 - **Community roles**: Owner / Admin / Member. **Group roles**: Owner / Admin / Member.
 - Community Admins have **full override** on all groups in their community — except sealed groups. Instance operators have no in-app content access to communities they don't belong to (honest caveat everywhere: the server operator can technically read the database).
+- **Groups are the sole container.** A community's posts, events, files, and tools all live in groups — there is no community-wide content or file space parallel to them (#278). So community creation produces the community and its Owner and nothing else: **no auto-default group** — a new community starts empty. A group is deliberately the one _flexible_ primitive (a private working space, an everyone-feed, a public page, an event hub), and use cases vary too much for any single auto-created default to fit — so **cold-start is handled as UX** (a guided first-group creation with optional named suggestions), not as a data-model default.
 
 ### Group settings
 

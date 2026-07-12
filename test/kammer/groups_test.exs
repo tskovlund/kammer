@@ -46,6 +46,25 @@ defmodule Kammer.GroupsTest do
 
       assert group.sealed
     end
+
+    test "a duplicate slug fails on the :slug field, not the composite's :community_id" do
+      {community, _owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+      slug = unique_slug("taken")
+
+      assert {:ok, _first} =
+               Groups.create_group(member, community, %{"name" => "First", "slug" => slug})
+
+      assert {:error, changeset} =
+               Groups.create_group(member, community, %{"name" => "Second", "slug" => slug})
+
+      # The uniqueness error must land on :slug — the field a form binds — not
+      # on :community_id, which is the composite constraint's default
+      # first-field key and is server-set (issue #278: an API client keys its
+      # "slug taken" copy off this detail).
+      assert errors_on(changeset)[:slug] == ["has already been taken"]
+      refute errors_on(changeset)[:community_id]
+    end
   end
 
   describe "update_group/3 and the sealed invariant" do

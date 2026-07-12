@@ -150,7 +150,11 @@ defmodule Kammer.Groups.Group do
     |> validate_format(:slug, @slug_format,
       message: "may only contain lowercase letters, digits, and hyphens"
     )
-    |> unique_constraint([:community_id, :slug])
+    # Key the collision on `:slug` (not the composite's default first field,
+    # `:community_id`, which is server-set and has no form input): a taken
+    # slug is the slug field's error, so it reaches an API client's
+    # field-specific copy and the settings form's slug input.
+    |> unique_constraint([:community_id, :slug], error_key: :slug)
   end
 
   @doc "Whether the group is archived."
