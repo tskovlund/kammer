@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Added
 
+- Passkey sign-in in the PWA (issue #260 port 5a, part of #187, ADR
+  0018), driving the usernameless WebAuthn assertion the API already
+  served (`/auth/passkey/challenge` → `/auth/passkey/verify`). The
+  sign-in screen's email step gains a "Sign in with a passkey" option
+  that runs the ceremony and lands on the same added-instance state as
+  the magic link — no email typed, no password. The affordance is shown
+  only where it can actually succeed — the browser can run WebAuthn and
+  the instance is same-origin (a passkey is bound to its serving origin,
+  so a cross-origin community couldn't sign in with one) — never a
+  button that can only fail. Every failure (an unusable challenge, a
+  dismissed prompt, a rejected assertion) collapses to one neutral
+  message, giving no oracle for which passkeys or accounts exist.
+
 - Custom profile-field management over the API and PWA (issue #259,
   part of #187, ADR 0020) — the last buildable #259 item, porting the
   LiveView community-settings surface and going past it. Managers get

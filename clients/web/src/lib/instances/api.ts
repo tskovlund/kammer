@@ -4,6 +4,7 @@ import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { unsubscribeFromPush } from '$lib/push/subscription.js';
 import { instanceStore } from './store.js';
 import type { Instance } from './types.js';
+import { getPasskeyAssertion } from './webauthn.js';
 
 export class InstanceApiError extends Error {}
 
@@ -190,23 +191,83 @@ export async function exchangeAndAddInstance(
 		if (error || !data) {
 			throw new InstanceApiError('That sign-in link is invalid or has expired.');
 		}
-
-		const instance: Instance = {
-			id: crypto.randomUUID(),
-			baseUrl,
-			instanceName,
-			deviceToken: data.device_token,
-			user: {
-				id: data.user.id,
-				email: data.user.email,
-				displayName: data.user.display_name
-			},
-			addedAt: new Date().toISOString()
-		};
-
-		instanceStore.add(instance);
-		return instance;
+		return addExchangedInstance(baseUrl, instanceName, data);
 	}, 'That sign-in link is invalid or has expired.');
+}
+
+/**
+ * Signs in with a resident passkey (issue #260 port 5a, ADR 0018) and
+ * adds the instance — the credential-based twin of the magic-link
+ * `exchangeAndAddInstance`, landing on the same added-instance state.
+ * The server runs the WebAuthn assertion ceremony statelessly across
+ * two calls: `/auth/passkey/challenge` mints a challenge (and a signed
+ * `challenge_token` that carries the server-side state), the browser
+ * signs it via `getPasskeyAssertion`, and `/auth/passkey/verify` checks
+ * the assertion and issues the device token. Usernameless — no email is
+ * asked for and none is enumerable — so `instanceName` is threaded in
+ * from the caller's earlier probe, exactly as the magic-link flow does.
+ *
+ * Every failure — an unusable challenge, the user dismissing the OS
+ * prompt (which rejects inside `getPasskeyAssertion`), a rejected
+ * assertion — collapses to one neutral message, matching the server's
+ * uniform 401 and giving no oracle for which passkeys exist.
+ */
+export async function passkeySignInAndAddInstance(
+	baseUrl: string,
+	instanceName: string,
+	deviceName?: string
+): Promise<Instance> {
+	const failure = 'That passkey sign-in did not work.';
+	return guardNetworkError(async () => {
+		const client = createApiClient(baseUrl);
+
+		const { data: challenge, error: challengeError } = await client.POST(
+			'/api/v1/auth/passkey/challenge'
+		);
+		if (challengeError || !challenge) throw new InstanceApiError(failure);
+
+		const assertion = await getPasskeyAssertion(challenge.challenge, challenge.rp_id);
+		if (!assertion) throw new InstanceApiError(failure);
+
+		const { data, error } = await client.POST('/api/v1/auth/passkey/verify', {
+			body: {
+				challenge_token: challenge.challenge_token,
+				device_name: deviceName,
+				...assertion
+			}
+		});
+		if (error || !data) throw new InstanceApiError(failure);
+
+		return addExchangedInstance(baseUrl, instanceName, data);
+	}, failure);
+}
+
+/**
+ * Builds and stores the `Instance` from an exchange/verify response —
+ * the shared tail of the two sign-in flows, which return the identical
+ * `AuthExchangeResponse` (device token + user). Keeping it here means
+ * the stored-instance shape can only ever be defined once.
+ */
+function addExchangedInstance(
+	baseUrl: string,
+	instanceName: string,
+	data: { device_token: string; user: { id: string; email: string; display_name: string | null } }
+): Instance {
+	const instance: Instance = {
+		id: crypto.randomUUID(),
+		baseUrl,
+		instanceName,
+		deviceToken: data.device_token,
+		user: {
+			id: data.user.id,
+			email: data.user.email,
+			displayName: data.user.display_name
+		},
+		addedAt: new Date().toISOString()
+	};
+
+	instanceStore.add(instance);
+	return instance;
 }
 
 /**

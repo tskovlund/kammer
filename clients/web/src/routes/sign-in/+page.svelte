@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import {
 		exchangeAndAddInstance,
+		passkeySignInAndAddInstance,
 		probeInstance,
 		registerAccount,
 		registerErrorKeys,
@@ -11,6 +12,7 @@
 	} from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { extractMagicToken, normalizeInstanceUrl } from '$lib/instances/signin.js';
+	import { isPasskeySupported } from '$lib/instances/webauthn.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 
@@ -33,7 +35,32 @@
 	let error = $state<string | null>(null);
 	let nameError = $state<string | null>(null);
 	let emailError = $state<string | null>(null);
+	let passkeyError = $state<string | null>(null);
 	let resent = $state(false);
+
+	// CSR-only app (root layout sets ssr = false), so the browser globals
+	// isPasskeySupported reads are always present — a plain init call, no
+	// onMount dance. Browser capability is fixed for the session.
+	const browserSupportsPasskeys = isPasskeySupported();
+
+	// Offer the passkey affordance only when it can actually succeed —
+	// never a button that can only fail. Beyond browser capability that
+	// means the *same-origin* instance: WebAuthn ties the assertion to the
+	// server-minted rp_id (this instance's host), which the browser
+	// requires to match the page's own origin, so a cross-origin instance
+	// (the "add another community" case) could only ever throw
+	// SecurityError. Same origin-binding as this browser's push
+	// subscription — see revokeAndRemoveInstance.
+	const passkeySupported = $derived(browserSupportsPasskeys && sameOriginInstance(baseUrl));
+
+	function sameOriginInstance(url: string): boolean {
+		if (!url || typeof window === 'undefined') return false;
+		try {
+			return new URL(url).origin === window.location.origin;
+		} catch {
+			return false;
+		}
+	}
 
 	async function submitInstance(event: SubmitEvent): Promise<void> {
 		event.preventDefault();
@@ -81,12 +108,31 @@
 		event.preventDefault();
 		busy = true;
 		error = null;
+		passkeyError = null;
 		try {
 			await requestLink(baseUrl, email);
 			step = 'confirm';
 			resent = false;
 		} catch {
 			error = t('signin.email.error');
+		} finally {
+			busy = false;
+		}
+	}
+
+	// The credential-based path off the email step: no link, no email —
+	// the resident passkey both identifies the account and signs in, then
+	// lands on the same added-instance state as the magic-link flow.
+	async function submitPasskey(): Promise<void> {
+		busy = true;
+		error = null;
+		passkeyError = null;
+		try {
+			await passkeySignInAndAddInstance(baseUrl, instanceName);
+			instances.refresh();
+			await goto(resolve('/'));
+		} catch {
+			passkeyError = t('signin.passkey.error');
 		} finally {
 			busy = false;
 		}
@@ -132,6 +178,7 @@
 		error = null;
 		nameError = null;
 		emailError = null;
+		passkeyError = null;
 		resent = false;
 	}
 </script>
@@ -189,6 +236,19 @@
 		<Button id="signin-email-submit" variant="primary" type="submit" disabled={busy}>
 			{t('signin.email.submit')}
 		</Button>
+		{#if passkeySupported}
+			<div class="flex items-center gap-3 text-xs text-ink-muted" aria-hidden="true">
+				<span class="h-px flex-1 bg-line"></span>
+				{t('signin.passkey.or')}
+				<span class="h-px flex-1 bg-line"></span>
+			</div>
+			<Button id="signin-passkey" variant="secondary" disabled={busy} onclick={submitPasskey}>
+				{t('signin.passkey.button')}
+			</Button>
+			<p class="text-sm text-danger" role="alert" aria-live="polite">
+				{#if passkeyError}{passkeyError}{/if}
+			</p>
+		{/if}
 		{#if registrationOpen}
 			<Button id="signin-email-register" variant="ghost" onclick={() => backTo('register')}>
 				{t('signin.email.register')}
