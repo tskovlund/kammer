@@ -1690,6 +1690,17 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Subscribed", Schemas.GuestConfirmation)
           )
       },
+      "/api/v1/public/communities" => %PathItem{
+        get:
+          operation(
+            "The instance's community directory — communities that opted into the " <>
+              "anonymous landing page via listed_on_instance (issue #260)",
+            :public_communities_index,
+            [],
+            security: [],
+            response: data_response(Schemas.Community)
+          )
+      },
       "/api/v1/public/communities/{community_slug}" => %PathItem{
         get:
           operation(

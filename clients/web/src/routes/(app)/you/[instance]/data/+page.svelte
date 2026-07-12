@@ -64,7 +64,7 @@
 			// token, push unsubscribe, snapshot clear).
 			await revokeAndRemoveInstance(instance.id);
 			instances.refresh();
-			// The (app) layout's guard redirects to /sign-in if this was the
+			// The (app) layout's guard redirects to /welcome if this was the
 			// last account.
 			await goto(resolve('/you'));
 		} catch (error) {
