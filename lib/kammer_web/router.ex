@@ -460,6 +460,11 @@ defmodule KammerWeb.Router do
     get "/files/:file_id/download", FileController, :download
 
     get "/communities/:community_slug/events", EventController, :index
+    # A recurring series' organizer view (issue #260, SPEC §6): the
+    # occurrence list + attendance matrix, organizer-only. Declared
+    # before the :event_id show route — "series" is a literal segment,
+    # and the extra path segment keeps the two unambiguous regardless.
+    get "/communities/:community_slug/events/series/:series_id", EventController, :series
     get "/communities/:community_slug/events/:event_id", EventController, :show
 
     # Events write parity (issue #180). Creation is group-scoped (an

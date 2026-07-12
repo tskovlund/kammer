@@ -9,6 +9,11 @@ export type EventSlot = Event['slots'][number];
 export type Author = components['schemas']['Author'];
 export type Comment = components['schemas']['Comment'];
 
+/** The recurring-series organizer view: rule, occurrences, attendance matrix. */
+export type EventSeriesDetail = components['schemas']['EventSeriesDetail'];
+export type SeriesOccurrence = EventSeriesDetail['occurrences'][number];
+export type AttendanceRow = EventSeriesDetail['attendance']['rows'][number];
+
 /** How an event is ordered relative to now. */
 export type RsvpStatus = 'yes' | 'no' | 'maybe';
 

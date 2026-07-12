@@ -54,6 +54,14 @@
 	const editHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${communitySlug}/e/${eventId}/edit`)
 	);
+	// The organizer view of the whole series. Shown when this event is an
+	// occurrence; the series page fails closed for non-managers, same as the
+	// other manage actions (#199).
+	const seriesHref = $derived(
+		event?.series_id
+			? resolve(`/i/${page.params.instance}/c/${communitySlug}/series/${event.series_id}`)
+			: ''
+	);
 
 	async function toggleCancelled(): Promise<void> {
 		if (!store || !event || !instance) return;
@@ -218,6 +226,10 @@
 						><Button variant="secondary" size="sm">{t('common.edit')}</Button></a
 					>
 					{#if event.series_id}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={seriesHref} class="inline-flex"
+							><Button variant="secondary" size="sm">{t('events.detail.viewSeries')}</Button></a
+						>
 						<Button variant="secondary" size="sm" onclick={toggleCancelled}>
 							{event.cancelled ? t('events.detail.reinstate') : t('events.detail.cancelOccurrence')}
 						</Button>

@@ -111,7 +111,11 @@ defmodule Kammer.Events do
   @doc """
   Fetches a series the actor may manage, for the series/attendance
   page — its creator or a group moderator (SPEC §6: "organizer
-  attendance matrix").
+  attendance matrix"). A caller who can't even view the group is
+  `:not_found`, not `:unauthorized`: the no-oracle stance the event read
+  takes (#156/#161), so a series' existence never leaks to someone who
+  can't see its occurrences. Only a viewer who isn't a manager gets
+  `:unauthorized`.
   """
   @spec fetch_manageable_series(User.t() | nil, Community.t(), Ecto.UUID.t()) ::
           {:ok, EventSeries.t()} | {:error, :not_found | :unauthorized}
@@ -119,11 +123,24 @@ defmodule Kammer.Events do
     with %EventSeries{} = series <- get_series_in_community(community, series_id),
          group = Repo.get!(Group, series.group_id),
          :ok <- Authorization.feature_gate(group, :events),
+         :ok <- viewable_or_hidden(actor, group),
          true <- can_manage_series?(actor, series, group) || {:error, :unauthorized} do
       {:ok, series}
     else
       nil -> {:error, :not_found}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # A non-viewer is hidden (404), not forbidden (403). This also keeps a
+  # departed private-group creator — who still passes can_manage_series?
+  # via `creator?` but can no longer view the group — from reaching
+  # attendance_matrix, whose `list_members` view check would otherwise
+  # raise on the {:ok, _} = match.
+  defp viewable_or_hidden(actor, group) do
+    case Authorization.authorize(actor, :view_group, group) do
+      :ok -> :ok
+      {:error, :unauthorized} -> {:error, :not_found}
     end
   end
 
@@ -481,8 +498,12 @@ defmodule Kammer.Events do
   column, each cell the member's RSVP status for that occurrence (or
   `nil` if they haven't answered). Restricted to whoever manages the
   series.
+
+  Pass `occurrences` when the caller has already loaded the full series
+  list (the series page does, for its occurrence table) to avoid a second
+  identical query; omit it and the matrix loads its own.
   """
-  @spec attendance_matrix(User.t(), EventSeries.t()) ::
+  @spec attendance_matrix(User.t(), EventSeries.t(), [Event.t()] | nil) ::
           {:ok,
            %{
              series: EventSeries.t(),
@@ -490,27 +511,28 @@ defmodule Kammer.Events do
              rows: [%{member: User.t(), statuses: %{Ecto.UUID.t() => EventRsvp.status() | nil}}]
            }}
           | {:error, :unauthorized}
-  def attendance_matrix(%User{} = actor, %EventSeries{} = series) do
+  def attendance_matrix(%User{} = actor, %EventSeries{} = series, occurrences \\ nil) do
     group = Repo.get!(Group, series.group_id)
 
-    if can_manage_series?(actor, series, group) do
+    # Self-safe: `list_members` re-checks `:view_group`, so a manager who
+    # can't view (a departed private-group creator) gets :unauthorized here
+    # rather than a raise — even though both callers already gate view.
+    with true <- can_manage_series?(actor, series, group),
+         {:ok, memberships} <- Groups.list_members(actor, group) do
       now = DateTime.utc_now(:second)
 
-      occurrences =
-        series
-        |> list_series_occurrences()
+      upcoming =
+        (occurrences || list_series_occurrences(series))
         |> Enum.reject(& &1.cancelled_at)
         |> Enum.filter(&(DateTime.compare(&1.starts_at, now) != :lt))
 
-      occurrence_ids = Enum.map(occurrences, & &1.id)
+      occurrence_ids = Enum.map(upcoming, & &1.id)
 
       rsvp_by_user_and_occurrence =
-        occurrences
+        upcoming
         |> Enum.flat_map(& &1.rsvps)
         |> Enum.filter(& &1.user_id)
         |> Map.new(&{{&1.user_id, &1.event_id}, &1.status})
-
-      {:ok, memberships} = Groups.list_members(actor, group)
 
       rows =
         Enum.map(memberships, fn membership ->
@@ -523,9 +545,10 @@ defmodule Kammer.Events do
           %{member: membership.user, statuses: statuses}
         end)
 
-      {:ok, %{series: series, occurrences: occurrences, rows: rows}}
+      {:ok, %{series: series, occurrences: upcoming, rows: rows}}
     else
-      {:error, :unauthorized}
+      false -> {:error, :unauthorized}
+      {:error, _reason} -> {:error, :unauthorized}
     end
   end
 

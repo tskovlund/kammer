@@ -10,6 +10,20 @@ and this project adheres to
 
 ### Added
 
+- Recurring event-series organizer view in the PWA (issue #260 port 4,
+  part of #187, SPEC §6). A new authenticated endpoint —
+  `GET /api/v1/communities/{slug}/events/series/{id}` — returns a
+  series' rule, every occurrence (with RSVP counts and cancel state),
+  and the attendance matrix (group members × upcoming occurrences, each
+  cell the member's RSVP). It is organizer-only: the series' creator or
+  a group moderator, gated exactly as the LiveView organizer page was.
+  The PWA gains a series page reached from a "View series" action on any
+  occurrence's detail, listing every occurrence with per-occurrence
+  cancel/reinstate and rendering the attendance matrix. Attendance is
+  the members' RSVPs (SPEC §6 — members only; guests count toward an
+  occurrence's totals but are not matrix rows), computed, never a
+  separate "mark present" step.
+
 - Calendar subscription (iCal) links in the PWA (issue #260 port 3,
   part of #187, SPEC §6). New authenticated endpoints —
   `GET /api/v1/me/calendar-token` and a group sibling — hand the

@@ -4,7 +4,7 @@ import type { components } from '$lib/api/schema.js';
 import type { Community } from '$lib/feed/types.js';
 import type { Group } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
-import type { Comment, Event, EventParams, RsvpStatus } from './types.js';
+import type { Comment, Event, EventParams, EventSeriesDetail, RsvpStatus } from './types.js';
 
 /** A secret iCal feed token plus its ready-to-subscribe `.ics` URL. */
 export type CalendarToken = components['schemas']['CalendarToken'];
@@ -57,6 +57,28 @@ export async function fetchEvent(
 			{ params: { path: { community_slug: communitySlug, event_id: eventId } } }
 		);
 		if (error || !data) throw fail(error, response, 'Could not load this event.');
+		return data.data;
+	});
+}
+
+/**
+ * A recurring series' organizer view (issue #260, SPEC §6): its rule, every
+ * occurrence, and the attendance matrix (members × upcoming occurrences).
+ * Organizer-only — the server answers 403 for a non-manager and 404 for an
+ * absent series or a group with events off; the page renders those as a
+ * calm not-available state.
+ */
+export async function fetchEventSeries(
+	instance: Instance,
+	communitySlug: string,
+	seriesId: string
+): Promise<EventSeriesDetail> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/communities/{community_slug}/events/series/{series_id}',
+			{ params: { path: { community_slug: communitySlug, series_id: seriesId } } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not load this series.');
 		return data.data;
 	});
 }
