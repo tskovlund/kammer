@@ -147,11 +147,11 @@ defmodule KammerWeb.Api.PasskeyController do
   # A blank nickname is no nickname — store nil, not "". Truncate rather
   # than let an over-long label fail the insert (which the neutral 422
   # would then report as if the whole registration were bad).
-  @nickname_max_length 100
+  @nickname_max_codepoints 100
   defp nickname(params) do
     case params["nickname"] do
       value when is_binary(value) ->
-        case value |> String.trim() |> String.slice(0, @nickname_max_length) do
+        case value |> String.trim() |> truncate(@nickname_max_codepoints) do
           "" -> nil
           trimmed -> trimmed
         end
@@ -159,5 +159,15 @@ defmodule KammerWeb.Api.PasskeyController do
       _missing ->
         nil
     end
+  end
+
+  # Bound by codepoints, not graphemes: the DB column is `varchar(255)`,
+  # whose limit is codepoints, and Postgres *raises* (22001) on overflow
+  # rather than truncating. `String.slice/2` caps graphemes, and one
+  # grapheme can be many codepoints, so a grapheme cap could still overrun
+  # the column and 500 the insert — the very failure this truncation
+  # exists to avoid. 100 codepoints is comfortably under 255.
+  defp truncate(string, max_codepoints) do
+    string |> String.codepoints() |> Enum.take(max_codepoints) |> Enum.join()
   end
 end

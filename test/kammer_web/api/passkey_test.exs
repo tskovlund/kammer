@@ -103,6 +103,59 @@ defmodule KammerWeb.Api.PasskeyTest do
       assert [%{nickname: nil}] = Accounts.list_passkeys(user)
     end
 
+    test "a duplicate credential is the same neutral 422 and stores no second copy", %{
+      conn: conn,
+      user: user
+    } do
+      %{"data" => first_challenge} =
+        conn |> post(~p"/api/v1/me/passkeys/challenge") |> json_response(200)
+
+      first = ceremony_for(first_challenge)
+      conn |> create_passkey(first_challenge, first) |> json_response(201)
+
+      # A client ignoring exclude_credentials re-submits the same credential
+      # (same id + key) against a fresh challenge — the instance-wide unique
+      # constraint rejects it, and it collapses to the same neutral 422.
+      %{"data" => second_challenge} =
+        conn |> post(~p"/api/v1/me/passkeys/challenge") |> json_response(200)
+
+      dup =
+        ceremony_for(second_challenge,
+          credential_id: first.credential_id,
+          key_pair: first.key_pair
+        )
+
+      body = conn |> create_passkey(second_challenge, dup) |> json_response(422)
+      assert body["error"]["code"] == "invalid_params"
+      assert [_only_one] = Accounts.list_passkeys(user)
+    end
+
+    test "an over-long nickname is truncated, never a 500", %{conn: conn, user: user} do
+      %{"data" => challenge} =
+        conn |> post(~p"/api/v1/me/passkeys/challenge") |> json_response(200)
+
+      ceremony = ceremony_for(challenge)
+
+      # One base char + three combining marks = 1 grapheme but 4 codepoints;
+      # 150 of them is 600 codepoints. A grapheme-based cap would leave >255
+      # codepoints and overflow the varchar(255) column (Postgres raises,
+      # 500). Codepoint truncation keeps it under the limit.
+      grapheme = "a" <> <<0x0301::utf8>> <> <<0x0302::utf8>> <> <<0x0303::utf8>>
+      long = String.duplicate(grapheme, 150)
+
+      conn
+      |> post(~p"/api/v1/me/passkeys", %{
+        "challenge_token" => challenge["challenge_token"],
+        "attestation_object" => Base.url_encode64(ceremony.attestation_object, padding: false),
+        "client_data_json" => Base.url_encode64(ceremony.client_data_json, padding: false),
+        "nickname" => long
+      })
+      |> json_response(201)
+
+      assert [%{nickname: stored}] = Accounts.list_passkeys(user)
+      assert length(String.codepoints(stored)) <= 100
+    end
+
     test "a valid token with a structurally-bogus attestation is a neutral 422, not a 500", %{
       conn: conn,
       user: user
@@ -218,13 +271,21 @@ defmodule KammerWeb.Api.PasskeyTest do
   # Builds the ceremony a browser would produce for a challenge response,
   # decoding the origin and challenge back out of it exactly as a client
   # would before calling navigator.credentials.create.
-  defp ceremony_for(challenge_body) do
+  defp ceremony_for(challenge_body, opts \\ []) do
     client_challenge = %{
       bytes: Base.url_decode64!(challenge_body["challenge"], padding: false),
       rp_id: challenge_body["rp_id"]
     }
 
-    registration_ceremony(client_challenge, KammerWeb.Endpoint.url())
+    registration_ceremony(client_challenge, KammerWeb.Endpoint.url(), opts)
+  end
+
+  defp create_passkey(conn, challenge, ceremony) do
+    post(conn, ~p"/api/v1/me/passkeys", %{
+      "challenge_token" => challenge["challenge_token"],
+      "attestation_object" => Base.url_encode64(ceremony.attestation_object, padding: false),
+      "client_data_json" => Base.url_encode64(ceremony.client_data_json, padding: false)
+    })
   end
 
   defp register_passkey!(user) do

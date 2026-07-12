@@ -9,6 +9,7 @@ defmodule Kammer.Accounts do
   """
 
   import Ecto.Query, warn: false
+  require Logger
 
   alias Kammer.Accounts.{User, UserNotifier, UserPasskey, UserToken}
   alias Kammer.RateLimit
@@ -313,7 +314,13 @@ defmodule Kammer.Accounts do
   defp verify_registration(attestation_object, client_data_json, challenge) do
     Wax.register(attestation_object, client_data_json, challenge)
   rescue
-    _error -> {:error, :invalid_attestation}
+    error ->
+      # The caller collapses this to a neutral client error, but a raise
+      # here can also mean a Wax upgrade regression or a misconfiguration,
+      # not just crafted input — leave a server-side breadcrumb so that
+      # doesn't hide behind "attacker garbage" on every registration.
+      Logger.warning("passkey registration raised: #{Exception.message(error)}")
+      {:error, :invalid_attestation}
   end
 
   @doc """
