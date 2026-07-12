@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	approveJoinRequest,
 	createBan,
+	createCustomField,
 	createInstanceBan,
 	denyJoinRequest,
 	fetchJoinRequests,
@@ -9,6 +10,7 @@ import {
 	ManageApiError,
 	resolveReport,
 	updateCommunity,
+	updateCustomField,
 	updateInstanceSettings,
 	updateLegalPage
 } from './api';
@@ -168,6 +170,97 @@ describe('manage api', () => {
 		expect(request.method).toBe('PUT');
 		expect(request.url).toContain('/legal/privacy');
 		await expect(request.json()).resolves.toEqual({ content_markdown: '# Ours' });
+	});
+
+	it('adds a custom field — the composed definition goes over the wire, the created field comes back', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(201, {
+				data: {
+					id: 'cf1',
+					label: 'Section',
+					field_type: 'single_select',
+					options: ['Sopran'],
+					required: false,
+					visibility: 'members',
+					position: 0
+				}
+			})
+		);
+		const created = await createCustomField(instance(), 'my-community', {
+			label: 'Section',
+			field_type: 'single_select',
+			options: ['Sopran'],
+			visibility: 'members',
+			required: false
+		});
+		expect(created.id).toBe('cf1');
+
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.url).toContain('/communities/my-community/custom-fields');
+		await expect(request.json()).resolves.toEqual({
+			label: 'Section',
+			field_type: 'single_select',
+			options: ['Sopran'],
+			visibility: 'members',
+			required: false
+		});
+	});
+
+	it('sets a field required — a PUT to the field with the value in the body, not a bare toggle', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(200, {
+				data: {
+					id: 'cf1',
+					label: 'Section',
+					field_type: 'text',
+					options: [],
+					required: true,
+					visibility: 'members',
+					position: 0
+				}
+			})
+		);
+		const updated = await updateCustomField(instance(), 'my-community', 'cf1', { required: true });
+		expect(updated.required).toBe(true);
+
+		// The desired value rides the wire (the client computes the flip, the
+		// server just stores it) — a bug sending an empty body would silently
+		// no-op the update.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('PUT');
+		expect(request.url).toContain('/custom-fields/cf1');
+		await expect(request.json()).resolves.toEqual({ required: true });
+	});
+
+	it('edits a field — a partial PUT carries only the changed label and visibility', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(200, {
+				data: {
+					id: 'cf1',
+					label: 'Main instrument',
+					field_type: 'text',
+					options: [],
+					required: false,
+					visibility: 'admins',
+					position: 0
+				}
+			})
+		);
+		const updated = await updateCustomField(instance(), 'my-community', 'cf1', {
+			label: 'Main instrument',
+			visibility: 'admins'
+		});
+		expect(updated.label).toBe('Main instrument');
+
+		// Partial update: the body carries exactly what changed — nothing
+		// about type or options, which the server freezes at creation.
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('PUT');
+		await expect(request.json()).resolves.toEqual({
+			label: 'Main instrument',
+			visibility: 'admins'
+		});
 	});
 
 	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {

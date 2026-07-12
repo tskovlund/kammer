@@ -13,6 +13,7 @@
 	} from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
+	import CustomFieldsManager from '$lib/manage/CustomFieldsManager.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
@@ -227,6 +228,10 @@
 			{/if}
 		</div>
 	</form>
+
+	{#if instance}
+		<CustomFieldsManager {instance} communitySlug={community.slug} />
+	{/if}
 
 	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 	<a href={moderationHref} class="mt-6 inline-block text-sm text-accent hover:underline">

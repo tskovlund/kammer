@@ -1098,6 +1098,24 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/custom-fields/{id}': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Edit a custom field's label, visibility, or required flag (managers; type and options are fixed at creation) */
+		put: operations['custom_fields_update'];
+		post?: never;
+		/** Delete a custom field and every answer to it (managers) */
+		delete: operations['custom_fields_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgment': {
 		parameters: {
 			query?: never;
@@ -1728,6 +1746,24 @@ export interface paths {
 		put?: never;
 		/** Create a group invite (joining also joins the community) */
 		post: operations['group_invites_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/communities/{community_slug}/custom-fields': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The community's custom profile-field definitions (managers; issue #259) */
+		get: operations['custom_fields_index'];
+		put?: never;
+		/** Add a custom profile field (managers) */
+		post: operations['custom_fields_create'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -2907,6 +2943,20 @@ export interface components {
 					subscription_id: string;
 				}[];
 			};
+		};
+		/**
+		 * CustomFieldParams
+		 * @description A new custom profile field (issue #259). `field_type` and its `options` are fixed at creation — changing them after members answer would orphan values — but `label`, `visibility`, and `required` stay editable afterward via the update endpoint.
+		 */
+		CustomFieldParams: {
+			/** @enum {string} */
+			field_type?: 'text' | 'single_select';
+			label?: string;
+			/** @description The choices — required (non-empty) for single_select, ignored for text */
+			options?: string[];
+			required?: boolean;
+			/** @enum {string} */
+			visibility?: 'members' | 'admins';
 		};
 		/**
 		 * LegalPageParams
@@ -8875,6 +8925,144 @@ export interface operations {
 			};
 		};
 	};
+	custom_fields_update: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				id: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					label?: string;
+					required?: boolean;
+					/** @enum {string} */
+					visibility?: 'members' | 'admins';
+				};
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CustomField'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	custom_fields_delete: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Deleted */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	posts_acknowledge: {
 		parameters: {
 			query?: never;
@@ -11775,6 +11963,140 @@ export interface operations {
 				content: {
 					'application/json': {
 						data: components['schemas']['Invite'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	custom_fields_index: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CustomField'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	custom_fields_create: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['CustomFieldParams'];
+			};
+		};
+		responses: {
+			/** @description Data envelope */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CustomField'];
 					};
 				};
 			};

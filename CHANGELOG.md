@@ -10,6 +10,22 @@ and this project adheres to
 
 ### Added
 
+- Custom profile-field management over the API and PWA (issue #259,
+  part of #187, ADR 0020) — the last buildable #259 item, porting the
+  LiveView community-settings surface and going past it. Managers get
+  list, add, edit, and delete under
+  `/api/v1/communities/{slug}/custom-fields`, all gated on
+  `:manage_community` in the context. A manager can add a field (text
+  or single-select with options), edit an existing field's label,
+  visibility, or required flag, and delete one. A field's type and its
+  options are frozen once it exists (changing them after members answer
+  would orphan values); everything else stays editable — the LiveView
+  only toggled required. Making a field required after the fact nudges
+  already-joined members rather than locking them out (ADR 0020). The
+  PWA community settings page gains a "Profile fields" section for all
+  of it; a field id from another community answers a neutral 404
+  through this community's path.
+
 - Anonymous instance landing and community directory over the API and
   PWA (issue #260, part of #187), porting the signed-out
   `InstanceLive.Home`: a tokenless `GET /api/v1/public/communities`

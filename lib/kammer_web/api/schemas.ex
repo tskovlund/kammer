@@ -972,6 +972,32 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule CustomFieldParams do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "CustomFieldParams",
+      description:
+        "A new custom profile field (issue #259). `field_type` and its " <>
+          "`options` are fixed at creation — changing them after members " <>
+          "answer would orphan values — but `label`, `visibility`, and " <>
+          "`required` stay editable afterward via the update endpoint.",
+      type: :object,
+      properties: %{
+        label: %Schema{type: :string},
+        field_type: %Schema{type: :string, enum: ["text", "single_select"]},
+        options: %Schema{
+          type: :array,
+          items: %Schema{type: :string},
+          description: "The choices — required (non-empty) for single_select, ignored for text"
+        },
+        visibility: %Schema{type: :string, enum: ["members", "admins"]},
+        required: %Schema{type: :boolean}
+      }
+    })
+  end
+
   defmodule MemberUser do
     @moduledoc false
     require OpenApiSpex
