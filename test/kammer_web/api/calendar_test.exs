@@ -5,7 +5,9 @@ defmodule KammerWeb.Api.CalendarTest do
   fetch; the endpoints hand back the token and a ready-to-subscribe feed
   URL. The group endpoint gates exactly as the group's own feed does —
   viewable, with the events feature on — so a dead feed is never
-  tokenised and an unviewable group is a neutral 404.
+  tokenised: an absent community or group is a 404, an existing-but-
+  unviewable group the same 403 the rest of the group-scoped surface
+  gives, and a group with events off a 404 (its feed 404s too).
   """
 
   use KammerWeb.ConnCase, async: true
@@ -76,6 +78,25 @@ defmodule KammerWeb.Api.CalendarTest do
 
       # And nothing was minted for it.
       refute Repo.reload!(group).ics_token
+    end
+
+    test "an unknown community is a neutral 404" do
+      user = user_fixture()
+
+      user
+      |> api_conn()
+      |> get(~p"/api/v1/communities/no-such-community/groups/whatever/calendar-token")
+      |> json_response(404)
+    end
+
+    test "an unknown group in a real community is a neutral 404" do
+      {community, _owner} = community_with_owner_fixture()
+      member = member_fixture(community)
+
+      member
+      |> api_conn()
+      |> get(~p"/api/v1/communities/#{community.slug}/groups/no-such-group/calendar-token")
+      |> json_response(404)
     end
 
     test "a group the caller cannot view is forbidden — the same 403 every group endpoint gives" do
