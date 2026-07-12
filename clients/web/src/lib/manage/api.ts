@@ -319,6 +319,29 @@ export async function deleteCustomField(
 
 // --- Group management -------------------------------------------------------
 
+/**
+ * Creates a group in a community (issue #278) — the PWA's first
+ * group-creation path (the LiveView's `group_live/new.ex` was the only
+ * one before the #187 cut). The caller gates the affordance on its own
+ * `viewer_can: create_group`; the server authorizes `:create_group` and
+ * makes the creator the group's owner. New groups default to the
+ * `[feed, events, files]` feature set server-side (SPEC §3).
+ */
+export async function createGroup(
+	instance: Instance,
+	communitySlug: string,
+	params: GroupParams
+): Promise<Group> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/communities/{community_slug}/groups',
+			{ params: { path: { community_slug: communitySlug } }, body: params }
+		);
+		if (error || !data) throw fail(error, response, 'Could not create the group.');
+		return data.data;
+	});
+}
+
 export async function updateGroup(
 	instance: Instance,
 	communitySlug: string,

@@ -3,6 +3,7 @@ import {
 	approveJoinRequest,
 	createBan,
 	createCustomField,
+	createGroup,
 	createInstanceBan,
 	denyJoinRequest,
 	fetchJoinRequests,
@@ -204,6 +205,35 @@ describe('manage api', () => {
 			options: ['Sopran'],
 			visibility: 'members',
 			required: false
+		});
+	});
+
+	it('creates a group — the composed GroupParams POSTs to the community, the new group comes back', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(201, {
+				data: { id: 'g1', name: 'Brass', slug: 'brass', visibility: 'community' }
+			})
+		);
+		const created = await createGroup(instance(), 'my-community', {
+			name: 'Brass',
+			slug: 'brass',
+			visibility: 'public_listed',
+			posting_policy: 'admins_only',
+			sealed: true
+		});
+		expect(created.id).toBe('g1');
+
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.url).toContain('/communities/my-community/groups');
+		// Whole body over the wire — a suggestion's pre-filled visibility/policy
+		// and the create-only `sealed` flag must all reach the server.
+		await expect(request.json()).resolves.toEqual({
+			name: 'Brass',
+			slug: 'brass',
+			visibility: 'public_listed',
+			posting_policy: 'admins_only',
+			sealed: true
 		});
 	});
 

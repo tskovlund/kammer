@@ -10,6 +10,23 @@ and this project adheres to
 
 ### Added
 
+- Group creation in the PWA, with a warm new-community cold-start
+  (issue #278, part of #187). The PWA could edit a group's settings but
+  had no way to _create_ one — a fresh community dead-ended with no
+  first group (the LiveView was the only surface that could make a
+  group). Adds a new-group form (name / URL / description / visibility /
+  join, posting, and comment policy / approval queue / the create-only
+  sealed flag) at parity with the LiveView's, and a `create_group`-gated
+  "New group" affordance. A community with no groups now shows a warm
+  empty state ("Create your first group") instead of a blank card — a
+  new community starts empty by design (no auto-created default group,
+  SPEC §3). The new-group form offers optional named suggestions
+  (Everyone / Announcements / Public page) that pre-fill a sensible
+  starting shape the operator renames and adjusts — suggestions, never a
+  furnished room. SPEC §3 clarified: groups are the sole container (no
+  community-wide file space), and cold-start is UX, not a data-model
+  default.
+
 - Passkey sign-in in the PWA (issue #260 port 5a, part of #187, ADR
   0018), driving the usernameless WebAuthn assertion the API already
   served (`/auth/passkey/challenge` → `/auth/passkey/verify`). The

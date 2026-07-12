@@ -64,6 +64,16 @@
 		return resolve(`/i/${section.instance.id}/c/${section.community.slug}/g/${group.slug}`);
 	}
 
+	function newGroupHref(section: Section): string {
+		return resolve(`/i/${section.instance.id}/c/${section.community.slug}/g/new`);
+	}
+
+	// Kept in the script so the anchor's opening tag stays on one line: the
+	// lint suppression for the resolve-wrapped href only covers the single
+	// line that immediately follows it.
+	const ctaClass =
+		'inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink transition-colors duration-150 hover:bg-accent/90 active:bg-accent/80';
+
 	function roleLabel(role: 'owner' | 'admin' | 'member'): string {
 		return t(`groups.role.${role}`);
 	}
@@ -150,34 +160,60 @@
 								{t('groups.invites')}
 							</a>
 						{/if}
+						{#if section.groups.length > 0 && section.community.viewer_can.includes('create_group')}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={newGroupHref(section)} class="text-accent hover:underline">
+								{t('groups.newGroup')}
+							</a>
+						{/if}
 					</div>
 				</div>
 
-				<Card class="mt-3 divide-y divide-line">
-					{#each section.groups as group (group.id)}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={groupHref(section, group)} class="block hover:bg-ink/2">
-							<ListItem>
-								<p class="truncate text-sm font-medium text-ink">{group.name}</p>
-								{#if group.description}
-									<p class="truncate text-sm text-ink-muted">{group.description}</p>
-								{/if}
-								{#snippet trailing()}
-									<span class="flex items-center gap-1.5">
-										{#if group.archived}
-											<Chip>{t('groups.archived')}</Chip>
-										{/if}
-										{#if group.my_role}
-											<Chip tone={group.my_role === 'member' ? 'neutral' : 'accent'}>
-												{roleLabel(group.my_role)}
-											</Chip>
-										{/if}
-									</span>
-								{/snippet}
-							</ListItem>
-						</a>
-					{/each}
-				</Card>
+				{#if section.groups.length === 0}
+					<!-- Warm cold-start (#278): a fresh community starts empty (no
+					auto-default group) — a nudge toward the first group, not a
+					blank card. -->
+					<div class="mt-3">
+						<EmptyState
+							title={t('groups.emptyCommunity.title')}
+							body={t('groups.emptyCommunity.body')}
+						>
+							{#snippet icon()}<TabIcon name="groups" class="size-8" />{/snippet}
+							{#if section.community.viewer_can.includes('create_group')}
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={newGroupHref(section)} class={ctaClass}>
+									{t('groups.emptyCommunity.cta')}
+								</a>
+							{/if}
+						</EmptyState>
+					</div>
+				{:else}
+					<Card class="mt-3 divide-y divide-line">
+						{#each section.groups as group (group.id)}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={groupHref(section, group)} class="block hover:bg-ink/2">
+								<ListItem>
+									<p class="truncate text-sm font-medium text-ink">{group.name}</p>
+									{#if group.description}
+										<p class="truncate text-sm text-ink-muted">{group.description}</p>
+									{/if}
+									{#snippet trailing()}
+										<span class="flex items-center gap-1.5">
+											{#if group.archived}
+												<Chip>{t('groups.archived')}</Chip>
+											{/if}
+											{#if group.my_role}
+												<Chip tone={group.my_role === 'member' ? 'neutral' : 'accent'}>
+													{roleLabel(group.my_role)}
+												</Chip>
+											{/if}
+										</span>
+									{/snippet}
+								</ListItem>
+							</a>
+						{/each}
+					</Card>
+				{/if}
 			</section>
 		{/each}
 	</div>
