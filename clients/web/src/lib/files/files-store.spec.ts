@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { FileListing, Folder, LibraryFile } from './types.js';
 
@@ -151,7 +151,7 @@ describe('createFilesStore', () => {
 
 	it('surfaces a write failure as a dismissible action error', async () => {
 		mockListing.mockResolvedValue(listing());
-		mockDeleteFile.mockRejectedValue(new FeedApiError('forbidden', 'Nope', 403));
+		mockDeleteFile.mockRejectedValue(new ApiError('forbidden', 'Nope', 403));
 		const store = createFilesStore(instance(), ref);
 		await store.load(null);
 

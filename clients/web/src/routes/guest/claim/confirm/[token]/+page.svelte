@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { confirmGuestClaim, GuestApiError } from '$lib/guest/api.js';
+	import { ApiError } from '$lib/api/errors.js';
+	import { confirmGuestClaim } from '$lib/guest/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PublicShell from '$lib/ui/PublicShell.svelte';
@@ -26,7 +27,7 @@
 			/>
 		{/snippet}
 		{#snippet error(caught)}
-			{#if caught instanceof GuestApiError && caught.status === 422}
+			{#if caught instanceof ApiError && caught.status === 422}
 				<EmptyState
 					title={t('guest.claim.confirm.full.title')}
 					body={t('guest.claim.confirm.full.body')}

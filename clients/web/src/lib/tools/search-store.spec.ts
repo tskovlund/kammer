@@ -10,7 +10,7 @@ vi.mock('./api.js', async (importActual) => {
 });
 
 import { fetchCommunities, fetchGroups } from '$lib/events/api.js';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import * as api from './api.js';
 import { createSearchStore } from './search-store.svelte.js';
 
@@ -94,7 +94,7 @@ describe('createSearchStore', () => {
 
 	it('surfaces a failing account without blanking the rest', async () => {
 		mockCommunities.mockImplementation(async (inst) => {
-			if (inst.id === 'bad') throw new FeedApiError('auth', 'signed out', 401);
+			if (inst.id === 'bad') throw new ApiError('auth', 'signed out', 401);
 			return [community('c1', 'One')];
 		});
 		mockSearch.mockResolvedValue(results(2));
@@ -110,7 +110,7 @@ describe('createSearchStore', () => {
 	it("keeps an account's other communities when one community's search fails", async () => {
 		mockCommunities.mockResolvedValue([community('good', 'Good'), community('bad', 'Bad')]);
 		mockSearch.mockImplementation(async (_inst, slug) => {
-			if (slug === 'bad') throw new api.ToolsApiError('server', 'boom', 500);
+			if (slug === 'bad') throw new ApiError('server', 'boom', 500);
 			return results(2);
 		});
 
@@ -125,7 +125,7 @@ describe('createSearchStore', () => {
 	});
 
 	it('reports an error only when every account fails', async () => {
-		mockCommunities.mockRejectedValue(new FeedApiError('network', 'offline', null));
+		mockCommunities.mockRejectedValue(new ApiError('network', 'offline', null));
 		const store = createSearchStore();
 		await store.run([instance('bad')], 'picnic');
 		expect(store.loadState).toBe('error');

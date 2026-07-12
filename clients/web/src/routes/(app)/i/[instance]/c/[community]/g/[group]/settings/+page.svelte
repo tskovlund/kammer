@@ -2,21 +2,19 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchGroup } from '$lib/feed/api.js';
 	import {
-		ManageApiError,
 		approveJoinRequest,
 		deleteGroup,
 		denyJoinRequest,
 		fetchJoinRequests,
-		loadErrorKind,
 		setGroupArchived,
 		setGroupFeatures,
 		updateGroup,
 		type GroupFeature,
 		type GroupParams,
-		type JoinRequest,
-		type ManageErrorKind
+		type JoinRequest
 	} from '$lib/manage/api.js';
 	import type { Group } from '$lib/feed/api.js';
 	import type { MessageKey } from '$lib/i18n/format.js';
@@ -53,7 +51,7 @@
 	let group = $state<Group | null>(null);
 	let joinRequests = $state<JoinRequest[]>([]);
 	let loading = $state(true);
-	let error = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
 
@@ -118,7 +116,7 @@
 					}
 				}
 			} catch (cause) {
-				if (!cancelled) error = loadErrorKind(cause);
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -138,7 +136,7 @@
 			await work();
 			saved = true;
 		} catch (cause) {
-			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			error = errorKind(cause);
 		} finally {
 			saving = false;
 		}
@@ -220,7 +218,7 @@
 			// while the navigation settles.
 			await goto(resolve('/groups')).catch(() => {});
 		} catch (cause) {
-			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			error = errorKind(cause);
 			saving = false;
 		}
 	}
@@ -237,7 +235,7 @@
 			}
 			joinRequests = joinRequests.filter((candidate) => candidate.id !== request.id);
 		} catch (cause) {
-			error = cause instanceof ManageApiError ? cause.kind : 'server';
+			error = errorKind(cause);
 		} finally {
 			saving = false;
 		}

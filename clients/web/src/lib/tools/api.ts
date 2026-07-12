@@ -1,4 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
+import { fail, guard } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 
@@ -10,9 +11,9 @@ import type { Instance } from '$lib/instances/types.js';
  * the enforcer — a `forbidden` from a stale capability list degrades to an
  * inline error rather than a broken screen.
  *
- * Error plumbing mirrors `$lib/manage/api.ts` and `$lib/feed/api.ts` (each
- * API module carries its own, per this codebase's convention) so callers get
- * a stable `{ kind, status }` shape without importing another surface's.
+ * Errors through the shared `ApiError` (#270) — the same class the feed
+ * fetch a tools screen loads its group from throws, so a page pairing a
+ * feed-family fetch with a tool call funnels both through one `errorKind`.
  */
 
 export type AvailabilityPoll = components['schemas']['AvailabilityPoll'];
@@ -24,88 +25,8 @@ export type DecisionOutcome = NonNullable<Decision['outcome']>;
 export type SearchResults = components['schemas']['SearchResults'];
 export type Comment = components['schemas']['Comment'];
 
-export type ToolsErrorKind =
-	'auth' | 'forbidden' | 'not_found' | 'validation' | 'rate_limited' | 'network' | 'server';
-
-export class ToolsApiError extends Error {
-	readonly kind: ToolsErrorKind;
-	readonly status: number | null;
-
-	constructor(kind: ToolsErrorKind, message: string, status: number | null = null) {
-		super(message);
-		this.name = 'ToolsApiError';
-		this.kind = kind;
-		this.status = status;
-	}
-}
-
-function kindForStatus(status: number): ToolsErrorKind {
-	switch (status) {
-		case 401:
-			return 'auth';
-		case 403:
-			return 'forbidden';
-		case 404:
-			return 'not_found';
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-function messageFrom(error: unknown, fallback: string): string {
-	const envelope = error as ErrorEnvelope | undefined;
-	return envelope?.error?.message ?? fallback;
-}
-
 function client(instance: Instance) {
 	return createApiClient(instance.baseUrl, instance.deviceToken);
-}
-
-function fail(error: unknown, response: Response | undefined, fallback: string): ToolsApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	return new ToolsApiError(kind, messageFrom(error, fallback), status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof ToolsApiError) throw cause;
-		throw new ToolsApiError('network', 'Could not reach this community.', null);
-	}
-}
-
-const ERROR_KINDS: readonly ToolsErrorKind[] = [
-	'auth',
-	'forbidden',
-	'not_found',
-	'validation',
-	'rate_limited',
-	'network',
-	'server'
-];
-
-/**
- * Normalize any caught error to a `ToolsErrorKind`. A screen that loads its
- * group via `$lib/feed/api` (a `FeedApiError`, whose kinds are a superset —
- * it also has `too_large`) and its tool data via this module can funnel both
- * through one branch; anything unrecognized (including `too_large`) collapses
- * to `server`.
- */
-export function toolsErrorKind(cause: unknown): ToolsErrorKind {
-	const kind = (cause as { kind?: unknown } | null)?.kind;
-	return typeof kind === 'string' && (ERROR_KINDS as readonly string[]).includes(kind)
-		? (kind as ToolsErrorKind)
-		: 'server';
 }
 
 // --- Availability polls (issue #39) ----------------------------------------

@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { FeedApiError } from '$lib/api/errors.js';
+	import { ApiError } from '$lib/api/errors.js';
 	import { exchangeAndAddInstance, probeInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { acceptInvite, joinedHref } from '$lib/invites/api.js';
@@ -53,9 +53,9 @@
 					// happened instead of showing a bare one-tap button (a
 					// dead token 404s at the preview and needs no hint).
 					const refused =
-						cause instanceof FeedApiError && cause.kind === 'forbidden'
+						cause instanceof ApiError && cause.kind === 'forbidden'
 							? 'email'
-							: cause instanceof FeedApiError && cause.kind === 'not_found'
+							: cause instanceof ApiError && cause.kind === 'not_found'
 								? null
 								: 'other';
 					const suffix = refused ? `?refused=${refused}` : '';

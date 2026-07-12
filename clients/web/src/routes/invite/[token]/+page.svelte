@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
-	import { FeedApiError } from '$lib/api/errors.js';
+	import { ApiError } from '$lib/api/errors.js';
 	import {
 		acceptInvite,
 		fetchInvitePreview,
@@ -92,7 +92,7 @@
 				error = t('invite.accept.error.generic');
 			}
 		} catch (cause) {
-			loadState = cause instanceof FeedApiError && cause.kind === 'not_found' ? 'invalid' : 'error';
+			loadState = cause instanceof ApiError && cause.kind === 'not_found' ? 'invalid' : 'error';
 		}
 	}
 
@@ -127,7 +127,7 @@
 			error = acceptErrorMessage(cause);
 			// Retrying can never fix a wrong-account refusal — offer the
 			// register/sign-in branches instead of a dead end.
-			if (cause instanceof FeedApiError && cause.kind === 'forbidden') {
+			if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				showAlternatives = true;
 			}
 		} finally {
@@ -138,10 +138,10 @@
 	function acceptErrorMessage(cause: unknown): string {
 		// `forbidden` is the accept endpoint's email-mismatch refusal;
 		// `not_found` its neutral no-longer-valid collapse (see invites/api).
-		if (cause instanceof FeedApiError && cause.kind === 'forbidden') {
+		if (cause instanceof ApiError && cause.kind === 'forbidden') {
 			return t('invite.accept.error.emailMismatch');
 		}
-		if (cause instanceof FeedApiError && cause.kind === 'not_found') {
+		if (cause instanceof ApiError && cause.kind === 'not_found') {
 			return t('invite.accept.error.invalid');
 		}
 		return t('invite.accept.error.generic');
@@ -217,7 +217,7 @@
 			// A fresh signed-in identity resets the dead-end escape hatch:
 			// only a wrong-account refusal warrants re-showing the branches —
 			// a transient failure must keep the one-tap retry reachable.
-			showAlternatives = cause instanceof FeedApiError && cause.kind === 'forbidden';
+			showAlternatives = cause instanceof ApiError && cause.kind === 'forbidden';
 		} finally {
 			busy = false;
 		}

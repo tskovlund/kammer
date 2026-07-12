@@ -6,7 +6,7 @@
 		fetchCommunityCreationCapability,
 		type CommunityParams
 	} from '$lib/communities/api.js';
-	import { FeedApiError } from '$lib/api/errors.js';
+	import { ApiError } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import type { Instance } from '$lib/instances/types.js';
@@ -86,13 +86,13 @@
 			await goto(resolve('/groups'));
 			void community;
 		} catch (cause) {
-			if (cause instanceof FeedApiError && cause.kind === 'validation') {
+			if (cause instanceof ApiError && cause.kind === 'validation') {
 				// Map field NAMES onto our copy; server message strings never
 				// render (#253's direction).
 				nameError = cause.details.name ? t('communities.new.error.name') : null;
 				slugError = cause.details.slug ? t('communities.new.error.slug') : null;
 				if (!nameError && !slugError) formError = t('communities.new.error.generic');
-			} else if (cause instanceof FeedApiError && cause.kind === 'forbidden') {
+			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				formError = t('communities.new.error.forbidden');
 			} else {
 				formError = t('communities.new.error.generic');

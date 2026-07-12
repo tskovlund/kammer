@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPost, FeedApiError, uploadFile } from './api';
+import { createPost, ApiError, uploadFile } from './api';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -61,7 +61,7 @@ describe('feed api error mapping', () => {
 	it('treats a rejected fetch as a network error', async () => {
 		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
 		const error = await createPost(instance(), ref, { body_markdown: 'x' }).catch((e) => e);
-		expect(error).toBeInstanceOf(FeedApiError);
+		expect(error).toBeInstanceOf(ApiError);
 		expect(error.kind).toBe('network');
 	});
 

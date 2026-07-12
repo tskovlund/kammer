@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { ApiError, errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import {
-		ManageApiError,
 		createInstanceBan,
 		fetchInstanceBans,
 		liftInstanceBan,
-		loadErrorKind,
-		type Ban,
-		type ManageErrorKind
+		type Ban
 	} from '$lib/manage/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
@@ -29,8 +27,8 @@
 
 	let bans = $state<Ban[]>([]);
 	let loading = $state(true);
-	let error = $state<ManageErrorKind | null>(null);
-	let actionError = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	// Ids currently mid-lift, so their buttons disable individually.
 	let busy = $state<string[]>([]);
 
@@ -63,7 +61,7 @@
 				if (cancelled) return;
 				bans = resolved;
 			} catch (cause) {
-				if (!cancelled) error = loadErrorKind(cause);
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -90,15 +88,11 @@
 			// A 422's field names key our own copy — the server's English
 			// message never renders (#253). `email` means the address already
 			// carries an instance ban; `reason` is the 2000-character cap.
-			if (cause instanceof ManageApiError && cause.kind === 'validation' && cause.details.email) {
+			if (cause instanceof ApiError && cause.kind === 'validation' && cause.details.email) {
 				banError = t('manage.instanceModeration.ban.errorAlreadyBanned');
-			} else if (
-				cause instanceof ManageApiError &&
-				cause.kind === 'validation' &&
-				cause.details.reason
-			) {
+			} else if (cause instanceof ApiError && cause.kind === 'validation' && cause.details.reason) {
 				banError = t('manage.moderation.ban.errorReason');
-			} else if (cause instanceof ManageApiError && cause.kind === 'forbidden') {
+			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				// The server refuses self-bans, other operators, and community
 				// owners with a 403 the form can't foresee.
 				banError = t('manage.instanceModeration.ban.errorRefused');
@@ -120,7 +114,7 @@
 				await liftInstanceBan(instance!, ban.id);
 				bans = bans.filter((candidate) => candidate.id !== ban.id);
 			} catch (cause) {
-				actionError = cause instanceof ManageApiError ? cause.kind : 'server';
+				actionError = errorKind(cause);
 			} finally {
 				busy = busy.filter((candidate) => candidate !== ban.id);
 			}

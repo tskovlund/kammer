@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { createApiClient } from '$lib/api/client.js';
 	import { fetchCommunities } from '$lib/events/api.js';
-	import { FeedApiError } from '$lib/feed/api.js';
+	import { ApiError } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
@@ -163,7 +163,7 @@
 	};
 
 	function saveErrorCopy(error: unknown): string {
-		if (error instanceof FeedApiError && error.kind === 'validation') {
+		if (error instanceof ApiError && error.kind === 'validation') {
 			// hasOwn: detail keys come from a server this multi-instance
 			// client can't trust — a key like "constructor" would otherwise
 			// hit the prototype chain and feed t() a non-key, silently
@@ -189,12 +189,12 @@
 				params: { path: { community_slug: section.community.slug } },
 				body: { values: section.values }
 			});
-			if (error || !data) throw new FeedApiError('server', t('profile.error.body'), null);
+			if (error || !data) throw new ApiError('server', t('profile.error.body'), null);
 			section.values = { ...data.data.values };
 			section.missing = data.data.missing_required_field_ids;
 			section.saved = true;
 		} catch (error) {
-			saveError = error instanceof FeedApiError ? error.message : t('profile.error.body');
+			saveError = error instanceof ApiError ? error.message : t('profile.error.body');
 		} finally {
 			section.saving = false;
 		}
@@ -219,9 +219,9 @@
 			emailSentTo = requested;
 			newEmail = '';
 		} catch (error) {
-			if (error instanceof FeedApiError && error.kind === 'validation') {
+			if (error instanceof ApiError && error.kind === 'validation') {
 				emailError = t('profile.emailChange.error.invalid');
-			} else if (error instanceof FeedApiError && error.kind === 'rate_limited') {
+			} else if (error instanceof ApiError && error.kind === 'rate_limited') {
 				emailError = t('profile.emailChange.error.rateLimited');
 			} else {
 				emailError = t('profile.emailChange.error.generic');

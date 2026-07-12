@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/feed/api.js';
+	import { ApiError } from '$lib/feed/api.js';
 	import { editEvent, fetchEvent } from '$lib/events/api.js';
 	import EventForm from '$lib/events/components/EventForm.svelte';
 	import type { Event, EventParams } from '$lib/events/types.js';
@@ -50,7 +50,7 @@
 			await editEvent(instance, communitySlug, eventId, params);
 			await goto(detailHref);
 		} catch (cause) {
-			error = cause instanceof FeedApiError ? cause.message : t('feed.error.body');
+			error = cause instanceof ApiError ? cause.message : t('feed.error.body');
 			submitting = false;
 		}
 	}

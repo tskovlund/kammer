@@ -24,13 +24,4 @@ describe('confirmNewsletterSubscription', () => {
 		expect(sent.url).toContain('/api/v1/newsletter/confirm');
 		expect(await sent.clone().json()).toEqual({ token: 'tok' });
 	});
-
-	it('rejects with a not_found NewsletterApiError for an expired token', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'not_found', message: 'This link is no longer valid.' } }, 404)
-		);
-		await expect(
-			confirmNewsletterSubscription('https://kammer.example.com', 'stale')
-		).rejects.toMatchObject({ kind: 'not_found', status: 404 });
-	});
 });

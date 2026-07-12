@@ -3,10 +3,10 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import {
-		FeedApiError,
+		ApiError,
 		fetchCommunity,
 		fetchGroup,
-		type FeedErrorKind,
+		type ApiErrorKind,
 		type Group
 	} from '$lib/feed/api.js';
 	import { createFeedStore, type FeedStore } from '$lib/feed/feed-store.svelte.js';
@@ -38,7 +38,7 @@
 	let store = $state<FeedStore | null>(null);
 	let community = $state<Community | null>(null);
 	let group = $state<Group | null>(null);
-	let metaError = $state<FeedErrorKind | null>(null);
+	let metaError = $state<ApiErrorKind | null>(null);
 	// Membership controls (#182): the caller's per-group notification
 	// level (SPEC §9), and join/request/leave per `viewer_can`/`my_role`.
 	let notificationLevel = $state<NotificationLevelValue | null>(null);
@@ -109,7 +109,7 @@
 				}
 				initialLoad = false;
 			} catch (error) {
-				if (!cancelled) metaError = error instanceof FeedApiError ? error.kind : 'server';
+				if (!cancelled) metaError = error instanceof ApiError ? error.kind : 'server';
 			}
 		})();
 
@@ -138,7 +138,7 @@
 			}
 			await refreshGroup();
 		} catch (error) {
-			membershipNotice = error instanceof FeedApiError ? error.message : t('feed.error.body');
+			membershipNotice = error instanceof ApiError ? error.message : t('feed.error.body');
 		} finally {
 			membershipBusy = false;
 		}
@@ -154,7 +154,7 @@
 			membershipNotice = t('group.left');
 			await refreshGroup();
 		} catch (error) {
-			membershipNotice = error instanceof FeedApiError ? error.message : t('feed.error.body');
+			membershipNotice = error instanceof ApiError ? error.message : t('feed.error.body');
 		} finally {
 			membershipBusy = false;
 		}

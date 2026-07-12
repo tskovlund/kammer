@@ -1,5 +1,5 @@
 import { failureKind } from '$lib/api/errors.js';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { FailedInstance } from '$lib/instances/home.js';
 import type { Instance } from '$lib/instances/types.js';
 import { loadSnapshot, saveSnapshot } from '$lib/offline/snapshot-cache.js';
@@ -28,7 +28,7 @@ async function loadInstance(
 		const communities = await Promise.race([
 			fetchCommunities(instance),
 			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new FeedApiError('network', 'timeout')), COMMUNITY_FETCH_TIMEOUT_MS)
+				setTimeout(() => reject(new ApiError('network', 'timeout')), COMMUNITY_FETCH_TIMEOUT_MS)
 			)
 		]);
 

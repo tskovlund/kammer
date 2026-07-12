@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
+import { ApiError } from '$lib/api/errors.js';
 import type { Instance } from '$lib/instances/types.js';
 
 vi.mock('$lib/manage/api.js', async (importActual) => {
@@ -14,7 +15,7 @@ vi.mock('$lib/manage/api.js', async (importActual) => {
 });
 
 import * as api from '$lib/manage/api.js';
-import { ManageApiError, type CustomField } from '$lib/manage/api.js';
+import { type CustomField } from '$lib/manage/api.js';
 import CustomFieldsManager from './CustomFieldsManager.svelte';
 
 function instance(): Instance {
@@ -92,7 +93,7 @@ describe('CustomFieldsManager', () => {
 
 	it('maps a 422 options error to its own copy, not the server string', async () => {
 		vi.mocked(api.createCustomField).mockRejectedValue(
-			new ManageApiError('validation', 'Validation failed.', 422, { options: ["can't be blank"] })
+			new ApiError('validation', 'Validation failed.', 422, { options: ["can't be blank"] })
 		);
 
 		renderManager();
@@ -128,7 +129,7 @@ describe('CustomFieldsManager', () => {
 
 	it('reverts the required checkbox when the server rejects the toggle', async () => {
 		vi.mocked(api.fetchCustomFields).mockResolvedValue([field({ id: 'f1', required: false })]);
-		vi.mocked(api.updateCustomField).mockRejectedValue(new ManageApiError('server', 'nope', 500));
+		vi.mocked(api.updateCustomField).mockRejectedValue(new ApiError('server', 'nope', 500));
 
 		renderManager();
 		const checkbox = () => document.querySelector('#custom-field-required-f1') as HTMLInputElement;
@@ -182,7 +183,7 @@ describe('CustomFieldsManager', () => {
 	it('maps a 422 on edit to its own label copy, not the server string', async () => {
 		vi.mocked(api.fetchCustomFields).mockResolvedValue([field({ id: 'f1', label: 'Instrument' })]);
 		vi.mocked(api.updateCustomField).mockRejectedValue(
-			new ManageApiError('validation', 'Validation failed.', 422, { label: ["can't be blank"] })
+			new ApiError('validation', 'Validation failed.', 422, { label: ["can't be blank"] })
 		);
 
 		renderManager();
@@ -199,7 +200,7 @@ describe('CustomFieldsManager', () => {
 
 	it('surfaces a failed delete on the row instead of silently dropping it', async () => {
 		vi.mocked(api.fetchCustomFields).mockResolvedValue([field({ id: 'f1', label: 'Instrument' })]);
-		vi.mocked(api.deleteCustomField).mockRejectedValue(new ManageApiError('server', 'nope', 500));
+		vi.mocked(api.deleteCustomField).mockRejectedValue(new ApiError('server', 'nope', 500));
 
 		renderManager();
 		await waitFor(() => expect(document.querySelector('#custom-field-delete-f1')).toBeTruthy());

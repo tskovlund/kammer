@@ -49,38 +49,4 @@ describe('completeSetup', () => {
 		expect(result.community_slug).toBe('our-club');
 		expect(result.magic_link_sent).toBe(true);
 	});
-
-	it('rejects with a validation SetupApiError on 422', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'validation', message: 'slug has already been taken' } }, 422)
-		);
-		await expect(
-			completeSetup('https://kammer.example.com', {
-				token: 'setup-tok',
-				operator: { email: 'op@example.com' },
-				instance: {},
-				community: { name: 'Our Club', slug: 'taken' },
-				group: { name: 'General', slug: 'general' }
-			})
-		).rejects.toMatchObject({ kind: 'validation' });
-	});
-
-	// There is deliberately no separate `/setup/verify-token` endpoint
-	// (issue #230) — a boolean oracle over the setup credential — so a bad
-	// or already-consumed token is only discovered here, on the real
-	// completion attempt, as a neutral `forbidden` (403).
-	it('rejects with a forbidden SetupApiError on 403 for a bad or expired token', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'forbidden', message: 'Setup is not available.' } }, 403)
-		);
-		await expect(
-			completeSetup('https://kammer.example.com', {
-				token: 'wrong-token',
-				operator: { email: 'op@example.com' },
-				instance: {},
-				community: { name: 'Our Club', slug: 'our-club' },
-				group: { name: 'General', slug: 'general' }
-			})
-		).rejects.toMatchObject({ kind: 'forbidden', status: 403 });
-	});
 });

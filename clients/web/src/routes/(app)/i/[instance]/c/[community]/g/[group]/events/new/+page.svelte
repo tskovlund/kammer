@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { FeedApiError } from '$lib/feed/api.js';
+	import { ApiError } from '$lib/feed/api.js';
 	import { createEvent } from '$lib/events/api.js';
 	import EventForm from '$lib/events/components/EventForm.svelte';
 	import type { EventParams } from '$lib/events/types.js';
@@ -27,7 +27,7 @@
 			const created = await createEvent(instance, communitySlug, groupSlug, params);
 			await goto(resolve(`/i/${page.params.instance}/c/${communitySlug}/e/${created.id}`));
 		} catch (cause) {
-			error = cause instanceof FeedApiError ? cause.message : t('feed.error.body');
+			error = cause instanceof ApiError ? cause.message : t('feed.error.body');
 			submitting = false;
 		}
 	}

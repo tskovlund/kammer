@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FeedApiError } from '$lib/feed/api.js';
+import { ApiError } from '$lib/feed/api.js';
 import type { Community } from '$lib/feed/types.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Event } from './types.js';
@@ -98,7 +98,7 @@ describe('createEventsStore', () => {
 		const ok = instance('ok', 'OK');
 		const bad = instance('bad', 'Bad');
 		mockCommunities.mockImplementation(async (inst) => {
-			if (inst.id === 'bad') throw new FeedApiError('auth', 'signed out', 401);
+			if (inst.id === 'bad') throw new ApiError('auth', 'signed out', 401);
 			return [community('c1', 'c1', 'One')];
 		});
 		mockEvents.mockResolvedValue([event('x', '2026-06-10T10:00:00Z')]);
@@ -113,7 +113,7 @@ describe('createEventsStore', () => {
 
 	it('reports an error only when every instance fails', async () => {
 		const bad = instance('bad', 'Bad');
-		mockCommunities.mockRejectedValue(new FeedApiError('network', 'offline', null));
+		mockCommunities.mockRejectedValue(new ApiError('network', 'offline', null));
 
 		const store = createEventsStore();
 		await store.load([bad]);

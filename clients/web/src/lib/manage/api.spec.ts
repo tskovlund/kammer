@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	approveJoinRequest,
 	createBan,
 	createCustomField,
 	createGroup,
@@ -8,11 +7,7 @@ import {
 	denyJoinRequest,
 	fetchJoinRequests,
 	fetchReports,
-	ManageApiError,
-	resolveReport,
-	updateCommunity,
 	updateCustomField,
-	updateInstanceSettings,
 	updateLegalPage
 } from './api';
 import type { Instance } from '$lib/instances/types';
@@ -35,10 +30,6 @@ function jsonResponse(status: number, body: unknown) {
 	});
 }
 
-function errorResponse(status: number, code = 'error', message = 'nope') {
-	return jsonResponse(status, { error: { code, message } });
-}
-
 describe('manage api', () => {
 	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 	afterEach(() => vi.unstubAllGlobals());
@@ -52,24 +43,6 @@ describe('manage api', () => {
 		expect(reports[0]?.id).toBe('r1');
 	});
 
-	it('maps 403 to forbidden — a stale capability that the server still refuses', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(403, 'forbidden', 'Not allowed.'));
-		await expect(resolveReport(instance(), 'my-community', 'r1')).rejects.toMatchObject({
-			kind: 'forbidden',
-			status: 403
-		});
-	});
-
-	it('maps 429 to rate_limited and surfaces the server message', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			errorResponse(429, 'rate_limited', 'Too many attempts. Try again later.')
-		);
-		await expect(resolveReport(instance(), 'my-community', 'r1')).rejects.toMatchObject({
-			kind: 'rate_limited',
-			message: 'Too many attempts. Try again later.'
-		});
-	});
-
 	it('unwraps pending join requests from the data envelope', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(
 			jsonResponse(200, {
@@ -78,13 +51,6 @@ describe('manage api', () => {
 		);
 		const requests = await fetchJoinRequests(instance(), 'my-community', 'crew');
 		expect(requests[0]?.user.display_name).toBe('Nora');
-	});
-
-	it('maps a 422 on approval to validation — the requester is banned', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(422, 'banned', 'That person is banned.'));
-		await expect(
-			approveJoinRequest(instance(), 'my-community', 'crew', 'jr1')
-		).rejects.toMatchObject({ kind: 'validation', status: 422 });
 	});
 
 	it('denies a request with a DELETE to the request path — not approve’s verb or URL', async () => {
@@ -115,26 +81,6 @@ describe('manage api', () => {
 		expect(request.method).toBe('POST');
 		expect(request.url).toContain('/moderation/bans');
 		await expect(request.json()).resolves.toEqual({ user_id: 'u9', reason: 'spam' });
-	});
-
-	it('carries a 422 changeset detail so a settings form can key its own copy off the field name', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse(422, {
-				error: {
-					code: 'validation',
-					message: 'Slug has already been taken.',
-					details: { slug: ['taken'] }
-				}
-			})
-		);
-		const error = await updateCommunity(instance(), 'my-community', { slug: 'taken' }).catch(
-			(e) => e
-		);
-		expect(error).toBeInstanceOf(ManageApiError);
-		expect(error.kind).toBe('validation');
-		// The field NAME drives the UI; the English message string never renders
-		// (#253). Assert the whole payload so mangled plumbing can't pass.
-		expect(error.details).toEqual({ slug: ['taken'] });
 	});
 
 	it('bans instance-wide by email — the wire carries the address itself, not a user id', async () => {
@@ -291,12 +237,5 @@ describe('manage api', () => {
 			label: 'Main instrument',
 			visibility: 'admins'
 		});
-	});
-
-	it('wraps a network failure rather than leaking the raw fetch rejection', async () => {
-		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('offline'));
-		const error = await updateInstanceSettings(instance(), { instance_name: 'x' }).catch((e) => e);
-		expect(error).toBeInstanceOf(ManageApiError);
-		expect(error.kind).toBe('network');
 	});
 });

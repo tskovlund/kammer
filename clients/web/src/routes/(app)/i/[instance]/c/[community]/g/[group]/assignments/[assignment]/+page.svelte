@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import * as api from '$lib/tools/api.js';
-	import type { Assignment, Comment, ToolsErrorKind } from '$lib/tools/api.js';
+	import type { Assignment, Comment } from '$lib/tools/api.js';
 	import Button from '$lib/ui/Button.svelte';
 	import CommentComposer from '$lib/feed/components/CommentComposer.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -20,8 +21,8 @@
 
 	let assignment = $state<Assignment | null>(null);
 	let loading = $state(true);
-	let loadError = $state<ToolsErrorKind | null>(null);
-	let actionError = $state<ToolsErrorKind | null>(null);
+	let loadError = $state<ApiErrorKind | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state(false);
 	let commentBody = $state('');
 	let commenting = $state(false);
@@ -45,7 +46,7 @@
 				const resolved = await api.fetchAssignment(inst, community, id);
 				if (!cancelled) assignment = resolved;
 			} catch (cause) {
-				if (!cancelled) loadError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+				if (!cancelled) loadError = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -63,7 +64,7 @@
 		try {
 			await run();
 		} catch (cause) {
-			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+			actionError = errorKind(cause);
 		} finally {
 			busy = false;
 		}
@@ -99,7 +100,7 @@
 			assignment = { ...assignment, comments: [...assignment.comments, comment] };
 			commentBody = '';
 		} catch (cause) {
-			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+			actionError = errorKind(cause);
 		} finally {
 			commenting = false;
 		}
@@ -125,7 +126,7 @@
 			if (reportingCommentId === commentId) reportingCommentId = null;
 			return true;
 		} catch (cause) {
-			actionError = cause instanceof api.ToolsApiError ? cause.kind : 'server';
+			actionError = errorKind(cause);
 			return false;
 		}
 	}

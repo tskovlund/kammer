@@ -1,4 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
+import { fail, guard } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Community, Post } from '$lib/feed/types.js';
 import type { Event } from '$lib/events/types.js';
@@ -23,71 +24,21 @@ export interface GuestIdentity {
 }
 
 /**
- * How a tokenless public-browse call failed (issue #185 slice B, the
- * client twin of `KammerWeb.Api.PublicController`/`GuestController`).
- * These reads and guest request POSTs never carry a device token — a
- * public community/group/event/post that exists but isn't publicly
+ * These tokenless public-browse reads and guest request POSTs (issue #185
+ * slice B, the client twin of
+ * `KammerWeb.Api.PublicController`/`GuestController`) throw the shared
+ * `ApiError` like every other surface. They never carry a device token —
+ * a public community/group/event/post that exists but isn't publicly
  * readable answers the same neutral 404 a nonexistent one gets (no
- * oracle, issue #156/#161), so there is no `auth`/`forbidden` kind
- * here either, mirroring `$lib/guest/api.ts`.
+ * oracle, issue #156/#161), and the server never issues 401/403 here, so
+ * the `auth`/`forbidden` kinds simply never arise, mirroring
+ * `$lib/guest/api.ts`.
+ *
+ * Public-surface UI must never render `ApiError.message` — branch on
+ * `.kind` and show static i18n copy instead, or a server string could
+ * distinguish states (e.g. an email already known) the neutral API
+ * deliberately hides.
  */
-export type PublicErrorKind = 'not_found' | 'validation' | 'rate_limited' | 'network' | 'server';
-
-export class PublicApiError extends Error {
-	readonly kind: PublicErrorKind;
-	readonly status: number | null;
-
-	constructor(kind: PublicErrorKind, message: string, status: number | null = null) {
-		super(message);
-		this.name = 'PublicApiError';
-		this.kind = kind;
-		this.status = status;
-	}
-}
-
-function kindForStatus(status: number): PublicErrorKind {
-	switch (status) {
-		case 404:
-			return 'not_found';
-		case 400:
-		case 422:
-			return 'validation';
-		case 429:
-			return 'rate_limited';
-		default:
-			return 'server';
-	}
-}
-
-interface ErrorEnvelope {
-	error?: { code?: string; message?: string };
-}
-
-// The server message ends up on `PublicApiError.message` for debugging
-// only. Public-surface UI must never render `.message` — branch on
-// `.kind` and show static i18n copy instead, or a server string could
-// distinguish states (e.g. an email already known) the neutral API
-// deliberately hides.
-function messageFrom(error: unknown, fallback: string): string {
-	const envelope = error as ErrorEnvelope | undefined;
-	return envelope?.error?.message ?? fallback;
-}
-
-function fail(error: unknown, response: Response | undefined, fallback: string): PublicApiError {
-	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
-	return new PublicApiError(kind, messageFrom(error, fallback), status);
-}
-
-async function guard<T>(request: () => Promise<T>): Promise<T> {
-	try {
-		return await request();
-	} catch (cause) {
-		if (cause instanceof PublicApiError) throw cause;
-		throw new PublicApiError('network', 'Could not reach this community.', null);
-	}
-}
-
 function client(baseUrl: string) {
 	return createApiClient(baseUrl);
 }

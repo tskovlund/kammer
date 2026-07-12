@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCommunity, fetchCommunityCreationCapability } from './api';
-import { FeedApiError } from '$lib/api/errors';
+import { ApiError } from '$lib/api/errors';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -33,12 +33,12 @@ describe('communities api', () => {
 		expect(community.slug).toBe('sailing');
 	});
 
-	it('maps the policy refusal to a forbidden FeedApiError', async () => {
+	it('maps the policy refusal to a forbidden ApiError', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(
 			jsonResponse(403, { error: { code: 'forbidden', message: 'Not allowed.' } })
 		);
 		const error = await createCommunity(instance(), { name: 'x', slug: 'x' }).catch((e) => e);
-		expect(error).toBeInstanceOf(FeedApiError);
+		expect(error).toBeInstanceOf(ApiError);
 		expect(error.kind).toBe('forbidden');
 	});
 

@@ -47,25 +47,6 @@ describe('registerPushSubscription', () => {
 			keys: subscription.keys
 		});
 	});
-
-	it('surfaces a malformed subscription as a validation PushApiError', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'invalid_params', message: 'Bad subscription.' } }, 422)
-		);
-
-		await expect(registerPushSubscription(fixture(), subscription)).rejects.toMatchObject({
-			kind: 'validation',
-			status: 422
-		});
-	});
-
-	it('surfaces a network failure as a network PushApiError', async () => {
-		vi.mocked(fetch).mockRejectedValueOnce(new TypeError('fetch failed'));
-
-		await expect(registerPushSubscription(fixture(), subscription)).rejects.toMatchObject({
-			kind: 'network'
-		});
-	});
 });
 
 describe('deletePushSubscription', () => {
@@ -75,16 +56,5 @@ describe('deletePushSubscription', () => {
 		await expect(deletePushSubscription(fixture(), endpoint)).resolves.toBeUndefined();
 		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
 		expect(request.url).toContain(encodeURIComponent(endpoint));
-	});
-
-	it('surfaces an expired device token as an auth PushApiError', async () => {
-		vi.mocked(fetch).mockResolvedValueOnce(
-			jsonResponse({ error: { code: 'unauthorized', message: 'Expired.' } }, 401)
-		);
-
-		await expect(deletePushSubscription(fixture(), endpoint)).rejects.toMatchObject({
-			kind: 'auth',
-			status: 401
-		});
 	});
 });

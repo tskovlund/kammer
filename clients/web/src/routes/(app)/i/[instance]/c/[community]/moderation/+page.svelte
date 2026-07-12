@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { ApiError, errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import {
-		ManageApiError,
 		createBan,
 		dismissReport,
 		fetchBans,
 		fetchReports,
 		liftBan,
-		loadErrorKind,
 		resolveReport,
 		type Ban,
-		type ManageErrorKind,
 		type Report
 	} from '$lib/manage/api.js';
 	import { fetchRoster } from '$lib/people/api.js';
@@ -39,8 +37,8 @@
 	// Load failure — replaces the page. A per-action failure uses
 	// `actionError` instead, so one failed resolve/dismiss doesn't discard
 	// the whole loaded queue.
-	let error = $state<ManageErrorKind | null>(null);
-	let actionError = $state<ManageErrorKind | null>(null);
+	let error = $state<ApiErrorKind | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	// Ids currently mid-action, so their buttons disable without freezing the
 	// whole list.
 	let busy = $state<string[]>([]);
@@ -95,7 +93,7 @@
 				bans = resolvedBans;
 				members = resolvedRoster?.members ?? [];
 			} catch (cause) {
-				if (!cancelled) error = loadErrorKind(cause);
+				if (!cancelled) error = errorKind(cause);
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -117,7 +115,7 @@
 		try {
 			await run();
 		} catch (cause) {
-			actionError = cause instanceof ManageApiError ? cause.kind : 'server';
+			actionError = errorKind(cause);
 		} finally {
 			mark(id, false);
 		}
@@ -176,13 +174,9 @@
 			// A 422's field names key our own copy — the server's English
 			// message never renders (#253). `email` means the address already
 			// carries a ban; `reason` is the 2000-character cap.
-			if (cause instanceof ManageApiError && cause.kind === 'validation' && cause.details.email) {
+			if (cause instanceof ApiError && cause.kind === 'validation' && cause.details.email) {
 				banError = t('manage.moderation.ban.errorAlreadyBanned');
-			} else if (
-				cause instanceof ManageApiError &&
-				cause.kind === 'validation' &&
-				cause.details.reason
-			) {
+			} else if (cause instanceof ApiError && cause.kind === 'validation' && cause.details.reason) {
 				banError = t('manage.moderation.ban.errorReason');
 			} else {
 				banError = t('manage.error.body');

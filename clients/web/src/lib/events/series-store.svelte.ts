@@ -1,4 +1,4 @@
-import { FeedApiError, type FeedErrorKind } from '$lib/feed/api.js';
+import { ApiError, type ApiErrorKind } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import * as api from './api.js';
 import type { EventSeriesDetail } from './types.js';
@@ -17,8 +17,8 @@ type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 export function createSeriesStore(instance: Instance, communitySlug: string, seriesId: string) {
 	let detail = $state<EventSeriesDetail | null>(null);
 	let loadState = $state<LoadState>('idle');
-	let loadErrorKind = $state<FeedErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: FeedErrorKind } | null>(null);
+	let loadErrorKind = $state<ApiErrorKind | null>(null);
+	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
 	let busy = $state(false);
 
 	async function load(): Promise<void> {
@@ -28,7 +28,7 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 			detail = await api.fetchEventSeries(instance, communitySlug, seriesId);
 			loadState = 'ready';
 		} catch (error) {
-			loadErrorKind = error instanceof FeedApiError ? error.kind : 'server';
+			loadErrorKind = error instanceof ApiError ? error.kind : 'server';
 			loadState = 'error';
 		}
 	}
@@ -48,7 +48,7 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 			detail = await api.fetchEventSeries(instance, communitySlug, seriesId);
 		} catch (error) {
 			actionError =
-				error instanceof FeedApiError
+				error instanceof ApiError
 					? { message: error.message, kind: error.kind }
 					: { message: 'Something went wrong.', kind: 'server' };
 		} finally {
