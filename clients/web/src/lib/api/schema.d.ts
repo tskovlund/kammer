@@ -909,6 +909,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/communities/{community_slug}/groups/{group_slug}/calendar-token': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** A group's iCal subscription URL (viewable groups with events on) */
+		get: operations['groups_calendar_token'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/posts/{post_id}/acknowledgments': {
 		parameters: {
 			query?: never;
@@ -1382,6 +1399,23 @@ export interface paths {
 		};
 		/** A public post attachment as a forced download */
 		get: operations['public_files_download'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/me/calendar-token': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The caller's iCal subscription URL (their merged-events feed) */
+		get: operations['me_calendar_token'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -2399,6 +2433,16 @@ export interface components {
 			starts_at: string;
 			timezone?: string | null;
 			title: string;
+		};
+		/** CalendarToken */
+		CalendarToken: {
+			/** @description The secret iCal feed token */
+			token: string;
+			/**
+			 * Format: uri
+			 * @description The ready-to-subscribe .ics feed URL (scheme-swap to webcal:// if desired)
+			 */
+			url: string;
 		};
 		/**
 		 * Device
@@ -8017,6 +8061,58 @@ export interface operations {
 			};
 		};
 	};
+	groups_calendar_token: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				community_slug: string;
+				group_slug: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CalendarToken'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	posts_acknowledgments: {
 		parameters: {
 			query?: never;
@@ -10201,6 +10297,55 @@ export interface operations {
 				};
 				content: {
 					'application/octet-stream': string;
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	me_calendar_token: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CalendarToken'];
+					};
 				};
 			};
 			/** @description Error envelope */

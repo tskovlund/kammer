@@ -199,6 +199,24 @@ defmodule KammerWeb.ApiSpec do
               )
           )
       },
+      "/api/v1/me/calendar-token" => %PathItem{
+        get:
+          operation(
+            "The caller's iCal subscription URL (their merged-events feed)",
+            :me_calendar_token,
+            [],
+            response: single_response(Schemas.CalendarToken)
+          )
+      },
+      "/api/v1/communities/{community_slug}/groups/{group_slug}/calendar-token" => %PathItem{
+        get:
+          operation(
+            "A group's iCal subscription URL (viewable groups with events on)",
+            :groups_calendar_token,
+            [path_param(:community_slug), path_param(:group_slug)],
+            response: single_response(Schemas.CalendarToken)
+          )
+      },
       "/api/v1/me/email-change" => %PathItem{
         post:
           operation(

@@ -1,9 +1,13 @@
 import { createApiClient } from '$lib/api/client.js';
 import { fail, guard } from '$lib/api/errors.js';
+import type { components } from '$lib/api/schema.js';
 import type { Community } from '$lib/feed/types.js';
 import type { Group } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Comment, Event, EventParams, RsvpStatus } from './types.js';
+
+/** A secret iCal feed token plus its ready-to-subscribe `.ics` URL. */
+export type CalendarToken = components['schemas']['CalendarToken'];
 
 function client(instance: Instance) {
 	return createApiClient(instance.baseUrl, instance.deviceToken);
@@ -311,4 +315,37 @@ export async function reportComment(
 export function icsUrl(instance: Instance, communitySlug: string, eventId: string): string {
 	const base = instance.baseUrl.replace(/\/$/, '');
 	return `${base}/c/${encodeURIComponent(communitySlug)}/events/${encodeURIComponent(eventId)}/ics`;
+}
+
+/**
+ * The caller's personal iCal subscription — their merged-events feed
+ * across the groups they belong to on this instance (issue #260). The
+ * token is minted on first fetch and is the whole credential (SPEC §6);
+ * the server returns the ready-to-subscribe `.ics` URL.
+ */
+export async function fetchMyCalendarToken(instance: Instance): Promise<CalendarToken> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET('/api/v1/me/calendar-token');
+		if (error || !data) throw fail(error, response, 'Could not load your calendar link.');
+		return data.data;
+	});
+}
+
+/**
+ * A group's iCal subscription URL (issue #260) — available to anyone who
+ * may view the group and its events. Same minted-on-first-fetch token.
+ */
+export async function fetchGroupCalendarToken(
+	instance: Instance,
+	communitySlug: string,
+	groupSlug: string
+): Promise<CalendarToken> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).GET(
+			'/api/v1/communities/{community_slug}/groups/{group_slug}/calendar-token',
+			{ params: { path: { community_slug: communitySlug, group_slug: groupSlug } } }
+		);
+		if (error || !data) throw fail(error, response, 'Could not load this calendar link.');
+		return data.data;
+	});
 }

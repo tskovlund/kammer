@@ -10,6 +10,20 @@ and this project adheres to
 
 ### Added
 
+- Calendar subscription (iCal) links in the PWA (issue #260 port 3,
+  part of #187, SPEC §6). New authenticated endpoints — `GET
+/api/v1/me/calendar-token` and a group sibling — hand the signed-in
+  caller their subscription URL for the secret-token iCal feeds the
+  browser routes already serve: a personal merged-events feed, and any
+  group's whose events they can see. The PWA gains a "Subscribe" control
+  on each group's page (when its events feature is on) and on the
+  personal events page (one per added instance, since each feed lives on
+  one server), revealing the feed URL with a copy action and a one-tap
+  `webcal://` open link. The token is minted on first fetch and is the
+  whole credential; the group endpoint gates exactly as the group's own
+  feed does (viewable, events feature on), and an unviewable group is
+  the same 403 every group-scoped endpoint gives.
+
 - Group creation in the PWA, with a warm new-community cold-start
   (issue #278, part of #187). The PWA could edit a group's settings but
   had no way to _create_ one — a fresh community dead-ended with no

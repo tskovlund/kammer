@@ -333,6 +333,10 @@ defmodule KammerWeb.Router do
     get "/me/export", AccountController, :export
     delete "/me", AccountController, :delete
 
+    # Personal iCal subscription token (issue #260, SPEC §6): the URL for
+    # the caller's merged-events feed, generated on first fetch.
+    get "/me/calendar-token", CalendarController, :me
+
     post "/invites/:token/accept", InviteController, :accept
 
     get "/communities", CommunityController, :index
@@ -462,6 +466,12 @@ defmodule KammerWeb.Router do
     # event belongs to a group); everything else addresses the event by
     # id within its community. The scope writes the shared prefix once.
     post "/communities/:community_slug/groups/:group_slug/events", EventController, :create
+
+    # A group's iCal subscription token (issue #260, SPEC §6): gated as
+    # the group's own feed is (viewable + events feature on).
+    get "/communities/:community_slug/groups/:group_slug/calendar-token",
+        CalendarController,
+        :group
 
     scope "/communities/:community_slug/events/:event_id" do
       put "/rsvp", EventController, :rsvp
