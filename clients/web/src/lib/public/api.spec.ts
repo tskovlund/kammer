@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	fetchPublicCommunity,
 	fetchPublicGroupPosts,
+	requestGuestComment,
 	requestGuestRsvp,
 	requestNewsletterSubscription
 } from './api';
@@ -76,6 +77,34 @@ describe('requestGuestRsvp', () => {
 		});
 		// The tokenless invariant, write side: a guest request must never
 		// carry a signed-in user's device token.
+		expect(req.headers.get('authorization')).toBeNull();
+	});
+});
+
+describe('requestGuestComment', () => {
+	it('POSTs the identity and body to the tokenless guest-comment path', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ status: 'confirmation_sent' }, 202));
+		await requestGuestComment(
+			'https://kammer.example.com',
+			'our-club',
+			'general',
+			'p1',
+			{ email: 'alice@example.com', displayName: 'Alice' },
+			'Nice post!'
+		);
+		const [request] = vi.mocked(fetch).mock.calls[0];
+		const req = request as Request;
+		expect(req.method).toBe('POST');
+		expect(req.url).toBe(
+			'https://kammer.example.com/api/v1/communities/our-club/groups/general/posts/p1/guest-comment'
+		);
+		expect(await req.clone().json()).toEqual({
+			email: 'alice@example.com',
+			display_name: 'Alice',
+			body_markdown: 'Nice post!'
+		});
+		// The tokenless invariant, write side: a guest comment request must
+		// never carry a signed-in user's device token.
 		expect(req.headers.get('authorization')).toBeNull();
 	});
 });
