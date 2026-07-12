@@ -16,11 +16,11 @@ and this project adheres to
   tokenless subscribe form — name, email, and a per-post / daily digest
   / weekly digest cadence picker — matching what the LiveView group page
   offered. It posts to the existing
-  `POST /communities/{slug}/groups/{slug}/newsletter` endpoint, always
-  answers a neutral "check your email to confirm" (no oracle on whether
-  the address is already subscribed), and lets the guest change cadence
-  or unsubscribe later from the management link the confirmation email
-  carries. This closes the last unbuilt guest surface before the
+  `POST /api/v1/communities/{slug}/groups/{slug}/newsletter` endpoint,
+  always answers a neutral "check your email to confirm" (no oracle on
+  whether the address is already subscribed), and lets the guest change
+  cadence or unsubscribe later from the management link the confirmation
+  email carries. This closes the last unbuilt guest surface before the
   LiveView removal cut.
 
 - Passkey enrollment in the PWA (issue #260 port 5b, part of #187, ADR
