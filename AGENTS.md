@@ -28,6 +28,17 @@ LiveView-only surfaces — new user-facing capability lands in the API
 and PWA instead (#165 is the transition umbrella). LiveView-only
 audit findings are deprioritized accordingly.
 
+**Parity is positive, not a freeze** (owner-stated, 2026-07-12). When
+porting a LiveView surface to the PWA, match _or exceed_ it — never
+reproduce its limitations. LiveView was a first iteration: "the
+LiveView only did X" is not on its own a reason to stop at X, and never
+a reason to carry a LiveView bug forward. (The freeze note's "full PWA
+parity" is the aggregate _removal trigger_; on any single surface,
+parity is the floor, not the ceiling.) This reshaped the custom
+profile-field surface in #259 — widened from LiveView's required-only
+toggle to full label/visibility editing once the freeze-reasoning was
+caught.
+
 ### PR lifecycle
 
 Full policy for Conventional Commits, Gettext EN/DA, and ADR triggers
@@ -107,9 +118,26 @@ rules and style, not design quality or "does this test actually test
 what it claims to." Tell the independent reviewer to be adversarial
 and report ranked findings rather than default to a clean bill of
 health. Skip independent review only for a purely mechanical change
-(a dependency bump, a typo fix). Address what it finds, or note in
+(a dependency bump, a typo fix). **"Docs-only" is not itself a
+mechanical category** (owner-stated, 2026-07-12): docs are part of the
+product, so any doc change that _authors_ normative content — a SPEC
+edit that decides something, an ADR, operating-manual prose — carries
+real accuracy / clarity / consistency judgment and gets the
+independent pass like any other substantive change. What's exempt is
+the _judgment-free_ doc edit: a typo, a dead link, or verbatim
+transcription of an already-settled decision. Address what it finds, or note in
 the PR why not — don't just run it and move on regardless of what it
-says.
+says. A finding — the reviewer's or your own observation — is
+dismissed only with a _concrete_ reason: "minor" is not a reason;
+either fix it or say specifically why it's acceptable (owner-stated,
+2026-07-12).
+
+**"Done" means present in the committed tree, not intended.** Verify
+your own claims against the tree before asserting them in a PR body, a
+review disposition, or chat — this session claimed a test that was
+never written, and the independent reviewer caught it. The same
+discipline you demand of reviewers (read the tree, not a memory of it)
+applies to your own reporting.
 
 **How each gate is actually run** (practiced; keep it): self-review
 is 2–3 parallel _finder_ agents with distinct lenses — correctness,
@@ -349,6 +377,11 @@ much higher.
 - Renovate runs Mondays 07:00 CPH; non-major dependency PRs automerge
   when checks pass, majors wait for the owner.
 - Message the owner only at milestones or when genuinely blocked.
+- **When the owner asks you to make a decision, always give a
+  recommendation — not a menu** (owner-stated, 2026-07-12). Lead with
+  the option you'd pick — clearly flagged as your recommendation — and
+  the reasoning; alternatives come after. This holds for a `decision`
+  issue and an in-chat question alike.
 - Surface a process/convention question when there's no precedent in
   this file or the linked docs, rather than picking one silently —
   and once answered, write the answer down here so it isn't asked
@@ -419,6 +452,17 @@ than assumed), owner-interaction cadence, and whether what was just
 decided is written down somewhere durable (this file, an ADR, a
 CHANGELOG entry) or only lives in the conversation. Give opinions and
 concrete optimization proposals as they come up, not only when asked.
+
+**This is as much about the _product_ as the process** (owner-stated,
+2026-07-12). Be an active collaborator, not a passive executor:
+critique what we're _building_ — the UX, the model, the feature set —
+and propose concrete product improvements and new ideas unprompted, the
+same way you critique the workflow. Route them by the owner-interaction
+rules: a product gap or proposal is a GitHub issue (mind the
+open-issue count — pair with closing); a design or scope question that
+needs the owner's call is an assigned `decision` issue; a passing
+observation can ride the relevant PR or issue. The bar is to leave both
+the product and the process better than you found them, every session.
 
 **Persist process changes automatically, without being asked.** The
 moment a standing decision or convention is made — whether the owner
