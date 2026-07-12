@@ -12,7 +12,7 @@
 	} from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { extractMagicToken, normalizeInstanceUrl } from '$lib/instances/signin.js';
-	import { isPasskeySupported } from '$lib/instances/webauthn.js';
+	import { isPasskeySupported, sameOriginInstance } from '$lib/instances/webauthn.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 
@@ -45,22 +45,9 @@
 
 	// Offer the passkey affordance only when it can actually succeed —
 	// never a button that can only fail. Beyond browser capability that
-	// means the *same-origin* instance: WebAuthn ties the assertion to the
-	// server-minted rp_id (this instance's host), which the browser
-	// requires to match the page's own origin, so a cross-origin instance
-	// (the "add another community" case) could only ever throw
-	// SecurityError. Same origin-binding as this browser's push
-	// subscription — see revokeAndRemoveInstance.
+	// means the *same-origin* instance (WebAuthn ties the assertion to the
+	// server-minted rp_id): `sameOriginInstance` carries that reasoning.
 	const passkeySupported = $derived(browserSupportsPasskeys && sameOriginInstance(baseUrl));
-
-	function sameOriginInstance(url: string): boolean {
-		if (!url || typeof window === 'undefined') return false;
-		try {
-			return new URL(url).origin === window.location.origin;
-		} catch {
-			return false;
-		}
-	}
 
 	async function submitInstance(event: SubmitEvent): Promise<void> {
 		event.preventDefault();

@@ -324,6 +324,15 @@ defmodule KammerWeb.Router do
     get "/me/devices", ProfileController, :devices
     delete "/me/devices/:device_id", ProfileController, :revoke_device
 
+    # Passkey enrollment (issue #260 port 5b, ADR 0018): the
+    # authenticated twin of the /auth/passkey/* sign-in ceremony. The
+    # literal `challenge` segment is declared before the bare collection
+    # so it can never be captured by a param route.
+    post "/me/passkeys/challenge", PasskeyController, :challenge
+    get "/me/passkeys", PasskeyController, :index
+    post "/me/passkeys", PasskeyController, :create
+    delete "/me/passkeys/:passkey_id", PasskeyController, :delete
+
     # Account lifecycle (issue #258, SPEC §12): email change, export,
     # deletion. The email-change confirm is authenticated — the emailed
     # token is bound to the requesting account, so the PWA landing page

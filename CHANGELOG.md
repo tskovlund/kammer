@@ -10,7 +10,24 @@ and this project adheres to
 
 ### Added
 
-- Recurring event-series organizer view in the PWA (issue #260 port 4,
+- Passkey enrollment in the PWA (issue #260 port 5b, part of #187, ADR
+  0018). Four new authenticated endpoints under `/api/v1/me/passkeys` —
+  `POST /challenge` (WebAuthn registration options), `POST` (verify the
+  attestation and store the credential), `GET` (list), and
+  `DELETE /{passkey_id}` (remove) — let a signed-in account register a
+  passkey, the authenticated twin of the usernameless sign-in ceremony
+  (#287). The ceremony runs statelessly: the challenge travels to the
+  browser inside a signed, short-lived token (a salt distinct from the
+  sign-in challenge's, so the two are never interchangeable) and comes
+  back to verify against. Enrollment failures — a stale or tampered
+  token, a bad attestation, a duplicate credential — all collapse into
+  one neutral 422 that never reveals which step failed. The device page
+  gains a "Passkeys" section listing the account's passkeys (name, when
+  added, when last used) with remove, plus an "Add a passkey" control
+  shown only when the browser supports registration and the instance is
+  same-origin (WebAuthn binds the ceremony to this origin's host);
+  otherwise a short note explains why. The serializer never emits the
+  credential id or public key.
   part of #187, SPEC §6). A new authenticated endpoint —
   `GET /api/v1/communities/{slug}/events/series/{id}` — returns a
   series' rule, every occurrence (with RSVP counts and cancel state),

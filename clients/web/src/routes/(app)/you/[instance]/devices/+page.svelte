@@ -5,12 +5,25 @@
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
-	import { fetchDevices, revokeDevice } from '$lib/people/api.js';
-	import type { Device } from '$lib/people/types.js';
+	import {
+		beginPasskeyRegistration,
+		completePasskeyRegistration,
+		deletePasskey,
+		fetchDevices,
+		fetchPasskeys,
+		revokeDevice
+	} from '$lib/people/api.js';
+	import type { Device, Passkey } from '$lib/people/types.js';
+	import {
+		createPasskey,
+		isPasskeyRegistrationSupported,
+		sameOriginInstance
+	} from '$lib/instances/webauthn.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import Input from '$lib/ui/Input.svelte';
 	import ListItem from '$lib/ui/ListItem.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
@@ -19,9 +32,24 @@
 	);
 
 	let devices = $state<Device[]>([]);
+	let passkeys = $state<Passkey[]>([]);
 	let loadState = $state<'loading' | 'ready' | 'error'>('loading');
 	let actionError = $state<string | null>(null);
 	let busy = $state(false);
+
+	// Passkey enrollment (issue #260 port 5b) is its own little flow —
+	// separate busy/error state so an add or remove there never blanks the
+	// devices list above.
+	let nickname = $state('');
+	let passkeyBusy = $state(false);
+	let passkeyError = $state<string | null>(null);
+
+	// Browser capability is fixed for the session; the origin check is not
+	// (it depends on which instance is open), so only the latter is derived.
+	const browserSupportsPasskeys = isPasskeyRegistrationSupported();
+	const canAddPasskey = $derived(
+		!!instance && browserSupportsPasskeys && sameOriginInstance(instance.baseUrl)
+	);
 
 	$effect(() => {
 		const inst = instance;
@@ -32,9 +60,15 @@
 
 		void (async () => {
 			try {
-				const next = await fetchDevices(inst);
+				// Both are this account's credentials on the same server behind
+				// the same token — load them together and share one state.
+				const [nextDevices, nextPasskeys] = await Promise.all([
+					fetchDevices(inst),
+					fetchPasskeys(inst)
+				]);
 				if (cancelled) return;
-				devices = next;
+				devices = nextDevices;
+				passkeys = nextPasskeys;
 				loadState = 'ready';
 			} catch {
 				if (!cancelled) loadState = 'error';
@@ -58,6 +92,60 @@
 			actionError = error instanceof FeedApiError ? error.message : t('devices.error.body');
 		} finally {
 			busy = false;
+		}
+	}
+
+	async function addPasskey(): Promise<void> {
+		if (!instance) return;
+		passkeyBusy = true;
+		passkeyError = null;
+		try {
+			const challenge = await beginPasskeyRegistration(instance);
+			const attestation = await createPasskey({
+				challenge: challenge.challenge,
+				rpId: challenge.rp_id,
+				userId: challenge.user_id,
+				userName: challenge.user_name,
+				// The WebAuthn user.displayName must be a string; fall back to
+				// the account name when the profile has none.
+				userDisplayName: challenge.user_display_name ?? challenge.user_name,
+				excludeCredentials: challenge.exclude_credentials
+			});
+			// Null means the browser produced no credential (dismissed or
+			// unusable) — the neutral message, no server call.
+			if (!attestation) {
+				passkeyError = t('passkeys.error');
+				return;
+			}
+			await completePasskeyRegistration(instance, {
+				challenge_token: challenge.challenge_token,
+				attestation_object: attestation.attestation_object,
+				client_data_json: attestation.client_data_json,
+				nickname: nickname.trim() || null
+			});
+			nickname = '';
+			passkeys = await fetchPasskeys(instance);
+		} catch {
+			// Every failure — dismissed prompt, rejected attestation, network —
+			// collapses to one neutral message, mirroring the server's 422.
+			passkeyError = t('passkeys.error');
+		} finally {
+			passkeyBusy = false;
+		}
+	}
+
+	async function removePasskey(passkey: Passkey): Promise<void> {
+		if (!instance) return;
+		if (!window.confirm(t('passkeys.removeConfirm'))) return;
+		passkeyBusy = true;
+		passkeyError = null;
+		try {
+			await deletePasskey(instance, passkey.id);
+			passkeys = await fetchPasskeys(instance);
+		} catch (error) {
+			passkeyError = error instanceof FeedApiError ? error.message : t('passkeys.error');
+		} finally {
+			passkeyBusy = false;
 		}
 	}
 
@@ -136,5 +224,82 @@
 				</ListItem>
 			{/each}
 		</Card>
+
+		<section class="mt-10">
+			<h2 class="text-lg font-semibold tracking-tight text-ink">{t('passkeys.title')}</h2>
+			<p class="mt-0.5 text-sm text-ink-muted">
+				{t('passkeys.description', { name: instance.instanceName })}
+			</p>
+
+			{#if passkeyError}
+				<div
+					class="mt-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+					role="alert"
+				>
+					{passkeyError}
+				</div>
+			{/if}
+
+			{#if canAddPasskey}
+				<div class="mt-4 flex flex-col gap-3">
+					<Input
+						id="passkey-nickname"
+						label={t('passkeys.nicknameLabel')}
+						bind:value={nickname}
+						placeholder={t('passkeys.nicknamePlaceholder')}
+						type="text"
+						autocomplete="off"
+					/>
+					<Button
+						id="passkey-add"
+						variant="primary"
+						disabled={passkeyBusy}
+						onclick={() => void addPasskey()}
+					>
+						{passkeyBusy ? t('passkeys.adding') : t('passkeys.add')}
+					</Button>
+				</div>
+			{:else}
+				<p class="mt-4 text-sm text-ink-faint">
+					{browserSupportsPasskeys ? t('passkeys.crossOrigin') : t('passkeys.unsupported')}
+				</p>
+			{/if}
+
+			{#if passkeys.length === 0}
+				<p class="mt-4 text-sm text-ink-muted">{t('passkeys.empty')}</p>
+			{:else}
+				<div id="passkey-list" class="mt-4">
+					<Card class="divide-y divide-line">
+						{#each passkeys as passkey (passkey.id)}
+							<ListItem>
+								<p class="truncate text-sm font-medium text-ink">
+									{passkey.nickname ?? t('passkeys.unnamed')}
+								</p>
+								<p class="truncate text-xs text-ink-muted">
+									{t('passkeys.added', { date: formatDate(passkey.created_at, i18n.locale) })}
+									·
+									{passkey.last_used_at
+										? t('passkeys.lastUsed', {
+												date: formatDate(passkey.last_used_at, i18n.locale)
+											})
+										: t('passkeys.neverUsed')}
+								</p>
+								{#snippet trailing()}
+									<Button
+										id="passkey-remove-{passkey.id}"
+										size="sm"
+										variant="danger"
+										disabled={passkeyBusy}
+										onclick={() => void removePasskey(passkey)}
+									>
+										{t('passkeys.remove')}
+									</Button>
+								{/snippet}
+							</ListItem>
+						{/each}
+					</Card>
+				</div>
+			{/if}
+		</section>
 	{/if}
 {/if}

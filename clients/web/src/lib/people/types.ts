@@ -7,6 +7,8 @@ export type CustomField = components['schemas']['CustomField'];
 export type Invite = components['schemas']['Invite'];
 export type Profile = components['schemas']['Profile'];
 export type Device = components['schemas']['Device'];
+export type Passkey = components['schemas']['Passkey'];
+export type PasskeyRegistrationChallenge = components['schemas']['PasskeyRegistrationChallenge'];
 export type NotificationLevel = components['schemas']['NotificationLevel'];
 
 export type Role = Member['role'];
