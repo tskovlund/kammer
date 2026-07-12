@@ -28,6 +28,8 @@ and this project adheres to
   same-origin (WebAuthn binds the ceremony to this origin's host);
   otherwise a short note explains why. The serializer never emits the
   credential id or public key.
+
+- Recurring event-series organizer view in the PWA (issue #260 port 4,
   part of #187, SPEC §6). A new authenticated endpoint —
   `GET /api/v1/communities/{slug}/events/series/{id}` — returns a
   series' rule, every occurrence (with RSVP counts and cancel state),
