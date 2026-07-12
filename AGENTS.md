@@ -111,6 +111,71 @@ health. Skip independent review only for a purely mechanical change
 the PR why not — don't just run it and move on regardless of what it
 says.
 
+**How each gate is actually run** (practiced; keep it): self-review
+is 2–3 parallel _finder_ agents with distinct lenses — correctness,
+contract-trace, tests-and-conventions, plus a security lens for any
+privileged surface — spawned on the integrated diff _before_ the PR
+opens; the independent adversarial reviewer is a _separate_ fresh
+agent run on the committed head _before_ merge, told what the finders
+already covered so it goes deeper and sideways instead of repeating
+them. Every substantive slice's reviewer has found something real, so
+the skip-only-for-mechanical rule is load-bearing, not ceremony.
+
+**Reviewers and finders read the committed tree, never a captured
+diff alone** — and read whole files around each change, not just the
+hunks. But tell them to **pin to the commit SHA, not `HEAD`**
+(`git show <sha>`, `git show <sha>:<path>`,
+`git diff origin/main...<sha>`): the main session can switch the
+working-tree branch out from under an in-flight review — opening a
+side-branch PR does exactly this — which moves `HEAD`, and an agent
+reading `HEAD` mid-switch silently reviews the wrong tree. Running the
+agent in a **worktree** (`isolation: "worktree"`) sidesteps this
+entirely. A captured diff alone is worse still — three finder rounds
+were once burned on a stale snapshot that no longer matched the
+branch. And tell them to VERIFY contracts against source (read the
+changeset / context / serializer before trusting any client→server
+field mapping) — a build agent once _guessed_ a 422 detail key and the
+wrong client mapping shipped.
+
+### Delegating to build agents
+
+When a slice is large enough to hand to a build Agent rather than
+implement inline, run it in a **worktree** (`isolation: "worktree"`)
+so parallel agents don't collide on the tree. The brief MUST say, in
+spirit verbatim: **do NOT spawn sub-agents, do NOT wait on
+notifications, return raw data as your final message.** The agent
+delivers a patch plus a commit-message file to the session scratchpad
+— but scratchpad paths die with the container, so a new session's
+agents write to a _fresh_ scratchpad, never a path carried over from a
+prior session's notes. A fresh worktree may first need
+`mix local.hex --force && mix deps.get`, `pnpm install`, and — when
+plain `nix develop` fails on the worktree — `nix develop "path:$PWD"`.
+
+Never trust a build agent's committed generated artifact (above all
+`schema.d.ts`): regenerate it on the integrated branch and require a
+byte-identical diff — that check has caught real drift. Recipe in the
+remote-container notes below.
+
+### Session mechanics (subscriptions, check-ins, reply scans)
+
+These keep an autonomous session from stalling; none is delivered to
+you automatically, so they are your responsibility to arm.
+
+- **After opening any PR: subscribe to its activity AND arm a
+  `send_later` self check-in (~15–20 min out).** Webhooks deliver CI
+  _failures_ and comments but never CI _success_ — without the
+  check-in a green PR just sits unmerged. Re-arm the check-in each
+  time it fires until the PR is merged or closed. Recurring triggers
+  bound to a prior session die with it; a new session arms its own.
+- **Owner-reply scans** (hourly during owner-away stretches): GitHub
+  comments are not pushed to the session. Scan from the _previous
+  scan's actual timestamp_, not a fixed window — a fixed window missed
+  an owner reply once — and read assigned / `decision` issues'
+  comments directly, since that's where owner input lands.
+- **Side-branch PRs need `update_pull_request_branch` + a CI re-run
+  after any main-lane merge** before branch protection will let them
+  merge (their checks go stale against the new `main`).
+
 ### Architecture audits
 
 Distinct from the line-level quality/elegance/DRY sweeps already run
@@ -377,7 +442,20 @@ asked for once and must never need to be asked for again.
   (`/nix/var/nix/profiles/default/bin` may be absent until the
   reinstall; afterwards both resolve to the same store path), and
   `export NIX_SSL_CERT_FILE=/root/.ccr/ca-bundle.crt` so Nix trusts
-  the network proxy's CA.
+  the network proxy's CA. The `nixbld1`..`nixbld10` build users are
+  created with
+  `useradd -r -g nixbld -G nixbld -M -N -s "$(command -v nologin)" nixbldN`.
+  The single-user install ships with flakes **off**, so `nix develop`
+  errors (`experimental Nix feature 'nix-command' is disabled`) until
+  you enable them once:
+  `mkdir -p /root/.config/nix && printf 'experimental-features = nix-command flakes\n' > /root/.config/nix/nix.conf`.
+- Node and pnpm are pre-installed at `/opt/node22/bin` (not via Nix):
+  `export PATH=/opt/node22/bin:$PATH` and
+  `export NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` for the client
+  gates and the root `npx prettier@3.9.5` check. Run client gates from
+  absolute paths / `pnpm --dir clients/web ...`; **never `cd`
+  mid-chain** — the Bash tool's cwd persists between calls, so a stray
+  `cd` leaks into the next command and has caused repeated failed runs.
 - The proxy blocks GitHub release downloads, so `mdex_native`'s
   precompiled NIF download 403s at compile time. Fix:
   `export MDEX_NATIVE_BUILD=1` to build the NIF from source (cargo
@@ -389,6 +467,20 @@ asked for once and must never need to be asked for again.
   once, so the app's dev config can authenticate.
 - Commit and push inside `nix develop --command` (git hooks need `mix`
   on `PATH`). Committer identity: `Claude <noreply@anthropic.com>`.
+- The Playwright e2e gate (`scripts/e2e.sh`) needs both a browser and
+  `mix` on PATH, so run it inside `nix develop` with
+  `export CHROMIUM_BIN=/opt/pw-browsers/chromium` (the config reads
+  `CHROMIUM_BIN`; the container pre-installs Chromium there — never
+  `playwright install`). It is **destructive to `kammer_dev`** (drops
+  and recreates it), so don't point it at a database you care about.
+- Regenerate `schema.d.ts` after any API-file change and require a
+  byte-identical diff. From repo root:
+  `nix develop --command bash -c 'mix run --no-start -e "File.write!(\"/tmp/spec.json\", Jason.encode!(KammerWeb.ApiSpec.spec()))"'`
+  then, with node on PATH,
+  `npx openapi-typescript /tmp/spec.json -o clients/web/src/lib/api/schema.d.ts && npx prettier@3.9.5 --write clients/web/src/lib/api/schema.d.ts`,
+  then confirm `git diff --quiet clients/web/src/lib/api/schema.d.ts`.
+  A non-empty diff means the committed copy was hand-edited or stale —
+  never ship it.
 - CSS cannot be built in this container (the network proxy blocks the
   Tailwind standalone binary; the npm CLI chokes on the vendored
   daisyUI bundle). CI builds assets; regenerate `docs/screenshots/` via
