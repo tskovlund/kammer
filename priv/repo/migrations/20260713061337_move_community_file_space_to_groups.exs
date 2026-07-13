@@ -1,6 +1,6 @@
 defmodule Kammer.Repo.Migrations.MoveCommunityFileSpaceToGroups do
   @moduledoc """
-  Rehomes the community file space onto each community's oldest group
+  Rehomes the community file space onto a group in each community
   (issue #187).
 
   The community-level file library was a LiveView-only surface
@@ -8,12 +8,32 @@ defmodule Kammer.Repo.Migrations.MoveCommunityFileSpaceToGroups do
   library API is group-scoped), so with LiveView removed there is no way
   to reach it. Its contents — folders, file entries, and their stored
   versions, all identified by `group_id IS NULL` within a community —
-  are moved into the community's first group so they stay reachable and
+  are moved into one of the community's groups so they stay reachable and
   their file-space rows stay referentially consistent (a stored file, its
   entry, and its folder move together). The folder subtree is preserved:
   only the owning scope changes, `parent_folder_id` links are untouched,
   and community-space folders carry no `system_key`, so the
   `folders (group_id, system_key)` unique index cannot collide.
+
+  ## Target group
+
+  The community space had no feature gate and no group visibility — any
+  community member could read it (`Kammer.Files` gates a `%Community{}`
+  scope open). A group file library, by contrast, sits behind the group's
+  `:files` toggle and `visibility`. So the target is the **oldest group
+  that can actually surface the files**: not archived, not `:private`,
+  and with `:files` enabled. Only if no such group exists does it fall
+  back to the community's oldest group overall (deterministic tie-break
+  on id), so every community with a group still gets a target rather than
+  leaving the files stranded.
+
+  Even the preferred target is one group's file library, not the old
+  community-wide space: reachability is restored, but the audience is now
+  whoever can read that group (a `:community`-visible group is the norm).
+  A community whose *only* groups are private / files-off / archived has
+  its files rehomed into the oldest such group — reachable to an admin
+  who flips the toggle or visibility, which is strictly better than the
+  unreachable `group_id IS NULL` state the removed LiveView left behind.
 
   Communities with no group are left untouched — there is nowhere to move
   their files to. Transient uploads and feed attachments are unaffected:
@@ -25,11 +45,19 @@ defmodule Kammer.Repo.Migrations.MoveCommunityFileSpaceToGroups do
 
   use Ecto.Migration
 
-  # The oldest group of each community (deterministic tie-break on id).
+  # The rehoming target for each community: prefer the oldest group that
+  # can actually surface the files (not archived, not `:private`, `:files`
+  # enabled), falling back to the community's oldest group overall. The
+  # ranking flag is a plain boolean (all three columns are NOT NULL), so
+  # `DESC` puts qualifying groups first with no NULL-ordering ambiguity.
   @first_group """
   SELECT DISTINCT ON (community_id) community_id, id AS group_id
   FROM groups
-  ORDER BY community_id, inserted_at ASC, id ASC
+  ORDER BY
+    community_id,
+    (archived_at IS NULL AND visibility <> 'private' AND 'files' = ANY(features)) DESC,
+    inserted_at ASC,
+    id ASC
   """
 
   def up do

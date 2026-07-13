@@ -289,7 +289,8 @@ and this project adheres to
   `/api/v1/files` routes) were deleted in one atomic cut, along with the
   `phoenix_live_view`, `phoenix_live_dashboard`, `phoenix_live_reload`,
   `heroicons`, `esbuild`, `tailwind`, and `lazy_html` dependencies, the
-  dev LiveDashboard/mailbox routes, and the LiveView smoke-test CI job.
+  dev LiveDashboard route (the Swoosh mailbox preview is retained for the
+  e2e sign-in flows), and the LiveView smoke-test CI job.
   The `KammerWeb.UserAuth` plug shrank to a session _reader_ (browser
   sign-in was already an API device-token flow), and the browser
   pipeline dropped its LiveView flash / root-layout / CSP-nonce plugs.
@@ -302,9 +303,11 @@ and this project adheres to
   nor the newsletter-unsubscribe routes.
 - The community-level file space (a LiveView-only surface with no API
   twin) was removed; a data migration rehomes any community-space
-  folders, file entries, and stored files onto each community's oldest
-  group so nothing becomes unreachable (communities with no group are
-  left untouched).
+  folders, file entries, and stored files onto a group so nothing becomes
+  unreachable. The target is the oldest group that can actually surface
+  them — not archived, not `:private`, `:files` enabled — falling back to
+  the oldest group overall (communities with no group are left
+  untouched).
 
 ### Fixed
 

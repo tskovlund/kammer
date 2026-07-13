@@ -6,10 +6,10 @@ defmodule KammerWeb.FileServing do
   `X-Content-Type-Options: nosniff`. Access control runs through
   `Kammer.Files.fetch_accessible_file/2` → `Kammer.Authorization`.
 
-  Shared by the browser `FileController` (session auth), the API
-  `Api.FileController` (Bearer auth), and the API `Api.PublicFileController`
-  (tokenless, issue #185 slice B) — same bytes, same headers; only the
-  credential, the authorization check, and the error body differ.
+  Shared by the API `Api.FileController` (Bearer auth) and the API
+  `Api.PublicFileController` (tokenless, issue #185 slice B) — same bytes,
+  same headers; only the credential, the authorization check, and the
+  error body differ.
   """
 
   import Plug.Conn
