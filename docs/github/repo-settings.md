@@ -20,9 +20,20 @@ the default branch:
   decision: honest history first, squash "can be okay sometimes";
   rebase stays off).
 - **Required checks before merge**: `Conventional Commits`,
-  `Format, Credo, Sobelow, audit, Dialyzer, tests`, `Docker image`, and
-  `Smoke test` (the end-to-end driven flow), each up to date with the
-  base branch (strict mode).
+  `Format, Credo, Sobelow, audit, Dialyzer, tests`, `Web client (Svelte)`,
+  `End-to-end (Svelte PWA)`, `Docker image`, `Prettier`, `Gitleaks`, and
+  `Dependency review`, each up to date with the base branch (strict
+  mode). Every one of these runs on `pull_request` with no path filter,
+  so none can wedge a PR in the "expected forever" state — a required
+  context **must** name a check that fires on every PR, or the merge
+  blocks indefinitely (which is exactly what happened when the
+  LiveView-era `Smoke test` job was removed in #187 while its required
+  context lingered; `End-to-end (Svelte PWA)` is its successor gate).
+  `CodeQL (actions)` / `CodeQL (javascript-typescript)` are intentionally
+  **not** required contexts — code-scanning still uploads to the Security
+  tab on every PR, but its check-run naming carries an `/ analyze` suffix
+  that is easy to mismatch; add it via the UI's exact autocomplete if a
+  hard merge gate on it is wanted.
 - **No force pushes, no deletion.**
 - Required approvals is set to **0** deliberately: this is currently a
   single-maintainer project and requiring 1 approval would deadlock
