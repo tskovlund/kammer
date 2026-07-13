@@ -17,11 +17,10 @@ export function createEventStore(instance: Instance, communitySlug: string, even
 	let event = $state<Event | null>(null);
 	let loadState = $state<LoadState>('idle');
 	let loadErrorKind = $state<ApiErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 
 	function report(error: unknown): void {
-		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
-		else actionError = { message: 'Something went wrong.', kind: 'server' };
+		actionError = error instanceof ApiError ? error.kind : 'server';
 	}
 
 	async function load(): Promise<void> {

@@ -24,7 +24,7 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 	let folderId = $state<string | null>(null);
 	let loadState = $state<LoadState>('idle');
 	let loadErrorKind = $state<ApiErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state(false);
 	let detail = $state<LibraryFile | null>(null);
 	// Discards a listing fetch that resolves after a newer navigation, so an
@@ -32,8 +32,7 @@ export function createFilesStore(instance: Instance, ref: Ref) {
 	let generation = 0;
 
 	function report(error: unknown): void {
-		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
-		else actionError = { message: 'Something went wrong.', kind: 'server' };
+		actionError = error instanceof ApiError ? error.kind : 'server';
 	}
 
 	async function load(target: string | null = folderId): Promise<void> {

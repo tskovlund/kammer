@@ -18,7 +18,7 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 	let detail = $state<EventSeriesDetail | null>(null);
 	let loadState = $state<LoadState>('idle');
 	let loadErrorKind = $state<ApiErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state(false);
 
 	async function load(): Promise<void> {
@@ -47,10 +47,7 @@ export function createSeriesStore(instance: Instance, communitySlug: string, ser
 			// re-click (or reload) reconciles — better than blanking the page.
 			detail = await api.fetchEventSeries(instance, communitySlug, seriesId);
 		} catch (error) {
-			actionError =
-				error instanceof ApiError
-					? { message: error.message, kind: error.kind }
-					: { message: 'Something went wrong.', kind: 'server' };
+			actionError = error instanceof ApiError ? error.kind : 'server';
 		} finally {
 			busy = false;
 		}

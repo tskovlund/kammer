@@ -9,6 +9,7 @@
 		type ApiErrorKind,
 		type Group
 	} from '$lib/feed/api.js';
+	import { errorKind } from '$lib/api/errors.js';
 	import { createFeedStore, type FeedStore } from '$lib/feed/feed-store.svelte.js';
 	import { fetchGroupCalendarToken } from '$lib/events/api.js';
 	import CalendarSubscribe from '$lib/events/CalendarSubscribe.svelte';
@@ -27,6 +28,7 @@
 	import { socketStatus } from '$lib/realtime/registry.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
@@ -43,7 +45,11 @@
 	// level (SPEC §9), and join/request/leave per `viewer_can`/`my_role`.
 	let notificationLevel = $state<NotificationLevelValue | null>(null);
 	let membershipBusy = $state(false);
+	// A join/leave *success* note ("Request sent", "You left") — a calm status
+	// line. Failures go to `membershipError` instead so they get the danger
+	// banner and never render the server's English `ApiError.message` (#253).
 	let membershipNotice = $state<string | null>(null);
+	let membershipError = $state<ApiErrorKind | null>(null);
 	let heading = $state<HTMLHeadingElement>();
 	// Skip the very first load: only a client-side navigation between groups
 	// should pull focus to the new heading; the initial page load leaves focus
@@ -71,6 +77,7 @@
 		metaError = null;
 		notificationLevel = null;
 		membershipNotice = null;
+		membershipError = null;
 
 		(async () => {
 			try {
@@ -128,6 +135,7 @@
 		if (!instance) return;
 		membershipBusy = true;
 		membershipNotice = null;
+		membershipError = null;
 		try {
 			const outcome = await joinGroup(instance, ref);
 			if (outcome === 'requested') {
@@ -138,7 +146,7 @@
 			}
 			await refreshGroup();
 		} catch (error) {
-			membershipNotice = error instanceof ApiError ? error.message : t('feed.error.body');
+			membershipError = errorKind(error);
 		} finally {
 			membershipBusy = false;
 		}
@@ -148,13 +156,14 @@
 		if (!instance || !window.confirm(t('group.leaveConfirm'))) return;
 		membershipBusy = true;
 		membershipNotice = null;
+		membershipError = null;
 		try {
 			await leaveGroup(instance, ref);
 			notificationLevel = null;
 			membershipNotice = t('group.left');
 			await refreshGroup();
 		} catch (error) {
-			membershipNotice = error instanceof ApiError ? error.message : t('feed.error.body');
+			membershipError = errorKind(error);
 		} finally {
 			membershipBusy = false;
 		}
@@ -342,6 +351,14 @@
 					{/if}
 				</div>
 
+				{#if membershipError}
+					<ErrorBanner
+						kind={membershipError}
+						ondismiss={() => (membershipError = null)}
+						class="mt-2"
+					/>
+				{/if}
+
 				{#if group?.features?.includes('events') && instance}
 					{@const inst = instance}
 					<div class="mt-2">
@@ -420,20 +437,11 @@
 		</div>
 
 		{#if store.actionError}
-			<div
-				class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-				role="alert"
-			>
-				<span>{store.actionError.message}</span>
-				<button
-					type="button"
-					class="shrink-0 text-danger/70 hover:text-danger"
-					aria-label={t('common.dismiss')}
-					onclick={() => store?.clearActionError()}
-				>
-					✕
-				</button>
-			</div>
+			<ErrorBanner
+				kind={store.actionError}
+				ondismiss={() => store?.clearActionError()}
+				class="mb-4"
+			/>
 		{/if}
 
 		{#if store.loadState === 'loading'}

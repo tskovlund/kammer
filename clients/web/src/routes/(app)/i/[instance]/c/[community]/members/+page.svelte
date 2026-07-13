@@ -12,6 +12,7 @@
 	import Card from '$lib/ui/Card.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import ListItem from '$lib/ui/ListItem.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
@@ -146,20 +147,11 @@
 		</div>
 	{:else}
 		{#if store.actionError}
-			<div
-				class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-				role="alert"
-			>
-				<span>{store.actionError.message}</span>
-				<button
-					type="button"
-					class="shrink-0 text-danger/70 hover:text-danger"
-					aria-label={t('common.dismiss')}
-					onclick={() => store?.clearActionError()}
-				>
-					✕
-				</button>
-			</div>
+			<ErrorBanner
+				kind={store.actionError}
+				ondismiss={() => store?.clearActionError()}
+				class="mb-4"
+			/>
 		{/if}
 
 		<Card class="divide-y divide-line">

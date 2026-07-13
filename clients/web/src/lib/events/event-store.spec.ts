@@ -79,7 +79,7 @@ describe('optimistic RSVP rollback', () => {
 		// …then rolled back to the pre-tap answer and counts, with the failure surfaced.
 		expect(store.event?.my_rsvp).toBe('no');
 		expect(store.event?.rsvp_counts).toEqual({ yes: 2, maybe: 0, no: 1 });
-		expect(store.actionError?.kind).toBe('server');
+		expect(store.actionError).toBe('server');
 	});
 
 	it('keeps the optimistic RSVP once the server accepts it — no refetch, no rollback', async () => {

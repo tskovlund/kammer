@@ -105,7 +105,8 @@ describe('createSeriesStore', () => {
 		await store.load();
 		await store.toggleCancelled('o1', true);
 
-		expect(store.actionError).toEqual({ message: 'Not yours.', kind: 'forbidden' });
+		// Only the kind is surfaced — the server's English message never is (#253).
+		expect(store.actionError).toBe('forbidden');
 		// The view stays put — a failed mutation never drops the loaded detail.
 		expect(store.detail?.occurrences[0].cancelled).toBe(false);
 		expect(store.loadState).toBe('ready');
