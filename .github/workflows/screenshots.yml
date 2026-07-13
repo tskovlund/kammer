@@ -44,19 +44,19 @@ jobs:
       # The push token (fine-grained PAT, contents-only) instead of the
       # default GITHUB_TOKEN so the screenshot commit triggers CI like
       # any other push — GITHUB_TOKEN pushes deliberately trigger none.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           token: ${{ secrets.SCREENSHOTS_PUSH_TOKEN }}
 
-      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - uses: nix-community/cache-nix-action@v7
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
       - name: Cache Mix dependencies and build
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             deps
