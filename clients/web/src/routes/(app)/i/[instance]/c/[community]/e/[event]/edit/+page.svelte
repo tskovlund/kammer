@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { ApiError } from '$lib/feed/api.js';
-	import { editEvent, fetchEvent } from '$lib/events/api.js';
+	import { type ApiErrorKind } from '$lib/api/errors.js';
+	import { editEvent, eventParamsErrorKeys, fetchEvent } from '$lib/events/api.js';
 	import EventForm from '$lib/events/components/EventForm.svelte';
-	import type { Event, EventParams } from '$lib/events/types.js';
+	import type { Event, EventFieldErrors, EventParams } from '$lib/events/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
 	const instance = $derived(
@@ -20,7 +21,16 @@
 	let event = $state<Event | null>(null);
 	let loadError = $state(false);
 	let submitting = $state(false);
-	let error = $state<string | null>(null);
+	let bannerKind = $state<ApiErrorKind | null>(null);
+	// Per-field 422 copy, keyed on the Event changeset field names, never the
+	// server's English strings (#253).
+	let fieldErrors = $state<EventFieldErrors>({
+		title: null,
+		endsAt: null,
+		locationName: null,
+		locationUrl: null,
+		until: null
+	});
 
 	const detailHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${communitySlug}/e/${eventId}`)
@@ -45,12 +55,23 @@
 	async function submit(params: EventParams): Promise<void> {
 		if (!instance) return;
 		submitting = true;
-		error = null;
+		bannerKind = null;
+		fieldErrors = { title: null, endsAt: null, locationName: null, locationUrl: null, until: null };
 		try {
 			await editEvent(instance, communitySlug, eventId, params);
 			await goto(detailHref);
 		} catch (cause) {
-			error = cause instanceof ApiError ? cause.message : t('feed.error.body');
+			// Route each 422 field onto its input; an unmapped field or a
+			// non-validation failure falls to the shared banner.
+			const keys = eventParamsErrorKeys(cause);
+			fieldErrors = {
+				title: keys.titleKey ? t(keys.titleKey) : null,
+				endsAt: keys.endsAtKey ? t(keys.endsAtKey) : null,
+				locationName: keys.locationNameKey ? t(keys.locationNameKey) : null,
+				locationUrl: keys.locationUrlKey ? t(keys.locationUrlKey) : null,
+				until: keys.untilKey ? t(keys.untilKey) : null
+			};
+			bannerKind = keys.bannerKind;
 			submitting = false;
 		}
 	}
@@ -74,14 +95,16 @@
 {:else}
 	<h1 class="mb-5 text-xl font-semibold tracking-tight text-ink">{t('events.form.editTitle')}</h1>
 
-	{#if error}
-		<div
-			class="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-			role="alert"
-		>
-			{error}
-		</div>
+	{#if bannerKind}
+		<ErrorBanner kind={bannerKind} class="mb-4" />
 	{/if}
 
-	<EventForm mode="edit" initial={event} {submitting} onSubmit={submit} onCancel={cancel} />
+	<EventForm
+		mode="edit"
+		initial={event}
+		{submitting}
+		errors={fieldErrors}
+		onSubmit={submit}
+		onCancel={cancel}
+	/>
 {/if}

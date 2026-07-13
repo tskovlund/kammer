@@ -7,8 +7,12 @@
 	import type { Community } from '$lib/feed/types.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
-	import type { MessageKey } from '$lib/i18n/format.js';
-	import { fetchProfile, requestEmailChange, updateProfile } from '$lib/people/api.js';
+	import {
+		fetchProfile,
+		profileParamsErrorKeys,
+		requestEmailChange,
+		updateProfile
+	} from '$lib/people/api.js';
 	import {
 		browserTimezones,
 		timezoneOptions as buildTimezoneOptions
@@ -60,6 +64,17 @@
 	let saving = $state(false);
 	let saved = $state(false);
 	let saveError = $state<string | null>(null);
+	// Per-field 422 copy for the base profile save (#253), keyed on the
+	// changeset field names — never the server's English strings.
+	let displayNameError = $state<string | null>(null);
+	let pronounsError = $state<string | null>(null);
+
+	// Field errors belong to the base profile form; clear them at the start of
+	// any action so a stale one can't linger beside another action's success.
+	function clearProfileFieldErrors(): void {
+		displayNameError = null;
+		pronounsError = null;
+	}
 
 	function seed(next: Profile): void {
 		profile = next;
@@ -130,6 +145,7 @@
 		saving = true;
 		saved = false;
 		saveError = null;
+		clearProfileFieldErrors();
 		try {
 			const next = await updateProfile(instance, {
 				display_name: displayName.trim(),
@@ -148,34 +164,16 @@
 			seed(next);
 			saved = true;
 		} catch (error) {
-			saveError = saveErrorCopy(error);
+			// Route display_name/pronouns 422s onto their inputs; every other
+			// field (the Select-constrained ones) and non-validation failures
+			// fall to the shared banner.
+			const keys = profileParamsErrorKeys(error);
+			displayNameError = keys.displayNameKey ? t(keys.displayNameKey) : null;
+			pronounsError = keys.pronounsKey ? t(keys.pronounsKey) : null;
+			saveError = keys.bannerKey ? t(keys.bannerKey) : null;
 		} finally {
 			saving = false;
 		}
-	}
-
-	// A 422's field NAMES map onto our copy; the server's message strings
-	// never render (#253's direction).
-	const validationErrorKeys: Partial<Record<string, MessageKey>> = {
-		timezone: 'profile.error.timezone',
-		locale: 'profile.error.language',
-		digest_frequency: 'profile.error.digest'
-	};
-
-	function saveErrorCopy(error: unknown): string {
-		if (error instanceof ApiError && error.kind === 'validation') {
-			// hasOwn: detail keys come from a server this multi-instance
-			// client can't trust — a key like "constructor" would otherwise
-			// hit the prototype chain and feed t() a non-key, silently
-			// blanking the error banner.
-			const key = Object.keys(error.details)
-				.map((field) =>
-					Object.hasOwn(validationErrorKeys, field) ? validationErrorKeys[field] : undefined
-				)
-				.find((candidate) => candidate !== undefined);
-			return t(key ?? 'profile.error.validation');
-		}
-		return t('profile.error.body');
 	}
 
 	async function saveSection(section: CommunityProfileSection): Promise<void> {
@@ -183,6 +181,7 @@
 		section.saving = true;
 		section.saved = false;
 		saveError = null;
+		clearProfileFieldErrors();
 		try {
 			const client = createApiClient(instance.baseUrl, instance.deviceToken);
 			const { data, error } = await client.PUT('/api/v1/communities/{community_slug}/profile', {
@@ -193,8 +192,10 @@
 			section.values = { ...data.data.values };
 			section.missing = data.data.missing_required_field_ids;
 			section.saved = true;
-		} catch (error) {
-			saveError = error instanceof ApiError ? error.message : t('profile.error.body');
+		} catch {
+			// The server hard-matches `:ok` on this write, so it never returns a
+			// mappable field 422 here; any failure is a load/transport error.
+			saveError = t('profile.error.body');
 		} finally {
 			section.saving = false;
 		}
@@ -213,6 +214,7 @@
 		emailSending = true;
 		emailSentTo = null;
 		emailError = null;
+		clearProfileFieldErrors();
 		const requested = newEmail.trim();
 		try {
 			await requestEmailChange(instance, requested);
@@ -308,7 +310,12 @@
 		{/if}
 
 		<form class="flex flex-col gap-4" onsubmit={save} id="profile-form">
-			<Input id="profile-display-name" label={t('profile.displayName')} bind:value={displayName} />
+			<Input
+				id="profile-display-name"
+				label={t('profile.displayName')}
+				bind:value={displayName}
+				error={displayNameError}
+			/>
 
 			<label class="flex flex-col gap-1.5">
 				<span class="text-sm font-medium text-ink">{t('profile.bio')}</span>
@@ -321,7 +328,12 @@
 				></textarea>
 			</label>
 
-			<Input id="profile-pronouns" label={t('profile.pronouns')} bind:value={pronouns} />
+			<Input
+				id="profile-pronouns"
+				label={t('profile.pronouns')}
+				bind:value={pronouns}
+				error={pronounsError}
+			/>
 
 			<h2 class="mt-4 text-sm font-medium text-ink">{t('profile.contact.title')}</h2>
 			<p class="-mt-3 text-sm text-ink-muted">{t('profile.contact.description')}</p>

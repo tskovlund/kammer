@@ -104,11 +104,19 @@
 		} catch (cause) {
 			// A bad or already-consumed setup token surfaces here as a
 			// neutral 403 `forbidden` — there is no earlier token-check step
-			// to catch it at (see the module doc comment above).
+			// to catch it at (see the module doc comment above). Field-level
+			// 422 mapping is deferred for setup (#253): its `with`-chained
+			// sub-changesets (operator / instance / community / group) yield
+			// flat but cross-entity-ambiguous detail keys (`name`/`slug` appear
+			// for both community and group) split across two wizard steps, so a
+			// validation failure shows one banner rather than a mis-attributed
+			// field error. Server strings never render.
 			if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				communityError = t('setup.token.error');
+			} else if (cause instanceof ApiError && cause.kind === 'validation') {
+				communityError = t('setup.error.validation');
 			} else {
-				communityError = cause instanceof ApiError ? cause.message : t('setup.error.body');
+				communityError = t('setup.error.body');
 			}
 		} finally {
 			communityBusy = false;

@@ -1,17 +1,29 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
-	import type { Event, EventParams } from '../types.js';
+	import Input from '$lib/ui/Input.svelte';
+	import Select from '$lib/ui/Select.svelte';
+	import type { Event, EventFieldErrors, EventParams } from '../types.js';
 
 	interface Props {
 		mode: 'create' | 'edit';
 		initial?: Event | null;
 		submitting: boolean;
+		/** Per-field 422 copy from the page's `eventParamsErrorKeys` mapping. */
+		errors?: EventFieldErrors;
 		onSubmit: (params: EventParams) => void;
 		onCancel: () => void;
 	}
 
-	let { mode, initial = null, submitting, onSubmit, onCancel }: Props = $props();
+	const noErrors: EventFieldErrors = {
+		title: null,
+		endsAt: null,
+		locationName: null,
+		locationUrl: null,
+		until: null
+	};
+
+	let { mode, initial = null, submitting, errors = noErrors, onSubmit, onCancel }: Props = $props();
 
 	// datetime-local wants `YYYY-MM-DDTHH:mm` in local time; the API wants an
 	// absolute ISO instant. We convert on the way in and out.
@@ -41,8 +53,16 @@
 
 	// Recurrence is create-only (ADR 0019: editing is per-occurrence).
 	let repeats = $state(false);
-	let frequency = $state<'weekly' | 'biweekly' | 'monthly'>('weekly');
+	// Held as `string` (narrowed back to the union in `submit`) so it can bind
+	// to the shared `Select`, whose `value` writes back a plain string.
+	let frequency = $state<string>('weekly');
 	let until = $state('');
+
+	const frequencyOptions = $derived([
+		{ value: 'weekly', label: t('events.form.weekly') },
+		{ value: 'biweekly', label: t('events.form.biweekly') },
+		{ value: 'monthly', label: t('events.form.monthly') }
+	]);
 
 	const canSubmit = $derived(title.trim().length > 0 && startsAt.length > 0 && !submitting);
 
@@ -62,7 +82,7 @@
 		};
 
 		if (mode === 'create' && repeats && until) {
-			params.recurrence = { frequency, until };
+			params.recurrence = { frequency: frequency as 'weekly' | 'biweekly' | 'monthly', until };
 		}
 
 		onSubmit(params);
@@ -73,32 +93,38 @@
 </script>
 
 <form onsubmit={submit} class="flex flex-col gap-4" id="event-form">
-	<label class="flex flex-col gap-1">
-		<span class="text-sm font-medium text-ink">{t('events.form.title')}</span>
-		<input id="event-form-title" bind:value={title} required class={fieldClass} />
-	</label>
+	<Input
+		id="event-form-title"
+		label={t('events.form.title')}
+		bind:value={title}
+		error={errors.title}
+		required
+	/>
 
 	<label class="flex flex-col gap-1">
 		<span class="text-sm font-medium text-ink">{t('events.form.description')}</span>
-		<textarea bind:value={description} rows="4" class="{fieldClass} resize-y"></textarea>
+		<textarea bind:value={description} rows="4" maxlength={50000} class="{fieldClass} resize-y"
+		></textarea>
 		<span class="text-xs text-ink-faint">{t('feed.compose.markdownHint')}</span>
 	</label>
 
 	<div class="flex flex-col gap-4 sm:flex-row">
-		<label class="flex flex-1 flex-col gap-1">
-			<span class="text-sm font-medium text-ink">{t('events.form.startsAt')}</span>
-			<input
-				id="event-form-starts-at"
-				type="datetime-local"
-				bind:value={startsAt}
-				required
-				class={fieldClass}
-			/>
-		</label>
-		<label class="flex flex-1 flex-col gap-1">
-			<span class="text-sm font-medium text-ink">{t('events.form.endsAt')}</span>
-			<input type="datetime-local" bind:value={endsAt} class={fieldClass} />
-		</label>
+		<Input
+			id="event-form-starts-at"
+			class="flex-1"
+			type="datetime-local"
+			label={t('events.form.startsAt')}
+			bind:value={startsAt}
+			required
+		/>
+		<Input
+			id="event-form-ends-at"
+			class="flex-1"
+			type="datetime-local"
+			label={t('events.form.endsAt')}
+			bind:value={endsAt}
+			error={errors.endsAt}
+		/>
 	</div>
 
 	<label class="flex items-center gap-2">
@@ -107,14 +133,21 @@
 	</label>
 
 	<div class="flex flex-col gap-4 sm:flex-row">
-		<label class="flex flex-1 flex-col gap-1">
-			<span class="text-sm font-medium text-ink">{t('events.form.locationName')}</span>
-			<input bind:value={locationName} class={fieldClass} />
-		</label>
-		<label class="flex flex-1 flex-col gap-1">
-			<span class="text-sm font-medium text-ink">{t('events.form.locationUrl')}</span>
-			<input bind:value={locationUrl} inputmode="url" class={fieldClass} />
-		</label>
+		<Input
+			id="event-form-location-name"
+			class="flex-1"
+			label={t('events.form.locationName')}
+			bind:value={locationName}
+			error={errors.locationName}
+		/>
+		<Input
+			id="event-form-location-url"
+			class="flex-1"
+			label={t('events.form.locationUrl')}
+			bind:value={locationUrl}
+			error={errors.locationUrl}
+			inputmode="url"
+		/>
 	</div>
 
 	{#if mode === 'create'}
@@ -125,18 +158,22 @@
 			</label>
 			{#if repeats}
 				<div class="flex flex-col gap-4 sm:flex-row">
-					<label class="flex flex-1 flex-col gap-1">
-						<span class="text-sm font-medium text-ink">{t('events.form.frequency')}</span>
-						<select bind:value={frequency} class={fieldClass}>
-							<option value="weekly">{t('events.form.weekly')}</option>
-							<option value="biweekly">{t('events.form.biweekly')}</option>
-							<option value="monthly">{t('events.form.monthly')}</option>
-						</select>
-					</label>
-					<label class="flex flex-1 flex-col gap-1">
-						<span class="text-sm font-medium text-ink">{t('events.form.until')}</span>
-						<input type="date" bind:value={until} required={repeats} class={fieldClass} />
-					</label>
+					<Select
+						id="event-form-frequency"
+						class="flex-1"
+						label={t('events.form.frequency')}
+						options={frequencyOptions}
+						bind:value={frequency}
+					/>
+					<Input
+						id="event-form-until"
+						class="flex-1"
+						type="date"
+						label={t('events.form.until')}
+						bind:value={until}
+						error={errors.until}
+						required={repeats}
+					/>
 				</div>
 			{/if}
 		</div>
