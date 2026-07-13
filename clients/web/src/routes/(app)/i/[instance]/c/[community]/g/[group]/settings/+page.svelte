@@ -12,6 +12,7 @@
 		setGroupArchived,
 		setGroupFeatures,
 		updateGroup,
+		groupParamsErrorKeys,
 		type GroupFeature,
 		type GroupParams,
 		type JoinRequest
@@ -22,6 +23,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -54,6 +56,11 @@
 	let error = $state<ApiErrorKind | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
+	// Field-level 422 copy for the details save, keyed on the changeset field
+	// names, never the server's English strings (#253).
+	let nameError = $state<string | null>(null);
+	let slugError = $state<string | null>(null);
+	let versionRetentionError = $state<string | null>(null);
 
 	let name = $state('');
 	let slug = $state('');
@@ -127,11 +134,20 @@
 		};
 	});
 
+	// Field errors belong to the details form; clear them at the start of any
+	// action so a stale one can't linger beside another action's "Saved".
+	function clearFieldErrors() {
+		nameError = null;
+		slugError = null;
+		versionRetentionError = null;
+	}
+
 	async function run<T>(work: () => Promise<T>) {
 		if (!instance || saving) return;
 		saving = true;
 		saved = false;
 		error = null;
+		clearFieldErrors();
 		try {
 			await work();
 			saved = true;
@@ -144,6 +160,7 @@
 
 	function saveDetails(event: SubmitEvent) {
 		event.preventDefault();
+		if (!instance || saving) return;
 		const params: GroupParams = {
 			name,
 			slug,
@@ -155,22 +172,42 @@
 			approval_queue: approvalQueue,
 			version_retention: versionRetention.trim() === '' ? null : Number(versionRetention)
 		};
-		run(async () => {
-			const updated = await updateGroup(instance!, communitySlug, groupSlug, params);
-			hydrate(updated);
-			// A slug change renames this page's own URL: the route param (and
-			// every href derived from it, like the invites link) still says the
-			// OLD slug — a refresh would 404 and the NEXT save would PUT to the
-			// dead slug. Move to the new address in place.
-			if (updated.slug !== groupSlug) {
-				// An aborted navigation must not read as a save failure — the
-				// PUT already succeeded.
-				await goto(
-					resolve(`/i/${page.params.instance}/c/${communitySlug}/g/${updated.slug}/settings`),
-					{ replaceState: true }
-				).catch(() => {});
+		// Handled here rather than through `run` so a 422 can land on the field
+		// that caused it (name/slug/version_retention) instead of one banner.
+		saving = true;
+		saved = false;
+		error = null;
+		clearFieldErrors();
+		void (async () => {
+			try {
+				const updated = await updateGroup(instance!, communitySlug, groupSlug, params);
+				hydrate(updated);
+				saved = true;
+				// A slug change renames this page's own URL: the route param (and
+				// every href derived from it, like the invites link) still says the
+				// OLD slug — a refresh would 404 and the NEXT save would PUT to the
+				// dead slug. Move to the new address in place.
+				if (updated.slug !== groupSlug) {
+					// An aborted navigation must not read as a save failure — the
+					// PUT already succeeded.
+					await goto(
+						resolve(`/i/${page.params.instance}/c/${communitySlug}/g/${updated.slug}/settings`),
+						{ replaceState: true }
+					).catch(() => {});
+				}
+			} catch (cause) {
+				// Route each 422 field onto its input; an unmapped field or a
+				// non-validation failure falls to the shared banner (a `forbidden`
+				// swaps in the top-level empty state, as on load).
+				const keys = groupParamsErrorKeys(cause);
+				nameError = keys.nameKey ? t(keys.nameKey) : null;
+				slugError = keys.slugKey ? t(keys.slugKey) : null;
+				versionRetentionError = keys.versionRetentionKey ? t(keys.versionRetentionKey) : null;
+				error = keys.bannerKind;
+			} finally {
+				saving = false;
 			}
-		});
+		})();
 	}
 
 	function toggleFeature(feature: GroupFeature, on: boolean) {
@@ -209,6 +246,7 @@
 		if (!window.confirm(t('manage.group.deleteConfirm'))) return;
 		saving = true;
 		error = null;
+		clearFieldErrors();
 		try {
 			await deleteGroup(instance, communitySlug, groupSlug);
 			// The group is gone, and this page's URL with it. The groups tab
@@ -227,6 +265,7 @@
 		if (!instance) return;
 		saving = true;
 		error = null;
+		clearFieldErrors();
 		try {
 			if (approve) {
 				await approveJoinRequest(instance, communitySlug, groupSlug, request.id);
@@ -264,12 +303,19 @@
 	{/if}
 
 	<form class="flex max-w-lg flex-col gap-4" onsubmit={saveDetails}>
-		<Input id="group-name" label={t('manage.group.name')} bind:value={name} required />
+		<Input
+			id="group-name"
+			label={t('manage.group.name')}
+			bind:value={name}
+			error={nameError}
+			required
+		/>
 		<Input
 			id="group-slug"
 			label={t('manage.group.slug')}
 			hint={t('manage.group.slugHint')}
 			bind:value={slug}
+			error={slugError}
 			required
 		/>
 
@@ -327,6 +373,7 @@
 			type="number"
 			min="1"
 			bind:value={versionRetention}
+			error={versionRetentionError}
 		/>
 
 		<div class="flex items-center gap-3">
@@ -336,10 +383,10 @@
 			{#if saved}
 				<span class="text-sm text-ink-muted" role="status">{t('manage.group.saved')}</span>
 			{/if}
-			{#if error}
-				<span class="text-sm text-danger" role="alert">{t('manage.error.body')}</span>
-			{/if}
 		</div>
+		{#if error}
+			<ErrorBanner kind={error} />
+		{/if}
 	</form>
 
 	<section aria-labelledby="features-heading" class="mt-8 max-w-lg">

@@ -327,10 +327,6 @@
 	"groups.new.sealed": "Forseglet gruppe",
 	"groups.new.sealedHint": "Skjult for fællesskabets administratorer, som ikke kan læse eller moderere den — kun slette den. Serverens operatør kan stadig teknisk set tilgå alle data. Dette kan ikke ændres senere.",
 	"groups.new.submit": "Opret gruppe",
-	"groups.new.error.name": "Tjek gruppenavnet.",
-	"groups.new.error.slug": "Webadressen er optaget eller ugyldig.",
-	"groups.new.error.forbidden": "Du har ikke tilladelse til at oprette en gruppe her.",
-	"groups.new.error.generic": "Kunne ikke oprette gruppen. Prøv igen.",
 	"group.join": "Bliv medlem",
 	"group.requestToJoin": "Anmod om medlemskab",
 	"group.joinRequested": "Anmodning sendt — en administrator kigger på den.",
@@ -535,8 +531,9 @@
 	"manage.community.listedOnInstance": "Vis dette fællesskab på instansens forside",
 	"manage.community.requireRealNames": "Bed medlemmer om at bruge deres fulde, rigtige navn",
 	"manage.community.requireRealNamesHint": "Vises ved tilmelding; det er en erklæring, ikke teknisk verificeret.",
-	"manage.community.error.name": "Navnet må ikke være tomt eller længere end 100 tegn.",
-	"manage.community.error.slug": "Den webadresse er taget eller ugyldig.",
+	"manage.field.error.name": "Navnet må ikke være tomt eller længere end 100 tegn.",
+	"manage.field.error.slug": "Den webadresse er taget eller ugyldig.",
+	"manage.field.error.versionRetention": "Angiv et helt tal større end nul.",
 	"manage.fields.title": "Profilfelter",
 	"manage.fields.description": "Kolonnerne i medlemsoversigten — det, medlemmer kan dele på deres profil i fællesskabet.",
 	"manage.fields.loadError": "Kunne ikke indlæse profilfelterne.",
@@ -919,9 +916,5 @@
 	"communities.new.localeDa": "Dansk",
 	"communities.new.submit": "Opret fællesskab",
 	"communities.new.forbidden.title": "Ikke tilladt",
-	"communities.new.forbidden.body": "Kun instansoperatører kan oprette fællesskaber her.",
-	"communities.new.error.name": "Indtast et navn.",
-	"communities.new.error.slug": "Den webadresse er taget eller ugyldig.",
-	"communities.new.error.generic": "Kunne ikke oprette fællesskabet. Prøv igen.",
-	"communities.new.error.forbidden": "Du har ikke tilladelse til at oprette et fællesskab her."
+	"communities.new.forbidden.body": "Kun instansoperatører kan oprette fællesskaber her."
 }

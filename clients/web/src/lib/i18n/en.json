@@ -327,10 +327,6 @@
 	"groups.new.sealed": "Sealed group",
 	"groups.new.sealedHint": "Hidden from community admins, who can't read or moderate it — only delete it. The server operator can still technically access all data. This can't be changed later.",
 	"groups.new.submit": "Create group",
-	"groups.new.error.name": "Please check the group name.",
-	"groups.new.error.slug": "That web address is taken or invalid.",
-	"groups.new.error.forbidden": "You don't have permission to create a group here.",
-	"groups.new.error.generic": "Couldn't create the group. Please try again.",
 	"group.join": "Join group",
 	"group.requestToJoin": "Ask to join",
 	"group.joinRequested": "Request sent — an admin will review it.",
@@ -535,8 +531,9 @@
 	"manage.community.listedOnInstance": "List this community on the instance landing page",
 	"manage.community.requireRealNames": "Ask members to use their full, real name",
 	"manage.community.requireRealNamesHint": "Shown when joining; it's a statement, not technically verified.",
-	"manage.community.error.name": "The name can't be blank or longer than 100 characters.",
-	"manage.community.error.slug": "That web address is taken or invalid.",
+	"manage.field.error.name": "The name can't be blank or longer than 100 characters.",
+	"manage.field.error.slug": "That web address is taken or invalid.",
+	"manage.field.error.versionRetention": "Enter a whole number greater than zero.",
 	"manage.fields.title": "Profile fields",
 	"manage.fields.description": "The member directory's columns — what members can share on their profile in this community.",
 	"manage.fields.loadError": "Couldn't load the profile fields.",
@@ -919,9 +916,5 @@
 	"communities.new.localeDa": "Danish",
 	"communities.new.submit": "Create community",
 	"communities.new.forbidden.title": "Not allowed",
-	"communities.new.forbidden.body": "Only instance operators may create communities here.",
-	"communities.new.error.name": "Please enter a name.",
-	"communities.new.error.slug": "That web address is taken or invalid.",
-	"communities.new.error.generic": "Could not create the community. Please try again.",
-	"communities.new.error.forbidden": "You are not allowed to create a community here."
+	"communities.new.forbidden.body": "Only instance operators may create communities here."
 }

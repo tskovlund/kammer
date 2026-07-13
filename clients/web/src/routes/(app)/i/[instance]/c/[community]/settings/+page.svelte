@@ -2,15 +2,20 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { ApiError, errorKind, type ApiErrorKind } from '$lib/api/errors.js';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
-	import { updateCommunity, type CommunityParams } from '$lib/manage/api.js';
+	import {
+		communityParamsErrorKeys,
+		updateCommunity,
+		type CommunityParams
+	} from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import CustomFieldsManager from '$lib/manage/CustomFieldsManager.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -113,13 +118,13 @@
 				}).catch(() => {});
 			}
 		} catch (cause) {
-			if (cause instanceof ApiError && cause.kind === 'validation') {
-				nameError = cause.details.name ? t('manage.community.error.name') : null;
-				slugError = cause.details.slug ? t('manage.community.error.slug') : null;
-				if (!nameError && !slugError) error = 'validation';
-			} else {
-				error = errorKind(cause);
-			}
+			// Route each 422 field onto its input; an unmapped field or a
+			// non-validation failure falls to the shared banner (a `forbidden`
+			// swaps in the top-level empty state, as on load).
+			const keys = communityParamsErrorKeys(cause);
+			nameError = keys.nameKey ? t(keys.nameKey) : null;
+			slugError = keys.slugKey ? t(keys.slugKey) : null;
+			error = keys.bannerKind;
 		} finally {
 			saving = false;
 		}
@@ -218,10 +223,10 @@
 			{#if saved}
 				<span class="text-sm text-ink-muted" role="status">{t('manage.community.saved')}</span>
 			{/if}
-			{#if error}
-				<span class="text-sm text-danger" role="alert">{t('manage.error.body')}</span>
-			{/if}
 		</div>
+		{#if error}
+			<ErrorBanner kind={error} />
+		{/if}
 	</form>
 
 	{#if instance}

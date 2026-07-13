@@ -117,7 +117,7 @@ describe('new group page', () => {
 			.mockResolvedValueOnce(
 				jsonResponse(422, {
 					error: {
-						code: 'validation',
+						code: 'invalid_params',
 						message: 'Slug has already been taken.',
 						details: { slug: ['has already been taken'] }
 					}
@@ -135,6 +135,32 @@ describe('new group page', () => {
 			expect(screen.getByText('That web address is taken or invalid.')).toBeTruthy()
 		);
 		// A rejected create must not navigate away from the form.
+		expect(goto).not.toHaveBeenCalled();
+	});
+
+	it('surfaces the shared error banner when a create fails without a mappable field', async () => {
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(communityResponse())
+			// A 422 whose details name no field the form maps (here, empty)
+			// falls through to the shared ErrorBanner — the validation kind's
+			// localized copy — rather than a per-field message, and the form
+			// stays put.
+			.mockResolvedValueOnce(
+				jsonResponse(422, {
+					error: { code: 'invalid_params', message: 'Validation failed.', details: {} }
+				})
+			);
+		render(Page);
+		await waitFor(() => expect(document.querySelector('#group-name')).toBeTruthy());
+
+		await fireEvent.input(document.querySelector('#group-name')!, {
+			target: { value: 'Everyone' }
+		});
+		await fireEvent.click(document.querySelector('#group-create-submit')!);
+
+		await waitFor(() =>
+			expect(screen.getByText('Please check your input and try again.')).toBeTruthy()
+		);
 		expect(goto).not.toHaveBeenCalled();
 	});
 

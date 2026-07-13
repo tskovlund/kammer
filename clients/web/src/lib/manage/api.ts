@@ -1,5 +1,6 @@
 import { createApiClient } from '$lib/api/client.js';
-import { fail, guard } from '$lib/api/errors.js';
+import { ApiError, errorKind, fail, guard, type ApiErrorKind } from '$lib/api/errors.js';
+import type { MessageKey } from '$lib/i18n/format.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 
@@ -479,4 +480,73 @@ export async function updateLegalPage(
 		if (error || !data) throw fail(error, response, 'Could not publish this page.');
 		return data.data;
 	});
+}
+
+// --- Form validation → i18n keys (#253) -------------------------------------
+//
+// A 422 carries `details` (field → messages) built from the server's Ecto
+// changeset via `traverse_errors`, so its keys are the changeset field atoms —
+// verified against `Kammer.Groups.Group` (`create_changeset`/`update_changeset`)
+// and `Kammer.Communities.Community` (`changeset`). These map the fields a form
+// control can actually make invalid onto our own copy; everything else (an
+// unmapped field, or a non-validation failure) resolves to `bannerKind` for the
+// shared `ErrorBanner`. Server message strings are never rendered — only our
+// keys (the same discipline as `registerErrorKeys`).
+
+export interface GroupParamsErrors {
+	nameKey: MessageKey | null;
+	slugKey: MessageKey | null;
+	versionRetentionKey: MessageKey | null;
+	/** Fallback banner kind; null exactly when a field-level key was set. */
+	bannerKind: ApiErrorKind | null;
+}
+
+/**
+ * Maps a failed group create/update onto per-field keys. `name`, `slug`, and
+ * (update only — `create_changeset` never casts it, so it's inert on the create
+ * form) `version_retention` are the fields whose changeset validations can fail
+ * — a taken slug surfaces under `slug` via `unique_constraint(error_key: :slug)`
+ * (#289). The enum/boolean fields are `Select`/checkbox-constrained, so they
+ * can't reach a 422 through the form; a lone unmapped field resolves to the
+ * banner. (A 422 naming *both* a mapped and an unmapped field would show the
+ * mapped one and suppress the banner that round — but that co-occurrence can't
+ * arise through the UI-constrained controls, so it's an accepted, unreachable
+ * edge, not a live gap.)
+ */
+export function groupParamsErrorKeys(cause: unknown): GroupParamsErrors {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
+		const nameKey = cause.details.name ? ('manage.field.error.name' as const) : null;
+		const slugKey = cause.details.slug ? ('manage.field.error.slug' as const) : null;
+		const versionRetentionKey = cause.details.version_retention
+			? ('manage.field.error.versionRetention' as const)
+			: null;
+		const matched = nameKey ?? slugKey ?? versionRetentionKey;
+		return { nameKey, slugKey, versionRetentionKey, bannerKind: matched ? null : 'validation' };
+	}
+	return { nameKey: null, slugKey: null, versionRetentionKey: null, bannerKind: errorKind(cause) };
+}
+
+export interface CommunityParamsErrors {
+	nameKey: MessageKey | null;
+	slugKey: MessageKey | null;
+	/** Fallback banner kind; null exactly when a field-level key was set. */
+	bannerKind: ApiErrorKind | null;
+}
+
+/**
+ * Maps a failed community create/update onto per-field keys. `name` and `slug`
+ * are the fields a form control can make invalid (slug also covers the
+ * reserved-word and uniqueness rejections). `accent_color` and `default_locale`
+ * carry validations too, but the color input and language `Select` can't
+ * produce an out-of-range value — those resolve to the banner if the server
+ * ever objects.
+ */
+export function communityParamsErrorKeys(cause: unknown): CommunityParamsErrors {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
+		const nameKey = cause.details.name ? ('manage.field.error.name' as const) : null;
+		const slugKey = cause.details.slug ? ('manage.field.error.slug' as const) : null;
+		const matched = nameKey ?? slugKey;
+		return { nameKey, slugKey, bannerKind: matched ? null : 'validation' };
+	}
+	return { nameKey: null, slugKey: null, bannerKind: errorKind(cause) };
 }
