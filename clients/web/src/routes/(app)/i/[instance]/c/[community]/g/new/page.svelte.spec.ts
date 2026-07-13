@@ -117,7 +117,7 @@ describe('new group page', () => {
 			.mockResolvedValueOnce(
 				jsonResponse(422, {
 					error: {
-						code: 'validation',
+						code: 'invalid_params',
 						message: 'Slug has already been taken.',
 						details: { slug: ['has already been taken'] }
 					}
@@ -147,7 +147,7 @@ describe('new group page', () => {
 			// stays put.
 			.mockResolvedValueOnce(
 				jsonResponse(422, {
-					error: { code: 'validation', message: 'Validation failed.', details: {} }
+					error: { code: 'invalid_params', message: 'Validation failed.', details: {} }
 				})
 			);
 		render(Page);

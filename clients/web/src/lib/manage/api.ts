@@ -503,11 +503,15 @@ export interface GroupParamsErrors {
 
 /**
  * Maps a failed group create/update onto per-field keys. `name`, `slug`, and
- * (update only) `version_retention` are the fields whose changeset validations
- * can fail — a taken slug surfaces under `slug` via
- * `unique_constraint(error_key: :slug)` (#289). The enum/boolean fields are
- * `Select`/checkbox-constrained, so they can't reach a 422 through the form; if
- * one ever did, it resolves to the banner rather than being swallowed.
+ * (update only — `create_changeset` never casts it, so it's inert on the create
+ * form) `version_retention` are the fields whose changeset validations can fail
+ * — a taken slug surfaces under `slug` via `unique_constraint(error_key: :slug)`
+ * (#289). The enum/boolean fields are `Select`/checkbox-constrained, so they
+ * can't reach a 422 through the form; a lone unmapped field resolves to the
+ * banner. (A 422 naming *both* a mapped and an unmapped field would show the
+ * mapped one and suppress the banner that round — but that co-occurrence can't
+ * arise through the UI-constrained controls, so it's an accepted, unreachable
+ * edge, not a live gap.)
  */
 export function groupParamsErrorKeys(cause: unknown): GroupParamsErrors {
 	if (cause instanceof ApiError && cause.kind === 'validation') {

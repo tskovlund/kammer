@@ -134,11 +134,20 @@
 		};
 	});
 
+	// Field errors belong to the details form; clear them at the start of any
+	// action so a stale one can't linger beside another action's "Saved".
+	function clearFieldErrors() {
+		nameError = null;
+		slugError = null;
+		versionRetentionError = null;
+	}
+
 	async function run<T>(work: () => Promise<T>) {
 		if (!instance || saving) return;
 		saving = true;
 		saved = false;
 		error = null;
+		clearFieldErrors();
 		try {
 			await work();
 			saved = true;
@@ -168,9 +177,7 @@
 		saving = true;
 		saved = false;
 		error = null;
-		nameError = null;
-		slugError = null;
-		versionRetentionError = null;
+		clearFieldErrors();
 		void (async () => {
 			try {
 				const updated = await updateGroup(instance!, communitySlug, groupSlug, params);
@@ -239,6 +246,7 @@
 		if (!window.confirm(t('manage.group.deleteConfirm'))) return;
 		saving = true;
 		error = null;
+		clearFieldErrors();
 		try {
 			await deleteGroup(instance, communitySlug, groupSlug);
 			// The group is gone, and this page's URL with it. The groups tab
@@ -257,6 +265,7 @@
 		if (!instance) return;
 		saving = true;
 		error = null;
+		clearFieldErrors();
 		try {
 			if (approve) {
 				await approveJoinRequest(instance, communitySlug, groupSlug, request.id);
