@@ -13,6 +13,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Markdown from '$lib/ui/Markdown.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
@@ -159,20 +160,7 @@
 			</header>
 
 			{#if store?.actionError}
-				<div
-					class="flex items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-					role="alert"
-				>
-					<span>{store.actionError.message}</span>
-					<button
-						type="button"
-						class="shrink-0 text-danger/70 hover:text-danger"
-						aria-label={t('common.dismiss')}
-						onclick={() => store?.clearActionError()}
-					>
-						✕
-					</button>
-				</div>
+				<ErrorBanner kind={store.actionError} ondismiss={() => store?.clearActionError()} />
 			{/if}
 
 			{#if !event.cancelled}

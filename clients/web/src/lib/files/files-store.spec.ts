@@ -157,7 +157,8 @@ describe('createFilesStore', () => {
 
 		await store.removeFile(file('a', 'a.txt'));
 
-		expect(store.actionError).toEqual({ message: 'Nope', kind: 'forbidden' });
+		// Only the kind is surfaced — the server's English message never is (#253).
+		expect(store.actionError).toBe('forbidden');
 		store.clearActionError();
 		expect(store.actionError).toBeNull();
 	});

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { ApiError } from '$lib/feed/api.js';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
@@ -23,6 +23,7 @@
 	import Card from '$lib/ui/Card.svelte';
 	import Chip from '$lib/ui/Chip.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import ListItem from '$lib/ui/ListItem.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -34,7 +35,7 @@
 	let devices = $state<Device[]>([]);
 	let passkeys = $state<Passkey[]>([]);
 	let loadState = $state<'loading' | 'ready' | 'error'>('loading');
-	let actionError = $state<string | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state(false);
 
 	// Passkey enrollment (issue #260 port 5b) is its own little flow —
@@ -89,7 +90,7 @@
 			await revokeDevice(instance, device.id);
 			devices = await fetchDevices(instance);
 		} catch (error) {
-			actionError = error instanceof ApiError ? error.message : t('devices.error.body');
+			actionError = errorKind(error);
 		} finally {
 			busy = false;
 		}
@@ -163,7 +164,9 @@
 				/* keep the current list; it refreshes on reload */
 			}
 		} catch (error) {
-			passkeyError = error instanceof ApiError ? error.message : t('passkeys.error');
+			// No passkey-specific removal copy exists, so fall back to the shared
+			// per-kind message — never the server's English `ApiError.message` (#253).
+			passkeyError = t(`errors.${errorKind(error)}`);
 		} finally {
 			passkeyBusy = false;
 		}
@@ -207,12 +210,7 @@
 		<EmptyState title={t('devices.error.title')} body={t('devices.error.body')} />
 	{:else}
 		{#if actionError}
-			<div
-				class="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-				role="alert"
-			>
-				{actionError}
-			</div>
+			<ErrorBanner kind={actionError} class="mb-4" />
 		{/if}
 
 		<Card class="divide-y divide-line">

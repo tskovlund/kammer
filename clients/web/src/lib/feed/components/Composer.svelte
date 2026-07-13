@@ -81,11 +81,14 @@
 			try {
 				uploads = [...uploads, await uploadFile(instance, ref, file)];
 			} catch (error) {
+				// A too-large upload keeps its filename-specific copy; any other
+				// ApiError maps to the shared per-kind message rather than the
+				// server's English `ApiError.message` (#253).
 				uploadError =
 					error instanceof ApiError
 						? error.kind === 'too_large'
 							? t('feed.compose.uploadTooLarge', { name: file.name })
-							: error.message
+							: t(`errors.${error.kind}`)
 						: t('feed.compose.uploadFailed', { name: file.name });
 			}
 		}

@@ -17,15 +17,14 @@ export function createRosterStore(instance: Instance, communitySlug: string) {
 	let filter = $state<Record<string, string>>({});
 	let loadState = $state<LoadState>('idle');
 	let loadErrorKind = $state<ApiErrorKind | null>(null);
-	let actionError = $state<{ message: string; kind: ApiErrorKind } | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let busy = $state(false);
 	// Discards a fetch that resolves after a newer filter change, so a slow
 	// unfiltered response never overwrites the filtered one on screen.
 	let generation = 0;
 
 	function report(error: unknown): void {
-		if (error instanceof ApiError) actionError = { message: error.message, kind: error.kind };
-		else actionError = { message: 'Something went wrong.', kind: 'server' };
+		actionError = error instanceof ApiError ? error.kind : 'server';
 	}
 
 	async function load(): Promise<void> {

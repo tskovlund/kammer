@@ -238,6 +238,19 @@ and this project adheres to
   them. This is the shared mechanism the inline 422 field-error work
   (#253) builds on.
 
+### Fixed
+
+- PWA action surfaces no longer render the raw server-English
+  `ApiError.message` (issue #253, part of #270). A shared
+  `ui/ErrorBanner` renders localized `errors.<kind>` copy instead, so a
+  Danish user sees Danish rather than an English server string, and no
+  server-internal message leaks to the UI. Converted the post composer,
+  the join/leave and invite actions, device/passkey management, and the
+  feed/event/series/files/roster stores' action-error surfaces (each
+  store's action-error state now carries the `ApiErrorKind`, not a
+  message string). Field-bearing forms — inline per-field 422 errors —
+  follow in the next slice.
+
 ### Security
 
 - `Event.location_url` now rejects anything but `http`/`https` on

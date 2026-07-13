@@ -104,7 +104,7 @@ describe('createRosterStore', () => {
 
 		vi.mocked(api.updateMemberRole).mockRejectedValue(new ApiError('forbidden', 'Nej.', 403));
 		await store.changeRole(member('a'), 'member');
-		expect(store.actionError?.kind).toBe('forbidden');
+		expect(store.actionError).toBe('forbidden');
 	});
 
 	it('a stale filter response never overwrites a newer one', async () => {

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { ApiError, fetchCommunity } from '$lib/feed/api.js';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
+	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
@@ -11,6 +12,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import ListItem from '$lib/ui/ListItem.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -22,7 +24,7 @@
 	let community = $state<Community | null>(null);
 	let invites = $state<Invite[]>([]);
 	let loadState = $state<'loading' | 'ready' | 'error'>('loading');
-	let actionError = $state<string | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let notice = $state<string | null>(null);
 	let busy = $state(false);
 	let email = $state('');
@@ -62,7 +64,7 @@
 	}
 
 	function report(error: unknown): void {
-		actionError = error instanceof ApiError ? error.message : t('groups.error.body');
+		actionError = errorKind(error);
 	}
 
 	async function newLink(): Promise<void> {
@@ -177,12 +179,7 @@
 		<EmptyState title={t('invites.error.title')} body={t('invites.error.body')} />
 	{:else}
 		{#if actionError}
-			<div
-				class="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
-				role="alert"
-			>
-				{actionError}
-			</div>
+			<ErrorBanner kind={actionError} class="mb-4" />
 		{/if}
 		{#if notice}
 			<div

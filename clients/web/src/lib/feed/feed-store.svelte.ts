@@ -13,11 +13,6 @@ interface GroupRef {
 	group: string;
 }
 
-export interface FeedActionError {
-	kind: ApiErrorKind;
-	message: string;
-}
-
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 /**
@@ -37,7 +32,7 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	let loadErrorKind = $state<ApiErrorKind | null>(null);
 	let nextCursor = $state<string | null>(null);
 	let loadingMore = $state(false);
-	let actionError = $state<FeedActionError | null>(null);
+	let actionError = $state<ApiErrorKind | null>(null);
 	let stopLive: (() => void) | null = null;
 	// Non-null exactly when `posts` is last-known-good cached data rather
 	// than a fresh fetch (issue #186) — drives the stale/offline banner.
@@ -79,9 +74,9 @@ export function createFeedStore(instance: Instance, ref: GroupRef, groupId: stri
 	function handle(error: unknown): void {
 		if (error instanceof ApiError) {
 			if (error.kind === 'auth') noteInstanceAuthFailure(instance);
-			actionError = { kind: error.kind, message: error.message };
+			actionError = error.kind;
 		} else {
-			actionError = { kind: 'server', message: 'Something went wrong.' };
+			actionError = 'server';
 		}
 	}
 
