@@ -48,8 +48,10 @@ defmodule Kammer.Repo.Migrations.MoveCommunityFileSpaceToGroups do
   # The rehoming target for each community: prefer the oldest group that
   # can actually surface the files (not archived, not `:private`, `:files`
   # enabled), falling back to the community's oldest group overall. The
-  # ranking flag is a plain boolean (all three columns are NOT NULL), so
-  # `DESC` puts qualifying groups first with no NULL-ordering ambiguity.
+  # ranking flag is never NULL — `archived_at` is only tested via `IS NULL`
+  # (null-safe regardless of the column's nullability), and `visibility`
+  # and `features` are both NOT NULL — so `DESC` puts qualifying groups
+  # first with no NULL-ordering ambiguity.
   @first_group """
   SELECT DISTINCT ON (community_id) community_id, id AS group_id
   FROM groups
