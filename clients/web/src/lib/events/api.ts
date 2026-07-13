@@ -1,6 +1,7 @@
 import { createApiClient } from '$lib/api/client.js';
-import { fail, guard } from '$lib/api/errors.js';
+import { ApiError, errorKind, fail, guard, type ApiErrorKind } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
+import type { MessageKey } from '$lib/i18n/format.js';
 import type { Community } from '$lib/feed/types.js';
 import type { Group } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
@@ -370,4 +371,67 @@ export async function fetchGroupCalendarToken(
 		if (error || !data) throw fail(error, response, 'Could not load this calendar link.');
 		return data.data;
 	});
+}
+
+// --- Form validation → i18n keys (#253) -------------------------------------
+//
+// A 422 from create/edit carries `details` (field → messages) from the
+// server's changeset via `traverse_errors`, so its keys are the changeset
+// field atoms — verified against `Kammer.Events.Event.changeset/2` (the
+// shared create/update changeset: `title`, `ends_at`, `location_name`,
+// `location_url`) and, for a recurring create, `Kammer.Events.EventSeries`
+// plus the context's `until` cross-check (`Kammer.Events.create_recurring_event`
+// adds "must be on or after the start date" on `until`). These map the fields
+// a form control can actually make invalid onto our own copy; a `starts_at`
+// (client-gated required-only), the enum `frequency` Select, or any unmapped
+// field resolves to `bannerKind` for the shared `ErrorBanner`. Server message
+// strings never render (the same discipline as the manage mappers).
+
+export interface EventParamsErrors {
+	titleKey: MessageKey | null;
+	endsAtKey: MessageKey | null;
+	locationNameKey: MessageKey | null;
+	locationUrlKey: MessageKey | null;
+	untilKey: MessageKey | null;
+	/** Fallback banner kind; null exactly when a field-level key was set. */
+	bannerKind: ApiErrorKind | null;
+}
+
+/**
+ * Maps a failed event create/edit onto per-field keys. `location_url` is the
+ * live #247 target (a non-http(s) link 422s), `ends_at` the end-before-start
+ * cross-field check, and `until` the recurring-create date whose window is too
+ * narrow to yield an occurrence. A lone unmapped field resolves to the banner;
+ * a 422 naming both a mapped and an unmapped field shows the mapped one and
+ * suppresses the banner that round — an accepted, UI-unreachable edge.
+ */
+export function eventParamsErrorKeys(cause: unknown): EventParamsErrors {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
+		const titleKey = cause.details.title ? ('events.field.error.title' as const) : null;
+		const endsAtKey = cause.details.ends_at ? ('events.field.error.endsAt' as const) : null;
+		const locationNameKey = cause.details.location_name
+			? ('events.field.error.locationName' as const)
+			: null;
+		const locationUrlKey = cause.details.location_url
+			? ('events.field.error.locationUrl' as const)
+			: null;
+		const untilKey = cause.details.until ? ('events.field.error.until' as const) : null;
+		const matched = titleKey ?? endsAtKey ?? locationNameKey ?? locationUrlKey ?? untilKey;
+		return {
+			titleKey,
+			endsAtKey,
+			locationNameKey,
+			locationUrlKey,
+			untilKey,
+			bannerKind: matched ? null : 'validation'
+		};
+	}
+	return {
+		titleKey: null,
+		endsAtKey: null,
+		locationNameKey: null,
+		locationUrlKey: null,
+		untilKey: null,
+		bannerKind: errorKind(cause)
+	};
 }

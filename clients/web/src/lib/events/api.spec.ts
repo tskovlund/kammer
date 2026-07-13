@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchEventSeries, fetchGroupCalendarToken, fetchMyCalendarToken } from './api';
+import {
+	eventParamsErrorKeys,
+	fetchEventSeries,
+	fetchGroupCalendarToken,
+	fetchMyCalendarToken
+} from './api';
+import { ApiError } from '$lib/api/errors';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -75,5 +81,42 @@ describe('fetchEventSeries', () => {
 		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
 		expect(request.method).toBe('GET');
 		expect(request.url).toContain('/communities/our-club/events/series/s1');
+	});
+});
+
+function validation(details: Record<string, string[]>): ApiError {
+	return new ApiError('validation', 'Validation failed.', 422, details);
+}
+
+describe('eventParamsErrorKeys', () => {
+	it('routes each 422 field detail onto its key and suppresses the banner', () => {
+		// `location_url` is the live #247 target (a non-http(s) link), `ends_at`
+		// the end-before-start cross-check, and `until` the recurring-create
+		// window — the last from the series changeset, not the event one.
+		expect(
+			eventParamsErrorKeys(
+				validation({
+					location_url: ['must be a valid http(s) URL'],
+					ends_at: ['must be after the start'],
+					until: ['must be on or after the start date']
+				})
+			)
+		).toEqual({
+			titleKey: null,
+			endsAtKey: 'events.field.error.endsAt',
+			locationNameKey: null,
+			locationUrlKey: 'events.field.error.locationUrl',
+			untilKey: 'events.field.error.until',
+			bannerKind: null
+		});
+	});
+
+	it('falls back to the validation banner when a 422 carries no mapped field', () => {
+		expect(eventParamsErrorKeys(validation({})).bannerKind).toBe('validation');
+	});
+
+	it('falls back to the kind banner for a non-validation failure', () => {
+		expect(eventParamsErrorKeys(new Error('boom')).bannerKind).toBe('server');
+		expect(eventParamsErrorKeys(new ApiError('forbidden', 'no', 403)).bannerKind).toBe('forbidden');
 	});
 });

@@ -18,6 +18,22 @@ export type AttendanceRow = EventSeriesDetail['attendance']['rows'][number];
 export type RsvpStatus = 'yes' | 'no' | 'maybe';
 
 /**
+ * Per-field 422 copy for the event form (#253), already translated by the
+ * page from `eventParamsErrorKeys`. Each is the message an `Input`'s `error`
+ * prop renders, or `null` when that field is clean. Only the fields whose
+ * changeset validations a form control can actually trip live here (title,
+ * end time, the two location fields, and the create-only repeat-until date);
+ * everything else falls to the shared banner.
+ */
+export interface EventFieldErrors {
+	title: string | null;
+	endsAt: string | null;
+	locationName: string | null;
+	locationUrl: string | null;
+	until: string | null;
+}
+
+/**
  * An upcoming event tagged with the account and community it came from —
  * the Events tab merges these across every added instance, and provenance
  * is the community, never the server (ADR 0024). The group name rides on

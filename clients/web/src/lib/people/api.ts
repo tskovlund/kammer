@@ -1,6 +1,7 @@
 import { createApiClient } from '$lib/api/client.js';
-import { fail, guard } from '$lib/api/errors.js';
+import { ApiError, fail, guard } from '$lib/api/errors.js';
 import { fetchAuthedObjectUrl } from '$lib/feed/api.js';
+import type { MessageKey } from '$lib/i18n/format.js';
 import type { Instance } from '$lib/instances/types.js';
 import type {
 	Device,
@@ -380,4 +381,45 @@ export async function leaveGroup(instance: Instance, ref: GroupRef): Promise<voi
 		);
 		if (error) throw fail(error, response, 'Could not leave this group.');
 	});
+}
+
+// --- Profile form validation → i18n keys (#253) -----------------------------
+//
+// A 422 from `PUT /api/v1/me` carries `details` (field → messages) from
+// `Kammer.Accounts.User.settings_changeset/2` via `traverse_errors`, so its
+// keys are the changeset field atoms — verified against that changeset:
+// `display_name` (required, ≤100 chars) and `pronouns` (≤40 chars) are the
+// free-text `Input` fields a control can trip, so they take per-field copy.
+// `locale`/`timezone`/`digest_frequency` carry validations too, but their
+// `Select`s can't reach an out-of-range value — those (and any unmapped field)
+// resolve to a banner, keeping the existing field-specific banner copy where
+// the server names one. Server message strings never render.
+
+export interface ProfileParamsErrors {
+	displayNameKey: MessageKey | null;
+	pronounsKey: MessageKey | null;
+	/** Banner copy; null exactly when a field-level key was set. */
+	bannerKey: MessageKey | null;
+}
+
+/** Maps a failed profile save onto per-field keys plus a fallback banner key. */
+export function profileParamsErrorKeys(cause: unknown): ProfileParamsErrors {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
+		const displayNameKey = cause.details.display_name
+			? ('profile.error.displayName' as const)
+			: null;
+		const pronounsKey = cause.details.pronouns ? ('profile.error.pronouns' as const) : null;
+		if (displayNameKey || pronounsKey) {
+			return { displayNameKey, pronounsKey, bannerKey: null };
+		}
+		// No mapped field matched: keep the Select-field-specific copy where the
+		// server named one, else a generic validation banner.
+		const bannerKey: MessageKey =
+			(cause.details.timezone && 'profile.error.timezone') ||
+			(cause.details.locale && 'profile.error.language') ||
+			(cause.details.digest_frequency && 'profile.error.digest') ||
+			'profile.error.validation';
+		return { displayNameKey: null, pronounsKey: null, bannerKey };
+	}
+	return { displayNameKey: null, pronounsKey: null, bannerKey: 'profile.error.body' };
 }

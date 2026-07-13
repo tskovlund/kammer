@@ -251,6 +251,30 @@ and this project adheres to
   unmapped field or non-validation failure falls through to the shared
   `ErrorBanner`. Server-English message strings are still never rendered.
 
+- Inline 422 field errors on the PWA's remaining forms — event
+  create/edit and profile update (issue #253, part of #270). The event
+  form now lands a non-http(s) location link on the location-link field
+  (issue #247), an end-before-start on the end-time field, an
+  over-length title/location on their fields, and a too-narrow
+  repeat-until window on that date; the profile form lands a
+  blank-or-too-long display name and an over-length pronouns value on
+  their inputs. Two new mappers, `eventParamsErrorKeys` and
+  `profileParamsErrorKeys`, turn the 422 `details` (Ecto changeset field
+  names, verified against `Kammer.Events.Event`/`EventSeries` and
+  `Kammer.Accounts.User.settings_changeset`) into per-field i18n keys;
+  the event form's inputs moved onto the shared `Input` component to
+  carry the `error` prop. `Select`-constrained fields and any unmapped
+  field fall through to the shared `ErrorBanner`, and the event pages no
+  longer render the raw server `ApiError.message`. First-run setup keeps
+  its banner for now: its `with`-chained sub-changesets yield flat but
+  cross-entity-ambiguous detail keys (`name`/`slug` for both community
+  and group) split across two wizard steps, so field mapping is deferred
+  — but its raw-`.message` render was replaced with localized copy too.
+  The community/group invite and instance-settings forms need no change:
+  their endpoints emit no field-level 422 (the invite changeset doesn't
+  validate `invited_email`; `instance_name` is unvalidated), so they
+  correctly stay on the banner.
+
 ### Fixed
 
 - PWA action surfaces no longer render the raw server-English

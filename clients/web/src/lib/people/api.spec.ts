@@ -3,8 +3,10 @@ import {
 	beginPasskeyRegistration,
 	completePasskeyRegistration,
 	deletePasskey,
-	fetchPasskeys
+	fetchPasskeys,
+	profileParamsErrorKeys
 } from './api.js';
+import { ApiError } from '$lib/api/errors.js';
 import type { Instance } from '$lib/instances/types.js';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -105,5 +107,36 @@ describe('deletePasskey', () => {
 		const [request] = vi.mocked(fetch).mock.calls[0] as [Request];
 		expect(request.method).toBe('DELETE');
 		expect(request.url).toBe('https://kammer.example.com/api/v1/me/passkeys/passkey-1');
+	});
+});
+
+function validation(details: Record<string, string[]>): ApiError {
+	return new ApiError('validation', 'Validation failed.', 422, details);
+}
+
+describe('profileParamsErrorKeys', () => {
+	it('routes display_name/pronouns 422 details onto their keys and suppresses the banner', () => {
+		expect(
+			profileParamsErrorKeys(validation({ display_name: ['blank'], pronouns: ['too long'] }))
+		).toEqual({
+			displayNameKey: 'profile.error.displayName',
+			pronounsKey: 'profile.error.pronouns',
+			bannerKey: null
+		});
+	});
+
+	it('keeps the Select-field-specific banner copy when no mapped field matched', () => {
+		// A `timezone` 422 (unreachable through the Select, but the server can
+		// still name it) keeps its specific copy rather than the generic one.
+		expect(profileParamsErrorKeys(validation({ timezone: ['is not a known time zone'] }))).toEqual({
+			displayNameKey: null,
+			pronounsKey: null,
+			bannerKey: 'profile.error.timezone'
+		});
+	});
+
+	it('falls back to a generic validation banner, then the body copy for a non-validation failure', () => {
+		expect(profileParamsErrorKeys(validation({})).bannerKey).toBe('profile.error.validation');
+		expect(profileParamsErrorKeys(new Error('boom')).bannerKey).toBe('profile.error.body');
 	});
 });
