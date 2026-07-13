@@ -20,9 +20,10 @@
 
 <div
 	class="flex items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger {className}"
-	role="alert"
 >
-	<span>{t(`errors.${kind}`)}</span>
+	<!-- Only the message is the live region: keeping the dismiss button out
+	     of it means a screen reader announces the error, not "…, Dismiss". -->
+	<span role="alert">{t(`errors.${kind}`)}</span>
 	{#if ondismiss}
 		<button
 			type="button"
