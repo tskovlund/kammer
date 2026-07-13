@@ -141,22 +141,6 @@ defmodule KammerWeb.ClientIpTest do
     end
   end
 
-  describe "client_ip_from_connect_info/2 (LiveView socket path)" do
-    test "applies the same policy to peer_data and x_headers" do
-      trust_proxies(["203.0.113.250"])
-
-      forwarded = [{"x-forwarded-for", "198.51.100.7"}]
-
-      assert ClientIp.client_ip_from_connect_info(%{address: @proxy}, forwarded) ==
-               {198, 51, 100, 7}
-
-      assert ClientIp.client_ip_from_connect_info(%{address: @direct_client}, forwarded) ==
-               @direct_client
-
-      assert ClientIp.client_ip_from_connect_info(nil, nil) == nil
-    end
-  end
-
   describe "rate limiting through the endpoint" do
     test "signup limits key on the forwarded client, per client, behind a trusted proxy" do
       trust_proxies(["203.0.113.250"])

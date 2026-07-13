@@ -170,13 +170,9 @@ jobs:
         run: pnpm run build
 
   # End-to-end suite for the instance-served PWA (issue #235): boots a
-  # real instance the same way `smoke` does, but drives the Svelte client
-  # instead of LiveView — the client-side twin of that job, and a
-  # prerequisite for the LiveView removal (#187). Structure mirrors
-  # `smoke` deliberately (same Postgres service, same Nix/Mix caching, same
-  # runner-provided Chrome instead of a Playwright-managed download) so the
-  # two jobs' environment assumptions stay identical; the divergences are
-  # called out inline below.
+  # real instance and drives the Svelte client through the product flows.
+  # This is the end-to-end gate now that LiveView is gone (#187). Uses the
+  # runner-provided Chrome instead of a Playwright-managed download.
   e2e:
     name: End-to-end (Svelte PWA)
     runs-on: ubuntu-latest
@@ -234,12 +230,9 @@ jobs:
       - name: Fetch dependencies
         run: nix develop --command mix deps.get
 
-      # Divergence from `smoke`: no `mix assets.setup && mix assets.build`
-      # step. That pipeline builds the LiveView app.css/app.js bundle,
-      # which this suite never requests — it drives the Svelte client only
-      # (served from `priv/static/app`, staged by e2e/global-setup.ts, not
-      # `mix assets.build`), so skipping it is a real time saving rather
-      # than an untested assumption.
+      # No asset-build step: the Svelte client is served from
+      # `priv/static/app`, staged by e2e/global-setup.ts — there is no
+      # server-side asset pipeline to run (it left with LiveView, #187).
       - name: Compile
         run: nix develop --command mix compile
 
@@ -269,72 +262,3 @@ jobs:
           name: playwright-traces
           path: clients/web/test-results/
           if-no-files-found: ignore
-
-  # End-to-end smoke test: boots a real instance and drives the actual
-  # product flows (wizard, invite signups, posts, poll, event, files) in
-  # a headless browser — the same script that generates the README
-  # screenshots. The captured screenshots are uploaded as workflow
-  # artifacts so reviewers can eyeball the UI on any PR; committing them
-  # stays a deliberate, human-reviewed act (see docs/development.md).
-  smoke:
-    name: Smoke test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-
-      - name: Cache Mix dependencies and build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            deps
-            _build
-            .nix-mix
-            .nix-hex
-          key: mix-dev-${{ runner.os }}-${{ hashFiles('mix.lock') }}
-          restore-keys: mix-dev-${{ runner.os }}-
-
-      - name: Install Hex and rebar
-        run: nix develop --command bash -c "mix local.hex --force && mix local.rebar --force"
-
-      - name: Fetch dependencies
-        run: nix develop --command mix deps.get
-
-      - name: Compile and build assets
-        run: nix develop --command bash -c "mix compile && mix assets.setup && mix assets.build"
-
-      - name: Drive the real flows and capture screenshots
-        run: nix develop --command bash scripts/screenshots.sh
-        env:
-          # The runner's preinstalled Chrome; Playwright only drives it.
-          CHROMIUM_BIN: /usr/bin/google-chrome
-
-      - name: Upload screenshots as artifacts
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: screenshots
-          path: docs/screenshots/
-          if-no-files-found: error

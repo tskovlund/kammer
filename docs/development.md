@@ -29,7 +29,7 @@ token for the `/setup` wizard.
 | Full quality gate          | `mix precommit` (or `make check`)     |
 | Lint only                  | `mix lint`                            |
 | Format everything          | `make format` (mix format + prettier) |
-| Regenerate screenshots     | `scripts/screenshots.sh`              |
+| End-to-end (PWA)           | `scripts/e2e.sh`                      |
 | Extract/merge translations | `mix gettext.extract --merge`         |
 
 The gate = format check, Credo strict, compile with
@@ -72,16 +72,10 @@ never surprise you.
 The ones that cost real time — check here before you burn an hour on
 the same one:
 
-- **LiveView forms must be fully driven by `to_form`** — any field not
-  round-tripped through the change event resets on re-render.
-- **`phx-value-*` attributes are not merged** into a native
-  `change`/`submit` event's payload for bare `<input>`/`<select>`
-  elements (only for click-type events, and for elements inside an
-  actual `<form>`). A per-field control that needs to identify itself
-  needs a real `<form>` wrapper with a hidden input, not a bare
-  element with `phx-value-*`.
 - **Route order matters**: literal segments (`/events/new`) must be
-  defined before wildcards (`/events/:event_id`) across `live_session`s.
+  defined before param routes (`/events/:event_id`), and the PWA
+  catch-all scope (`get "/*path"`) is defined **last** in the router so
+  it can't shadow the JSON API, `/healthz`, or the ICS/RSS feeds.
 - **Swoosh test assertions pop the _next_ mailbox message** — drain
   fixture-generated emails first (`drain_delivered_emails` helper,
   used throughout the test suite).
@@ -105,7 +99,7 @@ the same one:
 
 | When            | What                                                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Every PR        | Quality gate, smoke test (below), Prettier, commitlint, Docker build + boot check, CodeQL, dependency review, Gitleaks |
+| Every PR        | Quality gate, web-client checks, Playwright e2e (below), Prettier, commitlint, Docker build + boot check, CodeQL, dependency review, Gitleaks |
 | Merge to `main` | Docker image → `ghcr.io/tskovlund/kammer:main`; mix.lock → dependency graph                                            |
 | Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                            |
 | Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                 |
@@ -119,22 +113,21 @@ server next to the Elixir one:
 
 ```sh
 mix phx.server                 # the API, on localhost:4000
-cd clients/web && pnpm dev     # the client, on localhost:5173/app
+cd clients/web && pnpm dev     # the client, on localhost:5173
 ```
 
 Point the client at `http://localhost:4000` as its instance. The
-`/app` prefix is baked into the client (`paths.base` in
-`vite.config.ts`) and must match `:pwa_base_path` in
-`config/config.exs` — both flip to `/` at the LiveView removal cut
-(#187).
+client's base path (`paths.base` in `vite.config.ts`) is empty and must
+match `:pwa_base_path` in `config/config.exs` — both are the site root
+`/` since the LiveView removal cut (#187).
 
 In releases the client **is** served by Phoenix: the Dockerfile's
 client stage runs `pnpm build` and ships the output into the release
-at `priv/static/app`, which the endpoint serves under `/app` with an
-`index.html` fallback so client routes (e.g. `/app/sign-in/{token}`
-from a magic-link email) deep-link straight into the SPA. A dev
-server without a built bundle answers `/app` with a plain-text
-pointer to this section instead of a 500.
+at `priv/static/app`, which the endpoint serves at the site root with
+an `index.html` fallback so client routes (e.g. `/sign-in/{token}` from
+a magic-link email) deep-link straight into the SPA. A dev server
+without a built bundle answers `/` with a plain-text pointer to this
+section instead of a 500.
 
 ## The API contract
 
@@ -144,35 +137,21 @@ from the same modules that shape responses. Clients generate from it
 an API client. A drift test pins the document to the router: adding an
 API route without describing it fails CI.
 
-## Smoke test & screenshots
+## End-to-end tests & screenshots
 
-`scripts/screenshots.sh` resets the dev database, boots the server,
-and drives the real product flows in headless Chromium — first-run
-wizard, invite-link signups for a four-member community, posts,
-reactions, a poll, an acknowledgment post, an event with RSVPs, file
-uploads, a sealed group — then captures the shots the README embeds.
-Nothing is seeded behind the scenes.
+`scripts/e2e.sh` runs the PWA's Playwright suite (`clients/web/e2e/`)
+against a throwaway dev database — the first-run wizard, sign-in,
+invite-link signups, posting, RSVP and the rest of the product flows,
+driven through the real Svelte client. It is **destructive** to
+`kammer_dev` (global-setup drops and recreates it). The same suite runs
+in CI as the **End-to-end (Svelte PWA)** check on every PR. The Docker
+workflow additionally boots the freshly built image against Postgres,
+requires `/healthz` to answer, and checks the PWA index serves at `/` —
+proof the shipped artifact starts, migrates, and bundles the client.
 
-The same script runs in CI as the **Smoke test** check on every PR: if
-a flow breaks end to end, the PR goes red, and the captured screenshots
-are attached to the run as artifacts so reviewers can eyeball the UI
-without checking out the branch. The Docker workflow additionally boots
-the freshly built image against Postgres and requires `/healthz` to
-answer — proof the shipped artifact starts and migrates.
-
-Committed screenshots in `docs/screenshots/` are deliberately **not**
-auto-updated by CI: pixels are nondeterministic run to run, and binary
-churn on every merge would bloat history for nothing. Regenerate
-whenever a PR changes the UI visibly and commit the diff — reviewers
-then see visual changes in the PR like any other change. Two ways to
-regenerate: run `scripts/screenshots.sh` locally, or dispatch the
-**Screenshots** workflow on the PR branch (Actions → Screenshots →
-Run workflow) — it runs the same script and commits the diff back to
-the branch. Same deliberate act, works from a phone.
-
-**Deferred pre-v1 (owner-stated, 2026-07-12):** in practice the
-per-PR regeneration above is on hold — screenshots get a single batch
-refresh before v1, so don't regenerate per PR right now; note UI
-changes in the PR and let that batch cover them, and don't block a
-merge on stale screenshots. (See AGENTS.md's remote-container notes;
-the agent container can't build CSS locally anyway.)
+Screenshots in `docs/screenshots/` (embedded in the README) are
+regenerated as a single batch before v1 (owner-stated, 2026-07-12), not
+per PR — note UI changes in the PR and let that batch cover them; don't
+block a merge on stale screenshots. The old LiveView-driven screenshot
+script was removed with LiveView (#187); regenerating them from the PWA
+is a pre-v1 tooling task.

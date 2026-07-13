@@ -30,18 +30,14 @@ config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 # Display name is a single constant so renaming is one commit (SPEC §15).
 config :kammer, :product_name, "Kammer"
 
-# Where the instance-served Svelte PWA is mounted (ADR 0024, issue #176).
-# LiveView keeps "/" until the removal cut (#187). The flip to "/" is
-# FOUR coordinated changes, not one: (1) this key → "/", (2) `paths.base`
-# in clients/web/vite.config.ts → '' (the client bakes the base into its
-# asset URLs and router), (3) clients/web/static/manifest.webmanifest —
-# start_url/scope/icon srcs hardcode /app/ and must lose the prefix,
-# (4) the router's :pwa catch-all scope must MOVE TO THE END of the
-# router — Phoenix matches scopes in definition order, and at "/" an
-# early catch-all would swallow /api and every other route.
-# Compile-time: the endpoint's Plug.Static mount and the router scope both
-# read it at compile time.
-config :kammer, :pwa_base_path, "/app"
+# Where the instance-served Svelte PWA is mounted (ADR 0024, issue
+# #176/#187). The LiveView removal cut flipped this from "/app" to "/":
+# the PWA is now the only web UI. This one key is read at compile time
+# by the endpoint's Plug.Static mount and the router's catch-all scope
+# (defined LAST, so at "/" it can't shadow /api, /healthz or the feeds);
+# it is kept in lockstep with `paths.base` in clients/web/vite.config.ts
+# and the icon/start_url paths in clients/web/static/manifest.webmanifest.
+config :kammer, :pwa_base_path, "/"
 
 # Where the endpoint's Plug.Static reads the built client from.
 # Test env points this at a committed fixture so the static-serving
@@ -82,13 +78,7 @@ config :kammer, KammerWeb.Endpoint,
     formats: [html: KammerWeb.ErrorHTML, json: KammerWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Kammer.PubSub,
-  live_view: [signing_salt: "NYnzPZfx"]
-
-# Configure LiveView
-config :phoenix_live_view,
-  # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
-  root_tag_attribute: "phx-r"
+  pubsub_server: Kammer.PubSub
 
 # Configure the mailer
 #
@@ -98,28 +88,6 @@ config :phoenix_live_view,
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
 config :kammer, Kammer.Mailer, adapter: Swoosh.Adapters.Local
-
-# Configure esbuild (the version is required)
-config :esbuild,
-  version: "0.25.4",
-  kammer: [
-    args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
-  ]
-
-# Configure tailwind (the version is required)
-config :tailwind,
-  version: "4.3.0",
-  kammer: [
-    args: ~w(
-      --input=assets/css/app.css
-      --output=priv/static/assets/css/app.css
-    ),
-    cd: Path.expand("..", __DIR__),
-    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
-  ]
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

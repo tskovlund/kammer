@@ -60,11 +60,12 @@ jobs:
 
       # Boot the exact image that was just built: migrations run on start
       # (bin/server calls Kammer.Release.migrate), so a 200 from /healthz
-      # proves the shipped artifact boots, connects, and migrates. The /app
-      # checks prove the bundled PWA (issue #176) actually shipped: the
-      # SPA's index.html answers both at the base path and for deep client
-      # routes (the magic-link landing shape).
-      - name: Boot check (/healthz + /app)
+      # proves the shipped artifact boots, connects, and migrates. The root
+      # checks prove the bundled PWA (issue #176/#187) actually shipped: the
+      # SPA's index.html answers both at the site root (its base since the
+      # LiveView removal) and for deep client routes (the magic-link
+      # landing shape).
+      - name: Boot check (/healthz + PWA root)
         run: |
           IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
           docker network create kammer-smoke
@@ -91,8 +92,8 @@ jobs:
             exit 1
           fi
           echo "healthz OK"
-          curl -fsS http://localhost:4000/app | grep -qi '<!doctype html>' \
-            || { echo "/app did not serve the PWA index" >&2; exit 1; }
-          curl -fsS http://localhost:4000/app/sign-in/smoke-test-token | grep -qi '<!doctype html>' \
-            || { echo "/app deep link did not fall back to index.html" >&2; exit 1; }
+          curl -fsS http://localhost:4000/ | grep -qi '<!doctype html>' \
+            || { echo "/ did not serve the PWA index" >&2; exit 1; }
+          curl -fsS http://localhost:4000/sign-in/smoke-test-token | grep -qi '<!doctype html>' \
+            || { echo "/sign-in deep link did not fall back to index.html" >&2; exit 1; }
           echo "PWA OK"

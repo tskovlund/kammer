@@ -1,8 +1,0 @@
-{
-  "name": "kammer-scripts",
-  "private": true,
-  "description": "Dependencies for repository scripts (screenshots/smoke drive). Renovate keeps them current.",
-  "dependencies": {
-    "playwright-core": "1.61.1"
-  }
-}

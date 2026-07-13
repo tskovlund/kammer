@@ -74,7 +74,10 @@ defmodule KammerWeb.Api.SetupController do
             community_slug: result.community_slug,
             group_slug: result.group_slug,
             invite_token: result.invite_token,
-            invite_url: url(~p"/invite/#{result.invite_token}"),
+            # `/invite/:token` is a PWA client route (served by the
+            # catch-all) since the LiveView removal (#187), not a
+            # compile-verifiable server route — so unverified_url/2.
+            invite_url: unverified_url(conn, "/invite/#{result.invite_token}"),
             magic_link_sent: result.magic_link_sent
           }
         })

@@ -275,6 +275,37 @@ and this project adheres to
   validate `invited_email`; `instance_name` is unvalidated), so they
   correctly stay on the banner.
 
+### Removed
+
+- **LiveView is gone — the Svelte PWA is now the only web UI** (issue
+  #187, closes #165; ADR 0024). The entire `lib/kammer_web/live/` tree,
+  the LiveView-only web layer (core/feed/Kammer components, layouts, the
+  CSP-nonce plug, the server `assets/` esbuild/Tailwind/daisyUI
+  pipeline), and every LiveView-supporting controller whose capability
+  had already moved to the JSON API (`GdprController` → `GET /me/export`
+  + `DELETE /me`; `UserSessionController` → `/api/v1/auth/*`; the browser
+  invite-accept and guest/newsletter confirm landings → their PWA + API
+  twins; the browser file-download controller → the Bearer and public
+  `/api/v1/files` routes) were deleted in one atomic cut, along with the
+  `phoenix_live_view`, `phoenix_live_dashboard`, `phoenix_live_reload`,
+  `heroicons`, `esbuild`, `tailwind`, and `lazy_html` dependencies, the
+  dev LiveDashboard/mailbox routes, and the LiveView smoke-test CI job.
+  The `KammerWeb.UserAuth` plug shrank to a session *reader* (browser
+  sign-in was already an API device-token flow), and the browser
+  pipeline dropped its LiveView flash / root-layout / CSP-nonce plugs.
+- **The PWA moved from `/app` to the site root.** `:pwa_base_path`,
+  the client's `paths.base`, the web manifest, and every email/redirect
+  producer now target `/` — a magic link is `/sign-in/{token}`, a public
+  group is `/c/{slug}/g/{slug}`, and the guest-manage link carries its
+  token in the URL fragment. The router's PWA catch-all moved to the very
+  end so it shadows neither the JSON API, `/healthz`, the ICS/RSS feeds,
+  nor the newsletter-unsubscribe routes.
+- The community-level file space (a LiveView-only surface with no API
+  twin) was removed; a data migration rehomes any community-space
+  folders, file entries, and stored files onto each community's oldest
+  group so nothing becomes unreachable (communities with no group are
+  left untouched).
+
 ### Fixed
 
 - PWA action surfaces no longer render the raw server-English

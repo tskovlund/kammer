@@ -11,14 +11,6 @@ defmodule KammerWeb.Endpoint do
     same_site: "Lax"
   ]
 
-  # :x_headers rides along with :peer_data so LiveViews can resolve
-  # the real client IP behind a trusted reverse proxy (issue #162) —
-  # socket upgrades bypass the plug pipeline, so KammerWeb.ClientIp's
-  # policy is applied in mount via client_ip_from_socket/1.
-  socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [:peer_data, :x_headers, :user_agent, session: @session_options]],
-    longpoll: [connect_info: [:peer_data, :x_headers, :user_agent, session: @session_options]]
-
   # Realtime for API clients (ADR 0014). No origin check for the same
   # reason /api gets CORS `*` (issue #150): auth is the device token in
   # the connect params, never a cookie, so a cross-origin page gains
@@ -28,20 +20,19 @@ defmodule KammerWeb.Endpoint do
     websocket: [check_origin: false],
     longpoll: false
 
-  # The instance-served Svelte PWA (ADR 0024, issue #176): the release
-  # bundles the built client into priv/static/app (see Dockerfile), and
-  # this serves its real files — hashed assets, manifest, icons — under
-  # the base path. Anything that isn't a real file (client-side routes
-  # like /app/sign-in/{token}) falls through to the router's PwaController
-  # catch-all, which answers with index.html. When the directory is
-  # absent (plain `mix phx.server` without a client build) this plug
-  # simply never matches — the controller then explains instead of 500ing.
-  # Mounted before the "/" static plug on purpose: priv/static/app lives
-  # inside priv/static, so the root plug would otherwise raise in dev
-  # ("app" is deliberately not in static_paths — these files are the
-  # client build's, not the LiveView-era statics). Flip note (#187): the
-  # mount point comes from :pwa_base_path; see config/config.exs for what
-  # the flip to "/" involves.
+  # The instance-served Svelte PWA (ADR 0024, issue #176/#187): the
+  # release bundles the built client into priv/static/app (see
+  # Dockerfile), and this serves its real files — hashed assets,
+  # manifest, icons — under :pwa_base_path (now "/", the LiveView removal
+  # cut flipped it from "/app"). Anything that isn't a real file
+  # (client-side routes like /sign-in/{token}) falls through to the
+  # router's PwaController catch-all, which answers with index.html. When
+  # the directory is absent (plain `mix phx.server` without a client
+  # build) this plug simply never matches — the controller then explains
+  # instead of 500ing. Mounted before the other "/" static plug on
+  # purpose: priv/static/app lives inside priv/static, so the root plug
+  # would otherwise raise in dev ("app" is deliberately not in
+  # static_paths — these files are the client build's).
   # `only:` deliberately excludes index.html — the SPA document must
   # always go through PwaController (CSP, frame-ancestors, no-cache);
   # serving it as a plain static file would ship it cacheable and
@@ -73,15 +64,9 @@ defmodule KammerWeb.Endpoint do
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
-    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
-    plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :kammer
   end
-
-  plug Phoenix.LiveDashboard.RequestLogger,
-    param_key: "request_logger",
-    cookie_key: "request_logger"
 
   plug Plug.RequestId
 

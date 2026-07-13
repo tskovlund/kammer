@@ -1,13 +1,15 @@
 defmodule KammerWeb.NewsletterControllerTest do
   @moduledoc """
-  The RFC 8058 one-click unsubscribe endpoint (SPEC §8, issue #233):
-  email clients POST it from the `List-Unsubscribe` header with no
-  session and no CSRF token, so it must work bare — and the token in
-  that header must be a scoped, single-purpose credential, never the
-  guest's full-power management token, since mail gateways auto-fetch
-  it with no human in the loop. This route survives the LiveView
-  removal cut (#187), so it lives in a controller test rather than in
-  the newsletter-flow LiveView tests.
+  The newsletter unsubscribe endpoints (SPEC §8, issue #233): the RFC
+  8058 one-click POST email clients fire from the `List-Unsubscribe`
+  header (no session, no CSRF token, so it must work bare), and the
+  plain GET twin a human might follow. Both take a scoped,
+  single-purpose token — never the guest's full-power management token,
+  since mail gateways auto-fetch the header with no human in the loop —
+  and both answer a neutral 200 regardless of validity. These routes are
+  the only newsletter surface that stayed server-rendered through the
+  LiveView removal cut (#187); confirming a subscription moved to the
+  JSON API (`test/kammer_web/api/newsletter_test.exs`).
   """
 
   use KammerWeb.ConnCase, async: true
@@ -100,5 +102,12 @@ defmodule KammerWeb.NewsletterControllerTest do
 
     assert conn.status == 200
     assert conn.resp_body == "Unsubscribed."
+  end
+
+  test "the human-facing GET unsubscribe answers 200 in plain text, neutral on a bad token" do
+    conn = build_conn() |> get(~p"/newsletter/unsubscribe/garbage")
+
+    assert conn.status == 200
+    assert conn.resp_body == "You're unsubscribed."
   end
 end
