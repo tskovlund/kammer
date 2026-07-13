@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
+	import Select from '$lib/ui/Select.svelte';
 	import type { Event, EventFieldErrors, EventParams } from '../types.js';
 
 	interface Props {
@@ -52,8 +53,16 @@
 
 	// Recurrence is create-only (ADR 0019: editing is per-occurrence).
 	let repeats = $state(false);
-	let frequency = $state<'weekly' | 'biweekly' | 'monthly'>('weekly');
+	// Held as `string` (narrowed back to the union in `submit`) so it can bind
+	// to the shared `Select`, whose `value` writes back a plain string.
+	let frequency = $state<string>('weekly');
 	let until = $state('');
+
+	const frequencyOptions = $derived([
+		{ value: 'weekly', label: t('events.form.weekly') },
+		{ value: 'biweekly', label: t('events.form.biweekly') },
+		{ value: 'monthly', label: t('events.form.monthly') }
+	]);
 
 	const canSubmit = $derived(title.trim().length > 0 && startsAt.length > 0 && !submitting);
 
@@ -73,7 +82,7 @@
 		};
 
 		if (mode === 'create' && repeats && until) {
-			params.recurrence = { frequency, until };
+			params.recurrence = { frequency: frequency as 'weekly' | 'biweekly' | 'monthly', until };
 		}
 
 		onSubmit(params);
@@ -94,7 +103,8 @@
 
 	<label class="flex flex-col gap-1">
 		<span class="text-sm font-medium text-ink">{t('events.form.description')}</span>
-		<textarea bind:value={description} rows="4" class="{fieldClass} resize-y"></textarea>
+		<textarea bind:value={description} rows="4" maxlength={50000} class="{fieldClass} resize-y"
+		></textarea>
 		<span class="text-xs text-ink-faint">{t('feed.compose.markdownHint')}</span>
 	</label>
 
@@ -148,14 +158,13 @@
 			</label>
 			{#if repeats}
 				<div class="flex flex-col gap-4 sm:flex-row">
-					<label class="flex flex-1 flex-col gap-1">
-						<span class="text-sm font-medium text-ink">{t('events.form.frequency')}</span>
-						<select bind:value={frequency} class={fieldClass}>
-							<option value="weekly">{t('events.form.weekly')}</option>
-							<option value="biweekly">{t('events.form.biweekly')}</option>
-							<option value="monthly">{t('events.form.monthly')}</option>
-						</select>
-					</label>
+					<Select
+						id="event-form-frequency"
+						class="flex-1"
+						label={t('events.form.frequency')}
+						options={frequencyOptions}
+						bind:value={frequency}
+					/>
 					<Input
 						id="event-form-until"
 						class="flex-1"
