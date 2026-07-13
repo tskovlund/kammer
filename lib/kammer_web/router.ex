@@ -487,6 +487,19 @@ defmodule KammerWeb.Router do
     post "/newsletter/unsubscribe/:token", NewsletterController, :unsubscribe_one_click
   end
 
+  # Swoosh mailbox preview in development only — the Playwright e2e suite
+  # reads sent magic-link emails from /dev/mailbox/json to drive the
+  # sign-in flows. A plain Swoosh Plug, not LiveView-coupled (LiveDashboard
+  # went with the #187 cut). Defined before the PWA catch-all below so
+  # /dev/mailbox matches ahead of the "/" wildcard.
+  if Application.compile_env(:kammer, :dev_routes) do
+    scope "/dev" do
+      pipe_through :browser
+
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
   ## Instance-served PWA (ADR 0024, issue #176/#187)
 
   # The SPA is a static artifact: no session, no CSRF surface. It only
