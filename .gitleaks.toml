@@ -1,0 +1,24 @@
+# Gitleaks configuration for the Secret scan workflow
+# (.github/workflows/secret-scan.yml).
+#
+# We keep the full upstream default rule set and only add a narrow
+# allowlist for the two Phoenix-generated scaffold `secret_key_base`
+# literals that ship in `config/dev.exs` and `config/test.exs`. These are
+# dev/test-only values (localhost, `check_origin: false`); the production
+# secret is never committed — `config/runtime.exs` reads it from the
+# `SECRET_KEY_BASE` environment variable and raises if it is missing. The
+# dev value is only flagged now because the LiveView-removal cut (#187)
+# deleted the `watchers:` key that followed it, which dropped the line's
+# trailing comma and made Gitleaks treat the unchanged secret as a new
+# addition. Allowlisting the exact literals keeps the blast radius to
+# these two known strings — any other secret, including a genuinely new
+# one in these same files, is still caught.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Phoenix scaffold dev/test secret_key_base (never used in production)"
+regexes = [
+  '''eKweI4oZSAsKxW75DXnUw46QgShTb9oI7jgLN3dwelGkGAafgcRh0bi10JDaQ4D\+''',
+  '''bCHQ0Hak1eNPu2OQBBOuB9cjhy5Uy7jVS0r54mIZruTY4/7E0reDRsDXF\+kdIeTC''',
+]

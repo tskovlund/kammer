@@ -97,12 +97,12 @@ the same one:
 
 ## What runs automatically
 
-| When            | What                                                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| When            | What                                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Every PR        | Quality gate, web-client checks, Playwright e2e (below), Prettier, commitlint, Docker build + boot check, CodeQL, dependency review, Gitleaks |
-| Merge to `main` | Docker image → `ghcr.io/tskovlund/kammer:main`; mix.lock → dependency graph                                            |
-| Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                            |
-| Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                 |
+| Merge to `main` | Docker image → `ghcr.io/tskovlund/kammer:main`; mix.lock → dependency graph                                                                   |
+| Tag `vX.Y.Z`    | GitHub Release + versioned image ([release.md](release.md))                                                                                   |
+| Monday 07:00    | Renovate: grouped dependency PRs, non-majors automerge                                                                                        |
 
 ## The web client (Svelte PWA)
 

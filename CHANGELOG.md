@@ -282,15 +282,15 @@ and this project adheres to
   the LiveView-only web layer (core/feed/Kammer components, layouts, the
   CSP-nonce plug, the server `assets/` esbuild/Tailwind/daisyUI
   pipeline), and every LiveView-supporting controller whose capability
-  had already moved to the JSON API (`GdprController` → `GET /me/export`
-  + `DELETE /me`; `UserSessionController` → `/api/v1/auth/*`; the browser
+  had already moved to the JSON API (`GdprController` → `GET /me/export` +
+  `DELETE /me`; `UserSessionController` → `/api/v1/auth/*`; the browser
   invite-accept and guest/newsletter confirm landings → their PWA + API
   twins; the browser file-download controller → the Bearer and public
   `/api/v1/files` routes) were deleted in one atomic cut, along with the
   `phoenix_live_view`, `phoenix_live_dashboard`, `phoenix_live_reload`,
   `heroicons`, `esbuild`, `tailwind`, and `lazy_html` dependencies, the
   dev LiveDashboard/mailbox routes, and the LiveView smoke-test CI job.
-  The `KammerWeb.UserAuth` plug shrank to a session *reader* (browser
+  The `KammerWeb.UserAuth` plug shrank to a session _reader_ (browser
   sign-in was already an API device-token flow), and the browser
   pipeline dropped its LiveView flash / root-layout / CSP-nonce plugs.
 - **The PWA moved from `/app` to the site root.** `:pwa_base_path`,
