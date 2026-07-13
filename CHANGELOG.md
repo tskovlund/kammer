@@ -238,6 +238,19 @@ and this project adheres to
   them. This is the shared mechanism the inline 422 field-error work
   (#253) builds on.
 
+- Inline 422 field errors on the PWA's group and community create and
+  update forms (issue #253, part of #270). A validation failure now
+  highlights the specific input that caused it — a taken or reserved web
+  address lands on the slug field, a blank-or-too-long name on the name
+  field (and, on group settings, a bad version-retention value on that
+  field) — with localized copy, instead of one generic banner. Two
+  shared mappers, `groupParamsErrorKeys` and `communityParamsErrorKeys`,
+  turn an `ApiError`'s 422 `details` (Ecto changeset field names, via
+  `traverse_errors`) into per-field i18n keys, reusing the
+  `registerErrorKeys` pattern and the shared `Input` `error` prop; any
+  unmapped field or non-validation failure falls through to the shared
+  `ErrorBanner`. Server-English message strings are still never rendered.
+
 ### Fixed
 
 - PWA action surfaces no longer render the raw server-English

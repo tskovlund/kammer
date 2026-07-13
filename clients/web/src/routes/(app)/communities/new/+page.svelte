@@ -6,12 +6,14 @@
 		fetchCommunityCreationCapability,
 		type CommunityParams
 	} from '$lib/communities/api.js';
-	import { ApiError } from '$lib/api/errors.js';
+	import type { ApiErrorKind } from '$lib/api/errors.js';
+	import { communityParamsErrorKeys } from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import type { Instance } from '$lib/instances/types.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
@@ -22,7 +24,7 @@
 	let allowed = $state<Instance[] | null>(null);
 	let instanceId = $state('');
 	let submitting = $state(false);
-	let formError = $state<string | null>(null);
+	let bannerKind = $state<ApiErrorKind | null>(null);
 	let nameError = $state<string | null>(null);
 	let slugError = $state<string | null>(null);
 
@@ -71,7 +73,7 @@
 		event.preventDefault();
 		if (!selected || submitting) return;
 		submitting = true;
-		formError = null;
+		bannerKind = null;
 		nameError = null;
 		slugError = null;
 		const params: CommunityParams = {
@@ -86,17 +88,13 @@
 			await goto(resolve('/groups'));
 			void community;
 		} catch (cause) {
-			if (cause instanceof ApiError && cause.kind === 'validation') {
-				// Map field NAMES onto our copy; server message strings never
-				// render (#253's direction).
-				nameError = cause.details.name ? t('communities.new.error.name') : null;
-				slugError = cause.details.slug ? t('communities.new.error.slug') : null;
-				if (!nameError && !slugError) formError = t('communities.new.error.generic');
-			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
-				formError = t('communities.new.error.forbidden');
-			} else {
-				formError = t('communities.new.error.generic');
-			}
+			// Route each 422 field onto its input; an unmapped field or a
+			// non-validation failure falls to the shared banner. Server message
+			// strings never render (#253's direction).
+			const keys = communityParamsErrorKeys(cause);
+			nameError = keys.nameKey ? t(keys.nameKey) : null;
+			slugError = keys.slugKey ? t(keys.slugKey) : null;
+			bannerKind = keys.bannerKind;
 		} finally {
 			submitting = false;
 		}
@@ -182,9 +180,9 @@
 			<Button type="submit" variant="primary" disabled={submitting}>
 				{submitting ? t('common.sending') : t('communities.new.submit')}
 			</Button>
-			{#if formError}
-				<span class="text-sm text-danger" role="alert">{formError}</span>
-			{/if}
 		</div>
+		{#if bannerKind}
+			<ErrorBanner kind={bannerKind} />
+		{/if}
 	</form>
 {/if}

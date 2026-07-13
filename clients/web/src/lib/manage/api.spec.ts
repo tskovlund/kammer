@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	communityParamsErrorKeys,
 	createBan,
 	createCustomField,
 	createGroup,
@@ -7,9 +8,11 @@ import {
 	denyJoinRequest,
 	fetchJoinRequests,
 	fetchReports,
+	groupParamsErrorKeys,
 	updateCustomField,
 	updateLegalPage
 } from './api';
+import { ApiError } from '$lib/api/errors';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -237,5 +240,55 @@ describe('manage api', () => {
 			label: 'Main instrument',
 			visibility: 'admins'
 		});
+	});
+});
+
+function validation(details: Record<string, string[]>): ApiError {
+	return new ApiError('validation', 'Validation failed.', 422, details);
+}
+
+describe('groupParamsErrorKeys', () => {
+	it('routes each 422 field detail onto its key, leaving unaffected fields and the banner clear', () => {
+		// A taken slug arrives keyed on `slug` (unique_constraint error_key,
+		// #289); `version_retention` is the update-only numeric field. `name`
+		// carries no detail here, so it stays null — and a mapped field
+		// suppresses the fallback banner.
+		expect(
+			groupParamsErrorKeys(validation({ slug: ['taken'], version_retention: ['bad'] }))
+		).toEqual({
+			nameKey: null,
+			slugKey: 'manage.field.error.slug',
+			versionRetentionKey: 'manage.field.error.versionRetention',
+			bannerKind: null
+		});
+	});
+
+	it('falls back to the validation banner when a 422 carries no mapped field', () => {
+		expect(groupParamsErrorKeys(validation({}))).toEqual({
+			nameKey: null,
+			slugKey: null,
+			versionRetentionKey: null,
+			bannerKind: 'validation'
+		});
+	});
+
+	it('falls back to the kind banner for a non-validation failure', () => {
+		expect(groupParamsErrorKeys(new Error('boom')).bannerKind).toBe('server');
+		expect(groupParamsErrorKeys(new ApiError('forbidden', 'no', 403)).bannerKind).toBe('forbidden');
+	});
+});
+
+describe('communityParamsErrorKeys', () => {
+	it('routes a 422 name detail onto its key and skips the banner', () => {
+		expect(communityParamsErrorKeys(validation({ name: ['blank'] }))).toEqual({
+			nameKey: 'manage.field.error.name',
+			slugKey: null,
+			bannerKind: null
+		});
+	});
+
+	it('falls back to a banner kind when no field matched or the failure is not a validation', () => {
+		expect(communityParamsErrorKeys(validation({})).bannerKind).toBe('validation');
+		expect(communityParamsErrorKeys('not an error').bannerKind).toBe('server');
 	});
 });

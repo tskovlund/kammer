@@ -138,6 +138,32 @@ describe('new group page', () => {
 		expect(goto).not.toHaveBeenCalled();
 	});
 
+	it('surfaces the shared error banner when a create fails without a mappable field', async () => {
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(communityResponse())
+			// A 422 whose details name no field the form maps (here, empty)
+			// falls through to the shared ErrorBanner — the validation kind's
+			// localized copy — rather than a per-field message, and the form
+			// stays put.
+			.mockResolvedValueOnce(
+				jsonResponse(422, {
+					error: { code: 'validation', message: 'Validation failed.', details: {} }
+				})
+			);
+		render(Page);
+		await waitFor(() => expect(document.querySelector('#group-name')).toBeTruthy());
+
+		await fireEvent.input(document.querySelector('#group-name')!, {
+			target: { value: 'Everyone' }
+		});
+		await fireEvent.click(document.querySelector('#group-create-submit')!);
+
+		await waitFor(() =>
+			expect(screen.getByText('Please check your input and try again.')).toBeTruthy()
+		);
+		expect(goto).not.toHaveBeenCalled();
+	});
+
 	it('shows a forbidden state, not the form, when the viewer cannot create a group', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(communityResponse([]));
 		render(Page);
