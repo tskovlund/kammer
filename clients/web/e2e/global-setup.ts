@@ -20,9 +20,10 @@ function runMix(args: string[]): void {
 /**
  * Builds the SvelteKit static output and stages it exactly where the
  * endpoint expects the client bundle in a real deployment
- * (`priv/static/app` — see `Dockerfile`'s client stage and
+ * (`priv/static/app` on disk — see `Dockerfile`'s client stage and
  * `:pwa_static_root` in config/config.exs). This is what makes the suite
- * same-origin: `PwaController` then serves `/app/*` off the same Phoenix
+ * same-origin: `PwaController` then serves the client at the site root
+ * off the same Phoenix
  * process as `/api/*`, so `window.location.origin` inside the client
  * (used by the deep-link sign-in route to know which instance to talk
  * to — see e2e/01-onboarding.spec.ts) is correct without any dev-only

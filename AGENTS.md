@@ -29,9 +29,10 @@ first-iteration UI, held bugfix-only under a feature freeze until the
 PWA reached full parity, then deleted in one cut — #165/#187 both closed
 by it. The framework-scaffold LiveView/HEEx/streams/gen-auth guidance
 this file once carried was stripped right after the cut — what survives
-below is only what still applies to the API server: Elixir, Mix, test,
-Phoenix-router, and Ecto guidelines. Client-side conventions live in
-[CONVENTIONS.md](CONVENTIONS.md) and `clients/web/`.)
+below is only what still applies to the API server: the project, Elixir,
+Mix, test, Phoenix-router, and Ecto guidelines. Client-side conventions
+live in [CONVENTIONS.md](CONVENTIONS.md), SPEC.md §21 (the design
+brief), and `clients/web/`.)
 
 **Don't reproduce a prior iteration's limitations** (owner-stated,
 2026-07-12; originally about LiveView→PWA ports, now the standing bar
@@ -587,14 +588,16 @@ asked for once and must never need to be asked for again.
   you _must_ bind the result of the expression to a variable if you want to use it and you CANNOT rebind the result inside the expression, ie:
 
       # INVALID: we are rebinding inside the `if` and the result never gets assigned
-      if connected?(socket) do
-        socket = assign(socket, :val, val)
+      if valid? do
+        params = Map.put(params, :verified_at, DateTime.utc_now())
       end
 
       # VALID: we rebind the result of the `if` to a new variable
-      socket =
-        if connected?(socket) do
-          assign(socket, :val, val)
+      params =
+        if valid? do
+          Map.put(params, :verified_at, DateTime.utc_now())
+        else
+          params
         end
 
 - **Never** nest multiple modules in the same file as it can cause cyclic dependencies and compilation errors
@@ -655,7 +658,7 @@ asked for once and must never need to be asked for again.
 
 ## Ecto Guidelines
 
-- **Always** preload Ecto associations in queries when they'll be accessed in templates, ie a message that needs to reference the `message.user.email`
+- **Always** preload Ecto associations in queries when they'll be accessed when rendering the response, ie a serializer that needs to reference the `message.user.email`
 - Remember `import Ecto.Query` and other supporting modules when you write `seeds.exs`
 - `Ecto.Schema` fields always use the `:string` type, even for `:text`, columns, ie: `field :name, :string`
 - `Ecto.Changeset.validate_number/2` **DOES NOT SUPPORT the `:allow_nil` option**. By default, Ecto validations only run if a change for the given field exists and the change value is not nil, so such as option is never needed
