@@ -5,6 +5,12 @@
 	interface Props extends HTMLButtonAttributes {
 		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
 		size?: 'md' | 'sm';
+		/**
+		 * Render as a link instead of a button, with the same look. Pass a
+		 * `resolve()`d path — the audit (#270) flagged the hand-rolled
+		 * link-as-button class copies this prop replaces.
+		 */
+		href?: string;
 		children: Snippet;
 	}
 
@@ -12,6 +18,7 @@
 		variant = 'secondary',
 		size = 'md',
 		type = 'button',
+		href = undefined,
 		class: className = '',
 		children,
 		...rest
@@ -30,12 +37,27 @@
 	};
 </script>
 
-<button
-	{type}
-	class="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50 {variants[
-		variant
-	]} {sizes[size]} {className}"
-	{...rest}
->
-	{@render children()}
-</button>
+{#if href}
+	<!-- Callers pass resolve()'d paths; the rule can't see through the prop. -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
+	<a
+		{href}
+		id={rest.id}
+		class="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 {variants[
+			variant
+		]} {sizes[size]} {className}"
+	>
+		{@render children()}
+	</a>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
+{:else}
+	<button
+		{type}
+		class="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50 {variants[
+			variant
+		]} {sizes[size]} {className}"
+		{...rest}
+	>
+		{@render children()}
+	</button>
+{/if}

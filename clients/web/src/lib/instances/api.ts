@@ -267,6 +267,17 @@ function addExchangedInstance(
 		addedAt: new Date().toISOString()
 	};
 
+	// Re-authenticating replaces the store entry (dedupe is by
+	// (baseUrl, user), and every sign-in mints a fresh id) — tear down the
+	// replaced id's socket first, or its manager would keep the old token's
+	// connection alive with no id left to reach it by.
+	const replaced = instanceStore
+		.list()
+		.find(
+			(existing) => existing.baseUrl === instance.baseUrl && existing.user.id === instance.user.id
+		);
+	if (replaced) dropSocket(replaced.id);
+
 	instanceStore.add(instance);
 	return instance;
 }
@@ -306,12 +317,14 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 	} catch {
 		// Best-effort: the local removal below is what actually matters.
 	} finally {
+		// The local removal is what actually matters — do it first, so the
+		// entry is gone even if a teardown step ever throws.
+		instanceStore.remove(instanceId);
 		// Tear down the instance's realtime socket with the instance itself —
 		// whether or not the revoke landed. Left connected, the manager would
 		// keep the old token's socket alive until a reconnect finally 401s,
-		// and a re-sign-in (which mints a new instance id) would orphan it.
+		// with no instance id left to reach it by.
 		dropSocket(instanceId);
-		instanceStore.remove(instanceId);
 		// The offline snapshots mix data across instances — on a shared
 		// device the next signer-in must never inherit them (issue #186).
 		clearSnapshots();

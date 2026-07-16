@@ -4,8 +4,7 @@
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
-	import Button from '$lib/ui/Button.svelte';
-	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import BoundaryFallback from '$lib/ui/BoundaryFallback.svelte';
 	import TabIcon, { type TabIconName } from '$lib/ui/TabIcon.svelte';
 
 	let { children } = $props();
@@ -76,7 +75,8 @@
 			{#if instances.list.length > 0}
 				<!-- One broken render (a single bad post, say) degrades to this
 				     inline card instead of white-screening the shell; the nav
-				     stays outside the boundary so there is always a way out.
+				     stays outside the boundary, and the fallback resets the
+				     boundary on navigation, so the nav is a real way out.
 				     Logged to the console — the only sink there is (#270). -->
 				<svelte:boundary onerror={(error) => console.error('[kammer] screen crashed', error)}>
 					{@render children()}
@@ -85,11 +85,7 @@
 					     reset, but snippet params are positional. -->
 					<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 					{#snippet failed(_error, reset)}
-						<div class="rounded-xl border border-line bg-surface">
-							<EmptyState title={t('boundary.title')} body={t('boundary.body')}>
-								<Button onclick={reset}>{t('common.retry')}</Button>
-							</EmptyState>
-						</div>
+						<BoundaryFallback {reset} />
 					{/snippet}
 				</svelte:boundary>
 			{/if}

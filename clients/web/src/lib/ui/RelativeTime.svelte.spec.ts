@@ -26,11 +26,14 @@ describe('RelativeTime', () => {
 		expect(screen.getByText('3 minutes ago')).toBeTruthy();
 	});
 
-	it('stops the shared ticker when the last subscriber unmounts', async () => {
-		const { unmount } = render(RelativeTime, { props: { datetime: '2026-07-16T11:58:00Z' } });
+	it('shares one ticker across instances and stops it when the last unmounts', async () => {
+		const first = render(RelativeTime, { props: { datetime: '2026-07-16T11:58:00Z' } });
+		const second = render(RelativeTime, { props: { datetime: '2026-07-16T11:59:00Z' } });
+		// The design point of ui/now.ts: N timestamps, one interval.
 		expect(vi.getTimerCount()).toBe(1);
 
-		unmount();
+		first.unmount();
+		second.unmount();
 		// createSubscriber tears down in a microtask after the effect dies.
 		await Promise.resolve();
 		expect(vi.getTimerCount()).toBe(0);

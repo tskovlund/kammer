@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 
-const page = vi.hoisted(() => ({ status: 404, error: { message: 'Not Found' } }));
+const page = vi.hoisted(() => ({ status: 404, error: { message: 'raw-server-detail' } }));
 vi.mock('$app/state', () => ({ page }));
 
 import ErrorPage from './+error.svelte';
@@ -19,7 +19,8 @@ describe('root error page', () => {
 		render(ErrorPage);
 
 		expect(screen.getByText('Page not found')).toBeTruthy();
-		expect(document.querySelector('#error-home')?.getAttribute('href')).toBe('/');
+		// `resolve()` may prefix a base path — pin the route, not the prefix.
+		expect(document.querySelector('#error-home')?.getAttribute('href')).toMatch(/\/$/);
 	});
 
 	it('renders generic copy for any other failure status', () => {
@@ -28,5 +29,14 @@ describe('root error page', () => {
 
 		expect(screen.getByText('Something went wrong')).toBeTruthy();
 		expect(document.querySelector('#error-home')).toBeTruthy();
+	});
+
+	it('never renders the raw error detail — copy comes from the status alone', () => {
+		page.status = 500;
+		render(ErrorPage);
+
+		// The mocked page.error.message above is a canary: if a future edit
+		// interpolates it, this regresses loudly.
+		expect(screen.queryByText('raw-server-detail')).toBeNull();
 	});
 });

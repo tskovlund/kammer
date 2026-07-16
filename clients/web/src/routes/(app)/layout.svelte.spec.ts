@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 
 vi.mock('$app/state', () => ({ page: { url: new URL('https://pwa.example/') } }));
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/instances/instances.svelte', () => ({
+vi.mock('$app/navigation', () => ({ goto: vi.fn(), afterNavigate: vi.fn() }));
+vi.mock('$lib/instances/instances.svelte.js', () => ({
 	instances: {
 		list: [
 			{
@@ -15,8 +15,7 @@ vi.mock('$lib/instances/instances.svelte', () => ({
 				user: { id: 'u1', email: 'a@example.com', displayName: 'Alice' },
 				addedAt: '2026-01-01T00:00:00Z'
 			}
-		],
-		refresh: vi.fn()
+		]
 	}
 }));
 
@@ -43,7 +42,8 @@ describe('app shell error boundary', () => {
 		// The branded fallback with its retry affordance, not a white screen…
 		expect(screen.getByText('Something went wrong here')).toBeTruthy();
 		expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
-		expect(console.error).toHaveBeenCalled();
+		// Pin the boundary's own logger, not just any console.error.
+		expect(console.error).toHaveBeenCalledWith('[kammer] screen crashed', expect.anything());
 
 		// …and the navigation stays outside the boundary, so the user can
 		// always leave the broken screen.

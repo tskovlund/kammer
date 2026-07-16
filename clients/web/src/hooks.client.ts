@@ -9,6 +9,10 @@ import type { HandleClientError } from '@sveltejs/kit';
  * error — stack, server detail, third-party message — can ever reach the UI.
  */
 export const handleError: HandleClientError = ({ error, status, message }) => {
-	console.error(`[kammer] unexpected client error (${status})`, error);
+	// A stale or mistyped URL is an expected miss, branded by +error.svelte —
+	// not an "unexpected client error" worth console noise.
+	if (status !== 404) {
+		console.error(`[kammer] unexpected client error (${status})`, error);
+	}
 	return { message };
 };

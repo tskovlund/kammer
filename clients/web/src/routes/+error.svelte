@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { t } from '$lib/i18n/i18n.svelte.js';
+	import Button from '$lib/ui/Button.svelte';
 	import PublicShell from '$lib/ui/PublicShell.svelte';
 
 	// The SPA's floor under every unrenderable route (part of #270): a stale
@@ -12,7 +13,11 @@
 	const notFound = $derived(page.status === 404);
 </script>
 
-<svelte:head><title>{t('app.name')}</title></svelte:head>
+<svelte:head>
+	<title>
+		{t(notFound ? 'errorPage.notFound.title' : 'errorPage.generic.title')} · {t('app.name')}
+	</title>
+</svelte:head>
 
 <PublicShell>
 	<div class="text-center">
@@ -23,12 +28,10 @@
 		<p class="mt-2 text-sm leading-relaxed text-ink-muted">
 			{t(notFound ? 'errorPage.notFound.body' : 'errorPage.generic.body')}
 		</p>
-		<a
-			id="error-home"
-			href={resolve('/')}
-			class="mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink transition-colors duration-150 hover:bg-accent/90 active:bg-accent/80"
-		>
-			{t('errorPage.home')}
-		</a>
+		<div class="mt-8">
+			<Button id="error-home" href={resolve('/')} variant="primary">
+				{t('errorPage.home')}
+			</Button>
+		</div>
 	</div>
 </PublicShell>

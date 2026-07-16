@@ -18,8 +18,10 @@ import { getPasskeyAssertion } from './webauthn';
 // API orchestration around it — challenge, assert, verify, store.
 vi.mock('./webauthn', () => ({ getPasskeyAssertion: vi.fn() }));
 
-// The socket registry is a seam too: its own behaviour lives in
-// manager.spec.ts; these tests pin that removal always tears the socket down.
+// The socket registry is a seam too: the manager's teardown behaviour lives
+// in manager.spec.ts (the registry itself is thin glue); these tests pin
+// that removing an instance — sign-out or replacement — always drops its
+// socket.
 vi.mock('$lib/realtime/registry.svelte.js', () => ({ dropSocket: vi.fn() }));
 
 function jsonResponse(body: unknown, status = 200) {
@@ -200,11 +202,16 @@ describe('exchangeAndAddInstance', () => {
 			);
 
 		await exchangeAndAddInstance('https://kammer.example.com', 'magic-token-1', 'Example Club');
+		const oldId = instanceStore.list()[0].id;
 		await exchangeAndAddInstance('https://kammer.example.com', 'magic-token-2', 'Example Club');
 
 		const instances = instanceStore.list();
 		expect(instances).toHaveLength(1);
 		expect(instances[0].deviceToken).toBe('new-token');
+
+		// Replacement is removal of the old entry: its id is discarded, so
+		// its socket must be dropped now or no teardown can ever reach it.
+		expect(dropSocket).toHaveBeenCalledWith(oldId);
 	});
 });
 
@@ -354,10 +361,15 @@ describe('revokeAndRemoveInstance', () => {
 
 		await revokeAndRemoveInstance('instance-1');
 
+		// The revoke itself must go out, with the dying token as credential.
+		const revoke = sentRequest(vi.mocked(fetch).mock.calls[0]);
+		expect(revoke.method).toBe('DELETE');
+		expect(revoke.url).toBe('https://kammer.example.com/api/v1/auth/device-token');
+		expect(revoke.headers.get('authorization')).toBe('Bearer token-1');
+
 		expect(instanceStore.list()).toEqual([]);
 		// Without the teardown the manager would hold the revoked token's
-		// socket open until a reconnect 401s — and a re-sign-in (new
-		// instance id) would orphan it entirely.
+		// socket open until a reconnect 401s.
 		expect(dropSocket).toHaveBeenCalledWith('instance-1');
 	});
 

@@ -327,22 +327,27 @@ and this project adheres to
 
 - Client resilience floor (part of #270). Relative timestamps ("2 min.
   ago") now keep aging while a screen stays open — a shared minute
-  ticker (`createSubscriber`) re-renders every `RelativeTime` on the
-  minute and runs only while one is mounted, so a long-lived installed
-  PWA no longer shows fossilized times. The SPA also gains its error
-  floor: a branded, localized root `+error.svelte` (distinct copy for
-  404 vs other failures, always a link home) replaces SvelteKit's
-  unstyled English fallback on stale or mistyped URLs; a
-  `hooks.client.ts` `handleError` logs unexpected client errors to the
-  console (the only sink there is) and keeps raw error detail out of
-  the UI; and a `<svelte:boundary>` around the app shell's content
-  column degrades one crashed screen render (a single bad post, say)
-  to an inline retry card instead of white-screening the shell — the
-  navigation stays outside the boundary, so there is always a way out.
-  And signing out of an instance now tears down its realtime socket on
-  every removal path: previously the socket manager lingered until a
-  reconnect happened to 401, and re-signing in (a fresh instance id)
-  orphaned the old manager entirely.
+  ticker (`createSubscriber`) re-renders every `RelativeTime` and the
+  offline stale-data banner on the minute and runs only while one is
+  mounted, so a long-lived installed PWA no longer shows fossilized
+  times. The SPA also gains its error floor: a branded, localized root
+  `+error.svelte` (distinct copy for 404 vs other failures, always a
+  link home) replaces SvelteKit's unstyled English fallback on stale
+  or mistyped URLs; a `hooks.client.ts` `handleError` logs unexpected
+  client errors to the console (the only sink there is — expected 404s
+  excluded) and keeps raw error detail out of the UI; and a
+  `<svelte:boundary>` around the app shell's content column degrades
+  one crashed screen render (a single bad post, say) to an inline
+  retry card instead of white-screening the shell — the navigation
+  stays outside the boundary, and the card resets the boundary on
+  navigation, so leaving the broken screen always works. And removing
+  an instance now tears down its realtime socket on every removal
+  path — sign-out and re-sign-in-replacement alike: previously the
+  manager lingered until a reconnect happened to 401, and re-signing
+  in (a fresh instance id) orphaned the old manager entirely. `Button`
+  gained the audit's `href` story along the way (renders a real link
+  with the button look), replacing the error page's hand-rolled copy
+  of that recipe.
 
 - PWA action surfaces no longer render the raw server-English
   `ApiError.message` (issue #253, part of #270). A shared
