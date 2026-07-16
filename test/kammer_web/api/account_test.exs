@@ -29,6 +29,9 @@ defmodule KammerWeb.Api.AccountTest do
     test "request emails the new address a PWA link; confirming flips the email and rotates the device token" do
       user = AccountsFixtures.user_fixture()
       device_token = Accounts.create_device_token(user, "Min telefon")
+      # Initiation is step-up-gated (issue #294; the gate itself is
+      # exercised in step_up_test.exs).
+      Accounts.step_up_device(Accounts.get_device_token(device_token))
       drain_delivered_emails()
 
       device_token
@@ -92,7 +95,7 @@ defmodule KammerWeb.Api.AccountTest do
 
       %{"error" => %{"code" => "invalid_params", "details" => details}} =
         user
-        |> api_conn()
+        |> api_conn(stepped_up: true)
         |> post(~p"/api/v1/me/email-change", %{"email" => "ikke-en-adresse"})
         |> json_response(422)
 
@@ -104,14 +107,14 @@ defmodule KammerWeb.Api.AccountTest do
 
       for _request <- 1..5 do
         user
-        |> api_conn()
+        |> api_conn(stepped_up: true)
         |> post(~p"/api/v1/me/email-change", %{"email" => "ny-adresse@example.org"})
         |> json_response(200)
       end
 
       assert %{"error" => %{"code" => "rate_limited"}} =
                user
-               |> api_conn()
+               |> api_conn(stepped_up: true)
                |> post(~p"/api/v1/me/email-change", %{"email" => "ny-adresse@example.org"})
                |> json_response(429)
     end
@@ -122,18 +125,19 @@ defmodule KammerWeb.Api.AccountTest do
 
       # Every probe of an already-registered address answers 422 — but it
       # must still burn the limit, or the 422-vs-200 difference would be a
-      # registered/unregistered oracle with no throttle. Five taken-address
+      # registered/unregistered oracle with no throttle (the step-up gate
+      # narrows who can probe, not how fast). Five taken-address
       # probes exhaust the budget; the sixth is 429, not another 422.
       for _probe <- 1..5 do
         user
-        |> api_conn()
+        |> api_conn(stepped_up: true)
         |> post(~p"/api/v1/me/email-change", %{"email" => taken.email})
         |> json_response(422)
       end
 
       assert %{"error" => %{"code" => "rate_limited"}} =
                user
-               |> api_conn()
+               |> api_conn(stepped_up: true)
                |> post(~p"/api/v1/me/email-change", %{"email" => taken.email})
                |> json_response(429)
     end
@@ -141,6 +145,7 @@ defmodule KammerWeb.Api.AccountTest do
     test "a confirm token is bound to its own account — another account can't consume it" do
       alice = AccountsFixtures.user_fixture()
       alice_device = Accounts.create_device_token(alice, "Alice-telefon")
+      Accounts.step_up_device(Accounts.get_device_token(alice_device))
       bob = AccountsFixtures.user_fixture()
       bob_device = Accounts.create_device_token(bob, "Bob-telefon")
       drain_delivered_emails()

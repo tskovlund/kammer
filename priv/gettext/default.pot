@@ -4103,3 +4103,18 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Your account email was changed"
 msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:95
+#, elixir-autogen, elixir-format
+msgid "A device signed in to your account wants to change your security settings (such as passkeys, devices, or your email address). Confirm it's you by visiting the link below:"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:92
+#, elixir-autogen, elixir-format
+msgid "Confirm it's you"
+msgstr ""
+
+#: lib/kammer/accounts/user_notifier.ex:101
+#, elixir-autogen, elixir-format
+msgid "If you didn't request this, don't click the link — someone may have access to your account. Review your devices and sign out anything you don't recognize."
+msgstr ""

@@ -23,11 +23,13 @@
 		DigestFrequency,
 		Profile
 	} from '$lib/people/types.js';
+	import { isStepUpRequired } from '$lib/instances/stepup.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import StepUpModal from '$lib/ui/StepUpModal.svelte';
 
 	const instance = $derived(
 		instances.list.find((candidate) => candidate.id === page.params.instance)
@@ -203,10 +205,20 @@
 
 	// Email change (issue #258): a request-only form — the address flips
 	// when the emailed confirmation link lands on /confirm-email/{token}.
+	// Initiation is step-up-gated (issue #294): a 401 step_up_required
+	// opens the confirmation modal, which retries the request afterwards.
 	let newEmail = $state('');
 	let emailSending = $state(false);
 	let emailSentTo = $state<string | null>(null);
 	let emailError = $state<string | null>(null);
+	let stepUpRetry = $state<(() => Promise<void>) | null>(null);
+
+	async function doRequestEmailChange(requested: string): Promise<void> {
+		if (!instance) return;
+		await requestEmailChange(instance, requested);
+		emailSentTo = requested;
+		newEmail = '';
+	}
 
 	async function sendEmailChange(submitEvent: SubmitEvent): Promise<void> {
 		submitEvent.preventDefault();
@@ -217,11 +229,11 @@
 		clearProfileFieldErrors();
 		const requested = newEmail.trim();
 		try {
-			await requestEmailChange(instance, requested);
-			emailSentTo = requested;
-			newEmail = '';
+			await doRequestEmailChange(requested);
 		} catch (error) {
-			if (error instanceof ApiError && error.kind === 'validation') {
+			if (isStepUpRequired(error)) {
+				stepUpRetry = () => doRequestEmailChange(requested);
+			} else if (error instanceof ApiError && error.kind === 'validation') {
 				emailError = t('profile.emailChange.error.invalid');
 			} else if (error instanceof ApiError && error.kind === 'rate_limited') {
 				emailError = t('profile.emailChange.error.rateLimited');
@@ -554,5 +566,14 @@
 				</div>
 			</section>
 		{/each}
+
+		{#if stepUpRetry}
+			<StepUpModal
+				{instance}
+				retry={stepUpRetry}
+				onsuccess={() => (stepUpRetry = null)}
+				oncancel={() => (stepUpRetry = null)}
+			/>
+		{/if}
 	{/if}
 {/if}

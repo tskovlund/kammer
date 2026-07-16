@@ -58,6 +58,11 @@ not a separate page.
 > Whether the PWA should add a step-up before credential changes is an
 > open call tracked in #294; until then this ADR's "sudo-mode gated"
 > describes the LiveView surface only.
+>
+> **Resolved (2026-07-16, #294):** the open call landed on building the
+> step-up — enrollment and removal now sit behind a per-device-token
+> re-auth gate (a fresh passkey assertion or an emailed confirmation
+> round-trip). See [ADR 0029](0029-step-up-reauth.md).
 
 ## Consequences
 

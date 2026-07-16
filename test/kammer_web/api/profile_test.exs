@@ -123,6 +123,9 @@ defmodule KammerWeb.Api.ProfileTest do
       _session_token = Accounts.generate_user_session_token(user, "Mozilla/5.0 Firefox/128.0")
       caller_token = Accounts.create_device_token(user, "Min telefon")
       other_api_token = Accounts.create_device_token(user, "Gammel tablet")
+      # Revoking a device other than one's own is step-up-gated (issue
+      # #294; the gate itself is exercised in step_up_test.exs).
+      Accounts.step_up_device(Accounts.get_device_token(caller_token))
 
       %{"data" => devices} =
         caller_token
@@ -174,8 +177,11 @@ defmodule KammerWeb.Api.ProfileTest do
 
       refute Enum.any?(devices, &(&1["id"] == victim_device.id))
 
+      # Stepped up, so the request clears the #294 gate and proves the
+      # OWNERSHIP scoping refuses it — a foreign id 404s exactly like a
+      # nonexistent one.
       user
-      |> api_conn()
+      |> api_conn(stepped_up: true)
       |> delete(~p"/api/v1/me/devices/#{victim_device.id}")
       |> json_response(404)
 

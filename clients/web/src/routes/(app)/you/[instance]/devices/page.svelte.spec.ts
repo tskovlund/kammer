@@ -77,6 +77,48 @@ describe('devices page — passkey enrollment', () => {
 		expect(document.querySelector('#passkey-add')).toBeTruthy();
 	});
 
+	it('opens the step-up dialog, not the error banner, when a revoke is gated (#294)', async () => {
+		vi.stubGlobal(
+			'confirm',
+			vi.fn(() => true)
+		);
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(
+				jsonResponse({
+					data: [
+						{
+							id: 'd2',
+							kind: 'api_device',
+							device_name: 'Old tablet',
+							created_at: '2026-01-01T00:00:00Z',
+							current: false
+						}
+					]
+				})
+			)
+			.mockResolvedValueOnce(jsonResponse({ data: [] }));
+		render(Page);
+		await waitFor(() => expect(screen.getByText('Old tablet')).toBeTruthy());
+
+		// The server's 401 step_up_required is a gate, not a failure: the
+		// dialog must open and the generic error banner must NOT.
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({ error: { code: 'step_up_required', message: 'step up' } }, 401)
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+		await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+		expect(document.querySelector('[role="alert"]')).toBeNull();
+
+		// The email method: request-link answers sent, and the dialog moves
+		// to the check-your-email step (continue + resend), naming the
+		// account's own address.
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ status: 'sent' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Email me a confirmation link' }));
+		await waitFor(() => expect(document.querySelector('#step-up-continue')).toBeTruthy());
+		expect(document.querySelector('#step-up-resend')).toBeTruthy();
+		expect(screen.getByText(/We sent a confirmation link to a@example\.com/)).toBeTruthy();
+	});
+
 	it('stays silent — no error — when the user dismisses the browser prompt', async () => {
 		vi.stubGlobal('PublicKeyCredential', class {});
 		const create = vi

@@ -91,6 +91,14 @@ defmodule KammerWeb.Router do
     post "/auth/passkey/challenge", AuthController, :passkey_challenge
     post "/auth/passkey/verify", AuthController, :passkey_verify
 
+    # Step-up confirm (issue #294, ADR 0029) is public on purpose: the
+    # emailed link may open in a different browser than the requesting
+    # app, so no Bearer can be demanded — the single-use token is the
+    # whole credential, and it only ever elevates the one device-token
+    # row it was minted for. The rest of the step-up surface is in the
+    # authenticated scope below.
+    post "/auth/step-up/confirm", StepUpController, :confirm
+
     # First-run setup (issue #185): the operator-bootstrap flow over the
     # API. Gated by the setup token printed to the server logs, not a
     # device token — see SetupController. Public because a pre-setup
@@ -210,6 +218,14 @@ defmodule KammerWeb.Router do
     pipe_through [:api, :api_authenticated]
 
     delete "/auth/device-token", AuthController, :revoke
+
+    # Step-up re-auth (issue #294, ADR 0029): re-assert a root of trust
+    # (passkey assertion, or an emailed link whose public confirm lives
+    # in the scope above) before the credential-changing endpoints
+    # gated by KammerWeb.ApiStepUp.
+    post "/auth/step-up/passkey/challenge", StepUpController, :passkey_challenge
+    post "/auth/step-up/passkey/verify", StepUpController, :passkey_verify
+    post "/auth/step-up/request-link", StepUpController, :request_link
 
     get "/home", HomeController, :show
 

@@ -11,6 +11,10 @@ defmodule KammerWeb.ApiError do
   @codes %{
     bad_request: {400, "bad_request"},
     unauthorized: {401, "unauthorized"},
+    # 401, not 403: the request lacks a (fresh enough) authentication
+    # factor, and the client can cure it by stepping up and retrying —
+    # the distinct code keeps it from reading as "signed out" (#294).
+    step_up_required: {401, "step_up_required"},
     forbidden: {403, "forbidden"},
     not_found: {404, "not_found"},
     unprocessable: {422, "invalid_params"},

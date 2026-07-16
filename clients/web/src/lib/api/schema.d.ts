@@ -342,7 +342,7 @@ export interface paths {
 		/** The caller's registered passkeys (issue #260 port 5b) */
 		get: operations['passkeys_index'];
 		put?: never;
-		/** Finish passkey enrollment: verify the attestation and store the credential. Every failure — stale/tampered token, bad attestation, duplicate credential — is one neutral 422 */
+		/** Finish passkey enrollment: verify the attestation and store the credential. Every failure — stale/tampered token, bad attestation, duplicate credential — is one neutral 422. Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise */
 		post: operations['passkeys_create'];
 		delete?: never;
 		options?: never;
@@ -379,6 +379,23 @@ export interface paths {
 		/** Set a folder's read/write preset overrides (managers) */
 		put: operations['file_library_update_folder'];
 		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/step-up/request-link': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Email the account's own address a single-use step-up confirmation link bound to the calling device (issue #294). Shares the magic-link email budget; the link's public confirm endpoint may be opened in any browser */
+		post: operations['step_up_request_link'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -569,6 +586,23 @@ export interface paths {
 		put?: never;
 		/** Comment on a post */
 		post: operations['comments_create'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/step-up/confirm': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Consume an emailed step-up token (public — the link may land in a different browser than the requesting app). Steps up only the one device-token row the link was minted for; the requesting client then retries its action */
+		post: operations['step_up_confirm'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -1073,7 +1107,7 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Request an email change: a confirmation link is emailed to the new address */
+		/** Request an email change: a confirmation link is emailed to the new address. Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise */
 		post: operations['email_change_request'];
 		delete?: never;
 		options?: never;
@@ -1331,7 +1365,7 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Start passkey enrollment (WebAuthn registration options, ADR 0018) */
+		/** Start passkey enrollment (WebAuthn registration options, ADR 0018). Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise */
 		post: operations['passkeys_challenge'];
 		delete?: never;
 		options?: never;
@@ -1578,6 +1612,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/auth/step-up/passkey/verify': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Verify a step-up passkey assertion. Marks the CALLING device token stepped up — mints nothing. Every failure (stale/tampered challenge token, bad assertion, a credential owned by another account) is one neutral 422 */
+		post: operations['step_up_passkey_verify'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/assignments/{assignment_id}/comments/{comment_id}/report': {
 		parameters: {
 			query?: never;
@@ -1625,6 +1676,23 @@ export interface paths {
 		post?: never;
 		/** Delete a comment — soft (author) or hard (moderator); answers the tombstone */
 		delete: operations['comments_delete'];
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/api/v1/auth/step-up/passkey/challenge': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Start a step-up passkey assertion (issue #294): re-assert a root of trust before a credential change; on verify, the calling device token becomes stepped up for a short window */
+		post: operations['step_up_passkey_challenge'];
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -1900,7 +1968,7 @@ export interface paths {
 		get?: never;
 		put?: never;
 		post?: never;
-		/** Remove a registered passkey by id (owner-scoped) */
+		/** Remove a registered passkey by id (owner-scoped). Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise */
 		delete: operations['passkeys_delete'];
 		options?: never;
 		head?: never;
@@ -1917,7 +1985,7 @@ export interface paths {
 		get?: never;
 		put?: never;
 		post?: never;
-		/** Revoke a device by id — revoking an API device also severs its live sockets */
+		/** Revoke a device by id — revoking an API device also severs its live sockets. Revoking any device other than the caller's own requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise; self-revoke is ungated */
 		delete: operations['devices_revoke'];
 		options?: never;
 		head?: never;
@@ -2565,6 +2633,17 @@ export interface components {
 			};
 			/** @description Actions the calling viewer may take on this post (issue #199) — advisory, so clients hide controls the viewer lacks; the server still enforces. `edit`/`delete` are the author's; `pin`/`moderate` are a moderator's. Empty when the viewer's rights weren't resolved. */
 			viewer_can: ('edit' | 'delete' | 'pin' | 'moderate')[];
+		};
+		/**
+		 * StepUpPasskeyChallenge
+		 * @description WebAuthn assertion options for a step-up (issue #294, ADR 0029): like the sign-in challenge, but for an already-authenticated caller — `allow_credentials` lists the caller's own registered credential ids (base64url, no padding) so the browser only offers passkeys that can succeed. Empty when the account has no passkeys; use the emailed step-up link instead.
+		 */
+		StepUpPasskeyChallenge: {
+			allow_credentials: string[];
+			/** @description base64url, no padding */
+			challenge: string;
+			challenge_token: string;
+			rp_id: string;
 		};
 		/**
 		 * EventParams
@@ -5409,6 +5488,62 @@ export interface operations {
 			};
 		};
 	};
+	step_up_request_link: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Always {status: sent} when allowed */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	group_members_update_role: {
 		parameters: {
 			query?: never;
@@ -6232,6 +6367,86 @@ export interface operations {
 					'application/json': {
 						data: components['schemas']['Comment'];
 					};
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	step_up_confirm: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					token?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Stepped up */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
 				};
 			};
 			/** @description Error envelope */
@@ -11137,6 +11352,95 @@ export interface operations {
 			};
 		};
 	};
+	step_up_passkey_verify: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': {
+					/** @description base64url, no padding */
+					authenticator_data?: string;
+					/** @description Returned verbatim from the step-up challenge operation */
+					challenge_token?: string;
+					/** @description base64url, no padding */
+					client_data_json?: string;
+					/** @description base64url, no padding */
+					credential_id?: string;
+					/** @description base64url, no padding */
+					signature?: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Stepped up — retry the gated action */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['StatusResponse'];
+				};
+			};
+			/** @description Error envelope */
+			400: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	assignments_report_comment: {
 		parameters: {
 			query?: never;
@@ -11391,6 +11695,55 @@ export interface operations {
 				content: {
 					'application/json': {
 						data: components['schemas']['Comment'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	step_up_passkey_challenge: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Assertion options scoped to the caller's own credentials */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['StepUpPasskeyChallenge'];
 					};
 				};
 			};

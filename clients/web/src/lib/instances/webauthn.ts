@@ -63,18 +63,22 @@ export function sameOriginInstance(baseUrl: string): boolean {
 }
 
 /**
- * Runs the assertion ceremony for a usernameless sign-in: no
- * `allowCredentials`, so the browser offers whatever resident passkeys
+ * Runs the assertion ceremony. For a usernameless sign-in, pass no
+ * `allowCredentials`: the browser offers whatever resident passkeys
  * it holds for this instance's `rpId`, and the credential itself
  * identifies the account (no email asked, no enumeration surface — the
- * same shape as the server flow). Returns the encoded assertion, or
- * `null` when the browser yields no credential. Throws whatever
- * `navigator.credentials.get` throws (e.g. the user dismissing the
- * prompt) — the caller collapses that into one neutral failure.
+ * same shape as the server flow). A step-up (#294) passes the caller's
+ * own credential ids (base64url, from the step-up challenge) so the
+ * browser only offers passkeys that can succeed. Returns the encoded
+ * assertion, or `null` when the browser yields no credential. Throws
+ * whatever `navigator.credentials.get` throws (e.g. the user
+ * dismissing the prompt) — the caller collapses that into one neutral
+ * failure.
  */
 export async function getPasskeyAssertion(
 	challenge: string,
-	rpId: string
+	rpId: string,
+	allowCredentials?: string[]
 ): Promise<PasskeyAssertion | null> {
 	const credential = await navigator.credentials.get({
 		publicKey: {
@@ -82,7 +86,15 @@ export async function getPasskeyAssertion(
 			rpId,
 			userVerification: 'preferred',
 			// Match the ported LiveView ceremony (advisory; browser-clamped).
-			timeout: 60_000
+			timeout: 60_000,
+			...(allowCredentials && allowCredentials.length > 0
+				? {
+						allowCredentials: allowCredentials.map((id) => ({
+							type: 'public-key' as const,
+							id: base64UrlToBytes(id)
+						}))
+					}
+				: {})
 		}
 	});
 

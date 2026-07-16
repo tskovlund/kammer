@@ -2,7 +2,8 @@ defmodule Kammer.Accounts.UserToken do
   @moduledoc """
   Persisted authentication tokens: revocable sessions (with the device's
   user agent for the devices page), single-use short-lived magic-link
-  tokens, and email-change confirmations (SPEC §2).
+  tokens, email-change confirmations (SPEC §2), and step-up
+  confirmations (issue #294, ADR 0029).
   """
 
   use Ecto.Schema
@@ -37,6 +38,12 @@ defmodule Kammer.Accounts.UserToken do
   # sets the session cookie (LiveView has no `conn` to do that itself)
   # — minutes, not the login-link's 15, since there is no email hop.
   @passkey_exchange_validity_in_minutes 2
+  # Step-up confirmation links (issue #294, ADR 0029) share the magic
+  # link's lifetime on purpose: both are emailed proof-of-mailbox
+  # credentials, and one "valid for 15 minutes" story covers every
+  # sign-in-class email. Distinct from the step-up *window* the
+  # confirmed state lasts (`Kammer.Config.step_up_validity_minutes/0`).
+  @step_up_link_validity_in_minutes @magic_link_validity_in_minutes
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -46,6 +53,11 @@ defmodule Kammer.Accounts.UserToken do
     field :sent_to, :string
     field :user_agent, :string
     field :authenticated_at, :utc_datetime
+    field :stepped_up_at, :utc_datetime
+    # A "step-up" token's pointer at the api-device row it steps up
+    # (issue #294); nil for every other context. The FK cascades, so a
+    # revoked device takes its in-flight step-up links with it.
+    belongs_to :target_token, UserToken, type: :binary_id
     belongs_to :user, Kammer.Accounts.User
 
     timestamps(type: :utc_datetime, updated_at: false)
@@ -323,6 +335,46 @@ defmodule Kammer.Accounts.UserToken do
             join: user in assoc(token, :user),
             where: token.inserted_at > ago(^@passkey_exchange_validity_in_minutes, "minute"),
             select: {user, token}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc """
+  Builds the single-use, emailed step-up confirmation token (issue
+  #294, ADR 0029): hashed at rest like every other emailed token, sent
+  to the account's own address, and bound via `target_token_id` to the
+  exact api-device row it will step up — confirming from another
+  browser must never elevate any credential but the one that asked.
+  """
+  @spec build_step_up_token(Kammer.Accounts.User.t(), Ecto.UUID.t()) :: {String.t(), t()}
+  def build_step_up_token(user, target_token_id) do
+    {encoded_token, user_token} = build_hashed_token(user, "step-up", user.email)
+    {encoded_token, %UserToken{user_token | target_token_id: target_token_id}}
+  end
+
+  @doc """
+  Verification query for a step-up confirmation token. Valid if the
+  hash matches, it is younger than #{@step_up_link_validity_in_minutes}
+  minutes, and the account email hasn't changed since issuance (an
+  address change invalidates it exactly as it invalidates the device
+  tokens themselves). Returns the token row, target id included.
+  """
+  @spec verify_step_up_token_query(String.t()) :: {:ok, Ecto.Query.t()} | :error
+  def verify_step_up_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "step-up"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(^@step_up_link_validity_in_minutes, "minute"),
+            where: token.sent_to == user.email,
+            select: token
 
         {:ok, query}
 

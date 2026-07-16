@@ -10,6 +10,24 @@ and this project adheres to
 
 ### Added
 
+- Step-up re-authentication before credential changes (issue #294, ADR
+  0029). Adding or removing a passkey, revoking a device other than
+  your own, and starting an email change now require the calling
+  device to have recently re-asserted a root of trust — either a
+  passkey confirmation or a single-use emailed link — within a short
+  window (`STEP_UP_VALIDITY_MINUTES`, default 10). This closes the gap
+  where a transiently stolen device token could mint persistence (add
+  a passkey that survives revocation, lock the owner out, or repoint
+  the account email); signing out, including revoking your own device,
+  stays ungated. Gated endpoints answer 401 with the new
+  `step_up_required` code; the PWA opens a confirmation dialog (passkey
+  or "email me a link" with a check-your-inbox step), then retries the
+  original action. The emailed link lands on a new `/step-up/{token}`
+  page that works in any browser and elevates only the device that
+  asked. This supersedes the #258-era decision to ship the API
+  email-change flow without a re-auth gate, and resolves ADR 0018's
+  open sudo-mode note.
+
 - Newsletter subscription form on the PWA's public group page (issue
   #185, part of #187, SPEC §8). When a group opts guests into its
   newsletter (`guest_subscribe_allowed`), its public page now offers a

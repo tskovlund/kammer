@@ -1,9 +1,9 @@
 defmodule Kammer.Accounts.UserNotifier do
   @moduledoc """
-  Authentication emails: magic-link sign-in, first-time confirmation, and
-  email-change instructions. Localized per user (SPEC §1: EN and DA
-  complete, including emails). These emails are inherently content-minimal
-  (SPEC §9).
+  Authentication emails: magic-link sign-in, first-time confirmation,
+  email-change instructions, and step-up confirmations (issue #294).
+  Localized per user (SPEC §1: EN and DA complete, including emails).
+  These emails are inherently content-minimal (SPEC §9).
   """
 
   use Gettext, backend: KammerWeb.Gettext
@@ -73,6 +73,32 @@ defmodule Kammer.Accounts.UserNotifier do
       #{gettext("If you made this change, you can ignore this email.")}
 
       #{gettext("If you did NOT make this change, your account may be compromised — contact your instance's administrator immediately.")}
+      """)
+    end)
+  end
+
+  @doc """
+  Deliver the step-up confirmation link (issue #294, ADR 0029): the
+  emailed proof-of-mailbox a device presents before a credential
+  change when it has no usable passkey. Deliberately says which kind
+  of action prompted it and what to do if the recipient didn't ask —
+  an unexpected one of these is the signal a device token is in the
+  wrong hands.
+  """
+  @spec deliver_step_up_instructions(User.t(), String.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_step_up_instructions(user, url) do
+    Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
+      deliver(user.email, gettext("Confirm it's you"), """
+      #{gettext("Hi %{name},", name: user.display_name)}
+
+      #{gettext("A device signed in to your account wants to change your security settings (such as passkeys, devices, or your email address). Confirm it's you by visiting the link below:")}
+
+      #{url}
+
+      #{gettext("The link is valid for 15 minutes and can be used once.")}
+
+      #{gettext("If you didn't request this, don't click the link — someone may have access to your account. Review your devices and sign out anything you don't recognize.")}
       """)
     end)
   end

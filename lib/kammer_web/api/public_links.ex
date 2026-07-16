@@ -26,7 +26,8 @@ defmodule KammerWeb.Api.PublicLinks do
     comment: "/guest/comment/confirm/",
     claim: "/guest/claim/confirm/",
     newsletter: "/newsletter/confirm/",
-    email_change: "/confirm-email/"
+    email_change: "/confirm-email/",
+    step_up: "/step-up/"
   }
 
   @doc """
@@ -41,7 +42,7 @@ defmodule KammerWeb.Api.PublicLinks do
   """
   @spec confirm_url(
           Plug.Conn.t(),
-          :rsvp | :comment | :claim | :newsletter | :email_change,
+          :rsvp | :comment | :claim | :newsletter | :email_change | :step_up,
           String.t()
         ) :: String.t()
   def confirm_url(conn, kind, token) do
