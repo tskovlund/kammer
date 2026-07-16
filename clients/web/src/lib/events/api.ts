@@ -3,7 +3,7 @@ import { ApiError, errorKind, fail, guard, type ApiErrorKind } from '$lib/api/er
 import type { components } from '$lib/api/schema.js';
 import type { MessageKey } from '$lib/i18n/format.js';
 import type { Community } from '$lib/feed/types.js';
-import type { Group } from '$lib/feed/api.js';
+import { fetchAuthedObjectUrl, type Group } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Comment, Event, EventParams, EventSeriesDetail, RsvpStatus } from './types.js';
 
@@ -332,12 +332,23 @@ export async function reportComment(
 }
 
 /**
- * The server serves an ICS file for a single event at a plain browser route
- * (no Bearer auth — a calendar app fetches it directly). We just link to it.
+ * A single event's ICS file as an object URL for a download link (issue
+ * #307). The endpoint sits behind Bearer auth — the tokenless browser ICS
+ * route 404s every members-only event, which is exactly the bug this
+ * replaces a plain `<a href>` for. Same shape as the account export
+ * download; the caller must `URL.revokeObjectURL` it when done.
  */
-export function icsUrl(instance: Instance, communitySlug: string, eventId: string): string {
-	const base = instance.baseUrl.replace(/\/$/, '');
-	return `${base}/c/${encodeURIComponent(communitySlug)}/events/${encodeURIComponent(eventId)}/ics`;
+export async function fetchEventIcsUrl(
+	instance: Instance,
+	communitySlug: string,
+	eventId: string
+): Promise<string> {
+	return guard(() =>
+		fetchAuthedObjectUrl(
+			instance,
+			`/api/v1/communities/${encodeURIComponent(communitySlug)}/events/${encodeURIComponent(eventId)}/ics`
+		)
+	);
 }
 
 /**

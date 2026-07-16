@@ -1205,6 +1205,15 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.Event)
           )
       },
+      "/api/v1/communities/{community_slug}/events/{event_id}/ics" => %PathItem{
+        get:
+          operation(
+            "This event as a downloadable ICS file (issue #307)",
+            :events_ics,
+            event_params(),
+            response: binary_response("The event as a text/calendar attachment", "text/calendar")
+          )
+      },
       "/api/v1/communities/{community_slug}/events/{event_id}/rsvp" => %PathItem{
         put:
           operation(
@@ -2109,12 +2118,13 @@ defmodule KammerWeb.ApiSpec do
     }
   end
 
-  # The non-JSON responses: stored-file bytes.
-  defp binary_response(description) do
+  # The non-JSON responses: stored-file bytes, and the single-event ICS
+  # download's text/calendar.
+  defp binary_response(description, media_type \\ "application/octet-stream") do
     %Response{
       description: description,
       content: %{
-        "application/octet-stream" => %MediaType{
+        media_type => %MediaType{
           schema: %Schema{type: :string, format: :binary}
         }
       }
