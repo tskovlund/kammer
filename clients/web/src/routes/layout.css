@@ -55,6 +55,31 @@
 	color-scheme: dark;
 }
 
+/* Per-community accent re-tint (issue #321, SPEC §21). A community-owning
+ * surface wraps its content in `[data-community-accent]` carrying both
+ * palettes as inline `--community-accent-*` custom properties (derived
+ * WCAG-safe in $lib/ui/accent.ts); these rules map the palette matching
+ * the active theme onto the accent tokens. Theme switching mirrors the
+ * token blocks above — media query plus manual override, kept in sync —
+ * so a live theme change re-tints without any JS. Surfaces without the
+ * attribute (Home, cross-community lists) keep the default accent. */
+[data-community-accent] {
+	--accent: var(--community-accent-light);
+	--accent-ink: var(--community-accent-ink-light);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) [data-community-accent] {
+		--accent: var(--community-accent-dark);
+		--accent-ink: var(--community-accent-ink-dark);
+	}
+}
+
+:root[data-theme='dark'] [data-community-accent] {
+	--accent: var(--community-accent-dark);
+	--accent-ink: var(--community-accent-ink-dark);
+}
+
 @theme inline {
 	--color-paper: var(--paper);
 	--color-surface: var(--surface);
