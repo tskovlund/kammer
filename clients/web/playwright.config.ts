@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// End-to-end suite for the instance-served PWA (issue #235) — the
-// replacement for the LiveView-driving smoke test (scripts/screenshots.sh)
-// and a prerequisite for the LiveView removal (#187). Chromium-only: the
+// End-to-end suite for the instance-served PWA (issue #235) — it
+// replaced the LiveView-driving smoke test and is the E2E gate since the
+// LiveView removal (#187). Chromium-only: the
 // pre-installed browser in CI/dev containers, and cross-browser coverage
 // isn't the point of this suite (Vitest already covers component/unit
 // logic across environments).
@@ -10,7 +10,7 @@ import { defineConfig, devices } from '@playwright/test';
 // Single origin, same as production: `globalSetup` (global-setup.ts)
 // builds the client, stages it at `priv/static/app` — exactly where the
 // Dockerfile's client stage puts it — and boots `mix phx.server`, which
-// then serves both the API and the client itself under `/app` (see
+// then serves both the API and the client itself at the site root (see
 // `KammerWeb.PwaController`). No separate `webServer` entry: an earlier
 // version ran the client through `vite preview` on its own port, but the
 // deep-link sign-in flow trusts `window.location.origin` to be the
