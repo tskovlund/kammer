@@ -18,10 +18,22 @@ defmodule KammerWeb.Api.CalendarController do
   with it off the group's feed itself 404s (events.ex), so the token
   would be dead, and the endpoint answers that same 404 rather than mint
   one.
+
+  One more calendar surface lives here: the single-event ICS download
+  (`:event`, issue #307) — the Bearer-authenticated twin of the browser
+  `/c/:community_slug/events/:event_id/ics` route. The PWA can't attach
+  its device token to a plain `<a href>` navigation, so on that route
+  every members-only event 404'd for exactly the signed-in members it
+  belongs to; this endpoint serves the same `ICS.single/1` bytes behind
+  the API's auth. Unlike the token endpoints above it addresses an
+  *event*, so it follows the events surface's no-oracle stance
+  (#156/#161): an event the caller can't see answers the same 404 as one
+  that doesn't exist, never a 403.
   """
 
   use KammerWeb, :controller
 
+  alias Kammer.Calendar.ICS
   alias Kammer.Communities
   alias Kammer.Events
   alias Kammer.Groups
@@ -44,6 +56,24 @@ defmodule KammerWeb.Api.CalendarController do
         ApiError.send(conn, :not_found, "Not found.")
       end
     end)
+  end
+
+  @spec event(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def event(conn, %{"community_slug" => community_slug, "event_id" => event_id}) do
+    user = conn.assigns.current_scope.user
+
+    with %Communities.Community{} = community <-
+           Communities.get_community_by_slug(community_slug),
+         {:ok, event} <- Events.fetch_viewable_event(user, community, event_id) do
+      conn
+      |> put_resp_content_type("text/calendar")
+      |> put_resp_header("content-disposition", ~s(attachment; filename="kammer.ics"))
+      |> send_resp(200, ICS.single(event))
+    else
+      # Absent community, absent event, and an event the caller can't
+      # see all fold into one neutral 404 (no oracle — see moduledoc).
+      _error -> ApiError.send(conn, :not_found, "Not found.")
+    end
   end
 
   defp with_group(conn, community_slug, group_slug, fun) do

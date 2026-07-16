@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import * as api from '$lib/events/api.js';
 	import { createEventStore, type EventStore } from '$lib/events/event-store.svelte.js';
 	import { safeHttpUrl } from '$lib/url.js';
@@ -83,6 +84,34 @@
 			// Surface via the store's action error channel by reloading.
 			void error;
 			await store?.load();
+		}
+	}
+
+	// "Add to calendar" (issue #307): the ICS download sits behind Bearer
+	// auth — a plain <a href> can't carry the device token, and the
+	// tokenless route 404'd every members-only event.
+	let downloadingIcs = $state(false);
+	let icsError = $state<ApiErrorKind | null>(null);
+
+	async function downloadIcs(): Promise<void> {
+		if (!instance) return;
+		downloadingIcs = true;
+		icsError = null;
+		try {
+			const url = await api.fetchEventIcsUrl(instance, communitySlug, eventId);
+			// Same anchor dance as the account page's export download.
+			const anchor = document.createElement('a');
+			anchor.href = url;
+			anchor.download = 'kammer.ics';
+			anchor.rel = 'noopener';
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+			URL.revokeObjectURL(url);
+		} catch (error) {
+			icsError = errorKind(error);
+		} finally {
+			downloadingIcs = false;
 		}
 	}
 </script>
@@ -173,11 +202,17 @@
 
 			<SlotList {event} store={store!} currentUserId={instance.user.id} />
 
+			{#if icsError}
+				<ErrorBanner kind={icsError} ondismiss={() => (icsError = null)} />
+			{/if}
+
 			<div class="flex flex-wrap items-center gap-3">
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					href={api.icsUrl(instance, communitySlug, eventId)}
-					class="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+				<button
+					type="button"
+					id="event-ics-download"
+					class="inline-flex items-center gap-1.5 text-sm text-accent hover:underline disabled:cursor-default disabled:opacity-60 disabled:hover:no-underline"
+					disabled={downloadingIcs}
+					onclick={downloadIcs}
 				>
 					<svg
 						viewBox="0 0 24 24"
@@ -193,7 +228,7 @@
 						/>
 					</svg>
 					{t('events.detail.addToCalendar')}
-				</a>
+				</button>
 
 				<button
 					type="button"

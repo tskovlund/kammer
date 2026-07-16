@@ -311,6 +311,20 @@ and this project adheres to
 
 ### Fixed
 
+- "Add to calendar" on an event page no longer fails with a silent 404
+  for members-only groups (issue #307). The signed-in event page linked
+  the tokenless browser ICS route (`/c/{slug}/events/{id}/ics`), which a
+  plain `<a href>` navigation reaches without the device token — so any
+  event the anonymous public couldn't see (every `private`/`community`
+  group, i.e. most of them) answered 404 to exactly the members it
+  belongs to. A new Bearer-authenticated endpoint —
+  `GET /api/v1/communities/{slug}/events/{id}/ics`, serving the same
+  `text/calendar` attachment behind the events surface's no-oracle 404 —
+  replaces the link with an authenticated download (the same
+  object-URL anchor pattern as the account export), with pending state
+  and the shared `ErrorBanner` on failure. The browser route stays for
+  public events and calendar apps.
+
 - PWA action surfaces no longer render the raw server-English
   `ApiError.message` (issue #253, part of #270). A shared
   `ui/ErrorBanner` renders localized `errors.<kind>` copy instead, so a
