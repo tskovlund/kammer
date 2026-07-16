@@ -8,6 +8,7 @@ import {
 	requestLink,
 	revokeAndRemoveInstance
 } from './api';
+import { dropSocket } from '$lib/realtime/registry.svelte.js';
 import { instanceStore } from './store';
 import { fakeLocalStorage } from './test-support';
 import { getPasskeyAssertion } from './webauthn';
@@ -16,6 +17,10 @@ import { getPasskeyAssertion } from './webauthn';
 // is exercised in webauthn.spec.ts; here it's a seam so these tests pin the
 // API orchestration around it — challenge, assert, verify, store.
 vi.mock('./webauthn', () => ({ getPasskeyAssertion: vi.fn() }));
+
+// The socket registry is a seam too: its own behaviour lives in
+// manager.spec.ts; these tests pin that removal always tears the socket down.
+vi.mock('$lib/realtime/registry.svelte.js', () => ({ dropSocket: vi.fn() }));
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -330,23 +335,40 @@ describe('revokeAndRemoveInstance', () => {
 		vi.stubGlobal('localStorage', fakeLocalStorage());
 		instanceStore.clear();
 		vi.stubGlobal('fetch', vi.fn());
+		vi.mocked(dropSocket).mockClear();
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
-	it('removes the instance locally even if the revoke call fails', async () => {
-		instanceStore.add({
-			id: 'instance-1',
-			baseUrl: 'https://kammer.example.com',
-			instanceName: 'Example',
-			deviceToken: 'token-1',
-			user: { id: 'user-1', email: 'a@example.com', displayName: null },
-			addedAt: '2026-01-01T00:00:00Z'
-		});
+	const instance = {
+		id: 'instance-1',
+		baseUrl: 'https://kammer.example.com',
+		instanceName: 'Example',
+		deviceToken: 'token-1',
+		user: { id: 'user-1', email: 'a@example.com', displayName: null },
+		addedAt: '2026-01-01T00:00:00Z'
+	};
+
+	it('revokes the token, removes the instance, and tears down its socket', async () => {
+		instanceStore.add(instance);
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+		await revokeAndRemoveInstance('instance-1');
+
+		expect(instanceStore.list()).toEqual([]);
+		// Without the teardown the manager would hold the revoked token's
+		// socket open until a reconnect 401s — and a re-sign-in (new
+		// instance id) would orphan it entirely.
+		expect(dropSocket).toHaveBeenCalledWith('instance-1');
+	});
+
+	it('removes the instance locally, socket included, even if the revoke call fails', async () => {
+		instanceStore.add(instance);
 		vi.mocked(fetch).mockRejectedValueOnce(new Error('network down'));
 
 		await revokeAndRemoveInstance('instance-1');
 
 		expect(instanceStore.list()).toEqual([]);
+		expect(dropSocket).toHaveBeenCalledWith('instance-1');
 	});
 
 	it('is a no-op for an unknown instance id', async () => {

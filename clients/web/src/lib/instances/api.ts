@@ -2,6 +2,7 @@ import { createApiClient } from '$lib/api/client.js';
 import { ApiError, fail, guard } from '$lib/api/errors.js';
 import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { unsubscribeFromPush } from '$lib/push/subscription.js';
+import { dropSocket } from '$lib/realtime/registry.svelte.js';
 import { instanceStore } from './store.js';
 import type { Instance } from './types.js';
 import { getPasskeyAssertion } from './webauthn.js';
@@ -305,6 +306,11 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 	} catch {
 		// Best-effort: the local removal below is what actually matters.
 	} finally {
+		// Tear down the instance's realtime socket with the instance itself —
+		// whether or not the revoke landed. Left connected, the manager would
+		// keep the old token's socket alive until a reconnect finally 401s,
+		// and a re-sign-in (which mints a new instance id) would orphan it.
+		dropSocket(instanceId);
 		instanceStore.remove(instanceId);
 		// The offline snapshots mix data across instances — on a shared
 		// device the next signer-in must never inherit them (issue #186).
