@@ -6,7 +6,9 @@
  */
 
 export const PHOENIX_BASE = 'http://localhost:4000';
-export const PWA_BASE = '/app';
+// The PWA is served at the site root since the LiveView removal (#187):
+// its baked-in base path (`paths.base` in vite.config.ts) is now empty.
+export const PWA_BASE = '';
 
 export const OPERATOR = {
 	email: 'frida@example.org',

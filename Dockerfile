@@ -12,11 +12,11 @@ ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-$
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}-slim"
 
 # ---------------------------------------------------------------------------
-# Svelte PWA client (ADR 0024, issue #176): built here, shipped inside the
-# release at priv/static/app, served by the endpoint under /app. The base
-# path is baked into the client at build time (`paths.base` in
+# Svelte PWA client (ADR 0024, issue #176/#187): built here, shipped inside
+# the release at priv/static/app, served by the endpoint at the site root.
+# The base path is baked into the client at build time (`paths.base` in
 # clients/web/vite.config.ts) and must match :pwa_base_path in
-# config/config.exs.
+# config/config.exs (now "/").
 
 FROM node:${NODE_VERSION}-slim AS client
 
@@ -63,17 +63,13 @@ RUN mix deps.compile
 
 COPY priv priv
 COPY lib lib
-COPY assets assets
 
-# Compile before bundling assets: app.css imports the colocated CSS that
-# the compiler extracts into _build (phoenix-colocated).
 RUN mix compile
-RUN mix assets.deploy
 
-# Ship the built PWA inside the release (after assets.deploy on purpose:
-# SvelteKit already content-hashes its own files, so they must not go
-# through phx.digest). Lands in priv/static/app, which the endpoint
-# serves under /app — see :pwa_base_path in config/config.exs.
+# Ship the built PWA inside the release. SvelteKit already content-hashes
+# its own files (no phx.digest step remains — the LiveView asset pipeline
+# is gone, #187). Lands in priv/static/app, which the endpoint serves at
+# the site root — see :pwa_base_path in config/config.exs.
 COPY --from=client /client/build ./priv/static/app
 
 COPY config/runtime.exs config/

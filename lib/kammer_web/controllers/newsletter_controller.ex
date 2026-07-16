@@ -1,51 +1,31 @@
 defmodule KammerWeb.NewsletterController do
   @moduledoc """
-  Lands the emailed newsletter confirm link (SPEC §8) and the
-  unsubscribe links every delivery carries — the plain GET a human
-  might click, and the RFC 8058 one-click POST a mail client fires
-  with no session at all. Both unsubscribe actions take a *scoped*
-  token (issue #233): it names its own subscription, so the id is
-  never a separate, attacker-variable request value, and it authorizes
-  nothing beyond that one subscription — never the guest's full-power
-  management token, since a mail gateway auto-fetches this URL with no
-  human in the loop. Invalid or expired tokens get a friendly dead
-  end; the one-click endpoint always answers 200 regardless, so it
-  never leaks whether a token was valid.
+  Newsletter unsubscribe endpoints (SPEC §8): the plain GET a human
+  might click, and the RFC 8058 one-click POST a mail client fires with
+  no session at all. Both take a *scoped* token (issue #233): it names
+  its own subscription, so the id is never a separate, attacker-variable
+  request value, and it authorizes nothing beyond that one subscription
+  — never the guest's full-power management token, since a mail gateway
+  auto-fetches this URL with no human in the loop.
+
+  Confirming a subscription happens over the JSON API now
+  (`POST /api/v1/newsletter/confirm`), landing the emailed link in the
+  PWA (ADR 0024, issue #187) — only the unsubscribe links, which have no
+  PWA route, stay server-rendered here. Both actions answer 200
+  regardless of whether the token was valid, so neither leaks it.
   """
 
   use KammerWeb, :controller
 
-  alias Kammer.Communities.Community
-  alias Kammer.Groups.Group
   alias Kammer.Newsletters
-
-  @spec confirm(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def confirm(conn, %{"token" => token}) do
-    case Newsletters.confirm_subscription(token, fn manage_token ->
-           url(~p"/guest/manage/#{manage_token}")
-         end) do
-      {:ok, group, _subscription} ->
-        conn
-        |> put_flash(
-          :info,
-          gettext("Subscribed — we emailed you a link to change or cancel it anytime.")
-        )
-        |> redirect(to: group_path(group))
-
-      {:error, :invalid} ->
-        conn
-        |> put_flash(:error, gettext("That link is invalid or has expired."))
-        |> redirect(to: ~p"/")
-    end
-  end
 
   @spec unsubscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def unsubscribe(conn, %{"token" => token}) do
     Newsletters.unsubscribe_by_scoped_token(token)
 
     conn
-    |> put_flash(:info, gettext("You're unsubscribed."))
-    |> redirect(to: ~p"/")
+    |> put_resp_content_type("text/plain")
+    |> send_resp(200, gettext("You're unsubscribed."))
   end
 
   @spec unsubscribe_one_click(Plug.Conn.t(), map()) :: Plug.Conn.t()
@@ -55,9 +35,5 @@ defmodule KammerWeb.NewsletterController do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(200, "Unsubscribed.")
-  end
-
-  defp group_path(%Group{community: %Community{} = community} = group) do
-    ~p"/c/#{community.slug}/g/#{group.slug}"
   end
 end

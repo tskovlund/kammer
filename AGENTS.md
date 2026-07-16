@@ -21,23 +21,23 @@ or be reconstructable. `decision`/`action`-labeled issues assigned to
 the owner are read-only for you (see Task & state tracking below);
 everything else open and unassigned is fair game.
 
-**LiveView is feature-frozen (ADR 0024).** The Svelte PWA is the
-product UI; LiveView is bugfix-only until it's removed in one cut at
-full PWA parity. Don't add LiveView features, polish passes, or new
-LiveView-only surfaces — new user-facing capability lands in the API
-and PWA instead (#165 is the transition umbrella). LiveView-only
-audit findings are deprioritized accordingly.
+**LiveView has been removed (ADR 0024, cut in #187).** The Svelte PWA
+over the JSON API is now the _only_ product UI — there is no LiveView
+surface left to freeze, bugfix, or port. New user-facing capability
+lands in the API and PWA, full stop. (History: LiveView was the
+first-iteration UI, held bugfix-only under a feature freeze until the
+PWA reached full parity, then deleted in one cut — #165/#187 both closed
+by it. The framework-scaffold "Phoenix LiveView / HEEx / streams"
+guidance further down this file is now inapplicable to this repo and is
+being stripped in a follow-up docs pass.)
 
-**Parity is positive, not a freeze** (owner-stated, 2026-07-12). When
-porting a LiveView surface to the PWA, match _or exceed_ it — never
-reproduce its limitations. LiveView was a first iteration: "the
-LiveView only did X" is not on its own a reason to stop at X, and never
-a reason to carry a LiveView bug forward. (The freeze note's "full PWA
-parity" is the aggregate _removal trigger_; on any single surface,
-parity is the floor, not the ceiling.) This reshaped the custom
-profile-field surface in #259 — widened from LiveView's required-only
-toggle to full label/visibility editing once the freeze-reasoning was
-caught.
+**Don't reproduce a prior iteration's limitations** (owner-stated,
+2026-07-12; originally about LiveView→PWA ports, now the standing bar
+for any rework). Match _or exceed_ whatever came before — "the old
+version only did X" is never on its own a reason to stop at X, and never
+a reason to carry an old bug forward. This reshaped the custom
+profile-field surface in #259 — widened from a required-only toggle to
+full label/visibility editing once the reasoning was caught.
 
 ### PR lifecycle
 

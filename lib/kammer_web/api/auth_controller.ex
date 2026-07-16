@@ -1,15 +1,15 @@
 defmodule KammerWeb.Api.AuthController do
   @moduledoc """
-  API sign-in (ADR 0014): the same passwordless flow as the web, over
-  JSON. `register` creates an account (mirrors `UserLive.Registration`
-  exactly — same changeset, same IP rate limit); `request_link` emails
-  a magic link that deep-links into the instance-served PWA plus a
-  short cross-device sign-in code (neutral response — no account
-  enumeration); `exchange` trades either single-use credential for a
-  long-lived device token; the passkey pair (issue #177, ADR 0018)
-  runs the WebAuthn assertion ceremony statelessly — the challenge
-  travels to the client signed, instead of living in a LiveView
-  process; `revoke` signs the device out.
+  API sign-in (ADR 0014): a passwordless JSON flow. `register` creates
+  an account (same changeset and per-IP rate limit as direct
+  registration); `request_link` emails a magic link that deep-links
+  into the instance-served PWA plus a short cross-device sign-in code
+  (neutral response — no account enumeration); `exchange` trades either
+  single-use credential for a long-lived device token; the passkey pair
+  (issue #177, ADR 0018) runs the WebAuthn assertion ceremony
+  statelessly — the challenge travels to the client signed, in a
+  short-lived token rather than server-side process state; `revoke`
+  signs the device out.
   """
 
   use KammerWeb, :controller
@@ -17,6 +17,7 @@ defmodule KammerWeb.Api.AuthController do
   alias Kammer.Accounts
   alias KammerWeb.ApiAuth
   alias KammerWeb.ApiError
+  alias KammerWeb.Api.PublicLinks
 
   # The signed challenge's whole lifetime — mirrors the 2-minute
   # passkey exchange token on the web flow: a WebAuthn ceremony takes
@@ -33,7 +34,7 @@ defmodule KammerWeb.Api.AuthController do
       {:ok, user} ->
         Accounts.deliver_login_instructions(
           user,
-          fn token -> pwa_sign_in_url(conn, token) end,
+          fn token -> PublicLinks.sign_in_url(conn, token) end,
           ip: conn.remote_ip,
           code: true
         )
@@ -52,7 +53,7 @@ defmodule KammerWeb.Api.AuthController do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_login_instructions(
         user,
-        fn token -> pwa_sign_in_url(conn, token) end,
+        fn token -> PublicLinks.sign_in_url(conn, token) end,
         ip: conn.remote_ip,
         code: true
       )
@@ -180,15 +181,6 @@ defmodule KammerWeb.Api.AuthController do
 
   defp user_payload(user),
     do: %{id: user.id, email: user.email, display_name: user.display_name}
-
-  # ADR 0024: API-initiated sign-in emails land in the instance-served
-  # PWA (the web-initiated flow keeps its LiveView landing until the
-  # removal cut, #187). Read at runtime with the same default #194
-  # configures, so emails and client mount point flip together.
-  defp pwa_sign_in_url(conn, token) do
-    base_path = Application.get_env(:kammer, :pwa_base_path, "/app")
-    unverified_url(conn, "#{base_path}/sign-in/#{token}")
-  end
 
   defp verify_challenge_token(challenge_token) do
     with {:ok, challenge_binary} <-

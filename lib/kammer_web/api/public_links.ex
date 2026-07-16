@@ -10,9 +10,9 @@ defmodule KammerWeb.Api.PublicLinks do
   0024), which calls the matching confirm/manage endpoint. So the
   confirm and management links these emails carry point at PWA routes
   under `:pwa_base_path` — the same landing convention
-  `AuthController` uses for API-initiated sign-in emails — not at the
-  LiveView routes the web flows still use. The signed token in the URL
-  stays the whole credential (ADR 0013); only the host route changes.
+  `AuthController` uses for API-initiated sign-in emails. Since the
+  LiveView removal (#187) the PWA is the only web UI, mounted at "/".
+  The signed token in the URL stays the whole credential (ADR 0013).
   """
 
   import Phoenix.VerifiedRoutes, only: [unverified_url: 2]
@@ -88,7 +88,12 @@ defmodule KammerWeb.Api.PublicLinks do
     do: "/c/#{community.slug}/g/#{group.slug}"
 
   defp pwa_url(conn, path) do
+    # `path` already starts with "/". When the base is the root ("/",
+    # since the #187 flip) prepending it would double the slash, so
+    # treat "/" as an empty prefix; a non-root base like "/app" is
+    # prepended as-is.
     base = Application.get_env(:kammer, :pwa_base_path, "/app")
-    unverified_url(conn, base <> path)
+    prefix = if base == "/", do: "", else: base
+    unverified_url(conn, prefix <> path)
   end
 end

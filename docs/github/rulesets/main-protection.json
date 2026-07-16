@@ -39,10 +39,22 @@
             "context": "Format, Credo, Sobelow, audit, Dialyzer, tests"
           },
           {
+            "context": "Web client (Svelte)"
+          },
+          {
+            "context": "End-to-end (Svelte PWA)"
+          },
+          {
             "context": "Docker image"
           },
           {
-            "context": "Smoke test"
+            "context": "Prettier"
+          },
+          {
+            "context": "Gitleaks"
+          },
+          {
+            "context": "Dependency review"
           }
         ]
       }

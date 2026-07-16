@@ -6,6 +6,12 @@ defmodule KammerWeb.GroupFeedController do
   page (`Groups.fetch_viewable_group/3`), so private and
   community-only groups 404 like any other content an anonymous
   visitor can't see.
+
+  The `<link>` back to the group page is an `unverified_url/2`: since
+  the LiveView removal (#187) `/c/:slug/g/:slug` is a PWA client-side
+  route served by the catch-all, not a compile-verifiable server route.
+  The `feed_url` self-links stay `~p` — those *are* this controller's
+  own routes.
   """
 
   use KammerWeb, :controller
@@ -26,7 +32,7 @@ defmodule KammerWeb.GroupFeedController do
         Syndication.rss(%{
           title: group.name,
           description: group.description || group.name,
-          link: url(~p"/c/#{community.slug}/g/#{group.slug}"),
+          link: unverified_url(conn, "/c/#{community.slug}/g/#{group.slug}"),
           feed_url: url(~p"/c/#{community.slug}/g/#{group.slug}/feed.rss"),
           posts: posts
         })
@@ -44,7 +50,7 @@ defmodule KammerWeb.GroupFeedController do
       body =
         Syndication.atom(%{
           title: group.name,
-          link: url(~p"/c/#{community.slug}/g/#{group.slug}"),
+          link: unverified_url(conn, "/c/#{community.slug}/g/#{group.slug}"),
           feed_url: url(~p"/c/#{community.slug}/g/#{group.slug}/feed.atom"),
           posts: posts
         })

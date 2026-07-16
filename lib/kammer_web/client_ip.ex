@@ -29,11 +29,8 @@ defmodule KammerWeb.ClientIp do
       client that reaches the port directly cannot spoof, no matter
       what it sends.
 
-  One policy, two entry points: the module is a `Plug` (rewrites
-  `conn.remote_ip` in the endpoint pipeline) and a LiveView helper
-  (`client_ip_from_socket/1` — socket upgrades bypass the plug
-  pipeline, so mounts apply the same policy to `peer_data` +
-  `x_headers` connect info).
+  The module is a `Plug` that rewrites `conn.remote_ip` in the endpoint
+  pipeline.
 
   Deliberately hand-rolled instead of the `remote_ip` hex package
   (SPEC §22 prefers the minimal internal version over a mismatched
@@ -67,31 +64,6 @@ defmodule KammerWeb.ClientIp do
   def call(conn, _opts) do
     %{conn | remote_ip: client_ip(conn.remote_ip, conn.req_headers)}
   end
-
-  @doc """
-  The client IP for a LiveView socket, from its `peer_data` and
-  `x_headers` connect info — the same trusted-proxy policy as the
-  plug. Nil when the socket has no peer data (static render, tests).
-  """
-  @spec client_ip_from_socket(Phoenix.LiveView.Socket.t()) :: :inet.ip_address() | nil
-  def client_ip_from_socket(socket) do
-    client_ip_from_connect_info(
-      Phoenix.LiveView.get_connect_info(socket, :peer_data),
-      Phoenix.LiveView.get_connect_info(socket, :x_headers)
-    )
-  end
-
-  @doc """
-  `client_ip_from_socket/1`'s core, separated so the policy is
-  testable without a socket: resolves `peer_data` + `x_headers`
-  connect info, either of which may be nil.
-  """
-  @spec client_ip_from_connect_info(map() | nil, [{binary(), binary()}] | nil) ::
-          :inet.ip_address() | nil
-  def client_ip_from_connect_info(%{address: address}, x_headers),
-    do: client_ip(address, x_headers)
-
-  def client_ip_from_connect_info(_missing_peer_data, _x_headers), do: nil
 
   @doc """
   Resolves the client IP for `peer` given request headers, honoring

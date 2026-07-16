@@ -42,9 +42,7 @@ defmodule KammerWeb.Api.AccountTest do
       assert_email_sent(fn email ->
         with [{"", "ny-adresse@example.org"}] <- email.to,
              [token] <-
-               Regex.run(~r{/app/confirm-email/([\w-]+)}, email.text_body,
-                 capture: :all_but_first
-               ) do
+               Regex.run(~r{/confirm-email/([\w-]+)}, email.text_body, capture: :all_but_first) do
           send(self(), {:change_token, token})
           true
         else
@@ -155,9 +153,7 @@ defmodule KammerWeb.Api.AccountTest do
       assert_email_sent(fn email ->
         with [{"", "alice-ny@example.org"}] <- email.to,
              [token] <-
-               Regex.run(~r{/app/confirm-email/([\w-]+)}, email.text_body,
-                 capture: :all_but_first
-               ) do
+               Regex.run(~r{/confirm-email/([\w-]+)}, email.text_body, capture: :all_but_first) do
           send(self(), {:alice_token, token})
           true
         else

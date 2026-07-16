@@ -23,11 +23,7 @@ config :kammer, KammerWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "eKweI4oZSAsKxW75DXnUw46QgShTb9oI7jgLN3dwelGkGAafgcRh0bi10JDaQ4D+",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:kammer, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:kammer, ~w(--watch)]}
-  ]
+  secret_key_base: "eKweI4oZSAsKxW75DXnUw46QgShTb9oI7jgLN3dwelGkGAafgcRh0bi10JDaQ4D+"
 
 # ## SSL Support
 #
@@ -52,24 +48,6 @@ config :kammer, KammerWeb.Endpoint,
 # configured to run both http and https servers on
 # different ports.
 
-# Reload browser tabs when matching files change.
-config :kammer, KammerWeb.Endpoint,
-  live_reload: [
-    web_console_logger: true,
-    patterns: [
-      # Static assets, except user uploads
-      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$",
-      # Gettext translations
-      ~r"priv/gettext/.*\.po$",
-      # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/kammer_web/router\.ex$",
-      ~r"lib/kammer_web/(controllers|live|components)/.*\.(ex|heex)$"
-    ]
-  ]
-
-# Enable dev routes for dashboard and mailbox
-config :kammer, dev_routes: true
-
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 
@@ -80,13 +58,10 @@ config :phoenix, :stacktrace_depth, 20
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
 
-config :phoenix_live_view,
-  # Include debug annotations and locations in rendered markup.
-  # Changing this configuration will require mix clean and a full recompile.
-  debug_heex_annotations: true,
-  debug_attributes: true,
-  # Enable helpful, but potentially expensive runtime checks
-  enable_expensive_runtime_checks: true
-
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Mount the Swoosh mailbox preview at /dev/mailbox in development — the
+# Playwright e2e suite reads sent magic-link emails from
+# /dev/mailbox/json to complete the sign-in flows.
+config :kammer, dev_routes: true

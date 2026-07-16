@@ -18,11 +18,11 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 ## 1. Stack (fixed decisions — do not substitute)
 
-- **Backend/UI**: Elixir + Phoenix (latest stable). **Phoenix LiveView** is the interim UI only — feature-frozen (bugfixes only) and removed entirely once the multi-instance Svelte PWA reaches full parity (§16, ADR 0024). Domain logic in Phoenix contexts — this is non-negotiable; the contexts and the JSON API are the permanent asset, the Svelte client is the product UI.
+- **Backend**: Elixir + Phoenix (latest stable), serving a JSON API. Domain logic in Phoenix contexts — this is non-negotiable; the contexts and the JSON API are the permanent asset. LiveView was the first-build UI and has been removed entirely (§16, ADR 0024, issue #187); the instance-served multi-instance Svelte PWA is the product UI.
 - **Database**: PostgreSQL via Ecto. UUID primary keys everywhere. Timestamps stored UTC; rendered in the user's timezone.
-- **Styling**: Tailwind CSS. Clean, warm, modern, mobile-first (most users are on phones). Designed empty/loading/error states — the app must feel finished, not scaffolded.
-- **PWA**: manifest, service worker (app-shell caching only; content online-only), installable on iOS/Android. **Web Push** via VAPID. (This describes the interim LiveView shell; the instance-served Svelte client is the product PWA — §16, ADR 0024.)
-- **Real-time**: LiveView sockets (interim) and Phoenix Channels with device-token auth (API/PWA clients — §16, ADR 0024) + Phoenix PubSub (live feeds, comments, RSVP counts).
+- **UI/Styling**: the Svelte PWA (its own Tailwind build). Clean, warm, modern, mobile-first (most users are on phones). Designed empty/loading/error states — the app must feel finished, not scaffolded.
+- **PWA**: manifest, service worker (app-shell caching only; content online-only), installable on iOS/Android, served by the Phoenix release at the site root. **Web Push** via VAPID.
+- **Real-time**: Phoenix Channels with device-token auth (API/PWA clients — §16, ADR 0024) + Phoenix PubSub (live feeds, comments, RSVP counts).
 - **Files/images**: `Storage` behaviour with two adapters: local disk (default) and S3-compatible (MinIO/Hetzner Object Storage). libvips (`image`/`vix`) for processing.
 - **Email**: Swoosh, configurable SMTP/provider adapters.
 - **i18n**: gettext from day 1; English and Danish complete for everything shipped. Per-user language; per-community default.
@@ -144,7 +144,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Branding**: name, logo, accent color, default language — in settings UI, not only env.
 - **Backups built in**: Oban-scheduled pg_dump + file snapshot to local path or S3 target; retention policy; **optional `age` public-key encryption** of archives (documented hard: lose the key, lose the backups); tested restore procedure in `docs/backups.md`.
 - **Observability**: structured logs, `/healthz`, optional Prometheus `/metrics` (Telemetry), optional Sentry-compatible (GlitchTip) error reporting.
-- **Upgrades**: release check against GitHub shown **in the admin panel only** (toggleable off; no phone-home otherwise); never shown to regular users. Migrations run on boot; LiveView clients pick up new versions on reconnect; assets digest-versioned.
+- **Upgrades**: release check against GitHub shown **in the admin panel only** (toggleable off; no phone-home otherwise); never shown to regular users. Migrations run on boot; the PWA service worker picks up new versions and its assets are content-hashed (SvelteKit build).
 - **Email admin UX**: SMTP settings with "send test email". Docs cover providers (Postmark/Resend) and self-hosted (Stalwart) incl. SPF/DKIM/DMARC.
 
 ## 14. Packaging & repo
@@ -188,8 +188,8 @@ Kammer's own hot paths, a shipped Grafana dashboard and alerting
 examples in the deploy docs. Explicitly bounded by the product ethos:
 no user-behavior analytics ever, no distributed-tracing ceremony on a
 single-node monolith, no hosted-APM dependencies. ADR 0012's
-sequencing stands: PWA first, the LiveView cut (#187) before native
-work — this sets the finish line, not the order.
+sequencing stands: PWA first, the LiveView cut (#187, now done)
+before native work — this set the finish line, not the order.
 
 **Confirmed post-V1 roadmap (owner-approved scope, not yet designed or
 scheduled — each item has its own tracking issue so nothing here gets
@@ -206,11 +206,11 @@ per-group threading switches out of the product — that constraint
 still holds, only the "non-goal" framing changes).
 
 **UI architecture strategy:** the **Svelte PWA is the product UI**
-(ADR 0024); LiveView was the first-build vehicle and will be removed
-from the repo entirely — it cannot do offline mode or multi-instance
-session-holding/merging, the two capabilities the product depends
-on. The JSON API over the same Phoenix contexts is already shipped
-(ADR 0014). The PWA is **instance-served**: the Phoenix release
+(ADR 0024); LiveView was the first-build vehicle and has been removed
+from the repo entirely (#187) — it cannot do offline mode or
+multi-instance session-holding/merging, the two capabilities the
+product depends on. The JSON API over the same Phoenix contexts is
+already shipped (ADR 0014). The PWA is **instance-served**: the Phoenix release
 bundles and serves the built client at the instance's own domain, so
 magic links land in the PWA (deep link to `/sign-in/{token}`, plus a
 short code in the email for cross-device sign-in; passkeys in client
@@ -221,16 +221,16 @@ instances, merges views client-side; foreign items resolve naturally
 since the client is a session-holder, not a proxy), with
 community-first IA (§21) and Phoenix Channels realtime
 (device-token socket auth) from the client foundation onward.
-Sequencing: **freeze + parity ladder** — LiveView is feature-frozen
-(bugfixes only) while the PWA climbs surface-by-surface; each
-surface ships with full write parity, including the API endpoints it
-is missing; guest surfaces (guest RSVP/comment/claim links,
-newsletter unsubscribe, legal pages, setup wizard) move onto new
-public API endpoints as their turn comes, while RSS/iCal stay plain
-HTTP feeds; LiveView is removed in one cut at full
-member+admin+guest coverage (#165 is the transition umbrella). This
-client-side model replaces any server-side "home instance"
-aggregation scheme; no inter-instance sync protocol is required.
+Sequencing (**completed**): a **freeze + parity ladder** — LiveView
+was feature-frozen while the PWA climbed surface-by-surface, each
+surface shipping with full write parity including the API endpoints
+it was missing; guest surfaces (guest RSVP/comment/claim links,
+newsletter unsubscribe, legal pages, setup wizard) moved onto new
+public API endpoints, while RSS/iCal stay plain HTTP feeds; then
+LiveView was removed in one cut at full member+admin+guest coverage
+(#187, closing the #165 transition umbrella). This client-side model
+replaces any server-side "home instance" aggregation scheme; no
+inter-instance sync protocol is required.
 Native apps come strictly after PWA parity, generated from the same
 OpenAPI document (#131, ADR 0022). Note: ICS and RSS already provide
 standards-based cross-instance merging.
@@ -255,12 +255,12 @@ stubs are forbidden.
 - **One authorization module**: every permission/visibility rule flows through it; no inline checks in templates. The file-visibility invariant and sealed-group rules get dedicated test suites (property-based where practical).
 - Git: **lefthook** hooks auto-installed via mix task (commit: format, credo, compile; push: tests); **Conventional Commits** + commitlint.
 - CI (GitHub Actions): format check, Credo, Dialyzer, tests with coverage floor, `mix hex.audit` + `mix deps.audit`, **Sobelow** (Phoenix security static analysis).
-- Tests: context-level unit tests (permissions above all), LiveView tests for critical flows (auth, posting, RSVP, invite redemption), doctests where they add value.
+- Tests: context-level unit tests (permissions above all), JSON API request tests for every endpoint, Playwright end-to-end tests for critical PWA flows (auth, posting, RSVP, invite redemption), doctests where they add value.
 - CONVENTIONS.md documents all of the above for contributors.
 
 ## 18. Documentation (a deliverable)
 
-- **Diátaxis structure, reader-first pragmatism** (deviate from the framework whenever reader value says so): Tutorial ("zero to invited community in 10 minutes"), How-tos (backup/restore, email incl. self-hosted, reverse proxy, upgrades, quotas), Reference (config, permissions model, storage policy), Explanation (architecture, the visibility invariant, why LiveView, threat model incl. what "sealed" does and doesn't guarantee).
+- **Diátaxis structure, reader-first pragmatism** (deviate from the framework whenever reader value says so): Tutorial ("zero to invited community in 10 minutes"), How-tos (backup/restore, email incl. self-hosted, reverse proxy, upgrades, quotas), Reference (config, permissions model, storage policy), Explanation (architecture, the visibility invariant, the API-first/PWA design, threat model incl. what "sealed" does and doesn't guarantee).
 - **Tooling**: Astro **Starlight** docs site (i18n-ready EN/DA, deployed via GitHub Pages) + **ExDoc** for API reference generated from module docs.
 - **ADRs**: minimal records (context → decision → consequences, ≤1 page) in `docs/decisions/`, one per decision a contributor would relitigate — architecture, not routine feature work.
 - README sells the product: ethos up top, screenshots, quickstart, honest limitations section.
@@ -292,14 +292,14 @@ stubs are forbidden.
 
 ## 22. Prescribed dependencies (verify current versions before use; do not substitute without a CHANGELOG/PR note explaining why)
 
-- Phoenix (latest stable) + Phoenix LiveView + Ecto/postgrex.
+- Phoenix (latest stable) + Ecto/postgrex. (Phoenix LiveView was removed in the #187 cut — ADR 0024.)
 - **Oban** — background jobs. **Swoosh** — email. **Gettext** — i18n.
 - **Wax** — WebAuthn/passkeys. **web push**: use the currently maintained Elixir web-push library (verify on Hex; implement VAPID payload encryption per RFC 8291 if library support is thin).
 - **Vix (libvips)** — image processing (thumbnails, EXIF strip, HEIC→WebP/JPEG).
 - **Earmark or MDEx** — Markdown rendering (sanitized output; verify current best choice).
 - **Hammer** (or equivalent) — rate limiting.
 - **icalendar** library for ICS generation (verify maintenance status; ICS is simple enough to generate directly if libraries are stale).
-- Tailwind via Phoenix's standard esbuild/tailwind pipeline; **no** custom npm build chain in the application's runtime or asset build. (npm is permitted for dev tooling — commitlint — and the separate Starlight docs site.)
+- The product UI is the Svelte PWA (`clients/web`, SvelteKit + Vite + Tailwind), built by its own toolchain and served by the Phoenix release. The server itself ships no asset pipeline (the LiveView esbuild/tailwind build was removed in #187). npm/pnpm is confined to the client, dev tooling (commitlint), and the separate Starlight docs site.
 - Dev/quality: Credo, Dialyxir, Sobelow, ExCoveralls (coverage), lefthook, commitlint.
 - Rule: prefer boring, maintained, well-documented libraries; when a needed library is stale or missing, implement the minimal internal version rather than adopting an abandoned dependency, and say why in the PR.
 

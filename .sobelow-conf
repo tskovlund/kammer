@@ -9,33 +9,37 @@
   # Traversal.FileModule / Traversal.SendFile: Kammer.Storage.Local guards
   #   every path against escaping the uploads root; storage keys are
   #   server-generated UUID paths, never user input.
-  # Traversal.SendDownload: the one send_download/2 call (GdprController)
-  #   streams a zip whose path is built entirely inside Kammer.Gdpr.export/1
-  #   (System.tmp_dir!/0 joined with the current user's id and a monotonic
-  #   integer) — never derived from request params.
+  # Traversal.SendDownload: the one send_download/2 call
+  #   (KammerWeb.Api.AccountController) streams a zip whose path is built
+  #   entirely inside Kammer.Gdpr.export/1 (System.tmp_dir!/0 joined with
+  #   the current user's id and a monotonic integer) — never derived from
+  #   request params.
   # XSS.ContentType: stored content types pass a sanitizing allowlist and
   #   non-image files are served with Content-Disposition: attachment and
-  #   X-Content-Type-Options: nosniff (KammerWeb.FileController).
+  #   X-Content-Type-Options: nosniff (KammerWeb.FileServing, shared by the
+  #   Bearer and public file controllers).
   # Misc.BinToTerm: Kammer.Accounts.login_user_by_passkey/5 decodes a
   #   passkey's own public_key_cose column with the [:safe] option — data
   #   this same code wrote at registration, never request input, so there
   #   is no untrusted-deserialization boundary here.
-  # Config.CSP: a real, strict CSP is set on every request by
-  #   KammerWeb.Plugs.CspNonce (pre-1.0 hardening: nonce-based script-src,
-  #   no 'unsafe-inline') — Sobelow's static check only recognizes a
-  #   literal content-security-policy key in the put_secure_browser_headers
-  #   call, so it can't see a header set by a separate plug. Verified with
-  #   test/kammer_web/plugs/csp_nonce_test.exs and a real-browser check
-  #   (zero console CSP violations, inline theme script executes).
+  # Config.CSP: since the LiveView removal (#187) the only HTML surface is
+  #   the PWA document, whose strict CSP is set in KammerWeb.PwaController
+  #   (see its @csp) rather than in put_secure_browser_headers — Sobelow's
+  #   static check only recognizes a literal content-security-policy key in
+  #   that call, so it can't see a header a controller sets. The remaining
+  #   :browser routes (ICS/RSS feeds, newsletter unsubscribe) serve
+  #   XML/text/calendar, not scriptable HTML, so they need no CSP. Verified
+  #   with test/kammer_web/controllers/pwa_controller_test.exs.
   # Config.CSWH: check_origin is disabled only on /api/socket
   #   (KammerWeb.Api.UserSocket), deliberately and for the same reason
   #   /api gets CORS `*` (issue #150): that socket authenticates with the
   #   device token in its connect params, never a cookie, so there is no
   #   ambient credential for a hostile origin to ride — hijacking needs
-  #   the token itself, which origin checks don't protect anyway. The
-  #   cookie-authenticated LiveView socket keeps origin checks; if a
-  #   check_origin: false ever appears on /live or in prod config, that
-  #   is a real finding this ignore would mask — grep before trusting it.
+  #   the token itself, which origin checks don't protect anyway. This is
+  #   now the only socket (the cookie-authenticated LiveView /live socket
+  #   is gone, #187); if a check_origin: false ever appears elsewhere or in
+  #   prod config, that is a real finding this ignore would mask — grep
+  #   before trusting it.
   ignore: [
     "Config.HTTPS",
     "Traversal.FileModule",

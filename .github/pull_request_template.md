@@ -17,4 +17,4 @@
 - [ ] `CHANGELOG.md` entry under `## [Unreleased]` for anything worth recording (user-facing changes, and audit-driven fixes/additions such as pure test-coverage additions)
 - [ ] Docs still true (README, `AGENTS.md`/`CLAUDE.md`, docs/, `.env.example`) — updated here if not
 - [ ] What's left tracked as a GitHub issue, not left as a silent stub
-- [ ] UI changed visibly? Regenerate `docs/screenshots/` (`scripts/screenshots.sh`)
+- [ ] UI changed visibly? Note it in the PR — `docs/screenshots/` gets a single batch refresh before v1 (don't block on it)

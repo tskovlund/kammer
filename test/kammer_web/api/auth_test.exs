@@ -76,7 +76,7 @@ defmodule KammerWeb.Api.AuthTest do
       # instance-served PWA and carries a sign-in code.
       assert_email_sent(fn email ->
         email.to == [{"", "new-signup@example.org"}] and
-          email.text_body =~ ~r{/app/sign-in/[\w-]+} and
+          email.text_body =~ ~r{/sign-in/[\w-]+} and
           email.text_body =~ ~r/sign-in code in the app:/
       end)
     end
@@ -112,7 +112,7 @@ defmodule KammerWeb.Api.AuthTest do
       # ADR 0024: API-initiated sign-in emails deep-link into the
       # instance-served PWA, not the LiveView landing page.
       assert_email_sent(fn email ->
-        case Regex.run(~r{/app/sign-in/([\w-]+)}, email.text_body, capture: :all_but_first) do
+        case Regex.run(~r{/sign-in/([\w-]+)}, email.text_body, capture: :all_but_first) do
           [token] ->
             send(self(), {:magic_token, token})
             true

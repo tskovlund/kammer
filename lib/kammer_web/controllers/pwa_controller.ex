@@ -4,9 +4,10 @@ defmodule KammerWeb.PwaController do
 
   Real files under the PWA base path (hashed `_app/` assets, the web
   manifest, icons) are served by `Plug.Static` in the endpoint; every
-  other request under the base path lands here and gets the client's
-  `index.html`, so client-side routes — `/app/sign-in/{token}` from a
-  magic-link email, most importantly — deep-link straight into the SPA.
+  other request under the base path (now the site root, #187) lands here
+  and gets the client's `index.html`, so client-side routes —
+  `/sign-in/{token}` from a magic-link email, most importantly —
+  deep-link straight into the SPA.
 
   When no client bundle is present (plain `mix phx.server` without a
   release build — the bundle is produced by the Dockerfile's client
@@ -28,10 +29,9 @@ defmodule KammerWeb.PwaController do
   See docs/development.md for details.
   """
 
-  # The SPA's own CSP. SvelteKit's static output boots from inline
-  # scripts baked into index.html at build time, so the nonce-based
-  # policy the browser pipeline uses (CspNonce) cannot apply to a
-  # prebuilt file — hence 'unsafe-inline' for scripts, as a functional
+  # The SPA's own CSP, set here in the controller because SvelteKit's
+  # static output boots from inline scripts baked into index.html at
+  # build time — hence 'unsafe-inline' for scripts, as a functional
   # baseline. Tightening it (build-time script hashes via SvelteKit's
   # `kit.csp`) is tracked in issue #163. connect-src allows any https/wss
   # origin on purpose: the client merges multiple Kammer instances

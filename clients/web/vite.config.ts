@@ -14,10 +14,11 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter({ fallback: 'index.html' }),
-			// Served by the Phoenix release under /app while LiveView still owns /
-			// (issue #176; flip to '' at the LiveView removal cut, #187, together
-			// with :pwa_base_path in config/config.exs).
-			paths: { base: '/app' },
+			// Served by the Phoenix release at the site root: the LiveView
+			// removal cut (#187) flipped the base from '/app' to '' (kept in
+			// lockstep with :pwa_base_path in config/config.exs and the paths
+			// in static/manifest.webmanifest).
+			paths: { base: '' },
 			// $lib/pwa/register-service-worker.ts owns registration (issue
 			// #186) — production-only, with update/reload policy attached.
 			// SvelteKit's own auto-registration must be off, not merely

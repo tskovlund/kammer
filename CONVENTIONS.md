@@ -34,7 +34,7 @@ tooling wherever possible; the rest is enforced in review.
 
 - **One authorization module**: every permission and visibility decision
   flows through `Kammer.Authorization`. No inline permission checks in
-  templates, LiveViews, or controllers — they ask the module.
+  controllers or serializers — they ask the module.
 - The file-visibility invariant (file/folder visibility can never exceed the
   owning scope's visibility preset) and sealed-group rules have dedicated
   test suites, property-based where practical (`StreamData`).
@@ -132,7 +132,9 @@ literal. Both review gates check this.
   pad toward. Both review gates ask this question of every new or
   changed test.
 - Context-level unit tests for all domain logic — **permissions above all**.
-- LiveView tests for critical flows: auth, posting, RSVP, invite redemption.
+- JSON API request tests for every endpoint (`test/kammer_web/api/`); the
+  Playwright suite (`clients/web/e2e/`) covers critical PWA flows end to
+  end: auth, posting, RSVP, invite redemption.
 - Doctests where they genuinely add value.
 - Property-based tests (StreamData) for the authorization invariants.
 

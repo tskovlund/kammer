@@ -190,10 +190,13 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
   # (contrast `unsubscribe_url/1` below) — this is a link a human must
   # open and click from the email body, not a URL mail gateways
   # auto-fetch with no interaction, so it isn't issue #233's attack
-  # vector. It rides the #185/#187 PWA transition as-is for now;
-  # revisit once LiveView's guest-manage surface is replaced.
+  # vector. The token rides the URL *fragment* (`#…`, not `/…`): the PWA
+  # guest-manage page (ADR 0026, issue #187) reads it client-side, and a
+  # fragment is never sent to any server, so a long-lived credential
+  # can't leak into access logs or the `Referer` header. This matches
+  # `KammerWeb.Api.PublicLinks.manage_url/2`.
   defp manage_url(manage_token) do
-    "#{KammerWeb.Endpoint.url()}/guest/manage/#{manage_token}"
+    "#{KammerWeb.Endpoint.url()}/guest/manage##{manage_token}"
   end
 
   # RFC 8058 `List-Unsubscribe` is fetched automatically by mail

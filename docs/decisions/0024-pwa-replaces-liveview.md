@@ -75,3 +75,22 @@ cut at full coverage is honest).
   deprioritized — noted on the issues themselves, not just here.
 - SPEC.md §1, §16, and §21 are corrected to stop describing LiveView
   as the product UI.
+
+## Update — removal cut landed (2026-07-13, issue #187)
+
+The one-cut removal in this ADR's Decision is **done**. The entire
+`lib/kammer_web/live/` tree, the LiveView-only web layer (components,
+layouts, the CSP-nonce plug, the server `assets/` esbuild/Tailwind
+pipeline), and the LiveView-supporting controllers whose capability had
+already reached the JSON API were deleted; the `phoenix_live_view`,
+`phoenix_live_dashboard`, `phoenix_live_reload`, `heroicons`, `esbuild`,
+`tailwind`, and `lazy_html` dependencies went with them. The PWA base
+flipped from `/app` to `/` (`:pwa_base_path`, `paths.base`, the web
+manifest, and every email/redirect producer), and the router's PWA
+catch-all moved to the end so it shadows neither the API nor the feeds.
+A data migration rehomed the community file space (a LiveView-only
+surface) onto each community's oldest group. `KammerWeb.UserAuth` shrank
+to a session reader, since browser sign-in was already an API
+device-token flow. What remains server-rendered: the JSON API, the
+ICS/RSS/Atom feeds, `/healthz`, newsletter unsubscribe, and the PWA
+document itself (`PwaController`).
