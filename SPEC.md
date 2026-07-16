@@ -174,6 +174,11 @@ cross-instance community concept to federate between. See ADR 0023
 for the full reasoning: this isn't a lesser version of federation,
 it's a better fit for what Kammer actually needs, considered and
 rejected deliberately rather than left unexamined.
+Membership dues / kontingent tracking (owner-decided, 2026-07-16):
+too specific to build into this platform at this point — Kammer is
+not only for Danish associations, and payment/dues bookkeeping is a
+different product's job. Communities that need it keep using their
+existing tooling; revisit only if pilot evidence makes the case.
 
 **V1 scope beyond the web product (owner-set, 2026-07-11; ADR 0028 —
 the product is not finished in its first version without these):**
