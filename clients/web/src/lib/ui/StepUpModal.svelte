@@ -9,7 +9,7 @@
 	} from '$lib/instances/stepup.js';
 	import type { Instance } from '$lib/instances/types.js';
 	import Button from '$lib/ui/Button.svelte';
-	import { dismissable } from '$lib/ui/dismissable.js';
+	import { dismissable, FOCUSABLE } from '$lib/ui/dismissable.js';
 
 	/**
 	 * The step-up confirmation dialog (issue #294, ADR 0029): opened when
@@ -47,9 +47,9 @@
 	function trapTab(node: HTMLElement) {
 		function onKeydown(event: KeyboardEvent) {
 			if (event.key !== 'Tab') return;
-			const focusable = Array.from(
-				node.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex="0"]')
-			);
+			// Same selector `dismissable` uses for initial focus — the trap
+			// and the focuser must agree on what counts as focusable.
+			const focusable = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE));
 			if (focusable.length === 0) return;
 			const first = focusable[0];
 			const last = focusable[focusable.length - 1];

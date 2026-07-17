@@ -83,7 +83,15 @@ defmodule KammerWeb.Api.ProfileController do
     # already allows it (DELETE /auth/device-token is the same act).
     # Foreign and nonexistent ids read identically here — both are
     # "not my own row" — so the gate leaks nothing a 404 wouldn't.
-    if device_id == current_device_id(conn) or KammerWeb.ApiStepUp.stepped_up?(conn) do
+    # Cast before comparing: the path param is caller-cased, the row id
+    # is canonical — an upper-cased own id must not read as foreign.
+    normalized_id =
+      case Ecto.UUID.cast(device_id) do
+        {:ok, id} -> id
+        :error -> device_id
+      end
+
+    if normalized_id == current_device_id(conn) or KammerWeb.ApiStepUp.stepped_up?(conn) do
       do_revoke_device(conn, device_id)
     else
       KammerWeb.ApiStepUp.refuse(conn)

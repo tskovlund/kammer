@@ -679,16 +679,22 @@ defmodule Kammer.Accounts do
     with {:ok, query} <- UserToken.verify_step_up_token_query(token),
          %UserToken{} = step_up_token <- Repo.one(query) do
       Repo.transact(fn ->
-        # Two concurrent confirms race on this delete; the loser reads
-        # as the same neutral not-found as any spent token.
-        with {1, _} <- Repo.delete_all(from(t in UserToken, where: t.id == ^step_up_token.id)),
-             %UserToken{context: "api-device"} = device <-
+        # Lock the TARGET device row before touching the step-up token:
+        # `revoke_user_device/2` deletes the device row and cascades to
+        # this token, taking locks in that D→T order — acquiring D first
+        # here keeps both paths ordered identically, so a concurrent
+        # confirm-vs-revoke on the same device cannot deadlock (found by
+        # the #294 security review). Two concurrent confirms then race
+        # on the delete below; the loser reads as the same neutral
+        # not-found as any spent token.
+        with %UserToken{context: "api-device"} = device <-
                Repo.one(
                  from(t in UserToken,
                    where: t.id == ^step_up_token.target_token_id,
                    lock: "FOR UPDATE"
                  )
-               ) do
+               ),
+             {1, _} <- Repo.delete_all(from(t in UserToken, where: t.id == ^step_up_token.id)) do
           {:ok, step_up_device(device)}
         else
           # The target row vanished between verify and here (the FK
