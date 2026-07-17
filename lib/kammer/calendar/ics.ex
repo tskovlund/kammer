@@ -55,12 +55,14 @@ defmodule Kammer.Calendar.ICS do
     |> Enum.reject(&is_nil/1)
   end
 
-  # A cancelled occurrence downloaded on its own (the event page's button
-  # still renders — a re-download is how a subscriber propagates the
-  # cancellation into a calendar they already added it to) must not look
-  # live: STATUS:CANCELLED tells the calendar client the event is off.
-  # The feeds exclude cancelled occurrences upstream, so this only bites
-  # the single-event surface today, but the generator marks any cancelled
+  # A cancelled occurrence downloaded on its own must not look live:
+  # STATUS:CANCELLED marks it off in the calendar rather than planting a
+  # normal-looking event. (Whether a *re*-download updates a copy the
+  # subscriber already imported is best-effort under METHOD:PUBLISH with
+  # no SEQUENCE — DTSTAMP-gated clients accept it, SEQUENCE-gated ones
+  # may not; proper iTIP revision handling is tracked separately.) The
+  # feeds exclude cancelled occurrences upstream, so this only bites the
+  # single-event surface today, but the generator marks any cancelled
   # event it's handed, whatever the surface.
   defp status(%Event{cancelled_at: nil}), do: nil
   defp status(%Event{}), do: "STATUS:CANCELLED"
@@ -129,20 +131,26 @@ defmodule Kammer.Calendar.ICS do
     |> String.replace("\\", "\\\\")
     |> String.replace(";", "\\;")
     |> String.replace(",", "\\,")
-    # Every newline variant collapses to one escaped `\n`. A lone CR (no
-    # LF) used to survive raw: RFC-strict parsers only break a content
-    # line on CRLF, but several real calendar clients break on a bare CR
-    # too, which let an event's title/description/location inject whole
-    # property lines (ORGANIZER, ATTENDEE, VALARM…) into subscribers'
-    # calendars (#313). Order matters — CRLF before the lone-CR and
-    # lone-LF passes, or the split halves double-escape.
+    # Every line-break variant collapses to one escaped `\n`. Beyond
+    # CRLF/CR/LF (RFC-strict parsers only break a content line on CRLF,
+    # but real calendar clients break on a bare CR too — #313), the
+    # Unicode-aware unfolders some clients use (e.g. .NET's line
+    # splitters) also break on NEL and the line/paragraph separators, so
+    # those inject property lines just the same. Order: CRLF before the
+    # lone-CR and lone-LF passes, or the split halves double-escape.
     |> String.replace("\r\n", "\\n")
     |> String.replace("\r", "\\n")
     |> String.replace("\n", "\\n")
-    # Other C0 controls and DEL are illegal in RFC 5545 TEXT and have no
-    # legitimate use in these fields (TAB stays — it's permitted); drop
-    # them so no exotic separator a lenient parser might honor survives.
+    |> String.replace("\u{0085}", "\\n")
+    |> String.replace("\u{2028}", "\\n")
+    |> String.replace("\u{2029}", "\\n")
+    # Remaining control characters — C0 + DEL (byte-oriented) and the C1
+    # range (codepoint-oriented, needs the `u` flag) — are illegal in
+    # RFC 5545 text and have no legitimate use in these fields (TAB
+    # stays, it's permitted); drop them so no exotic separator a lenient
+    # parser might honor survives. NEL (U+0085) is already handled above.
     |> String.replace(~r/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
+    |> String.replace(~r/[\x{0080}-\x{009F}]/u, "")
   end
 
   # RFC 5545: lines longer than 75 octets should be folded.

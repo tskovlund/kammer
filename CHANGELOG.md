@@ -17,11 +17,13 @@ and this project adheres to
   parsers only break a line on CRLF, but several real calendar clients
   break on a bare CR too, which let an event's text inject whole
   property lines (ORGANIZER, ATTENDEE, VALARM) into subscribers'
-  calendars — every newline variant now collapses to one escaped `\n`,
-  and other C0 control characters (illegal in RFC 5545 text) are
-  dropped. Cancelled occurrences now export `STATUS:CANCELLED` instead
-  of looking live, so downloading one marks it cancelled in the
-  calendar rather than planting a normal-looking event.
+  calendars — every line-break variant now collapses to one escaped
+  `\n` (CR/LF plus the Unicode separators NEL/U+2028/U+2029 that
+  Unicode-aware clients also break on), and other control characters
+  (illegal in RFC 5545 text) are dropped. Cancelled occurrences now
+  export `STATUS:CANCELLED` instead of looking live, so a downloaded
+  file marks the event cancelled rather than planting a normal-looking
+  one.
 
 - The newsletter unsubscribe link no longer deletes on GET (issue
   #239). GET is a safe method, and non-RFC-8058 mail scanners and

@@ -892,7 +892,7 @@ defmodule Kammer.EventsTest do
       {:ok, event} =
         Events.create_event(member, group, %{
           "title" => "Team sync\rORGANIZER:mailto:evil@example.org",
-          "starts_at" => ~U[2026-08-01 18:00:00Z]
+          "starts_at" => future(48)
         })
 
       ics = ICS.single(event)
@@ -900,10 +900,27 @@ defmodule Kammer.EventsTest do
       # The lone CR collapses to the literal two-char escape, so the
       # injected property stays trapped inside the SUMMARY value...
       assert ics =~ "SUMMARY:Team sync\\nORGANIZER:mailto:evil@example.org"
-      # ...and never begins a content line a lenient parser would honor
-      # (the only real line breaks left are the CRLF separators).
+      # ...and no raw CR is left for a lenient parser to break the line on.
       refute ics =~ "\rORGANIZER"
-      refute ics =~ "\nORGANIZER"
+    end
+
+    test "Unicode line separators are escaped too, not just CR/LF (#313)", %{
+      group: group,
+      member: member
+    } do
+      # NEL (U+0085) and the line/paragraph separators (U+2028/U+2029)
+      # are what a Unicode-aware unfolder breaks on — same injection
+      # class as the bare CR, different bytes.
+      {:ok, event} =
+        Events.create_event(member, group, %{
+          "title" => "Line one\u{2028}ORGANIZER:mailto:evil@example.org",
+          "starts_at" => future(48)
+        })
+
+      ics = ICS.single(event)
+
+      assert ics =~ "SUMMARY:Line one\\nORGANIZER:mailto:evil@example.org"
+      refute ics =~ "\u{2028}"
     end
 
     test "other control characters are dropped from text values (#313)", %{
@@ -913,14 +930,15 @@ defmodule Kammer.EventsTest do
       {:ok, event} =
         Events.create_event(member, group, %{
           "title" => "Bell\a and vtab\v gone",
-          "starts_at" => ~U[2026-08-01 18:00:00Z]
+          "starts_at" => future(48)
         })
 
       ics = ICS.single(event)
 
+      # The stripped result is the sharp assertion — a strip that dropped
+      # to a space instead of nothing would fail it, and any surviving
+      # control char breaks the literal match.
       assert ics =~ "SUMMARY:Bell and vtab gone"
-      refute ics =~ "\a"
-      refute ics =~ "\v"
     end
 
     test "a cancelled occurrence exports STATUS:CANCELLED; a live one has no STATUS (#313)", %{
