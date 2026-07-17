@@ -26,14 +26,18 @@
 	// Downloads are Bearer-authorized too, so fetch the bytes then hand a
 	// throwaway object URL to a programmatic <a download>.
 	async function download(attachment: Attachment): Promise<void> {
-		const url = await fetchAuthedObjectUrl(instance, attachment.download_url);
-		const anchor = document.createElement('a');
-		anchor.href = url;
-		anchor.download = attachment.filename;
-		document.body.appendChild(anchor);
-		anchor.click();
-		anchor.remove();
-		URL.revokeObjectURL(url);
+		try {
+			const url = await fetchAuthedObjectUrl(instance, attachment.download_url);
+			const anchor = document.createElement('a');
+			anchor.href = url;
+			anchor.download = attachment.filename;
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+			URL.revokeObjectURL(url);
+		} catch {
+			/* a failed download is silent here — VersionSheet's stance */
+		}
 	}
 </script>
 

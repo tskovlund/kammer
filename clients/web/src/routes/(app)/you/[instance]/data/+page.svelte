@@ -38,7 +38,10 @@
 	let stepUpRetry = $state<(() => Promise<void>) | null>(null);
 
 	async function doExport(): Promise<void> {
-		if (!instance) return;
+		// The instance can vanish mid-flow (removed from another tab while
+		// the step-up modal is open); a silent return here would read as
+		// success, so fail like any other error instead.
+		if (!instance) throw new ApiError('not_found', 'Account is gone from this device.', null);
 		const url = await fetchAccountExportUrl(instance);
 		// Same anchor dance as the search page's attachment download.
 		const anchor = document.createElement('a');
@@ -69,7 +72,8 @@
 	}
 
 	async function doDelete(typed: string): Promise<void> {
-		if (!instance) return;
+		// Same vanished-instance stance as doExport: fail, don't fake success.
+		if (!instance) throw new ApiError('not_found', 'Account is gone from this device.', null);
 		await deleteAccount(instance, typed);
 		// The account is gone server-side; drop the instance locally the
 		// same way sign-out does (best-effort revoke of the now-dead

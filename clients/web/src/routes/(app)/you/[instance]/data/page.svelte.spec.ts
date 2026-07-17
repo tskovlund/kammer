@@ -19,7 +19,7 @@ vi.mock('$lib/people/api.js', () => ({
 	fetchAccountExportUrl: vi.fn()
 }));
 
-import { deleteAccount } from '$lib/people/api.js';
+import { deleteAccount, fetchAccountExportUrl } from '$lib/people/api.js';
 import Page from './+page.svelte';
 
 beforeEach(() => {
@@ -59,7 +59,23 @@ describe('data & account — step-up gate (#323)', () => {
 		await fireEvent.input(screen.getByLabelText(/Type your email address/), {
 			target: { value: 'a@example.com' }
 		});
-		await fireEvent.submit(document.querySelector('#account-delete-form')!);
+		// The typed email matches, so the confirm button is enabled — the
+		// click submits the form the way a user would.
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete this account permanently' }));
+
+		await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+		expect(document.querySelector('[role="alert"]')).toBeNull();
+	});
+
+	it('opens the step-up dialog, not the error copy, when the export is gated', async () => {
+		// The export side of the same gate: dialog opens, export error copy
+		// must NOT render.
+		vi.mocked(fetchAccountExportUrl).mockRejectedValueOnce(
+			new ApiError('step_up', 'step up', 401, {}, 'step_up_required')
+		);
+		render(Page);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Download export' }));
 
 		await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
 		expect(document.querySelector('[role="alert"]')).toBeNull();

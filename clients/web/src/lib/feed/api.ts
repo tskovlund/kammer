@@ -440,9 +440,14 @@ export function fileUrl(instance: Instance, path: string): string {
  * object URL. The caller must `URL.revokeObjectURL` it when done.
  */
 export async function fetchAuthedObjectUrl(instance: Instance, path: string): Promise<string> {
-	const response = await fetch(fileUrl(instance, path), {
-		headers: { authorization: `Bearer ${instance.deviceToken}` }
-	});
+	let response: Response;
+	try {
+		response = await fetch(fileUrl(instance, path), {
+			headers: { authorization: `Bearer ${instance.deviceToken}` }
+		});
+	} catch {
+		throw new ApiError('network', 'Could not reach this community.', null);
+	}
 	if (!response.ok) {
 		// Read the error envelope like the upload path above: the account
 		// export rides this helper and is step-up-gated (#323), so its 401

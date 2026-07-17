@@ -26,7 +26,7 @@ function errorResponse(status: number, code = 'error', message = 'nope') {
 // hand-rolled fetch + error path (multipart / blob, not the openapi-fetch
 // client), so they keep their own tests. The status→kind mapping shared by
 // every other call lives in `api/errors.spec`.
-describe('feed uploads', () => {
+describe('feed uploads & authed downloads', () => {
 	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -43,6 +43,15 @@ describe('feed uploads', () => {
 		await expect(fetchAuthedObjectUrl(instance(), '/api/v1/me/export')).rejects.toMatchObject({
 			kind: 'step_up',
 			code: 'step_up_required'
+		});
+	});
+
+	it('maps a non-JSON download error body to the status kind', async () => {
+		// A proxy/HTML error page carries no envelope; the body-read swallow
+		// must still map the bare status, not blow up on the parse.
+		vi.mocked(fetch).mockResolvedValueOnce(new Response('<html>gone</html>', { status: 404 }));
+		await expect(fetchAuthedObjectUrl(instance(), '/api/v1/files/f1')).rejects.toMatchObject({
+			kind: 'not_found'
 		});
 	});
 
