@@ -2913,7 +2913,7 @@ export interface components {
 		};
 		/** Community */
 		Community: {
-			/** @description Hex theme color, e.g. #3E6B48 */
+			/** @description Hex theme color, e.g. #8a4b24 */
 			accent_color: string;
 			/** @enum {string} */
 			default_locale: 'en' | 'da';

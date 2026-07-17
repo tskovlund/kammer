@@ -45,7 +45,7 @@ defmodule KammerWeb.Api.Schemas do
         name: %Schema{type: :string},
         slug: %Schema{type: :string},
         description: %Schema{type: :string, nullable: true},
-        accent_color: %Schema{type: :string, description: "Hex theme color, e.g. #3E6B48"},
+        accent_color: %Schema{type: :string, description: "Hex theme color, e.g. #8a4b24"},
         default_locale: %Schema{type: :string, enum: ["en", "da"]},
         listed_on_instance: %Schema{type: :boolean},
         require_real_names: %Schema{type: :boolean},

@@ -135,7 +135,7 @@ defmodule Kammer.Design.AccentColor do
 
   @doc "The instance default accent color."
   @spec default_accent() :: String.t()
-  def default_accent, do: "#3E6B48"
+  def default_accent, do: "#8a4b24"
 
   ## Internals — color math
 

@@ -267,6 +267,19 @@ and this project adheres to
 
 ### Changed
 
+- The default community accent now matches the design-system accent
+  (issue #328). A community that never customized its accent used to
+  carry a green (`#3E6B48`) distinct from the app chrome's `#8a4b24`,
+  so untouched communities rendered two-tone out of the box; the
+  server default (schema and column) flips to `#8a4b24` and a
+  migration moves existing rows still on the old default (matched
+  case-insensitively — the untouched wizard default could be stored in
+  either case), so a tint is always a deliberate admin choice. The
+  data migration is one-way: rolling back restores the old column
+  default but cannot tell a migrated row from one whose admin chose
+  `#8a4b24` on purpose. The setup wizard, new-community form, and
+  community-settings placeholder pre-fill the same value.
+
 - Single-account display collapse in the PWA (issue #322, SPEC §21).
   With exactly one instance added — the overwhelmingly common case, and
   the entire pilot — the chrome now hides the multi-instance

@@ -44,7 +44,7 @@
 
 	let communityName = $state('');
 	let communitySlug = $state('');
-	let accentColor = $state('#3E6B48');
+	let accentColor = $state('#8a4b24');
 	let groupName = $state(t('setup.community.groupNameDefault'));
 	let groupSlug = $state('general');
 	let demoData = $state(false);
