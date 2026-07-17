@@ -267,6 +267,14 @@ and this project adheres to
 
 ### Changed
 
+- Expelling a sealed **private** group from outside is now recorded as
+  an operator-level action (console/DB), not an API power
+  (owner-decided on issue #347, ADR 0005 amendment): the no-oracle
+  gate (#224/#339) hides such a group from a community admin before
+  the delete authorization could run, and restoring an admin-reachable
+  delete would itself be an existence oracle. The group's own owner
+  keeps the ordinary delete; sealed non-private groups keep the API
+  path for admins too.
 - The default community accent now matches the design-system accent
   (issue #328). A community that never customized its accent used to
   carry a green (`#3E6B48`) distinct from the app chrome's `#8a4b24`,
