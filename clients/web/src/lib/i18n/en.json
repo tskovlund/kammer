@@ -392,6 +392,7 @@
 	"invites.empty.body": "Create a link to bring people in.",
 	"invites.error.title": "Couldn't load invites",
 	"invites.error.body": "Only community admins can manage invites.",
+	"invites.error.email": "Enter a valid email address.",
 	"you.accounts.profile": "Profile",
 	"you.accounts.devices": "Devices",
 	"you.accounts.notifications": "Notifications",

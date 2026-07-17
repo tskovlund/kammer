@@ -1,5 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
-import { ApiError, fail, guard } from '$lib/api/errors.js';
+import { ApiError, errorKind, fail, guard, type ApiErrorKind } from '$lib/api/errors.js';
 import { fetchAuthedObjectUrl } from '$lib/feed/api.js';
 import type { MessageKey } from '$lib/i18n/format.js';
 import type { Instance } from '$lib/instances/types.js';
@@ -381,6 +381,31 @@ export async function leaveGroup(instance: Instance, ref: GroupRef): Promise<voi
 		);
 		if (error) throw fail(error, response, 'Could not leave this group.');
 	});
+}
+
+// --- Invite email validation → i18n keys (#253 mechanism; #305) -------------
+//
+// A 422 from the invite create endpoints carries `details` (field → messages)
+// keyed by the changeset field atoms of
+// `Kammer.Invitations.Invite.create_changeset/2` — verified against that
+// changeset: `invited_email` is the only field the email form's free-text
+// control can make invalid (`max_uses` is fixed by the form, `expires_at` is
+// never sent). Anything else resolves to `bannerKind` for the shared
+// `ErrorBanner`. Server message strings never render — only our keys.
+
+export interface InviteParamsErrors {
+	invitedEmailKey: MessageKey | null;
+	/** Fallback banner kind; null exactly when the field-level key was set. */
+	bannerKind: ApiErrorKind | null;
+}
+
+/** Maps a failed invite create onto the email field's key or a banner kind. */
+export function inviteParamsErrorKeys(cause: unknown): InviteParamsErrors {
+	if (cause instanceof ApiError && cause.kind === 'validation') {
+		const invitedEmailKey = cause.details.invited_email ? ('invites.error.email' as const) : null;
+		return { invitedEmailKey, bannerKind: invitedEmailKey ? null : 'validation' };
+	}
+	return { invitedEmailKey: null, bannerKind: errorKind(cause) };
 }
 
 // --- Profile form validation → i18n keys (#253) -----------------------------

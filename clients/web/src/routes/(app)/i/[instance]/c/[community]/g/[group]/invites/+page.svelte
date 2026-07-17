@@ -10,6 +10,7 @@
 	import {
 		createGroupInvite,
 		fetchGroupInvites,
+		inviteParamsErrorKeys,
 		inviteUrl,
 		revokeInvite
 	} from '$lib/people/api.js';
@@ -34,6 +35,7 @@
 	let notice = $state<string | null>(null);
 	let busy = $state(false);
 	let email = $state('');
+	let emailError = $state<string | null>(null);
 	let copiedId = $state<string | null>(null);
 
 	$effect(() => {
@@ -78,6 +80,9 @@
 		busy = true;
 		actionError = null;
 		notice = null;
+		// Any action resets lit field errors — a stale red input must not sit
+		// next to another action's success notice (the group-settings rule).
+		emailError = null;
 		try {
 			await createGroupInvite(instance, groupRef);
 			await reload();
@@ -94,14 +99,18 @@
 		if (!instance || !invitedEmail) return;
 		busy = true;
 		actionError = null;
+		emailError = null;
 		notice = null;
 		try {
 			await createGroupInvite(instance, groupRef, { invited_email: invitedEmail, max_uses: 1 });
-			notice = t('invites.emailSent', { email: invitedEmail });
+			// Echo the stored form — the server downcases the address.
+			notice = t('invites.emailSent', { email: invitedEmail.toLowerCase() });
 			email = '';
 			await reload();
 		} catch (error) {
-			report(error);
+			const keys = inviteParamsErrorKeys(error);
+			emailError = keys.invitedEmailKey ? t(keys.invitedEmailKey) : null;
+			actionError = keys.bannerKind;
 		} finally {
 			busy = false;
 		}
@@ -111,6 +120,7 @@
 		if (!instance) return;
 		busy = true;
 		actionError = null;
+		emailError = null;
 		try {
 			// Group invites are revoked through the shared community-scoped
 			// endpoint (the token, not the scope, identifies the invite).
@@ -203,6 +213,7 @@
 					type="email"
 					placeholder={t('invites.emailPlaceholder')}
 					bind:value={email}
+					error={emailError}
 					class="flex-1"
 				/>
 				<Button type="submit" variant="secondary" disabled={busy || email.trim() === ''}>

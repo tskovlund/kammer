@@ -4,6 +4,7 @@ import {
 	completePasskeyRegistration,
 	deletePasskey,
 	fetchPasskeys,
+	inviteParamsErrorKeys,
 	profileParamsErrorKeys
 } from './api.js';
 import { ApiError } from '$lib/api/errors.js';
@@ -113,6 +114,20 @@ describe('deletePasskey', () => {
 function validation(details: Record<string, string[]>): ApiError {
 	return new ApiError('validation', 'Validation failed.', 422, details);
 }
+
+describe('inviteParamsErrorKeys', () => {
+	it('routes an invited_email 422 onto its key and suppresses the banner', () => {
+		expect(inviteParamsErrorKeys(validation({ invited_email: ['has invalid format'] }))).toEqual({
+			invitedEmailKey: 'invites.error.email',
+			bannerKind: null
+		});
+	});
+
+	it('falls back to the banner kind for unmapped 422s and other failures', () => {
+		expect(inviteParamsErrorKeys(validation({})).bannerKind).toBe('validation');
+		expect(inviteParamsErrorKeys(new Error('boom')).bannerKind).toBe('server');
+	});
+});
 
 describe('profileParamsErrorKeys', () => {
 	it('routes display_name/pronouns 422 details onto their keys and suppresses the banner', () => {

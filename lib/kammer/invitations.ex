@@ -199,35 +199,41 @@ defmodule Kammer.Invitations do
     # delivers no mail, so the limit caps arbitrary-recipient email
     # flooding without leaving orphaned tokens behind. Link invites
     # (no `invited_email`) send nothing and are never limited.
-    with :ok <- check_email_invite_rate(actor, attrs),
-         {:ok, invite} <- %Invite{} |> Invite.create_changeset(attrs) |> Repo.insert() do
+    # Validation runs first (issue #305), so a malformed address is
+    # refused without consuming any of that email budget.
+    changeset = Invite.create_changeset(%Invite{}, attrs)
+
+    with {:ok, changeset} <- validate_invite(changeset),
+         :ok <- check_email_invite_rate(actor, changeset),
+         {:ok, invite} <- Repo.insert(changeset) do
       maybe_deliver_email(invite, actor, community, group)
       {:ok, invite}
     end
   end
 
-  defp check_email_invite_rate(actor, %{"invited_email" => email})
-       when is_binary(email) and email != "" do
-    case RateLimit.hit_invite_issuance(actor.id) do
-      {:allow, _count} -> :ok
-      {:deny, _retry_after} -> {:error, :rate_limited}
+  defp validate_invite(%Ecto.Changeset{valid?: true} = changeset), do: {:ok, changeset}
+  defp validate_invite(changeset), do: {:error, %{changeset | action: :insert}}
+
+  # Keyed off the cast field, not raw attrs: whitespace-only input casts
+  # to nil (a link invite, no mail sent), so the email budget is consumed
+  # exactly when a delivery will actually be attempted.
+  defp check_email_invite_rate(actor, changeset) do
+    case Ecto.Changeset.get_field(changeset, :invited_email) do
+      nil ->
+        :ok
+
+      _email ->
+        case RateLimit.hit_invite_issuance(actor.id) do
+          {:allow, _count} -> :ok
+          {:deny, _retry_after} -> {:error, :rate_limited}
+        end
     end
   end
-
-  defp check_email_invite_rate(_actor, _attrs), do: :ok
 
   defp maybe_deliver_email(%Invite{invited_email: nil}, _actor, _community, _group), do: :ok
 
   defp maybe_deliver_email(%Invite{} = invite, actor, community, group) do
     InviteNotifier.deliver_invite(invite, actor, community, group)
     :ok
-  end
-
-  @doc """
-  Returns a changeset for invite forms.
-  """
-  @spec change_invite(Invite.t(), map()) :: Ecto.Changeset.t()
-  def change_invite(%Invite{} = invite, attrs \\ %{}) do
-    Invite.create_changeset(invite, attrs)
   end
 end
