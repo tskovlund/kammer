@@ -32,7 +32,7 @@
 	let slug = $state('');
 	let slugTouched = $state(false);
 	let description = $state('');
-	let accent = $state('#3E6B48');
+	let accent = $state('#8a4b24');
 	let locale = $state('en');
 
 	const selected = $derived(allowed?.find((candidate) => candidate.id === instanceId));

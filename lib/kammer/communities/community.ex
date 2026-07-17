@@ -19,7 +19,7 @@ defmodule Kammer.Communities.Community do
     field :name, :string
     field :slug, :string
     field :description, :string
-    field :accent_color, :string, default: "#3E6B48"
+    field :accent_color, :string, default: "#8a4b24"
     field :default_locale, :string, default: "en"
     field :listed_on_instance, :boolean, default: false
     field :require_real_names, :boolean, default: false
@@ -56,7 +56,7 @@ defmodule Kammer.Communities.Community do
     )
     |> validate_exclusion(:slug, reserved_slugs(), message: "is reserved")
     |> validate_format(:accent_color, @accent_color_format,
-      message: "must be a hex color like #3E6B48"
+      message: "must be a hex color like #8a4b24"
     )
     |> validate_inclusion(:default_locale, ["en", "da"])
     |> unique_constraint(:slug)

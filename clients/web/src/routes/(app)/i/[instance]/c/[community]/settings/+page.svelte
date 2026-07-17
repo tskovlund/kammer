@@ -38,7 +38,7 @@
 	let name = $state('');
 	let slug = $state('');
 	let description = $state('');
-	let accent = $state('#3E6B48');
+	let accent = $state('#8a4b24');
 	let locale = $state('en');
 	let listedOnInstance = $state(false);
 	let requireRealNames = $state(false);
