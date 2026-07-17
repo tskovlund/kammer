@@ -93,6 +93,19 @@ defmodule KammerWeb.Api.PeopleTest do
       |> json_response(404)
     end
 
+    test "a malformed invited_email is refused with details naming the field", %{
+      community: community,
+      owner: owner
+    } do
+      %{"error" => %{"code" => "invalid_params", "details" => details}} =
+        owner
+        |> api_conn()
+        |> post(~p"/api/v1/communities/#{community.slug}/invites", %{"invited_email" => "jhon@"})
+        |> json_response(422)
+
+      assert details["invited_email"]
+    end
+
     test "group invites are the group admin's, not every group member's", %{
       community: community,
       group: group,

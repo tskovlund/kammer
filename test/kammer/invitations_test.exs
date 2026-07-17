@@ -49,8 +49,35 @@ defmodule Kammer.InvitationsTest do
       end)
     end
 
+    test "invited_email must be a well-formed address and is stored downcased (issue #305)" do
+      {community, owner} = community_with_owner_fixture()
+
+      for malformed <- ["jhon@", "alice@example ", "no-at-sign"] do
+        assert {:error, changeset} =
+                 Invitations.create_community_invite(owner, community, %{
+                   "invited_email" => malformed
+                 })
+
+        assert %{invited_email: ["must have the @ sign and no spaces"]} = errors_on(changeset)
+      end
+
+      assert {:ok, invite} =
+               Invitations.create_community_invite(owner, community, %{
+                 "invited_email" => "Horn@Example.COM"
+               })
+
+      assert invite.invited_email == "horn@example.com"
+    end
+
     test "email invites are rate-limited per actor; link invites are not (issue #97)" do
       {community, owner} = community_with_owner_fixture()
+
+      # A malformed address is refused before the throttle (issue
+      # #305), consuming none of the budget the loop below exhausts.
+      assert {:error, %Ecto.Changeset{}} =
+               Invitations.create_community_invite(owner, community, %{
+                 "invited_email" => "jhon@"
+               })
 
       # The per-actor hourly budget: the first 20 email invites land,
       # the 21st is refused with a stable code the API maps to 429.
@@ -140,7 +167,9 @@ defmodule Kammer.InvitationsTest do
         })
 
       wrong_user = user_fixture()
-      right_user = unconfirmed_user_fixture(email: "horn@example.com")
+      # Mixed case on purpose: redemption must match case-insensitively
+      # against the downcased stored invite address.
+      right_user = unconfirmed_user_fixture(email: "Horn@Example.com")
 
       assert {:error, :email_mismatch} = Invitations.redeem_invite(wrong_user, invite.token)
       assert {:ok, _redeemed} = Invitations.redeem_invite(right_user, invite.token)

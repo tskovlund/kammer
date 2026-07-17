@@ -376,6 +376,24 @@ and this project adheres to
 
 ### Fixed
 
+- Invite creation now validates `invited_email` (issue #305). The
+  changeset cast the address with no format check, so an admin could
+  invite `jhon@` or `alice@example ` — the API answered 201 and the
+  invitation email silently bounced. A malformed address now fails with
+  the standard 422 envelope (`details.invited_email`) via the shared
+  email rule every other email field uses
+  (`Kammer.Validation.validate_email_format/3`); valid addresses are
+  stored downcased like the guest and newsletter email writes (the
+  column is citext, so comparisons were already case-insensitive).
+  Validation also runs before the per-admin email-invite throttle, so a
+  refused address no longer consumes email budget. The PWA invite forms
+  (community and group) surface the 422 inline on the email field
+  through the #253 field-error mapper, in English and Danish. This
+  supersedes the #253-era note earlier in this release that the
+  invite forms "correctly
+  stay on the banner" — that held only while the server emitted no
+  field-level 422 for them.
+
 - "Add to calendar" on an event page no longer fails with a silent 404
   for members-only groups (issue #307). The signed-in event page linked
   the tokenless browser ICS route (`/c/{slug}/events/{id}/ics`), which a

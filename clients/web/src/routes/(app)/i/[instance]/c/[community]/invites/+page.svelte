@@ -7,7 +7,13 @@
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
-	import { createInvite, fetchInvites, inviteUrl, revokeInvite } from '$lib/people/api.js';
+	import {
+		createInvite,
+		fetchInvites,
+		inviteParamsErrorKeys,
+		inviteUrl,
+		revokeInvite
+	} from '$lib/people/api.js';
 	import type { Invite } from '$lib/people/types.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -28,6 +34,7 @@
 	let notice = $state<string | null>(null);
 	let busy = $state(false);
 	let email = $state('');
+	let emailError = $state<string | null>(null);
 	let copiedId = $state<string | null>(null);
 
 	$effect(() => {
@@ -72,6 +79,9 @@
 		busy = true;
 		actionError = null;
 		notice = null;
+		// Any action resets lit field errors — a stale red input must not sit
+		// next to another action's success notice (the group-settings rule).
+		emailError = null;
 		try {
 			await createInvite(instance, page.params.community);
 			await reload();
@@ -88,6 +98,7 @@
 		if (!instance || !page.params.community || !invitedEmail) return;
 		busy = true;
 		actionError = null;
+		emailError = null;
 		notice = null;
 		try {
 			// Mirrors the web settings page: an email invite is single-use
@@ -96,11 +107,14 @@
 				invited_email: invitedEmail,
 				max_uses: 1
 			});
-			notice = t('invites.emailSent', { email: invitedEmail });
+			// Echo the stored form — the server downcases the address.
+			notice = t('invites.emailSent', { email: invitedEmail.toLowerCase() });
 			email = '';
 			await reload();
 		} catch (error) {
-			report(error);
+			const keys = inviteParamsErrorKeys(error);
+			emailError = keys.invitedEmailKey ? t(keys.invitedEmailKey) : null;
+			actionError = keys.bannerKind;
 		} finally {
 			busy = false;
 		}
@@ -110,6 +124,7 @@
 		if (!instance || !page.params.community) return;
 		busy = true;
 		actionError = null;
+		emailError = null;
 		try {
 			await revokeInvite(instance, page.params.community, invite.id);
 			await reload();
@@ -198,6 +213,7 @@
 					type="email"
 					placeholder={t('invites.emailPlaceholder')}
 					bind:value={email}
+					error={emailError}
 					class="flex-1"
 				/>
 				<Button type="submit" variant="secondary" disabled={busy || email.trim() === ''}>

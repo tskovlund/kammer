@@ -9,6 +9,8 @@ defmodule Kammer.Invitations.Invite do
 
   import Ecto.Changeset
 
+  alias Kammer.Validation
+
   @type t() :: %__MODULE__{}
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -43,6 +45,15 @@ defmodule Kammer.Invitations.Invite do
       :created_by_user_id
     ])
     |> validate_required([:community_id])
+    # Optional by design — a link invite carries no address (issue
+    # #305). When present it must be deliverable: same shared format
+    # rule as every other email field, downcased like the guest and
+    # newsletter email writes (the column is citext, so this is display
+    # normalization — comparisons were already case-insensitive).
+    |> update_change(:invited_email, &String.downcase/1)
+    |> Validation.validate_email_format(:invited_email,
+      message: "must have the @ sign and no spaces"
+    )
     |> validate_number(:max_uses, greater_than: 0)
     |> put_change(:token, generate_token())
     |> unique_constraint(:token)

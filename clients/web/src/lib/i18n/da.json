@@ -392,6 +392,7 @@
 	"invites.empty.body": "Opret et link for at få folk med.",
 	"invites.error.title": "Kunne ikke hente invitationer",
 	"invites.error.body": "Kun fællesskabets administratorer kan håndtere invitationer.",
+	"invites.error.email": "Angiv en gyldig e-mailadresse.",
 	"you.accounts.profile": "Profil",
 	"you.accounts.devices": "Enheder",
 	"you.accounts.notifications": "Notifikationer",
