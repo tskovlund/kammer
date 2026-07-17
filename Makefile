@@ -12,4 +12,4 @@ test:
 
 format:
 	mix format
-	npx prettier@3 --write .
+	npx prettier@3.8.1 --write .
