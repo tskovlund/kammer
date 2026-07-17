@@ -52,5 +52,10 @@
 		"markdown-it": "^14.3.0",
 		"openapi-fetch": "^0.17.0",
 		"phoenix": "^1.8.9"
+	},
+	"pnpm": {
+		"overrides": {
+			"cookie": "^0.7.2"
+		}
 	}
 }

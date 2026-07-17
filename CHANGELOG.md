@@ -537,6 +537,14 @@ and this project adheres to
 
 ### Security
 
+- The web client's transitive `cookie` dependency is force-resolved to
+  0.7.2 via a pnpm override (GHSA-pxg6-pf52-xh8x, low): SvelteKit still
+  declares `^0.6.0`, whose parser accepts out-of-bounds characters in
+  cookie names/paths/domains. The vulnerable path only runs in
+  dev/SSR — the shipped client is a static build — but the override
+  clears the advisory at zero API cost (0.7 is compatible) rather than
+  leaving the alert to explain forever.
+
 - Account deletion and the data export now require step-up
   re-authentication (issue #323, updating ADR 0029). `DELETE /me` and
   `GET /me/export` answer 401 `step_up_required` until the calling
