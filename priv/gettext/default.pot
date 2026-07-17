@@ -430,7 +430,7 @@ msgstr ""
 msgid "You're subscribed to %{group} — %{cadence}."
 msgstr ""
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:55
+#: lib/kammer_web/controllers/newsletter_controller.ex:56
 #, elixir-autogen, elixir-format
 msgid "You're unsubscribed."
 msgstr ""
@@ -521,22 +521,22 @@ msgstr ""
 msgid "the event"
 msgstr ""
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:40
+#: lib/kammer_web/controllers/newsletter_controller.ex:41
 #, elixir-autogen, elixir-format
 msgid "Confirm unsubscribe"
 msgstr ""
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:37
+#: lib/kammer_web/controllers/newsletter_controller.ex:38
 #, elixir-autogen, elixir-format
 msgid "Unsubscribe from this newsletter?"
 msgstr ""
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:56
+#: lib/kammer_web/controllers/newsletter_controller.ex:57
 #, elixir-autogen, elixir-format
 msgid "You won't receive these emails anymore."
 msgstr ""
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:38
+#: lib/kammer_web/controllers/newsletter_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "You'll stop receiving these emails."
 msgstr ""

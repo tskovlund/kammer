@@ -32,7 +32,8 @@
   #   `send_page/2`). The remaining :browser routes (ICS/RSS feeds)
   #   serve XML/text/calendar, not scriptable HTML, so they need no
   #   CSP. Verified with
-  #   test/kammer_web/controllers/pwa_controller_test.exs.
+  #   test/kammer_web/controllers/pwa_controller_test.exs and
+  #   test/kammer_web/controllers/newsletter_controller_test.exs.
   # Config.CSWH: check_origin is disabled only on /api/socket
   #   (KammerWeb.Api.UserSocket), deliberately and for the same reason
   #   /api gets CORS `*` (issue #150): that socket authenticates with the

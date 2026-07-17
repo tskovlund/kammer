@@ -118,6 +118,11 @@ defmodule Kammer.MixProject do
         "deps.unlock --unused",
         "format",
         "credo --strict",
+        # Stale committed .pot/.po references slipped through twice in
+        # #239's review rounds — extraction is a generated artifact and
+        # gets the same stay-in-sync gate as the rest (run
+        # `mix gettext.extract --merge` when this fails).
+        "gettext.extract --check-up-to-date",
         "test"
       ]
     ]

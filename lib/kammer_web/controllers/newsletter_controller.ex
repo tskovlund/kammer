@@ -14,8 +14,8 @@ defmodule KammerWeb.NewsletterController do
   GET every URL in an email with no human involved — an inline delete
   would let them silently unsubscribe the guest. So the GET renders a
   self-contained confirmation page whose one button fires the POST,
-  and only the POST deletes. Neither action verifies the token before
-  answering: valid, expired, and garbage tokens all get the same 200
+  and only the POST deletes. Neither response depends on token
+  validity: valid, expired, and garbage tokens all get the same 200
   page, so neither leaks whether a token named a live subscription.
 
   Confirming a subscription happens over the JSON API

@@ -19,6 +19,7 @@ defmodule KammerWeb.NewsletterControllerTest do
   import Kammer.CommunitiesFixtures
   import Swoosh.TestAssertions
 
+  alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Newsletters
   alias Kammer.Newsletters.NewsletterSubscription
@@ -125,8 +126,9 @@ defmodule KammerWeb.NewsletterControllerTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
     assert Repo.aggregate(NewsletterSubscription, :count) == 1
 
-    # Follow the form exactly as a browser would — its action must be
-    # the route that deletes, or the page is a dead end.
+    # Follow the form's action (raw attribute value — base64url tokens
+    # produce no HTML entities to decode) — it must be the route that
+    # deletes, or the page is a dead end.
     assert [action] =
              Regex.run(~r{<form method="post" action="([^"]+)"}, conn.resp_body,
                capture: :all_but_first
@@ -137,18 +139,39 @@ defmodule KammerWeb.NewsletterControllerTest do
     assert Repo.aggregate(NewsletterSubscription, :count) == 0
   end
 
-  test "both endpoints answer an invalid token with the same page as a valid one — no oracle" do
+  test "both endpoints answer an invalid token exactly like a valid one — no oracle" do
     url = subscribed_header_url!()
-    valid_get = build_conn() |> get(url) |> Map.fetch!(:resp_body)
 
-    garbage_get =
-      build_conn() |> get(~p"/newsletter/unsubscribe/garbage") |> Map.fetch!(:resp_body)
+    valid_get = build_conn() |> get(url)
+    garbage_get = build_conn() |> get(~p"/newsletter/unsubscribe/garbage")
 
-    replace_token = &String.replace(&1, ~r{unsubscribe/[^"]+}, "unsubscribe/TOKEN")
-    assert replace_token.(valid_get) == replace_token.(garbage_get)
+    normalize = &String.replace(&1.resp_body, ~r{unsubscribe/[^"]+}, "unsubscribe/TOKEN")
 
+    assert {valid_get.status, normalize.(valid_get)} ==
+             {garbage_get.status, normalize.(garbage_get)}
+
+    # The POST pages carry no token, so they must match byte for byte —
+    # a response that branches on whether the delete found a row is the
+    # oracle this pins against.
+    valid_post = build_conn() |> post(url)
     garbage_post = build_conn() |> post(~p"/newsletter/unsubscribe/garbage")
-    assert garbage_post.status == 200
-    assert garbage_post.resp_body =~ "You&#39;re unsubscribed."
+
+    assert {valid_post.status, valid_post.resp_body} ==
+             {garbage_post.status, garbage_post.resp_body}
+  end
+
+  test "the pages speak the instance's default locale, not the requester's" do
+    # The shared with_instance_locale/1 wrapper is what turns a Danish
+    # instance's guest-facing pages Danish — without this pin it could
+    # be deleted (or hardcoded to "en") with a green suite, since the
+    # test default locale coincides with gettext's fallback.
+    Communities.get_instance_settings()
+    |> Ecto.Changeset.change(default_locale: "da")
+    |> Repo.update!()
+
+    conn = build_conn() |> get(~p"/newsletter/unsubscribe/whatever")
+
+    assert conn.resp_body =~ ~s(lang="da")
+    assert conn.resp_body =~ "Bekræft afmelding"
   end
 end

@@ -461,7 +461,7 @@ msgstr "Afmeld dig, eller skift hvor ofte du hører fra os:"
 msgid "You're subscribed to %{group} — %{cadence}."
 msgstr "Du abonnerer på %{group} — %{cadence}."
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:55
+#: lib/kammer_web/controllers/newsletter_controller.ex:56
 #, elixir-autogen, elixir-format
 msgid "You're unsubscribed."
 msgstr "Du er afmeldt."
@@ -552,22 +552,22 @@ msgstr "Der blev en plads ledig — du er tilmeldt %{title}"
 msgid "the event"
 msgstr "begivenheden"
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:40
+#: lib/kammer_web/controllers/newsletter_controller.ex:41
 #, elixir-autogen, elixir-format
 msgid "Confirm unsubscribe"
 msgstr "Bekræft afmelding"
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:37
+#: lib/kammer_web/controllers/newsletter_controller.ex:38
 #, elixir-autogen, elixir-format
 msgid "Unsubscribe from this newsletter?"
 msgstr "Vil du afmelde dig dette nyhedsbrev?"
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:56
+#: lib/kammer_web/controllers/newsletter_controller.ex:57
 #, elixir-autogen, elixir-format
 msgid "You won't receive these emails anymore."
 msgstr "Du modtager ikke længere disse e-mails."
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:38
+#: lib/kammer_web/controllers/newsletter_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "You'll stop receiving these emails."
 msgstr "Du vil ikke længere modtage disse e-mails."

@@ -16,9 +16,10 @@ and this project adheres to
   involved — so following the `List-Unsubscribe` URL in a browser now
   renders a small confirmation page (instance default locale, both
   themes) whose button fires the RFC 8058 POST, and only the POST
-  unsubscribes. Mail clients' one-click POST behaves exactly as
-  before; both endpoints still answer the same neutral 200 for valid
-  and garbage tokens alike. The issue's second item — the email body's
+  unsubscribes. Mail clients' one-click POST keeps its semantics —
+  same delete, same neutral 200 (the response body is now the same
+  small HTML page instead of plain text); both endpoints still answer
+  identically for valid and garbage tokens alike. The issue's second item — the email body's
   manage link carrying the full token in the URL path — had already
   been fixed in the #187 cut (the link rides the URL fragment), so
   this closes the issue. Alongside: the instance-locale wrapper the
