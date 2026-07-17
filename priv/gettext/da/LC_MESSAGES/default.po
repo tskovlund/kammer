@@ -35,9 +35,9 @@ msgstr "Bekræft din nye e-mailadresse"
 #: lib/kammer/guests/guest_notifier.ex:164
 #: lib/kammer/guests/guest_notifier.ex:194
 #: lib/kammer/guests/guest_notifier.ex:220
-#: lib/kammer/newsletters/newsletter_notifier.ex:36
-#: lib/kammer/newsletters/newsletter_notifier.ex:65
-#: lib/kammer/newsletters/newsletter_notifier.ex:128
+#: lib/kammer/newsletters/newsletter_notifier.ex:37
+#: lib/kammer/newsletters/newsletter_notifier.ex:66
+#: lib/kammer/newsletters/newsletter_notifier.ex:129
 #: lib/kammer/notifications/notification_email.ex:34
 #, elixir-autogen, elixir-format
 msgid "Hi %{name},"
@@ -110,7 +110,7 @@ msgid "If you weren't expecting this invitation, you can ignore this email."
 msgstr "Hvis du ikke ventede denne invitation, kan du se bort fra denne e-mail."
 
 #: lib/kammer/digests.ex:244
-#: lib/kammer/newsletters/newsletter_notifier.ex:213
+#: lib/kammer/newsletters/newsletter_notifier.ex:219
 #, elixir-autogen, elixir-format
 msgid "Deleted user"
 msgstr "Slettet bruger"
@@ -295,7 +295,7 @@ msgstr "Følg dette link for at bekræfte din tilmelding til %{title}:"
 #: lib/kammer/guests/guest_notifier.ex:38
 #: lib/kammer/guests/guest_notifier.ex:142
 #: lib/kammer/guests/guest_notifier.ex:202
-#: lib/kammer/newsletters/newsletter_notifier.ex:42
+#: lib/kammer/newsletters/newsletter_notifier.ex:43
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this, you can ignore this email — nothing is recorded until you confirm."
 msgstr "Hvis du ikke har bedt om dette, kan du ignorere denne e-mail — intet gemmes, før du bekræfter."
@@ -365,17 +365,17 @@ msgstr "Du er tilmeldt: %{slot} — %{title}"
 msgid "You're taking \"%{slot}\" for %{title}. Thanks!"
 msgstr "Du tager \"%{slot}\" til %{title}. Tak!"
 
-#: lib/kammer/decisions.ex:143
+#: lib/kammer/decisions.ex:141
 #, elixir-autogen, elixir-format
 msgid "Abstain"
 msgstr "Undlader"
 
-#: lib/kammer/decisions.ex:142
+#: lib/kammer/decisions.ex:140
 #, elixir-autogen, elixir-format
 msgid "Against"
 msgstr "Imod"
 
-#: lib/kammer/decisions.ex:141
+#: lib/kammer/decisions.ex:139
 #, elixir-autogen, elixir-format
 msgid "For"
 msgstr "For"
@@ -408,75 +408,75 @@ msgstr "Du får denne mail, fordi din opsummering er slået til — ændr det un
 msgid "New posts"
 msgstr "Nye opslag"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:130
+#: lib/kammer/newsletters/newsletter_notifier.ex:131
 #, elixir-autogen, elixir-format
 msgid "%{count} new post in %{group}:"
 msgid_plural "%{count} new posts in %{group}:"
 msgstr[0] "%{count} nyt opslag i %{group}:"
 msgstr[1] "%{count} nye opslag i %{group}:"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:143
+#: lib/kammer/newsletters/newsletter_notifier.ex:144
 #, elixir-autogen, elixir-format
 msgid "%{group} digest"
 msgstr "%{group}-opsummering"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:69
+#: lib/kammer/newsletters/newsletter_notifier.ex:70
 #, elixir-autogen, elixir-format
 msgid "Change how often you hear from us, or unsubscribe, anytime:"
 msgstr "Skift hvor ofte du hører fra os, eller afmeld dig, når som helst:"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:34
+#: lib/kammer/newsletters/newsletter_notifier.ex:35
 #, elixir-autogen, elixir-format
 msgid "Confirm your subscription to %{group}"
 msgstr "Bekræft dit abonnement på %{group}"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:38
+#: lib/kammer/newsletters/newsletter_notifier.ex:39
 #, elixir-autogen, elixir-format
 msgid "Follow this link to confirm your email subscription to %{group}:"
 msgstr "Følg dette link for at bekræfte dit e-mailabonnement på %{group}:"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:103
+#: lib/kammer/newsletters/newsletter_notifier.ex:104
 #, elixir-autogen, elixir-format
 msgid "New post in %{group}"
 msgstr "Nyt opslag i %{group}"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:90
+#: lib/kammer/newsletters/newsletter_notifier.ex:91
 #, elixir-autogen, elixir-format
 msgid "New post in %{group}:"
 msgstr "Nyt opslag i %{group}:"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:63
+#: lib/kammer/newsletters/newsletter_notifier.ex:64
 #, elixir-autogen, elixir-format
 msgid "Subscribed to %{group}"
 msgstr "Abonnement på %{group}"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:96
-#: lib/kammer/newsletters/newsletter_notifier.ex:136
+#: lib/kammer/newsletters/newsletter_notifier.ex:97
+#: lib/kammer/newsletters/newsletter_notifier.ex:137
 #, elixir-autogen, elixir-format
 msgid "Unsubscribe, or change how often you hear from us:"
 msgstr "Afmeld dig, eller skift hvor ofte du hører fra os:"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:67
+#: lib/kammer/newsletters/newsletter_notifier.ex:68
 #, elixir-autogen, elixir-format
 msgid "You're subscribed to %{group} — %{cadence}."
 msgstr "Du abonnerer på %{group} — %{cadence}."
 
-#: lib/kammer_web/controllers/newsletter_controller.ex:28
+#: lib/kammer_web/controllers/newsletter_controller.ex:56
 #, elixir-autogen, elixir-format
 msgid "You're unsubscribed."
 msgstr "Du er afmeldt."
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:181
+#: lib/kammer/newsletters/newsletter_notifier.ex:182
 #, elixir-autogen, elixir-format
 msgid "a daily digest"
 msgstr "en daglig opsummering"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:180
+#: lib/kammer/newsletters/newsletter_notifier.ex:181
 #, elixir-autogen, elixir-format
 msgid "a new email for every post"
 msgstr "en ny e-mail for hvert opslag"
 
-#: lib/kammer/newsletters/newsletter_notifier.ex:182
+#: lib/kammer/newsletters/newsletter_notifier.ex:183
 #, elixir-autogen, elixir-format
 msgid "a weekly digest"
 msgstr "en ugentlig opsummering"
@@ -551,3 +551,23 @@ msgstr "Der blev en plads ledig — du er tilmeldt %{title}"
 #, elixir-autogen, elixir-format
 msgid "the event"
 msgstr "begivenheden"
+
+#: lib/kammer_web/controllers/newsletter_controller.ex:41
+#, elixir-autogen, elixir-format
+msgid "Confirm unsubscribe"
+msgstr "Bekræft afmelding"
+
+#: lib/kammer_web/controllers/newsletter_controller.ex:38
+#, elixir-autogen, elixir-format
+msgid "Unsubscribe from this newsletter?"
+msgstr "Vil du afmelde dig dette nyhedsbrev?"
+
+#: lib/kammer_web/controllers/newsletter_controller.ex:57
+#, elixir-autogen, elixir-format
+msgid "You won't receive these emails anymore."
+msgstr "Du modtager ikke længere disse e-mails."
+
+#: lib/kammer_web/controllers/newsletter_controller.ex:39
+#, elixir-autogen, elixir-format
+msgid "You'll stop receiving these emails."
+msgstr "Du vil ikke længere modtage disse e-mails."

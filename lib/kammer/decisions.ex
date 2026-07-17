@@ -131,9 +131,7 @@ defmodule Kammer.Decisions do
   # content, so they're rendered once, in the instance's default
   # locale, at creation time.
   defp vote_poll_attrs do
-    locale = to_string(Kammer.Communities.get_instance_settings().default_locale || "en")
-
-    Gettext.with_locale(KammerWeb.Gettext, locale, fn ->
+    KammerWeb.Gettext.with_instance_locale(fn ->
       %{
         "multiple_choice" => false,
         "anonymous" => false,

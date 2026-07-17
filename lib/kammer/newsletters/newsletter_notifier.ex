@@ -11,9 +11,9 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
   use Gettext, backend: KammerWeb.Gettext
 
+  import KammerWeb.Gettext, only: [with_instance_locale: 1]
   import Swoosh.Email
 
-  alias Kammer.Communities
   alias Kammer.Feed.Post
   alias Kammer.Groups.Group
   alias Kammer.Guests.GuestIdentity
@@ -224,11 +224,6 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
     markdown
     |> String.replace(~r/\s+/, " ")
     |> String.slice(0, 240)
-  end
-
-  defp with_instance_locale(fun) do
-    locale = Communities.get_instance_settings().default_locale || "en"
-    Gettext.with_locale(KammerWeb.Gettext, to_string(locale), fun)
   end
 
   defp mail_from do

@@ -7,10 +7,10 @@ defmodule Kammer.Guests.GuestNotifier do
 
   use Gettext, backend: KammerWeb.Gettext
 
+  import KammerWeb.Gettext, only: [with_instance_locale: 1]
   import Swoosh.Email
 
   alias Kammer.Calendar.ICS
-  alias Kammer.Communities
   alias Kammer.Events.Event
   alias Kammer.Events.EventRsvp
   alias Kammer.Events.EventSlot
@@ -243,11 +243,6 @@ defmodule Kammer.Guests.GuestNotifier do
     |> from(mail_from())
     |> subject(subject_line)
     |> text_body(body)
-  end
-
-  defp with_instance_locale(fun) do
-    locale = Communities.get_instance_settings().default_locale || "en"
-    Gettext.with_locale(KammerWeb.Gettext, to_string(locale), fun)
   end
 
   defp mail_from do
