@@ -154,6 +154,22 @@ defmodule Kammer.GuestCommentsTest do
                  confirm_url_fun: fn _token -> "unused" end
                )
     end
+
+    test "a group gone non-public refuses at confirm time, not just request time" do
+      # The locked test above pins one half of the confirm gate; this
+      # pins the other — the signed token predates the visibility flip,
+      # so only the re-check of `can_guest_comment?/1` (#345 review)
+      # can refuse it, neutrally, same as a garbage token.
+      %{post: post, group: group} = public_post_context()
+      token = request!(post, group, guest_attrs())
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      assert {:error, :invalid} =
+               Feed.confirm_guest_comment(token, fn _manage -> "unused" end)
+
+      assert Repo.aggregate(Comment, :count) == 0
+    end
   end
 
   describe "the confirm flow" do

@@ -161,6 +161,19 @@ defmodule Kammer.GuestRsvpTest do
                  confirm_url_fun: fn _token -> "unused" end
                )
     end
+
+    test "a group gone non-public refuses at confirm time, not just request time" do
+      # The signed token predates the flip, so only the confirm-time
+      # re-check of `can_guest_rsvp?/1` (#345 review) can refuse it —
+      # neutrally, same as a garbage token.
+      %{event: event, group: group} = public_event_context()
+      token = request!(event, group, guest_attrs())
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      assert {:error, :invalid} = Events.confirm_guest_rsvp(token, fn _token -> "unused" end)
+      assert Repo.aggregate(GuestIdentity, :count) == 0
+    end
   end
 
   describe "the confirm flow" do

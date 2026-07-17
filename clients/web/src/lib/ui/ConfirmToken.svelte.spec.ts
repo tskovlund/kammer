@@ -18,6 +18,23 @@ describe('ConfirmToken', () => {
 
 		await waitFor(() => expect(screen.getByText('Hi Alice')).toBeTruthy());
 		expect(confirm).toHaveBeenCalledWith(window.location.origin, 'tok-1');
+
+		// The server's redirect_path becomes a visible way onward (#345) —
+		// the field existed unread before this link.
+		const link = screen.getByText('Go to the page');
+		expect(link.getAttribute('href')).toBe('/x');
+	});
+
+	it('renders no onward link for a non-relative redirect_path', async () => {
+		// The same-origin guard: a confirmation carrying `//evil.example`
+		// (or any absolute URL) must not become a clickable href.
+		const confirm = vi
+			.fn()
+			.mockResolvedValue({ guest_name: 'Alice', redirect_path: '//evil.example' });
+		render(ConfirmTokenHarness, { props: { token: 'tok-1', confirm } });
+
+		await waitFor(() => expect(screen.getByText('Hi Alice')).toBeTruthy());
+		expect(screen.queryByText('Go to the page')).toBeNull();
 	});
 
 	it('shows the neutral error state when the token is rejected', async () => {

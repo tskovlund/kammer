@@ -832,6 +832,7 @@
 	"guest.manage.erase.confirm.cancel": "Cancel",
 	"guest.manage.erased.title": "Your data has been erased",
 	"guest.manage.erased.body": "Everything tied to this link has been permanently deleted.",
+	"confirm.viewLink": "Go to the page",
 	"newsletter.confirm.title": "Confirming your subscription…",
 	"newsletter.confirm.error.title": "That link didn't work",
 	"newsletter.confirm.error.body": "This subscription link is invalid or has expired.",

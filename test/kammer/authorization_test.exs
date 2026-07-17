@@ -343,14 +343,22 @@ defmodule Kammer.AuthorizationTest do
       end
     end
 
-    test "a sealed public_listed group is excluded, unlike can_guest_rsvp?/1 on the same group" do
-      group = %Group{visibility: :public_listed, sealed: true, archived_at: nil}
+    test "a sealed public_listed group is excluded from every guest gate (#345 unification)" do
+      group = %Group{
+        visibility: :public_listed,
+        sealed: true,
+        archived_at: nil,
+        comment_policy: :members_and_guests
+      }
 
       refute Authorization.publicly_readable?(group)
-      # The guest RSVP gate doesn't check `sealed` (ADR 0005: sealed
-      # limits admin override, not visitor visibility) — this
-      # documents that the two intentionally diverge, not a drift bug.
-      assert Authorization.can_guest_rsvp?(group)
+      # Until #345 the guest write gates skipped `sealed` (ADR 0005:
+      # sealed limits admin override, not visitor visibility) — but a
+      # guest flow whose every confirmation link 404s is no visitor
+      # feature, so the write gates now compose on the read line.
+      refute Authorization.can_guest_rsvp?(group)
+      refute Authorization.can_guest_comment?(group)
+      refute Authorization.can_guest_subscribe?(group)
     end
   end
 end

@@ -832,6 +832,7 @@
 	"guest.manage.erase.confirm.cancel": "Annuller",
 	"guest.manage.erased.title": "Dine data er blevet slettet",
 	"guest.manage.erased.body": "Alt knyttet til dette link er blevet permanent slettet.",
+	"confirm.viewLink": "Gå til siden",
 	"newsletter.confirm.title": "Bekræfter dit abonnement…",
 	"newsletter.confirm.error.title": "Det virkede ikke",
 	"newsletter.confirm.error.body": "Dette abonnementslink er ugyldigt eller udløbet.",

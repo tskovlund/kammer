@@ -87,7 +87,7 @@ defmodule Kammer.NewslettersTest do
   end
 
   describe "authorization" do
-    test "guest subscriptions need a public, live group" do
+    test "guest subscriptions need a public, live, unsealed group" do
       {community, _owner} = community_with_owner_fixture()
 
       for {attrs, allowed?} <- [
@@ -107,6 +107,12 @@ defmodule Kammer.NewslettersTest do
         |> Repo.update!()
 
       refute Authorization.can_guest_subscribe?(archived)
+
+      # Sealed joined the gate when #345 unified the public predicates
+      # on publicly_readable?/1 — an email subscription to content the
+      # public API refuses would be all dead links.
+      sealed = group_fixture(community, visibility: :public_listed, sealed: true)
+      refute Authorization.can_guest_subscribe?(sealed)
     end
 
     test "requests against non-public groups are refused" do
@@ -153,6 +159,21 @@ defmodule Kammer.NewslettersTest do
       assert updated.id == subscription.id
       assert updated.cadence == :weekly
       assert Repo.aggregate(NewsletterSubscription, :count) == 1
+    end
+
+    test "a group gone non-public refuses at confirm time, not just request time" do
+      # The signed token predates the flip, so only the confirm-time
+      # re-check of `can_guest_subscribe?/1` (#345 review) can refuse
+      # it — neutrally, same as a garbage token.
+      %{group: group} = public_group_context()
+      token = request!(group, subscribe_attrs())
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      assert {:error, :invalid} =
+               Newsletters.confirm_subscription(token, fn _token -> "unused" end)
+
+      assert Repo.aggregate(NewsletterSubscription, :count) == 0
     end
 
     test "rejects garbage tokens and validates the request" do
@@ -230,6 +251,9 @@ defmodule Kammer.NewslettersTest do
 
       assert_email_sent(fn email ->
         assert email.text_body =~ "Nyt indlæg!"
+        # The single-post email links to the post itself (#345), not
+        # the group page the misnamed helper used to return.
+        assert email.text_body =~ "/g/#{group.slug}/p/#{post.id}"
         assert email.headers["List-Unsubscribe"] =~ "/newsletter/unsubscribe/"
         assert email.headers["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
         true
@@ -379,6 +403,11 @@ defmodule Kammer.NewslettersTest do
 
       assert_email_sent(fn email ->
         assert email.text_body =~ "Ugens nyheder"
+        # The digest's roundup link is the GROUP page — the negative
+        # half of the #345 helper rename, pinned so a slip to a post
+        # link can't pass silently.
+        assert email.text_body =~ "/g/#{group.slug}"
+        refute email.text_body =~ "/p/"
         true
       end)
 
@@ -397,6 +426,34 @@ defmodule Kammer.NewslettersTest do
       assert :skipped = Newsletters.deliver_digest(subscription, now)
       refute_email_sent()
       assert Repo.reload!(subscription).last_sent_at
+    end
+
+    test "a group gone non-public stops delivering, per-post and digest alike (#345)" do
+      # Delivery re-checks the gate that admitted the subscription: a
+      # visibility flip must not keep emailing post excerpts to guests
+      # across the boundary. The row stays (only the guest erases it),
+      # so a group flipped back public resumes delivering.
+      %{group: group, member: member} = public_group_context()
+
+      {_g, per_post, _m} = group |> request!(subscribe_attrs()) |> confirm!()
+
+      {_g, digest, _m} =
+        group |> request!(subscribe_attrs(%{"cadence" => "weekly"})) |> confirm!()
+
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Hemmeligt nu"})
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      drain_delivered_emails()
+      now = DateTime.utc_now(:second)
+      assert :ok = Newsletters.notify_subscribers(post)
+      assert :skipped = Newsletters.deliver_digest(digest, now)
+      refute_email_sent()
+
+      assert Repo.reload!(per_post)
+      # The skip still stamps last_sent_at, so a group flipped back
+      # public resumes from now — not with the withheld backlog.
+      assert Repo.reload!(digest).last_sent_at == now
     end
   end
 end

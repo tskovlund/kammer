@@ -177,6 +177,11 @@ defmodule KammerWeb.Api.GuestTest do
         public_conn()
         |> post(~p"/api/v1/guest/comment/confirm", %{"token" => token})
         |> tap(&assert_operation_response(&1, "guest_confirm_comment"))
+        |> tap(fn conn ->
+          # The confirm lands on the commented post (#345), not the
+          # group's whole feed.
+          assert json_response(conn, 200)["data"]["redirect_path"] =~ "/p/#{post.id}"
+        end)
         |> manage_token()
 
       body =
@@ -201,6 +206,28 @@ defmodule KammerWeb.Api.GuestTest do
       public_conn()
       |> post(
         ~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/posts/#{post.id}/guest-comment",
+        Map.put(guest(), "body_markdown", "Probe")
+      )
+      |> json_response(404)
+
+      # Sealed public groups joined the same fold in #345 — until then
+      # this surface accepted the whole flow and confirmed into a group
+      # whose every public page 404s.
+      sealed =
+        group_fixture(community,
+          visibility: :public_listed,
+          sealed: true,
+          comment_policy: :members_and_guests
+        )
+
+      sealed_insider = group_member_fixture(sealed)
+
+      {:ok, sealed_post} =
+        Feed.create_post(sealed_insider, sealed, %{"body_markdown" => "Skjult"})
+
+      public_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/groups/#{sealed.slug}/posts/#{sealed_post.id}/guest-comment",
         Map.put(guest(), "body_markdown", "Probe")
       )
       |> json_response(404)

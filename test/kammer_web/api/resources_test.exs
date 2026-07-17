@@ -65,6 +65,28 @@ defmodule KammerWeb.Api.ResourcesTest do
       assert group.slug in slugs
       refute sealed.slug in slugs
     end
+
+    test "a sealed group's own member sees its guest gates all false (#345)", %{
+      community: community
+    } do
+      # The serializer's guest_*_allowed fields are the client's only
+      # signal for rendering guest forms; the sealed exclusion joined
+      # the predicates in #345 and this is the one surface where a
+      # sealed group legitimately serializes.
+      sealed = group_fixture(community, sealed: true, visibility: :public_listed)
+      insider = group_member_fixture(sealed)
+
+      %{"data" => groups} =
+        insider
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/groups")
+        |> json_response(200)
+
+      entry = Enum.find(groups, &(&1["slug"] == sealed.slug))
+      assert entry["guest_rsvp_allowed"] == false
+      assert entry["guest_comment_allowed"] == false
+      assert entry["guest_subscribe_allowed"] == false
+    end
   end
 
   describe "posts" do

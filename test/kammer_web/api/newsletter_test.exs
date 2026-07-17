@@ -91,6 +91,23 @@ defmodule KammerWeb.Api.NewsletterTest do
     |> json_response(404)
   end
 
+  test "a sealed public group answers the same 404 to subscribe, never a 403 (#345)", %{
+    community: community
+  } do
+    # Its public page 404s, so a 403 here would confirm the group
+    # exists to any prober of unlisted slugs. The resolve now runs
+    # through fetch_public_group, the same fold the page uses.
+    sealed = group_fixture(community, visibility: :public_listed, sealed: true)
+
+    public_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{sealed.slug}/newsletter", %{
+      "email" => "prober@example.org",
+      "display_name" => "Prober",
+      "cadence" => "weekly"
+    })
+    |> json_response(404)
+  end
+
   test "a manage token cannot unsubscribe another guest's subscription (#156/#161)", %{
     community: community,
     group: group

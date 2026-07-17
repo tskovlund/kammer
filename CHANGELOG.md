@@ -403,6 +403,29 @@ and this project adheres to
 
 ### Fixed
 
+- Every tokenless public surface now draws one "public" line (issue
+  #345, expanded by its review round): `publicly_readable?/1` gates
+  the RSS/Atom feeds (an archived or sealed `public_listed` group
+  used to keep serving a live feed whose every link landed on the SPA
+  error state), the guest RSVP/comment gates (a sealed public group
+  accepted whole guest flows whose confirmation links 404), the
+  newsletter subscribe gate, and — the review round's sharpest catch —
+  newsletter _delivery_: per-post and digest sends now re-check the
+  gate, so a group flipped off the public presets stops emailing post
+  excerpts to guest subscribers instead of leaking content across the
+  visibility boundary indefinitely. The anonymous subscribe, guest
+  comment, and guest RSVP requests all resolve through the shared
+  public fetches now, folding sealed/archived public groups into the
+  same 404 their pages give (the old answers confirmed existence to
+  slug probers: 403 for archived, and for sealed a 202 acceptance of
+  a flow whose confirm link then died). The single-post newsletter email links to the post itself
+  (the digest's roundup link was correct and stays; the misnamed
+  `post_url/1` helper is renamed, and all email links now build
+  through `PublicLinks`, sharing the confirm links' base handling),
+  and a confirmed guest comment redirects to the commented post — with
+  the confirm pages growing the "go to the page" link that makes the
+  redirect visible (the field previously had no client consumer).
+
 - Leaving or being removed from a group no longer leaves an ex-member's
   RSVP sitting on that group's future events (issue #329, owner-decided
   option 1). Before #318 added capacity and a waitlist, a stale RSVP

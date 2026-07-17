@@ -20,6 +20,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
   alias Kammer.Guests.Token, as: GuestToken
   alias Kammer.Mailer
   alias Kammer.Newsletters.NewsletterSubscription
+  alias KammerWeb.Api.PublicLinks
 
   @doc """
   Asks the prospective subscriber to confirm by following a signed
@@ -91,7 +92,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
       #{excerpt(post.body_markdown)}
 
-      #{post_url(group)}
+      #{post_url(group, post)}
 
       #{gettext("Unsubscribe, or change how often you hear from us:")}
 
@@ -131,7 +132,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
       #{lines}
 
-      #{post_url(group)}
+      #{group_url(group)}
 
       #{gettext("Unsubscribe, or change how often you hear from us:")}
 
@@ -181,10 +182,15 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
   defp cadence_label(:daily), do: gettext("a daily digest")
   defp cadence_label(:weekly), do: gettext("a weekly digest")
 
-  defp post_url(group) do
-    community = group.community
-    "#{KammerWeb.Endpoint.url()}/c/#{community.slug}/g/#{group.slug}"
-  end
+  # Misnamed post_url/1 until issue #345: it always returned the group
+  # page, which is right for the digest's roundup link but sent the
+  # single-post email to the wrong place. Both now build through
+  # PublicLinks, so email links share the confirm links' base handling.
+  defp group_url(group),
+    do: PublicLinks.absolute_url(PublicLinks.community_group_path(group.community, group))
+
+  defp post_url(group, post),
+    do: PublicLinks.absolute_url(PublicLinks.post_path(group.community, group, post))
 
   # Full-power, 60-day manage token, deliberately still embedded here
   # (contrast `unsubscribe_url/1` below) — this is a link a human must

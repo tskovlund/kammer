@@ -50,3 +50,18 @@ itself be an existence oracle, and "delete what you cannot inspect" is
 a footgun, not a feature. Sealed _non-private_ groups are unaffected:
 admins can see those (as ordinary members for community-visible ones,
 like anyone for public ones), so deletion still works over the API.
+
+## Amendment (2026-07-17, issue #345): sealed and the tokenless public surfaces
+
+The original decision scoped sealing to _admin_ override; anonymous
+visitor visibility was deliberately untouched, so a sealed
+`public_listed` group kept its RSS/Atom feed, newsletter
+subscriptions, and guest RSVP/comment flows. #345's unification ends
+that: **sealed now also excludes a group from every tokenless public
+surface** — the public JSON API, the feeds, newsletter subscribe
+_and_ delivery, and the guest write flows all gate on one predicate
+(`Authorization.publicly_readable?/1`), because serving anonymous
+flows and emails whose every link 404s on the public pages was
+incoherent, not a feature. Member and admin access is unchanged —
+authenticated surfaces never consulted this predicate, so the
+original decision's scope (and the #347 amendment above) stand.
