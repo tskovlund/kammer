@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.GroupController do
   alias Kammer.Communities
   alias Kammer.Groups
   alias Kammer.Groups.Group
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -120,20 +121,18 @@ defmodule KammerWeb.Api.GroupController do
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <-
-           Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug) do
-      fun.(user, group)
-    else
-      # No-oracle (#156/#161): a missing community, a missing group, and a
-      # group the caller may not even *see* all answer the same 404 — an
-      # unviewable group must be indistinguishable from a nonexistent one,
-      # so `fetch_viewable_group`'s view-denied `{:error, :unauthorized}`
-      # is folded into not-found here rather than surfacing as 403. (A
-      # group the caller *can* see but not *manage* still gets an honest
-      # 403 from the mutator inside `fun`.)
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      {:error, _reason} -> ApiError.send(conn, :not_found, "Not found.")
+    case GroupGate.fetch(user, community_slug, group_slug) do
+      {:ok, _community, group} ->
+        fun.(user, group)
+
+      {:error, :not_found} ->
+        # No-oracle (#156/#161, #339): a missing community, a missing
+        # group, and a group the caller may not even *see* all answer
+        # the same 404 — an unviewable group must be indistinguishable
+        # from a nonexistent one. (A group the caller *can* see but not
+        # *manage* still gets an honest 403 from the mutator inside
+        # `fun`.)
+        ApiError.send(conn, :not_found, "Not found.")
     end
   end
 end

@@ -488,14 +488,13 @@ defmodule KammerWeb.Api.FileLibraryTest do
       |> json_response(404)
     end
 
-    test "a private group's files are hidden at the group gate (403)", %{
-      community: community,
-      tmp_dir: tmp_dir
-    } do
+    test "a private group's files are hidden at the group gate (404, no existence oracle, #339)",
+         %{community: community, tmp_dir: tmp_dir} do
       # A private group the caller isn't in: the group itself is hidden,
-      # so its whole file surface 403s at the group gate — exactly like
-      # events. (The finer file-level no-oracle — 404 within a *visible*
-      # group — is covered by the folder-override test below.)
+      # so its whole file surface 404s at the group gate — exactly like
+      # events, never a 403 that would confirm the group exists. (The
+      # finer file-level no-oracle — 404 within a *visible* group — is
+      # covered by the folder-override test above.)
       private = group_fixture(community, visibility: :private)
       insider = group_member_fixture(private)
       outsider = member_fixture(community)
@@ -508,8 +507,8 @@ defmodule KammerWeb.Api.FileLibraryTest do
 
       path = "/api/v1/communities/#{community.slug}/groups/#{private.slug}/files"
 
-      outsider |> api_conn() |> get(path) |> json_response(403)
-      outsider |> api_conn() |> get("#{path}/#{stored.id}") |> json_response(403)
+      outsider |> api_conn() |> get(path) |> json_response(404)
+      outsider |> api_conn() |> get("#{path}/#{stored.id}") |> json_response(404)
     end
 
     test "the group file space behind a disabled files feature 404s", %{

@@ -1,0 +1,8 @@
+# False positives, pinned by fingerprint (commit:file:rule:line).
+#
+# CHANGELOG prose "calendar token, _assignment/availability/decision_
+# list-or-create" — the generic-api-key rule reads the slash-separated
+# feature list after the word "token" as a credential. Nothing secret
+# on the line; the fingerprint stays valid after merge because the
+# commit object is unchanged.
+a4901bfd3eabe484b2d791f8130d306ffeb53f6a:CHANGELOG.md:generic-api-key:572

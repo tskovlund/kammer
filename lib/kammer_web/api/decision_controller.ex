@@ -15,10 +15,8 @@ defmodule KammerWeb.Api.DecisionController do
   use KammerWeb, :controller
 
   alias Kammer.Communities
-  alias Kammer.Communities.Community
   alias Kammer.Decisions
-  alias Kammer.Groups
-  alias Kammer.Authorization
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -76,15 +74,21 @@ defmodule KammerWeb.Api.DecisionController do
     if Decisions.can_record_outcome?(user, decision, group), do: ["record_outcome"], else: []
   end
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # a group the caller may not even *view*, and a group with the tool
+  # off all fold into the same 404 via `GroupGate.fetch/4`. Callback
+  # errors (a denied write in a visible group, an invalid changeset)
+  # fall through to `ApiError.from_result` — an honest 403/422, never
+  # an unhandled tuple escaping as a 500.
   defp with_feature_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Community{} = community <- Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
-         :ok <- Authorization.feature_gate(group, @feature) do
-      fun.(community, group, user)
+    with {:ok, community, group} <-
+           GroupGate.fetch(user, community_slug, group_slug, feature: @feature),
+         %Plug.Conn{} = responded <- fun.(community, group, user) do
+      responded
     else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
       error -> ApiError.from_result(conn, error)
     end
   end

@@ -14,10 +14,9 @@ defmodule KammerWeb.Api.PostController do
   use KammerWeb, :controller
 
   alias Kammer.Authorization
-  alias Kammer.Communities
   alias Kammer.Feed
-  alias Kammer.Groups
   alias Kammer.Moderation
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Pagination
   alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
@@ -262,16 +261,16 @@ defmodule KammerWeb.Api.PostController do
 
   ## Internals
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # and a group the caller may not even *view* all fold into the same
+  # 404 via `GroupGate.fetch/3` — an unviewable group must be
+  # indistinguishable from a nonexistent one.
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <-
-           Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug) do
-      fun.(group)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug) do
+      {:ok, _community, group} -> fun.(group)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

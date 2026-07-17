@@ -187,6 +187,52 @@ defmodule KammerWeb.Api.GuestTest do
       assert [%{"pending_approval" => true, "body_markdown" => "Lovely event"}] =
                body["data"]["comments"]
     end
+
+    test "a group the public cannot view answers 404 to a comment request, not 403 (#339)", %{
+      community: community
+    } do
+      # This surface is anonymous, so the pin matters doubly: a 403 here
+      # would hand any tokenless prober a live existence oracle for
+      # private group slugs.
+      hidden = group_fixture(community, visibility: :private, comment_policy: :members_and_guests)
+      insider = group_member_fixture(hidden)
+      {:ok, post} = Feed.create_post(insider, hidden, %{"body_markdown" => "Hemmeligt"})
+
+      public_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/posts/#{post.id}/guest-comment",
+        Map.put(guest(), "body_markdown", "Probe")
+      )
+      |> json_response(404)
+    end
+
+    test "an event in a hidden group answers the missing-event 404, byte-identical (#339)", %{
+      community: community
+    } do
+      # Guest-RSVP (and guest-claim, which shares `with_viewable_event`)
+      # is anonymous: a 403 for a real-but-hidden event would leak event
+      # existence — and disagree with the public read of the same event,
+      # which already 404s. Oracle-closure means indistinguishable, so
+      # this pin compares the whole body, not just the status.
+      hidden = group_fixture(community, visibility: :private)
+      insider = group_member_fixture(hidden)
+
+      {:ok, event} =
+        Events.create_event(insider, hidden, %{
+          "title" => "Hemmelig koncert",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 72, :hour)
+        })
+
+      params = Map.put(guest(), "status", "yes")
+
+      probe = fn id ->
+        public_conn()
+        |> post(~p"/api/v1/communities/#{community.slug}/events/#{id}/guest-rsvp", params)
+        |> json_response(404)
+      end
+
+      assert probe.(event.id) == probe.(Ecto.UUID.generate())
+    end
   end
 
   describe "cross-guest isolation (#156/#161)" do
