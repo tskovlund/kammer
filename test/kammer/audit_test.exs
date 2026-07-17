@@ -30,7 +30,7 @@ defmodule Kammer.AuditTest do
     end
   end
 
-  describe "list_events/3" do
+  describe "list_events/2" do
     test "community admins see entries, newest first; everyone else sees nothing" do
       {community, owner} = community_with_owner_fixture()
       member = member_fixture(community)
@@ -75,7 +75,7 @@ defmodule Kammer.AuditTest do
       ids = Enum.map(first_page ++ second_page, & &1.id)
       assert ids == Enum.uniq(ids)
 
-      # The pages cover everything list_events/3 shows, exactly once …
+      # The pages cover everything list_events/2 shows, exactly once …
       assert Enum.sort(ids) == Enum.sort(Enum.map(Audit.list_events(owner, community), & &1.id))
 
       # … strictly descending by the cursor key across the page boundary.
@@ -86,9 +86,37 @@ defmodule Kammer.AuditTest do
 
       assert cursor_keys == Enum.sort(cursor_keys, :desc)
 
-      # Same no-oracle gate as list_events/3: a non-admin gets an empty
+      # Same no-oracle gate as list_events/2: a non-admin gets an empty
       # page and no cursor, never an error.
       assert {[], nil} = Audit.list_events_page(member, community, nil, 2)
+    end
+
+    test "breaks an inserted_at tie by id, losing nothing at the boundary" do
+      # Microsecond timestamps make real ties rare enough that no
+      # fixture ever produces one — which left the cursor's ==-and-id
+      # arm dead in the suite. Force the tie.
+      {community, owner} = community_with_owner_fixture()
+
+      tied =
+        for summary <- ["tie-a", "tie-b"] do
+          Audit.record(community, owner, "community.settings_updated", summary)
+        end
+
+      tied_ids = Enum.map(tied, & &1.id)
+      tied_at = DateTime.utc_now()
+
+      Repo.update_all(
+        from(event in AuditEvent, where: event.id in ^tied_ids),
+        set: [inserted_at: tied_at]
+      )
+
+      {[first], cursor} = Audit.list_events_page(owner, community, nil, 1)
+      {[second], nil} = Audit.list_events_page(owner, community, cursor, 1)
+
+      # Both tied rows arrive exactly once, descending by id within the
+      # tie (uuid string order matches Postgres uuid order).
+      assert Enum.sort([first.id, second.id]) == Enum.sort(tied_ids)
+      assert first.id > second.id
     end
   end
 end

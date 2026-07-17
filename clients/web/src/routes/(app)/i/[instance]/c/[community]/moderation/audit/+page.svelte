@@ -40,6 +40,7 @@
 		let cancelled = false;
 		loading = true;
 		error = null;
+		loadMoreError = null;
 
 		(async () => {
 			try {
@@ -67,17 +68,25 @@
 
 	async function loadMore(): Promise<void> {
 		if (!instance || !nextCursor || loadingMore) return;
+		const requested = instance;
 		const slug = page.params.community;
 		if (!slug) return;
 
 		loadingMore = true;
 		loadMoreError = null;
 		try {
-			const nextPage = await fetchAuditLogPage(instance, slug, nextCursor);
+			const nextPage = await fetchAuditLogPage(requested, slug, nextCursor);
+			// SvelteKit reuses this component across param changes, and unlike
+			// the group feed there's no per-community store to abandon — so a
+			// page that resolves after navigating away must not splice one
+			// community's log into another's.
+			if (page.params.community !== slug || instance !== requested) return;
 			events = [...events, ...nextPage.events];
 			nextCursor = nextPage.nextCursor;
 		} catch (cause) {
-			loadMoreError = errorKind(cause);
+			if (page.params.community === slug && instance === requested) {
+				loadMoreError = errorKind(cause);
+			}
 		} finally {
 			loadingMore = false;
 		}

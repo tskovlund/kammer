@@ -47,18 +47,20 @@ defmodule Kammer.Audit do
   end
 
   @doc """
-  A page of the community's audit log, newest first. Community admins
-  only — everyone else gets an empty list, the same not-found-shaped
-  silence the rest of the product uses for things you can't see.
+  The capped recent slice of the community's audit log, newest first —
+  the context tests' read-back helper; the API paginates via
+  `list_events_page/4` instead. Community admins only — everyone else
+  gets an empty list, the same not-found-shaped silence the rest of
+  the product uses for things you can't see.
   """
-  @spec list_events(User.t() | nil, Community.t(), keyword()) :: [AuditEvent.t()]
-  def list_events(actor, %Community{} = community, opts \\ []) do
+  @spec list_events(User.t() | nil, Community.t()) :: [AuditEvent.t()]
+  def list_events(actor, %Community{} = community) do
     if Authorization.can?(actor, :manage_community, community) do
       Repo.all(
         from(event in AuditEvent,
           where: event.community_id == ^community.id,
           order_by: [desc: event.inserted_at],
-          limit: ^Keyword.get(opts, :limit, @per_page),
+          limit: @per_page,
           preload: [:actor_user]
         )
       )
@@ -71,7 +73,7 @@ defmodule Kammer.Audit do
   One cursor page of the community's audit log, newest first (issue
   #340) — same contract as `Kammer.Notifications.list_notifications_page/3`:
   `{events, next_cursor}`, `next_cursor` `nil` on the last page. Gated
-  the same way as `list_events/3`: anyone but a community admin sees
+  the same way as `list_events/2`: anyone but a community admin sees
   an empty page with no cursor, never an error that would confirm the
   log exists.
   """
