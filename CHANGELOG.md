@@ -28,6 +28,19 @@ and this project adheres to
   email-change flow without a re-auth gate, and resolves ADR 0018's
   open sudo-mode note.
 
+- Per-community accent re-tint in the PWA (issue #321, SPEC §21).
+  Community-owned surfaces — the authed community tree and the public
+  community pages — now re-tint the interface with that community's
+  configured `accent_color`, delivering §21's "branding is structural"
+  promise: switching communities switches the accent. The accent and
+  its foreground are derived per theme from the stored color with a
+  WCAG AA floor (≥ 4.5:1 against paper/surface in the light _and_ dark
+  palettes, and for text on the accent), darkening or lightening only
+  as far as safety requires, so any admin-chosen color ships readable
+  in both themes; an invalid stored color falls back to the default
+  accent. Merged, multi-community surfaces (Home, cross-instance
+  lists) and the app chrome keep the neutral default.
+
 - Newsletter subscription form on the PWA's public group page (issue
   #185, part of #187, SPEC §8). When a group opts guests into its
   newsletter (`guest_subscribe_allowed`), its public page now offers a

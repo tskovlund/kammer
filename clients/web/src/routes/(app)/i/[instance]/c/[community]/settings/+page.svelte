@@ -13,6 +13,7 @@
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import CustomFieldsManager from '$lib/manage/CustomFieldsManager.svelte';
+	import { refreshCommunityAccent } from '$lib/ui/accent-refresh.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
@@ -102,10 +103,15 @@
 			require_real_names: requireRealNames
 		};
 		const oldSlug = community.slug;
+		const oldAccent = community.accent_color;
 		try {
 			const updated = await updateCommunity(instance, oldSlug, params);
 			hydrate(updated);
 			saved = true;
+			// The community layout above resolves the accent once per
+			// community — tell it the resolve went stale, or the old tint
+			// sticks until the tree is left and re-entered.
+			if (updated.accent_color !== oldAccent) refreshCommunityAccent();
 			// A slug change renames this page's own URL: the route param (and
 			// every href derived from it, like the moderation link) still says
 			// the OLD slug, so a refresh or click would 404. Move to the new
