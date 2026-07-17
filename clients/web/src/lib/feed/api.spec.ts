@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { uploadFile } from './api';
+import { fetchAuthedObjectUrl, uploadFile } from './api';
 import type { Instance } from '$lib/instances/types';
 
 function instance(): Instance {
@@ -22,10 +22,11 @@ function errorResponse(status: number, code = 'error', message = 'nope') {
 	});
 }
 
-// `uploadFile` is the one feed call with a hand-rolled fetch + error path
-// (multipart, not the openapi-fetch client), so it keeps its own tests. The
-// status→kind mapping shared by every other call lives in `api/errors.spec`.
-describe('feed uploads', () => {
+// `uploadFile` and `fetchAuthedObjectUrl` are the feed calls with a
+// hand-rolled fetch + error path (multipart / blob, not the openapi-fetch
+// client), so they keep their own tests. The status→kind mapping shared by
+// every other call lives in `api/errors.spec`.
+describe('feed uploads & authed downloads', () => {
 	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -33,6 +34,25 @@ describe('feed uploads', () => {
 		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(413, 'too_large', 'Too big.'));
 		const file = new File(['x'], 'big.png', { type: 'image/png' });
 		await expect(uploadFile(instance(), ref, file)).rejects.toMatchObject({ kind: 'too_large' });
+	});
+
+	it('maps an authed download 401 with step_up_required to the step_up kind (#323)', async () => {
+		// The account export rides this helper and is step-up-gated: its 401
+		// must read as the gate, never as a dead session.
+		vi.mocked(fetch).mockResolvedValueOnce(errorResponse(401, 'step_up_required'));
+		await expect(fetchAuthedObjectUrl(instance(), '/api/v1/me/export')).rejects.toMatchObject({
+			kind: 'step_up',
+			code: 'step_up_required'
+		});
+	});
+
+	it('maps a non-JSON download error body to the status kind', async () => {
+		// A proxy/HTML error page carries no envelope; the body-read swallow
+		// must still map the bare status, not blow up on the parse.
+		vi.mocked(fetch).mockResolvedValueOnce(new Response('<html>gone</html>', { status: 404 }));
+		await expect(fetchAuthedObjectUrl(instance(), '/api/v1/files/f1')).rejects.toMatchObject({
+			kind: 'not_found'
+		});
 	});
 
 	it('sends the upload as multipart with the Bearer token', async () => {

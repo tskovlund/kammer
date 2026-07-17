@@ -263,7 +263,9 @@ defmodule KammerWeb.Router do
     # Account lifecycle (issue #258, SPEC §12): email change, export,
     # deletion. The email-change confirm is authenticated — the emailed
     # token is bound to the requesting account, so the PWA landing page
-    # sends it back with the device token it already holds.
+    # sends it back with the device token it already holds. Email-change
+    # initiation, export, and deletion are step-up-gated in the
+    # controller (ADR 0029; export/deletion widened on #323).
     post "/me/email-change", AccountController, :request_email_change
     post "/me/email-change/confirm", AccountController, :confirm_email_change
     get "/me/export", AccountController, :export

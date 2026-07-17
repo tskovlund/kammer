@@ -743,7 +743,7 @@ export interface paths {
 		/** Update the caller's profile and preferences */
 		put: operations['me_update'];
 		post?: never;
-		/** Delete the account (SPEC §12): confirm_email must match the account's address */
+		/** Delete the account (SPEC §12): confirm_email must match the account's address. Requires a fresh step-up (issue #323) — 401 `step_up_required` otherwise */
 		delete: operations['me_delete'];
 		options?: never;
 		head?: never;
@@ -1999,7 +1999,7 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** The caller's complete data export (SPEC §12) as one zip */
+		/** The caller's complete data export (SPEC §12) as one zip. Requires a fresh step-up (issue #323) — 401 `step_up_required` otherwise */
 		get: operations['me_export'];
 		put?: never;
 		post?: never;
@@ -13352,6 +13352,15 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			429: {
 				headers: {
 					[name: string]: unknown;
 				};

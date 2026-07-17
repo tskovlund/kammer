@@ -250,7 +250,8 @@ defmodule KammerWeb.ApiSpec do
           ),
         delete:
           operation(
-            "Delete the account (SPEC §12): confirm_email must match the account's address",
+            "Delete the account (SPEC §12): confirm_email must match the account's address. " <>
+              "Requires a fresh step-up (issue #323) — 401 `step_up_required` otherwise",
             :me_delete,
             [],
             request_body:
@@ -332,10 +333,11 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/me/export" => %PathItem{
         get:
           operation(
-            "The caller's complete data export (SPEC §12) as one zip",
+            "The caller's complete data export (SPEC §12) as one zip. " <>
+              "Requires a fresh step-up (issue #323) — 401 `step_up_required` otherwise",
             :me_export,
             [],
-            extra_errors: [400],
+            extra_errors: [400, 429],
             response: binary_response("The export zip: data.json plus every uploaded file")
           )
       },

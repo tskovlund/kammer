@@ -467,6 +467,25 @@ and this project adheres to
 
 ### Security
 
+- Account deletion and the data export now require step-up
+  re-authentication (issue #323, updating ADR 0029). `DELETE /me` and
+  `GET /me/export` answer 401 `step_up_required` until the calling
+  device has recently re-asserted a root of trust, closing the two
+  gaps the original step-up scope (issue #294) deliberately left open:
+  a transiently stolen device token could irreversibly destroy the
+  account in one request (destruction needs no persistence), or pull
+  every stored byte of the account's data as one zip (one-shot bulk
+  exfiltration). The deletion flow's typed-back-email confirmation
+  stays, layered after the gate — accidental-click protection on top
+  of, not instead of, the security control. The PWA's delete and
+  export flows open the same step-up dialog and retry, like every
+  other gated flow. The consent copy — the step-up email and the
+  confirmation landing page — now names the widened stakes
+  explicitly (deleting the account, downloading all its data)
+  instead of the original "security settings" phrasing, so a user
+  approving a step-up knows the worst the action-generic grant can
+  do (adversarial review of the #323 widening).
+
 - `Event.location_url` now rejects anything but `http`/`https` on
   write (issue #247, found by the adversarial review of #246):
   previously it was only length-checked, so an event host could set

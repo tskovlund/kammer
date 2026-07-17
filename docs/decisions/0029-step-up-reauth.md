@@ -81,6 +81,9 @@ destroys the account rather than repointing credentials at an
 attacker, and the deliberate-friction control documented on #258
 already covers its honest failure mode.
 
+> **Superseded (2026-07-17, #323):** the owner widened the gate to
+> account deletion and the GDPR export — see the Update below.
+
 **Client**: the shared `ApiError` gains the envelope `code` and a
 `step_up` kind; one modal (`StepUpModal`) runs either method and the
 caller retries its original action transparently — the server-side
@@ -118,4 +121,38 @@ window means the retry simply succeeds.
   (irreversible destruction) and `GET /me/export` (bulk PII) should
   also be gated is decision issue #323 — the exclusion above reasons
   about credential takeover, and the destructive-DoS residual is the
-  owner's call.
+  owner's call. _(Resolved 2026-07-17: gated — see the Update below.)_
+
+## Update — deletion and export gated too (2026-07-17, issue #323)
+
+The owner decided the open question above: `DELETE /me` (account
+deletion) and `GET /me/export` (the GDPR bundle) now sit behind the
+same `require_stepped_up` gate as the credential changes. The original
+exclusion reasoned about credential _takeover_ — deletion destroys the
+account rather than repointing its credentials, so a thief gains no
+persistence — but that lens missed two things a transiently stolen
+device token can still do in one request each: irreversibly destroy
+the account (a destructive DoS needs no persistence), and pull every
+stored byte of the account's PII as one zip (the export is one-shot
+bulk exfiltration). The deletion flow's typed-back-email check stays,
+layered _after_ the gate: it remains accidental-click protection, not
+a security control, exactly as documented on #258. No new machinery —
+the widening is two more actions on the existing controller plug, and
+the PWA's delete/export flows ride the same `step_up_required` →
+`StepUpModal` → retry path every gated flow already uses.
+
+**Residual risks.** The window is per-token but action-generic: once
+a device steps up, that token can perform _any_ gated action until
+the window lapses. A thief holding the victim's own device token
+therefore doesn't need the victim's mailbox or passkey — they can
+ride a legitimate step-up the victim performs during the window (the
+same-token piggyback), turning, say, a routine passkey enrollment
+into an open door for deletion or the export. That residual was
+acceptable while the gated surface was reversible credential
+plumbing; this widening makes it carry irreversible stakes.
+Mitigations: the short window (default 10 minutes) bounds the ride,
+and the consent copy — the step-up email and the `/step-up/{token}`
+landing page — now names deletion and export explicitly, so a user
+approving a step-up knows the worst the grant can do. Notifying the
+owner when a deletion or export actually executes is tracked as
+follow-up #338.
