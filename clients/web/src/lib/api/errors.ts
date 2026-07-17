@@ -4,8 +4,10 @@ import type { Instance } from '$lib/instances/types.js';
 /**
  * How any API read/write failed. The UI reacts differently per kind:
  * `auth` re-prompts sign-in for that instance (ties into the #159 failure
- * kinds and the socket's `noteAuthFailure`), `forbidden` explains a
- * missing right, `validation`/`too_large`/`rate_limited` are friendly
+ * kinds and the socket's `noteAuthFailure`), `step_up` opens the step-up
+ * confirmation dialog and retries (#294 — same 401 status as `auth`, but
+ * the session is fine and must NOT be re-prompted), `forbidden` explains
+ * a missing right, `validation`/`too_large`/`rate_limited` are friendly
  * composer errors, and `network`/`server` are retryable.
  *
  * The single shared home for every API surface — authenticated (feed,
@@ -19,6 +21,7 @@ import type { Instance } from '$lib/instances/types.js';
  */
 export type ApiErrorKind =
 	| 'auth'
+	| 'step_up'
 	| 'forbidden'
 	| 'not_found'
 	| 'validation'
@@ -31,6 +34,13 @@ export class ApiError extends Error {
 	readonly kind: ApiErrorKind;
 	readonly status: number | null;
 	/**
+	 * The envelope's stable machine-readable code (`error.code`), or null
+	 * when the failure carried none (network errors, non-envelope bodies).
+	 * `kind` stays the coarse switch; `code` is for the finer distinctions
+	 * the server makes within one status (#294's `step_up_required`).
+	 */
+	readonly code: string | null;
+	/**
 	 * Field → messages from a 422's changeset details, `{}` otherwise.
 	 * UI maps field NAMES onto its own i18n copy — the message strings
 	 * are server-English and must never render (#253's direction).
@@ -41,13 +51,15 @@ export class ApiError extends Error {
 		kind: ApiErrorKind,
 		message: string,
 		status: number | null = null,
-		details: Record<string, string[]> = {}
+		details: Record<string, string[]> = {},
+		code: string | null = null
 	) {
 		super(message);
 		this.name = 'ApiError';
 		this.kind = kind;
 		this.status = status;
 		this.details = details;
+		this.code = code;
 	}
 }
 
@@ -77,9 +89,20 @@ interface ErrorEnvelope {
 /** Turn an openapi-fetch `{ error, response }` into a typed ApiError. */
 export function fail(error: unknown, response: Response | undefined, fallback: string): ApiError {
 	const status = response?.status ?? null;
-	const kind = status ? kindForStatus(status) : 'server';
 	const envelope = (error as ErrorEnvelope | undefined)?.error;
-	return new ApiError(kind, envelope?.message ?? fallback, status, envelope?.details ?? {});
+	// A 401 with the step_up_required code is NOT a dead session — the
+	// caller's token is fine, it just needs a fresh confirmation (#294).
+	// Distinguish before the status mapping so it never triggers the
+	// sign-in-again path the `auth` kind drives.
+	const kind =
+		envelope?.code === 'step_up_required' ? 'step_up' : status ? kindForStatus(status) : 'server';
+	return new ApiError(
+		kind,
+		envelope?.message ?? fallback,
+		status,
+		envelope?.details ?? {},
+		envelope?.code ?? null
+	);
 }
 
 export async function guard<T>(request: () => Promise<T>): Promise<T> {

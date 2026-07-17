@@ -17,7 +17,10 @@ defmodule KammerWeb.Api.PasskeyTest do
 
   setup do
     user = user_fixture()
-    %{user: user, conn: KammerWeb.ApiHelpers.api_conn(user)}
+    # Enrollment and removal sit behind the step-up gate (issue #294);
+    # the gate itself is exercised in step_up_test.exs — these tests
+    # cover the ceremony, so they run stepped up.
+    %{user: user, conn: KammerWeb.ApiHelpers.api_conn(user, stepped_up: true)}
   end
 
   describe "POST /api/v1/me/passkeys/challenge" do

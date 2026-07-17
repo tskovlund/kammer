@@ -919,6 +919,33 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule StepUpPasskeyChallenge do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "StepUpPasskeyChallenge",
+      description:
+        "WebAuthn assertion options for a step-up (issue #294, ADR 0029): like " <>
+          "the sign-in challenge, but for an already-authenticated caller — " <>
+          "`allow_credentials` lists the caller's own registered credential ids " <>
+          "(base64url, no padding) so the browser only offers passkeys that can " <>
+          "succeed. Empty when the account has no passkeys; use the emailed " <>
+          "step-up link instead.",
+      type: :object,
+      properties: %{
+        challenge: %Schema{type: :string, description: "base64url, no padding"},
+        rp_id: %Schema{type: :string},
+        challenge_token: %Schema{type: :string},
+        allow_credentials: %Schema{
+          type: :array,
+          items: %Schema{type: :string, description: "base64url, no padding"}
+        }
+      },
+      required: [:challenge, :rp_id, :challenge_token, :allow_credentials]
+    })
+  end
+
   defmodule StatusResponse do
     @moduledoc false
     require OpenApiSpex

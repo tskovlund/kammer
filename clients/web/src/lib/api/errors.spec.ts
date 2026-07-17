@@ -30,6 +30,26 @@ describe('fail', () => {
 		const error = fail(undefined, undefined, 'fallback');
 		expect(error.kind).toBe('server');
 		expect(error.status).toBeNull();
+		expect(error.code).toBeNull();
+	});
+
+	// The one 401 that is NOT a dead session (#294): the step_up_required
+	// code must win over the status mapping, or every gated action would
+	// bounce the user to sign-in instead of the step-up dialog.
+	it('maps a 401 step_up_required envelope to the step_up kind, carrying the code', () => {
+		const error = fail(
+			{ error: { code: 'step_up_required', message: 'Recent confirmation required.' } },
+			response(401),
+			'fallback'
+		);
+		expect(error.kind).toBe('step_up');
+		expect(error.code).toBe('step_up_required');
+		expect(error.status).toBe(401);
+
+		// A plain 401 without the code stays an auth failure.
+		const plain = fail({ error: { code: 'unauthorized', message: 'nope' } }, response(401), 'x');
+		expect(plain.kind).toBe('auth');
+		expect(plain.code).toBe('unauthorized');
 	});
 
 	it("carries a 422 envelope's field details and message, falling back when absent", () => {

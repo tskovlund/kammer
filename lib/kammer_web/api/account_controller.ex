@@ -9,12 +9,15 @@ defmodule KammerWeb.Api.AccountController do
   endpoint emails a single-use confirmation link to the *new* address
   (rate-limited per acting user,
   `Kammer.RateLimit.hit_email_change/1`), and nothing changes until
-  the confirm endpoint consumes the token. One deliberate difference:
-  the web flow additionally sits behind sudo mode (a recent
-  re-authentication); device tokens have no re-auth equivalent —
-  possession of the long-lived token is the account's credential,
-  the same reasoning as deletion below — so the API has no such gate.
-  The link lands in the PWA (ADR 0024) — the landing page calls the
+  the confirm endpoint consumes the token. Initiation sits behind the
+  step-up gate (issue #294, ADR 0029): the account email is the root
+  credential in a passwordless model — every future magic link goes to
+  it — so changing it is exactly the credential change the gate
+  exists for. (An earlier iteration shipped ungated on the reasoning
+  that "device tokens have no re-auth equivalent"; the step-up
+  machinery made that rationale false, and the owner's option-B call
+  on #294 reversed it.) The link lands in the PWA (ADR 0024) — the
+  landing page calls the
   confirm endpoint with the device token it already holds, since the
   token is bound to the requesting account, not a credential on its
   own. Confirming invalidates every device token by construction
@@ -40,6 +43,8 @@ defmodule KammerWeb.Api.AccountController do
 
   use KammerWeb, :controller
 
+  import KammerWeb.ApiStepUp, only: [require_stepped_up: 2]
+
   require Logger
 
   alias Kammer.Accounts
@@ -51,15 +56,22 @@ defmodule KammerWeb.Api.AccountController do
   alias KammerWeb.ApiAuth
   alias KammerWeb.ApiError
 
+  # Changing the root credential requires a fresh step-up (issue #294,
+  # ADR 0029). Only initiation: the confirm endpoint consumes a
+  # single-use token already bound to this account, and gating it too
+  # would strand the legitimate flow when the window expires mid-email.
+  plug :require_stepped_up when action in [:request_email_change]
+
   @spec request_email_change(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def request_email_change(conn, %{"email" => email} = _params) when is_binary(email) do
     user = conn.assigns.current_scope.user
 
     # Spend the budget BEFORE the uniqueness check: a taken address
     # answers 422 and a free one 200, so an unthrottled request would
-    # be a registered/unregistered enumeration oracle (the web flow's
-    # sudo gate blunts this; the API has none). `deliver_...` no longer
-    # re-checks — the limit is consumed here, once, for every request.
+    # be a registered/unregistered enumeration oracle — the step-up
+    # gate narrows who can probe, but a stepped-up caller must still
+    # be throttled. `deliver_...` no longer re-checks — the limit is
+    # consumed here, once, for every request.
     case RateLimit.hit_email_change(user.id) do
       {:allow, _count} ->
         case Accounts.change_user_email(user, %{"email" => email}) do
@@ -91,9 +103,10 @@ defmodule KammerWeb.Api.AccountController do
       {:ok, user} ->
         device_token = rotate_device_token(user, current_device)
 
-        # The old address gets told (issue #258): with no sudo-mode
-        # equivalent gating the API flow, this notice is the one signal
-        # a hijacked account's real owner still receives. Best-effort —
+        # The old address gets told (issue #258): even with the
+        # step-up gate on initiation (#294), this notice is the one
+        # signal a hijacked account's real owner still receives once a
+        # change lands. Best-effort —
         # an SMTP hiccup must not fail the already-completed change —
         # but a failure is logged, since it's the security signal.
         case UserNotifier.deliver_email_changed_notice(user, old_email, user.email) do

@@ -167,6 +167,77 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Revoked", Schemas.StatusResponse)
           )
       },
+      "/api/v1/auth/step-up/passkey/challenge" => %PathItem{
+        post:
+          operation(
+            "Start a step-up passkey assertion (issue #294): re-assert a root of trust " <>
+              "before a credential change; on verify, the calling device token becomes " <>
+              "stepped up for a short window",
+            :step_up_passkey_challenge,
+            [],
+            response:
+              json_response(
+                "Assertion options scoped to the caller's own credentials",
+                %Schema{
+                  type: :object,
+                  properties: %{data: Schemas.StepUpPasskeyChallenge},
+                  required: [:data]
+                }
+              )
+          )
+      },
+      "/api/v1/auth/step-up/passkey/verify" => %PathItem{
+        post:
+          operation(
+            "Verify a step-up passkey assertion. Marks the CALLING device token stepped " <>
+              "up — mints nothing. Every failure (stale/tampered challenge token, bad " <>
+              "assertion, a credential owned by another account) is one neutral 422",
+            :step_up_passkey_verify,
+            [],
+            request_body:
+              body(
+                object(%{
+                  challenge_token: %Schema{
+                    type: :string,
+                    description: "Returned verbatim from the step-up challenge operation"
+                  },
+                  credential_id: %Schema{type: :string, description: "base64url, no padding"},
+                  authenticator_data: %Schema{
+                    type: :string,
+                    description: "base64url, no padding"
+                  },
+                  signature: %Schema{type: :string, description: "base64url, no padding"},
+                  client_data_json: %Schema{type: :string, description: "base64url, no padding"}
+                })
+              ),
+            response: json_response("Stepped up — retry the gated action", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/auth/step-up/request-link" => %PathItem{
+        post:
+          operation(
+            "Email the account's own address a single-use step-up confirmation link " <>
+              "bound to the calling device (issue #294). Shares the magic-link email " <>
+              "budget; the link's public confirm endpoint may be opened in any browser",
+            :step_up_request_link,
+            [],
+            extra_errors: [429],
+            response: json_response("Always {status: sent} when allowed", Schemas.StatusResponse)
+          )
+      },
+      "/api/v1/auth/step-up/confirm" => %PathItem{
+        post:
+          operation(
+            "Consume an emailed step-up token (public — the link may land in a different " <>
+              "browser than the requesting app). Steps up only the one device-token row " <>
+              "the link was minted for; the requesting client then retries its action",
+            :step_up_confirm,
+            [],
+            security: [],
+            request_body: body(token_body()),
+            response: json_response("Stepped up", Schemas.StatusResponse)
+          )
+      },
       "/api/v1/me" => %PathItem{
         get:
           operation("The caller's own profile", :me_show, [],
@@ -220,7 +291,8 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/me/email-change" => %PathItem{
         post:
           operation(
-            "Request an email change: a confirmation link is emailed to the new address",
+            "Request an email change: a confirmation link is emailed to the new address. " <>
+              "Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise",
             :email_change_request,
             [],
             request_body: body(object(%{email: %Schema{type: :string, format: :email}})),
@@ -279,7 +351,9 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/me/devices/{device_id}" => %PathItem{
         delete:
           operation(
-            "Revoke a device by id — revoking an API device also severs its live sockets",
+            "Revoke a device by id — revoking an API device also severs its live sockets. " <>
+              "Revoking any device other than the caller's own requires a fresh step-up " <>
+              "(issue #294) — 401 `step_up_required` otherwise; self-revoke is ungated",
             :devices_revoke,
             [path_param(:device_id)],
             response: json_response("Revoked", Schemas.StatusResponse)
@@ -288,7 +362,8 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/me/passkeys/challenge" => %PathItem{
         post:
           operation(
-            "Start passkey enrollment (WebAuthn registration options, ADR 0018)",
+            "Start passkey enrollment (WebAuthn registration options, ADR 0018). " <>
+              "Requires a fresh step-up (issue #294) — 401 `step_up_required` otherwise",
             :passkeys_challenge,
             [],
             response: single_response(Schemas.PasskeyRegistrationChallenge)
@@ -306,7 +381,8 @@ defmodule KammerWeb.ApiSpec do
           operation(
             "Finish passkey enrollment: verify the attestation and store the credential. " <>
               "Every failure — stale/tampered token, bad attestation, duplicate credential — " <>
-              "is one neutral 422",
+              "is one neutral 422. Requires a fresh step-up (issue #294) — 401 " <>
+              "`step_up_required` otherwise",
             :passkeys_create,
             [],
             status: 201,
@@ -334,7 +410,8 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/me/passkeys/{passkey_id}" => %PathItem{
         delete:
           operation(
-            "Remove a registered passkey by id (owner-scoped)",
+            "Remove a registered passkey by id (owner-scoped). Requires a fresh " <>
+              "step-up (issue #294) — 401 `step_up_required` otherwise",
             :passkeys_delete,
             [path_param(:passkey_id)],
             response: json_response("Revoked", Schemas.StatusResponse)

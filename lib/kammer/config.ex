@@ -81,6 +81,16 @@ defmodule Kammer.Config do
   end
 
   @doc """
+  How long a device's step-up (recent re-authentication, issue #294,
+  ADR 0029) stays fresh, in minutes (`STEP_UP_VALIDITY_MINUTES`,
+  default 10, bounds 1-60).
+  """
+  @spec step_up_validity_minutes() :: pos_integer()
+  def step_up_validity_minutes do
+    Application.get_env(:kammer, :step_up_validity_minutes, 10)
+  end
+
+  @doc """
   Days after soft-delete before a post/comment's content is purged
   (SPEC §5) (`CONTENT_RETENTION_DAYS`, default 30, bounds 1-365).
   """

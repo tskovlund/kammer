@@ -6,7 +6,9 @@ defmodule KammerWeb.Api.ProfileController do
   custom-field answers (ADR 0020) with the missing-required nag the
   web's complete-profile page reads, and device management (issue
   #174) — listing every revocable credential (browser sessions and API
-  device tokens) and revoking any by id.
+  device tokens) and revoking any by id. Revoking a device other than
+  the caller's own is step-up-gated (issue #294, ADR 0029);
+  self-revoke is sign-out and stays ungated.
 
   Everything here is owner-scoped by construction: the contexts only
   ever read or write rows keyed to the authenticated user, so there is
@@ -74,6 +76,29 @@ defmodule KammerWeb.Api.ProfileController do
 
   @spec revoke_device(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def revoke_device(conn, %{"device_id" => device_id}) do
+    # Revoking a DIFFERENT credential is step-up-gated (issue #294, ADR
+    # 0029) — it severs someone else's grip on the account, exactly the
+    # move a token thief makes to lock the owner out. Revoking the
+    # caller's own row is just sign-out and stays ungated: possession
+    # already allows it (DELETE /auth/device-token is the same act).
+    # Foreign and nonexistent ids read identically here — both are
+    # "not my own row" — so the gate leaks nothing a 404 wouldn't.
+    # Cast before comparing: the path param is caller-cased, the row id
+    # is canonical — an upper-cased own id must not read as foreign.
+    normalized_id =
+      case Ecto.UUID.cast(device_id) do
+        {:ok, id} -> id
+        :error -> device_id
+      end
+
+    if normalized_id == current_device_id(conn) or KammerWeb.ApiStepUp.stepped_up?(conn) do
+      do_revoke_device(conn, device_id)
+    else
+      KammerWeb.ApiStepUp.refuse(conn)
+    end
+  end
+
+  defp do_revoke_device(conn, device_id) do
     user = conn.assigns.current_scope.user
 
     case Accounts.revoke_user_device(user, device_id) do

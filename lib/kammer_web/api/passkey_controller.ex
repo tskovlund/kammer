@@ -19,13 +19,23 @@ defmodule KammerWeb.Api.PasskeyController do
   reads or writes passkeys keyed to the authenticated user, so a
   foreign passkey id is simply not found — and `create` collapses every
   failure into one neutral 422 so it never reveals which step failed.
+
+  Enrollment and removal sit behind the step-up gate (issue #294, ADR
+  0029): a passkey is a persistent credential that outlives device-token
+  revocation, so changing the set requires the caller to have recently
+  re-asserted a root of trust. Listing stays ungated — it reveals no
+  credential material.
   """
 
   use KammerWeb, :controller
 
+  import KammerWeb.ApiStepUp, only: [require_stepped_up: 2]
+
   alias Kammer.Accounts
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
+
+  plug :require_stepped_up when action in [:challenge, :create, :delete]
 
   # The signed registration challenge's whole lifetime — mirrors the
   # sign-in challenge's 2-minute window: a WebAuthn ceremony takes

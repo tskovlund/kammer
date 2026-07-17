@@ -14,6 +14,7 @@
 		revokeDevice
 	} from '$lib/people/api.js';
 	import type { Device, Passkey } from '$lib/people/types.js';
+	import { isStepUpRequired, isUserCancellation } from '$lib/instances/stepup.js';
 	import {
 		createPasskey,
 		isPasskeyRegistrationSupported,
@@ -27,6 +28,7 @@
 	import Input from '$lib/ui/Input.svelte';
 	import ListItem from '$lib/ui/ListItem.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
+	import StepUpModal from '$lib/ui/StepUpModal.svelte';
 
 	const instance = $derived(
 		instances.list.find((candidate) => candidate.id === page.params.instance)
@@ -51,6 +53,24 @@
 	const canAddPasskey = $derived(
 		!!instance && browserSupportsPasskeys && sameOriginInstance(instance.baseUrl)
 	);
+
+	// Step-up gate (issue #294): passkey add/remove and foreign-device
+	// revoke can answer 401 step_up_required. The modal runs the
+	// confirmation, then re-runs whatever action tripped the gate.
+	let stepUpRetry = $state<(() => Promise<void>) | null>(null);
+
+	// Routes a gated failure into the step-up modal; everything else goes
+	// to the caller's own error handling. `retry` re-runs the action —
+	// including its refresh — once the modal confirms.
+	function gateOr(retry: () => Promise<void>, onOther: (cause: unknown) => void) {
+		return (cause: unknown): void => {
+			if (isStepUpRequired(cause)) {
+				stepUpRetry = retry;
+			} else {
+				onOther(cause);
+			}
+		};
+	}
 
 	$effect(() => {
 		const inst = instance;
@@ -81,72 +101,97 @@
 		};
 	});
 
+	// The raw actions throw — the UI wrappers below (and the step-up
+	// modal's retry) decide what a failure means.
+	async function doRevoke(device: Device): Promise<void> {
+		if (!instance) return;
+		await revokeDevice(instance, device.id);
+		devices = await fetchDevices(instance);
+	}
+
 	async function revoke(device: Device): Promise<void> {
 		if (!instance) return;
 		if (!window.confirm(t('devices.revokeConfirm'))) return;
 		busy = true;
 		actionError = null;
 		try {
-			await revokeDevice(instance, device.id);
-			devices = await fetchDevices(instance);
+			await doRevoke(device);
 		} catch (error) {
-			actionError = errorKind(error);
+			gateOr(
+				() => doRevoke(device),
+				(cause) => (actionError = errorKind(cause))
+			)(error);
 		} finally {
 			busy = false;
 		}
 	}
 
-	async function addPasskey(): Promise<void> {
+	async function doAddPasskey(): Promise<void> {
 		if (!instance) return;
+		const challenge = await beginPasskeyRegistration(instance);
+		const attestation = await createPasskey({
+			challenge: challenge.challenge,
+			rpId: challenge.rp_id,
+			userId: challenge.user_id,
+			userName: challenge.user_name,
+			// The WebAuthn user.displayName must be a string; fall back to
+			// the account name when the profile has none.
+			userDisplayName: challenge.user_display_name ?? challenge.user_name,
+			excludeCredentials: challenge.exclude_credentials
+		});
+		// Null means the browser produced no credential — almost always a
+		// dismissed prompt. A deliberate cancel isn't a failure, so stay
+		// silent (as the sign-in flow and the LiveView it ports both do).
+		if (!attestation) return;
+		await completePasskeyRegistration(instance, {
+			challenge_token: challenge.challenge_token,
+			attestation_object: attestation.attestation_object,
+			client_data_json: attestation.client_data_json,
+			nickname: nickname.trim() || null
+		});
+		nickname = '';
+		// The credential is registered; a refetch failure here must not
+		// report the (successful) add as failed — the list just refreshes
+		// on the next load.
+		try {
+			passkeys = await fetchPasskeys(instance);
+		} catch {
+			/* keep the current list; it refreshes on reload */
+		}
+	}
+
+	async function addPasskey(): Promise<void> {
 		passkeyBusy = true;
 		passkeyError = null;
 		try {
-			const challenge = await beginPasskeyRegistration(instance);
-			const attestation = await createPasskey({
-				challenge: challenge.challenge,
-				rpId: challenge.rp_id,
-				userId: challenge.user_id,
-				userName: challenge.user_name,
-				// The WebAuthn user.displayName must be a string; fall back to
-				// the account name when the profile has none.
-				userDisplayName: challenge.user_display_name ?? challenge.user_name,
-				excludeCredentials: challenge.exclude_credentials
-			});
-			// Null means the browser produced no credential — almost always a
-			// dismissed prompt. A deliberate cancel isn't a failure, so stay
-			// silent (as the sign-in flow and the LiveView it ports both do).
-			if (!attestation) return;
-			await completePasskeyRegistration(instance, {
-				challenge_token: challenge.challenge_token,
-				attestation_object: attestation.attestation_object,
-				client_data_json: attestation.client_data_json,
-				nickname: nickname.trim() || null
-			});
-			nickname = '';
-			// The credential is registered; a refetch failure here must not
-			// report the (successful) add as failed — the list just refreshes
-			// on the next load.
-			try {
-				passkeys = await fetchPasskeys(instance);
-			} catch {
-				/* keep the current list; it refreshes on reload */
-			}
+			await doAddPasskey();
 		} catch (error) {
-			// A user dismissing the browser's passkey prompt (NotAllowedError /
-			// AbortError) is a deliberate cancel, not a failure — stay silent,
-			// as the LiveView it ports did. Anything else collapses to one
-			// neutral message, mirroring the server's 422.
-			if (!isUserCancellation(error)) passkeyError = t('passkeys.error');
+			// The step-up gate answers before any prompt (#294); a user
+			// dismissing the browser's passkey prompt (NotAllowedError /
+			// AbortError) is a deliberate cancel, not a failure — stay
+			// silent, as the LiveView it ports did. Anything else collapses
+			// to one neutral message, mirroring the server's 422.
+			gateOr(
+				() => doAddPasskey(),
+				(cause) => {
+					if (!isUserCancellation(cause)) passkeyError = t('passkeys.error');
+				}
+			)(error);
 		} finally {
 			passkeyBusy = false;
 		}
 	}
 
-	// A WebAuthn prompt the user dismissed throws NotAllowedError (or
-	// AbortError on timeout); treat those as a quiet cancel, not an error.
-	function isUserCancellation(error: unknown): boolean {
-		const name = (error as { name?: string } | null)?.name;
-		return name === 'NotAllowedError' || name === 'AbortError';
+	async function doRemovePasskey(passkey: Passkey): Promise<void> {
+		if (!instance) return;
+		await deletePasskey(instance, passkey.id);
+		// Removed server-side; a refetch failure must not report the
+		// (successful) removal as failed — the list refreshes on reload.
+		try {
+			passkeys = await fetchPasskeys(instance);
+		} catch {
+			/* keep the current list; it refreshes on reload */
+		}
 	}
 
 	async function removePasskey(passkey: Passkey): Promise<void> {
@@ -155,18 +200,14 @@
 		passkeyBusy = true;
 		passkeyError = null;
 		try {
-			await deletePasskey(instance, passkey.id);
-			// Removed server-side; a refetch failure must not report the
-			// (successful) removal as failed — the list refreshes on reload.
-			try {
-				passkeys = await fetchPasskeys(instance);
-			} catch {
-				/* keep the current list; it refreshes on reload */
-			}
+			await doRemovePasskey(passkey);
 		} catch (error) {
 			// No passkey-specific removal copy exists, so fall back to the shared
 			// per-kind message — never the server's English `ApiError.message` (#253).
-			passkeyError = t(`errors.${errorKind(error)}`);
+			gateOr(
+				() => doRemovePasskey(passkey),
+				(cause) => (passkeyError = t(`errors.${errorKind(cause)}`))
+			)(error);
 		} finally {
 			passkeyBusy = false;
 		}
@@ -319,5 +360,14 @@
 				</div>
 			{/if}
 		</section>
+
+		{#if stepUpRetry}
+			<StepUpModal
+				{instance}
+				retry={stepUpRetry}
+				onsuccess={() => (stepUpRetry = null)}
+				oncancel={() => (stepUpRetry = null)}
+			/>
+		{/if}
 	{/if}
 {/if}

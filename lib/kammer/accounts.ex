@@ -256,7 +256,13 @@ defmodule Kammer.Accounts do
              )
            ),
          # Concurrent revokes race on this delete; the loser reads as
-         # already-gone rather than a StaleEntryError 500.
+         # already-gone rather than a StaleEntryError 500. Lock-order
+         # invariant (ADR 0029): this single-statement delete acquires
+         # the device row FIRST, then its cascade takes any pending
+         # step-up token — `confirm_step_up/1` deliberately locks in
+         # that same device→token order; a future edit that reads or
+         # deletes step-up tokens BEFORE the device row here would
+         # reopen the deadlock the #294 security review closed.
          {1, _deleted} <- Repo.delete_all(from(t in UserToken, where: t.id == ^token.id)) do
       {:ok, token}
     else
@@ -569,6 +575,9 @@ defmodule Kammer.Accounts do
   """
   @spec purge_stale_api_devices(User.t(), Ecto.UUID.t()) :: {non_neg_integer(), nil}
   def purge_stale_api_devices(%User{} = user, keep_id) do
+    # Deletes device rows first; each cascade then takes that row's
+    # pending step-up tokens — the device→token lock order every other
+    # path keeps (see revoke_user_device/2 and ADR 0029).
     Repo.delete_all(
       from(token in UserToken,
         where:
@@ -601,6 +610,126 @@ defmodule Kammer.Accounts do
       user
     else
       _invalid -> nil
+    end
+  end
+
+  ## Step-up re-authentication (issue #294, ADR 0029): before a
+  ## credential change (passkey enroll/remove, foreign-device revoke,
+  ## email-change initiation) the calling api-device token must have
+  ## recently re-asserted a root of trust — a registered passkey, or a
+  ## fresh email round-trip. The state lives on the device-token row
+  ## itself (`stepped_up_at`), so it is per credential, dies with the
+  ## row, and can never be replayed onto another device.
+
+  @doc """
+  Marks the given api-device token row as stepped up now. The window
+  it stays fresh is `Kammer.Config.step_up_validity_minutes/0`.
+
+  Update-by-query, not `Repo.update!`: the passkey path calls this on
+  an unlocked row, and a concurrent sign-out/revoke deleting it must
+  read as `{:error, :not_found}` (the caller's neutral failure), never
+  a `StaleEntryError` 500 — the same already-gone discipline the
+  revoke path keeps (#197).
+  """
+  @spec step_up_device(UserToken.t()) :: {:ok, UserToken.t()} | {:error, :not_found}
+  def step_up_device(%UserToken{context: "api-device", id: id} = device) do
+    now = DateTime.utc_now(:second)
+
+    case Repo.update_all(
+           from(t in UserToken, where: t.id == ^id and t.context == "api-device"),
+           set: [stepped_up_at: now]
+         ) do
+      {1, _} -> {:ok, %{device | stepped_up_at: now}}
+      {0, _} -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Whether the given device-token row's step-up is still fresh — within
+  `Kammer.Config.step_up_validity_minutes/0` of `stepped_up_at`.
+  Accepts `nil` (no valid caller row) for the plug's convenience.
+  """
+  @spec device_stepped_up?(UserToken.t() | nil) :: boolean()
+  def device_stepped_up?(%UserToken{context: "api-device", stepped_up_at: %DateTime{} = at}) do
+    threshold =
+      DateTime.add(DateTime.utc_now(), -Kammer.Config.step_up_validity_minutes(), :minute)
+
+    DateTime.after?(at, threshold)
+  end
+
+  def device_stepped_up?(_absent_or_never), do: false
+
+  @doc """
+  Emails the account's own address a single-use step-up confirmation
+  link bound to `device` — the emailed root-of-trust proof for devices
+  without a usable passkey. Shares the magic-link email budget
+  (`Kammer.RateLimit.hit_magic_link_email/1` + the IP limiter): both
+  are sign-in-class emails to the account address, so one throttle
+  covers them.
+  """
+  @spec deliver_step_up_instructions(User.t(), UserToken.t(), (String.t() -> String.t()),
+          ip: :inet.ip_address() | String.t() | nil
+        ) :: {:ok, Swoosh.Email.t()} | {:error, :rate_limited | term()}
+  def deliver_step_up_instructions(
+        %User{} = user,
+        %UserToken{context: "api-device"} = device,
+        step_up_url_fun,
+        opts \\ []
+      )
+      when is_function(step_up_url_fun, 1) do
+    with {:allow, _count} <- RateLimit.hit_magic_link_email(user.email),
+         {:allow, _count} <- RateLimit.hit_magic_link_ip(Keyword.get(opts, :ip)) do
+      {encoded_token, user_token} = UserToken.build_step_up_token(user, device.id)
+      Repo.insert!(user_token)
+      UserNotifier.deliver_step_up_instructions(user, step_up_url_fun.(encoded_token))
+    else
+      {:deny, _retry_after} -> {:error, :rate_limited}
+    end
+  end
+
+  @doc """
+  Consumes a step-up confirmation token: deletes that one token row
+  (atomic single-use, like `consume_login_token/1`) and sets
+  `stepped_up_at` on the device-token row it targets — nothing else.
+  Deliberately NOT `consume_login_token/1`: that confirms accounts and
+  expires every other outstanding token, both wrong here (issue #294 —
+  a step-up must never sign other devices out or mint anything).
+  """
+  @spec confirm_step_up(String.t()) :: {:ok, UserToken.t()} | {:error, :not_found}
+  def confirm_step_up(token) do
+    with {:ok, query} <- UserToken.verify_step_up_token_query(token),
+         %UserToken{} = step_up_token <- Repo.one(query) do
+      Repo.transact(fn ->
+        # Lock the TARGET device row before touching the step-up token:
+        # `revoke_user_device/2` deletes the device row and cascades to
+        # this token, taking locks in that D→T order — acquiring D first
+        # here keeps both paths ordered identically, so a concurrent
+        # confirm-vs-revoke on the same device cannot deadlock (found by
+        # the #294 security review). Two concurrent confirms then race
+        # on the delete below; the loser reads as the same neutral
+        # not-found as any spent token.
+        with %UserToken{context: "api-device"} = device <-
+               Repo.one(
+                 from(t in UserToken,
+                   where: t.id == ^step_up_token.target_token_id,
+                   # Belt-and-braces: the target is fixed at mint to the
+                   # requester's own device, but binding the owner here
+                   # makes cross-user elevation impossible by
+                   # construction against any future mint path.
+                   where: t.user_id == ^step_up_token.user_id,
+                   lock: "FOR UPDATE"
+                 )
+               ),
+             {1, _} <- Repo.delete_all(from(t in UserToken, where: t.id == ^step_up_token.id)) do
+          step_up_device(device)
+        else
+          # The target row vanished between verify and here (the FK
+          # normally cascades a revoked device's pending links away).
+          _gone_or_spent -> {:error, :not_found}
+        end
+      end)
+    else
+      _invalid -> {:error, :not_found}
     end
   end
 

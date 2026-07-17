@@ -108,6 +108,10 @@ if config_env() != :test do
     config :kammer, :change_email_validity_days, value
   end
 
+  if value = Kammer.Config.parse_bounded_env_int!("STEP_UP_VALIDITY_MINUTES", 1, 60) do
+    config :kammer, :step_up_validity_minutes, value
+  end
+
   # Retention windows.
   if value = Kammer.Config.parse_bounded_env_int!("CONTENT_RETENTION_DAYS", 1, 365) do
     config :kammer, :content_retention_days, value

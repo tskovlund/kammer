@@ -16,7 +16,12 @@ export interface DismissableOptions {
 	arrowKeys?: boolean;
 }
 
-const FOCUSABLE =
+/**
+ * The one focusable-elements selector shared by every overlay: initial
+ * focus here and the Tab trap in `StepUpModal` must agree on what counts
+ * as focusable, or Tab can escape past an element focus landed on.
+ */
+export const FOCUSABLE =
 	'[role="menuitem"], button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**

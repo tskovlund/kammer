@@ -2,22 +2,27 @@ defmodule KammerWeb.ApiHelpers do
   @moduledoc """
   Shared helpers for JSON API tests: a conn carrying a fresh device
   token for the given user (ADR 0014), so each API test file doesn't
-  grow its own copy.
+  grow its own copy — optionally pre-stepped-up for the
+  credential-change endpoints behind the #294 gate.
   """
 
   import Phoenix.ConnTest, only: [build_conn: 0]
   import Plug.Conn
 
+  alias Kammer.Accounts
   alias Kammer.Accounts.UserToken
   alias Kammer.Repo
 
   @doc """
   A conn authenticated as `user` via a freshly minted device token.
+  With `stepped_up: true` the token row is marked freshly stepped up
+  (issue #294), so the conn passes the credential-change gate.
   """
-  @spec api_conn(Kammer.Accounts.User.t()) :: Plug.Conn.t()
-  def api_conn(user) do
+  @spec api_conn(Kammer.Accounts.User.t(), stepped_up: boolean()) :: Plug.Conn.t()
+  def api_conn(user, opts \\ []) do
     {token, user_token} = UserToken.build_device_token(user, "test device")
-    Repo.insert!(user_token)
+    inserted = Repo.insert!(user_token)
+    if Keyword.get(opts, :stepped_up, false), do: Accounts.step_up_device(inserted)
     bearer_conn(token)
   end
 
