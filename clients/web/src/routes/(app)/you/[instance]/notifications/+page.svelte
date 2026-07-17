@@ -107,7 +107,9 @@
 				{t('you.notifications.title')}
 			</h1>
 			<p class="mt-0.5 text-sm text-ink-muted">
-				{t('you.notifications.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('you.notifications.descriptionSolo')
+					: t('you.notifications.description', { name: instance.instanceName })}
 			</p>
 		</div>
 	</header>

@@ -167,9 +167,9 @@
 		{#each instances.list as inst (inst.id)}
 			<CalendarSubscribe
 				id="personal-calendar-{inst.id}"
-				label={instances.list.length > 1
-					? t('events.subscribe.personalButtonNamed', { name: inst.instanceName })
-					: t('events.subscribe.personalButton')}
+				label={instances.solo
+					? t('events.subscribe.personalButton')
+					: t('events.subscribe.personalButtonNamed', { name: inst.instanceName })}
 				load={() => fetchMyCalendarToken(inst)}
 			/>
 		{/each}
