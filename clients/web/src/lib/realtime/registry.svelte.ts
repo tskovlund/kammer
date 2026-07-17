@@ -47,7 +47,7 @@ export function reconnectInstance(instance: Instance): void {
 	getSocket(instance).connect();
 }
 
-/** Tear down a socket (e.g. when an instance is removed). Test/teardown aid. */
+/** Tear down an instance's socket when the instance is removed (sign-out). */
 export function dropSocket(instanceId: string): void {
 	managers[instanceId]?.disconnect();
 	delete managers[instanceId];

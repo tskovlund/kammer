@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	eventParamsErrorKeys,
+	fetchEventIcsUrl,
 	fetchEventSeries,
 	fetchGroupCalendarToken,
 	fetchMyCalendarToken
@@ -57,6 +58,30 @@ describe('calendar subscription tokens', () => {
 
 		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
 		expect(request.url).toContain('/communities/our-club/groups/brass/calendar-token');
+	});
+});
+
+describe('fetchEventIcsUrl', () => {
+	beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('fetches the Bearer-authenticated ICS endpoint and hands back an object URL', async () => {
+		// The whole point of #307: the download must carry the device token —
+		// the tokenless browser route 404s members-only events.
+		vi.mocked(fetch).mockResolvedValueOnce(
+			new Response('BEGIN:VCALENDAR', { headers: { 'content-type': 'text/calendar' } })
+		);
+		const objectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:ics');
+
+		await expect(fetchEventIcsUrl(instance(), 'our-club', 'e1')).resolves.toBe('blob:ics');
+
+		const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+		expect(url).toBe('https://kammer.example.com/api/v1/communities/our-club/events/e1/ics');
+		expect((init as RequestInit).headers).toMatchObject({ authorization: 'Bearer token-1' });
+		expect(objectUrl).toHaveBeenCalledOnce();
 	});
 });
 

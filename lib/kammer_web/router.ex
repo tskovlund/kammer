@@ -398,6 +398,14 @@ defmodule KammerWeb.Router do
         CalendarController,
         :group
 
+    # Single-event ICS download over Bearer auth (issue #307): the
+    # authenticated twin of the browser /c/:community_slug/events/:event_id/ics
+    # route — the PWA can't attach its device token to a plain <a href>
+    # navigation, so members-only events 404'd there; it fetches this
+    # instead. `ics` is a literal segment, no collision with the event
+    # routes below.
+    get "/communities/:community_slug/events/:event_id/ics", CalendarController, :event
+
     scope "/communities/:community_slug/events/:event_id" do
       put "/rsvp", EventController, :rsvp
       put "/", EventController, :update

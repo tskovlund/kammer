@@ -311,6 +311,44 @@ and this project adheres to
 
 ### Fixed
 
+- "Add to calendar" on an event page no longer fails with a silent 404
+  for members-only groups (issue #307). The signed-in event page linked
+  the tokenless browser ICS route (`/c/{slug}/events/{id}/ics`), which a
+  plain `<a href>` navigation reaches without the device token — so any
+  event the anonymous public couldn't see (every `private`/`community`
+  group, i.e. most of them) answered 404 to exactly the members it
+  belongs to. A new Bearer-authenticated endpoint —
+  `GET /api/v1/communities/{slug}/events/{id}/ics`, serving the same
+  `text/calendar` attachment behind the events surface's no-oracle 404 —
+  replaces the link with an authenticated download (the same
+  object-URL anchor pattern as the account export), with pending state
+  and the shared `ErrorBanner` on failure. The browser route stays for
+  public events and calendar apps.
+
+- Client resilience floor (part of #270). Relative timestamps ("2 min.
+  ago") now keep aging while a screen stays open — a shared minute
+  ticker (`createSubscriber`) re-renders every `RelativeTime` and the
+  offline stale-data banner on the minute and runs only while one is
+  mounted, so a long-lived installed PWA no longer shows fossilized
+  times. The SPA also gains its error floor: a branded, localized root
+  `+error.svelte` (distinct copy for 404 vs other failures, always a
+  link home) replaces SvelteKit's unstyled English fallback on stale
+  or mistyped URLs; a `hooks.client.ts` `handleError` logs unexpected
+  client errors to the console (the only sink there is — expected 404s
+  excluded) and keeps raw error detail out of the UI; and a
+  `<svelte:boundary>` around the app shell's content column degrades
+  one crashed screen render (a single bad post, say) to an inline
+  retry card instead of white-screening the shell — the navigation
+  stays outside the boundary, and the card resets the boundary on
+  navigation, so leaving the broken screen always works. And removing
+  an instance now tears down its realtime socket on every removal
+  path — sign-out and re-sign-in-replacement alike: previously the
+  manager lingered until a reconnect happened to 401, and re-signing
+  in (a fresh instance id) orphaned the old manager entirely. `Button`
+  gained the audit's `href` story along the way (renders a real link
+  with the button look), replacing the error page's hand-rolled copy
+  of that recipe.
+
 - PWA action surfaces no longer render the raw server-English
   `ApiError.message` (issue #253, part of #270). A shared
   `ui/ErrorBanner` renders localized `errors.<kind>` copy instead, so a
