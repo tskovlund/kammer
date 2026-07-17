@@ -111,6 +111,24 @@ defmodule KammerWeb.Api.UploadsTest do
     |> json_response(403)
   end
 
+  test "uploading into a hidden group answers 404, not 403 (no existence oracle, #339)", %{
+    community: community,
+    tmp_dir: tmp_dir
+  } do
+    # A private group the caller isn't in: the group itself is invisible,
+    # so the upload endpoint answers the same neutral 404 a missing slug
+    # would — a 403 here would confirm the private group exists.
+    private = group_fixture(community, visibility: :private)
+    outsider = member_fixture(community)
+
+    outsider
+    |> api_conn()
+    |> post("/api/v1/communities/#{community.slug}/groups/#{private.slug}/uploads", %{
+      "file" => upload_fixture(tmp_dir, "probe")
+    })
+    |> json_response(404)
+  end
+
   test "a file over the configured size limit is refused (413)", %{
     member: member,
     base_path: base_path,

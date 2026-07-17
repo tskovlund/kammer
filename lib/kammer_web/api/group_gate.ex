@@ -15,7 +15,10 @@ defmodule KammerWeb.Api.GroupGate do
   `with_files_group` copies across the post, event, calendar,
   assignment, availability, decision, file-library, and group-member
   controllers didn't, and were dismissed as "established pattern" —
-  the dismissal #339 revisits. This is the one shared fetch; each
+  the dismissal #339 revisits. A review pass over that fix caught four
+  more of the same oracle — uploads, group invites, the anonymous
+  newsletter subscribe, and anonymous guest comments — now routed
+  through here too. This is the one shared fetch; each
   controller still wraps it in its own thin `with_group` so the
   callback shape (community and/or user in scope, alongside group)
   stays whatever that controller's call sites already expect — the
@@ -49,7 +52,12 @@ defmodule KammerWeb.Api.GroupGate do
          :ok <- feature_gate(group, opts[:feature]) do
       {:ok, community, group}
     else
-      _missing_or_denied -> {:error, :not_found}
+      # The three folded denials, spelled out — anything else is a new
+      # return shape and must crash loudly here rather than silently
+      # read as 404.
+      nil -> {:error, :not_found}
+      {:error, :not_found} -> {:error, :not_found}
+      {:error, :unauthorized} -> {:error, :not_found}
     end
   end
 

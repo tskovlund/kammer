@@ -494,7 +494,7 @@ defmodule KammerWeb.Api.FileLibraryTest do
       # so its whole file surface 404s at the group gate — exactly like
       # events, never a 403 that would confirm the group exists. (The
       # finer file-level no-oracle — 404 within a *visible* group — is
-      # covered by the folder-override test below.)
+      # covered by the folder-override test above.)
       private = group_fixture(community, visibility: :private)
       insider = group_member_fixture(private)
       outsider = member_fixture(community)

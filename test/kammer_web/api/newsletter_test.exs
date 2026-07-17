@@ -74,6 +74,23 @@ defmodule KammerWeb.Api.NewsletterTest do
              |> json_response(404)
   end
 
+  test "a group the public cannot view answers 404 to subscribe, not 403 (#339)", %{
+    community: community
+  } do
+    # This surface is anonymous, so the pin matters doubly: a 403 here
+    # would hand any tokenless prober a live existence oracle for
+    # private group slugs.
+    hidden = group_fixture(community, visibility: :private)
+
+    public_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/newsletter", %{
+      "email" => "prober@example.org",
+      "display_name" => "Prober",
+      "cadence" => "weekly"
+    })
+    |> json_response(404)
+  end
+
   test "a manage token cannot unsubscribe another guest's subscription (#156/#161)", %{
     community: community,
     group: group

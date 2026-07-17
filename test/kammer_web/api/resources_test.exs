@@ -7,12 +7,14 @@ defmodule KammerWeb.Api.ResourcesTest do
 
   The parity property below sweeps reads (posts index) and writes
   (event creation) over the visibility × sealed × viewer space. Every
-  other API controller funnels through the same single gate
-  (`KammerWeb.Api.GroupGate.fetch/4`, wrapping
-  `Groups.fetch_viewable_group`), verified per controller by the
-  deterministic gate tests in FeedWritesTest, EventWritesTest, and
-  FileLibraryTest — file uploads are multipart and stay deterministic
-  there rather than joining this property. An invisible group answers
+  other API controller that resolves a group slug funnels through the
+  same single gate (`KammerWeb.Api.GroupGate.fetch/4`, wrapping
+  `Groups.fetch_viewable_group` — since #339 the gate is that fetch's
+  only API caller), each pinned by a deterministic invisible-group 404
+  test in its own suite (feed, events, calendar, assignments,
+  availability, decisions, file library, group members and invites,
+  uploads, and the anonymous newsletter and guest-comment surfaces)
+  rather than joining this property. An invisible group answers
   exactly 404, never 403 (no existence oracle, #156/#161/#339) — the
   property used to accept either, which is exactly how the #339
   existence oracle went unnoticed for as long as it did.

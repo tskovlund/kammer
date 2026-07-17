@@ -187,6 +187,24 @@ defmodule KammerWeb.Api.GuestTest do
       assert [%{"pending_approval" => true, "body_markdown" => "Lovely event"}] =
                body["data"]["comments"]
     end
+
+    test "a group the public cannot view answers 404 to a comment request, not 403 (#339)", %{
+      community: community
+    } do
+      # This surface is anonymous, so the pin matters doubly: a 403 here
+      # would hand any tokenless prober a live existence oracle for
+      # private group slugs.
+      hidden = group_fixture(community, visibility: :private, comment_policy: :members_and_guests)
+      insider = group_member_fixture(hidden)
+      {:ok, post} = Feed.create_post(insider, hidden, %{"body_markdown" => "Hemmeligt"})
+
+      public_conn()
+      |> post(
+        ~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/posts/#{post.id}/guest-comment",
+        Map.put(guest(), "body_markdown", "Probe")
+      )
+      |> json_response(404)
+    end
   end
 
   describe "cross-guest isolation (#156/#161)" do

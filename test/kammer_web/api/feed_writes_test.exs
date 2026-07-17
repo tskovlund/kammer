@@ -587,10 +587,11 @@ defmodule KammerWeb.Api.FeedWritesTest do
       case {viewer_kind, ui_visible?, response.status} do
         # Group members write through; non-member viewers get an
         # honest 403 (they can see the post, reacting is members-only);
-        # whoever can't see the group can't learn the post exists.
+        # whoever can't see the group gets exactly 404 — never 403,
+        # which would confirm the hidden group exists (#339).
         {:group_member, true, 200} -> :ok
         {_viewer, true, 403} -> :ok
-        {_viewer, false, status} when status in [403, 404] -> :ok
+        {_viewer, false, 404} -> :ok
         mismatch -> flunk("UI/API write-parity mismatch: #{inspect(mismatch)}")
       end
     end

@@ -16,17 +16,19 @@ defmodule KammerWeb.Api.NewsletterController do
 
   use KammerWeb, :controller
 
-  alias Kammer.Communities
-  alias Kammer.Communities.Community
-  alias Kammer.Groups
   alias Kammer.Newsletters
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.PublicLinks
   alias KammerWeb.ApiError
 
+  # No-oracle (#339): this surface is anonymous (nil actor — the caller
+  # holds no token), so a missing community, a missing group, and a
+  # group the public may not view all fold into the same 404 via
+  # `GroupGate.fetch/3` — a 403 would hand a slug-guessing prober a
+  # live existence oracle.
   @spec subscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def subscribe(conn, %{"community_slug" => slug, "group_slug" => group_slug} = params) do
-    with %Community{} = community <- Communities.get_community_by_slug(slug) || :gone,
-         {:ok, group} <- Groups.fetch_viewable_group(nil, community, group_slug),
+    with {:ok, _community, group} <- GroupGate.fetch(nil, slug, group_slug),
          :ok <-
            Newsletters.request_subscription(
              group,
@@ -36,7 +38,6 @@ defmodule KammerWeb.Api.NewsletterController do
            ) do
       conn |> put_status(202) |> json(%{status: "confirmation_sent"})
     else
-      :gone -> ApiError.send(conn, :not_found, "Not found.")
       error -> ApiError.from_result(conn, error)
     end
   end

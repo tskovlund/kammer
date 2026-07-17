@@ -102,6 +102,36 @@ defmodule KammerWeb.Api.AvailabilityTest do
     |> json_response(404)
   end
 
+  test "a denied create in a visible group is an honest 403, never a 500" do
+    # A community member can see the group but may not post in it: the
+    # context's {:error, :unauthorized} must map to 403 — it used to
+    # escape `with_feature_group` unhandled and crash as a 500.
+    %{community: community, group: group} = poll_context()
+    onlooker = member_fixture(community)
+
+    onlooker
+    |> api_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/availability", %{
+      title: "Nej",
+      options: [iso(24)]
+    })
+    |> json_response(403)
+  end
+
+  test "invalid params on create are a 422 naming the field, never a 500" do
+    %{community: community, group: group, creator: creator} = poll_context()
+
+    body =
+      creator
+      |> api_conn()
+      |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/availability", %{
+        options: [iso(24)]
+      })
+      |> json_response(422)
+
+    assert body["error"]["details"]["title"]
+  end
+
   test "a poll in a hidden group is 404, not 403, to an outsider (#156/#161)" do
     %{community: community, group: group, creator: creator} = poll_context(visibility: :private)
 

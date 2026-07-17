@@ -172,13 +172,20 @@ defmodule KammerWeb.Api.AssignmentController do
 
   # No-oracle (#156/#161, #339): a missing community, a missing group,
   # a group the caller may not even *view*, and a group with the tool
-  # off all fold into the same 404 via `GroupGate.fetch/4`.
+  # off all fold into the same 404 via `GroupGate.fetch/4`. Callback
+  # errors (a denied write in a visible group, an invalid changeset)
+  # fall through to `ApiError.from_result` — an honest 403/422, never
+  # an unhandled tuple escaping as a 500.
   defp with_feature_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    case GroupGate.fetch(user, community_slug, group_slug, feature: @feature) do
-      {:ok, community, group} -> fun.(community, group, user)
+    with {:ok, community, group} <-
+           GroupGate.fetch(user, community_slug, group_slug, feature: @feature),
+         %Plug.Conn{} = responded <- fun.(community, group, user) do
+      responded
+    else
       {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
+      error -> ApiError.from_result(conn, error)
     end
   end
 

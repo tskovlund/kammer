@@ -145,6 +145,22 @@ defmodule KammerWeb.Api.PeopleTest do
       |> json_response(200)
     end
 
+    test "a hidden group's invite surface answers 404, not 403 (no existence oracle, #339)", %{
+      community: community
+    } do
+      # A private group the caller isn't in: the group itself is
+      # invisible, so listing or creating its invites answers the same
+      # neutral 404 a missing slug would — a 403 here would confirm the
+      # private group exists. (The honest 403 for a plain member of a
+      # *visible* group is pinned above.)
+      hidden = group_fixture(community, visibility: :private)
+      outsider = member_fixture(community)
+      path = ~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/invites"
+
+      outsider |> api_conn() |> get(path) |> json_response(404)
+      outsider |> api_conn() |> post(path, %{}) |> json_response(404)
+    end
+
     test "preview is public; unknown and spent tokens are one neutral 404", %{
       community: community,
       owner: owner
