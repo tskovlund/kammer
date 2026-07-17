@@ -12,12 +12,13 @@ defmodule KammerWeb.Api.CalendarController do
   scheme-swaps to `webcal://` if it wants.
 
   Personal is owner-scoped by construction. The group endpoint gates
-  exactly as every group-scoped endpoint does (via `fetch_viewable_group`
-  — an unviewable group is the same 403 the events API gives, an absent
-  one a 404), and additionally requires the `events` feature to be on:
-  with it off the group's feed itself 404s (events.ex), so the token
-  would be dead, and the endpoint answers that same 404 rather than mint
-  one.
+  exactly as every group-scoped endpoint does (`GroupGate.fetch/4`): an
+  absent community, an absent group, and a group the caller may not
+  even *view* all answer the same neutral 404 (#156/#161, #339) — never
+  a 403 that would confirm a hidden group exists. It additionally
+  requires the `events` feature to be on: with it off the group's feed
+  itself 404s (events.ex), so the token would be dead, and the endpoint
+  answers that same 404 rather than mint one.
 
   One more calendar surface lives here: the single-event ICS download
   (`:event`, issue #307) — the Bearer-authenticated twin of the browser
@@ -36,8 +37,7 @@ defmodule KammerWeb.Api.CalendarController do
   alias Kammer.Calendar.ICS
   alias Kammer.Communities
   alias Kammer.Events
-  alias Kammer.Groups
-  alias Kammer.Groups.Group
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.ApiError
 
   @spec me(Plug.Conn.t(), map()) :: Plug.Conn.t()
@@ -49,12 +49,8 @@ defmodule KammerWeb.Api.CalendarController do
   @spec group(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def group(conn, %{"community_slug" => community_slug, "group_slug" => group_slug}) do
     with_group(conn, community_slug, group_slug, fn group ->
-      if Group.feature_enabled?(group, :events) do
-        token = Events.ensure_group_ics_token(group)
-        json(conn, %{data: %{token: token, url: url(~p"/calendar/group/#{token <> ".ics"}")}})
-      else
-        ApiError.send(conn, :not_found, "Not found.")
-      end
+      token = Events.ensure_group_ics_token(group)
+      json(conn, %{data: %{token: token, url: url(~p"/calendar/group/#{token <> ".ics"}")}})
     end)
   end
 
@@ -76,16 +72,17 @@ defmodule KammerWeb.Api.CalendarController do
     end
   end
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # a group the caller may not even *view*, and (via `feature: :events`)
+  # a group with events off all fold into the same 404 via
+  # `GroupGate.fetch/4` — a dead feed is never tokenised, and an
+  # unviewable group is never confirmed to exist.
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <-
-           Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug) do
-      fun.(group)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug, feature: :events) do
+      {:ok, _community, group} -> fun.(group)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 end

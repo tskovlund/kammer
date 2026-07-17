@@ -19,9 +19,9 @@ defmodule KammerWeb.Api.InviteController do
   alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Communities.Community
-  alias Kammer.Groups
   alias Kammer.Invitations
   alias Kammer.Invitations.Invite
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -159,11 +159,19 @@ defmodule KammerWeb.Api.InviteController do
     end
   end
 
+  # No-oracle (#339): a missing community, a missing group, and a group
+  # the caller may not even *view* all fold into the same 404 via
+  # `GroupGate.fetch/3`; a group member without invite rights in a
+  # visible group still gets the context's honest 403.
   defp with_group(conn, community_slug, group_slug, fun) do
-    with_community(conn, community_slug, fn community, user ->
-      with {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug) do
-        fun.(group, user)
-      end
-    end)
+    user = conn.assigns.current_scope.user
+
+    with {:ok, _community, group} <- GroupGate.fetch(user, community_slug, group_slug),
+         %Plug.Conn{} = responded <- fun.(group, user) do
+      responded
+    else
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
+      error -> ApiError.from_result(conn, error)
+    end
   end
 end

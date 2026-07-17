@@ -560,6 +560,47 @@ and this project adheres to
   are either server-generated paths or sourced from GitHub's release
   API, not user input.
 
+- Slug-addressed group sub-endpoints no longer leak private/sealed
+  group existence through a 403-vs-404 split (issue #339, found by the
+  2026-07-17 dismissal audit). #224 folded a view-denied group into
+  the same neutral 404 a missing one gets on the group management
+  endpoint itself; eight private `with_group`/`with_feature_group`/
+  `with_files_group` copies in the post, event, calendar, assignment,
+  availability, decision, file-library, and group-member controllers
+  didn't make the same fold, so an outsider probing a slug could tell
+  a real hidden group from a typo by whether the group's feed,
+  calendar token, assignment/availability/decision list-or-create,
+  file library, or membership surface answered 403 or 404 — a live
+  existence oracle the #224 fix was supposed to close everywhere.
+  Extracted the fold into one shared `KammerWeb.Api.GroupGate.fetch/4`
+  (optionally folding a disabled feature toggle too, ADR 0016) that
+  all nine controllers — the original included — now call; only the
+  `:view_group` resolution folds to 404, so a group a viewer can see
+  but isn't allowed to write to, join, or manage still answers an
+  honest 403. A review pass over the fix then caught and closed four
+  more of the same oracle — uploads, group invites, and the anonymous
+  newsletter-subscribe and guest-comment surfaces (the anonymous two
+  the worst, being tokenless probes) — plus a latent 500 in the
+  assignment/availability/decision create actions, where a denied
+  write or invalid changeset in a _visible_ group escaped
+  `with_feature_group` unhandled instead of answering the honest
+  403/422. Flipped the tests that had pinned the wrong 403, tightened
+  the `ResourcesTest` and `FeedWritesTest` parity properties (each
+  previously accepted 403 _or_ 404 for an invisible group, which is
+  exactly how this got past them), and pinned every gated surface with
+  a deterministic invisible-group 404 test — added for create on the
+  assignment/availability/decision suites, index and create on the
+  feed and invite suites, and the single write each of the upload,
+  newsletter, and guest-comment surfaces exposes — alongside new
+  403/422 pins for the formerly-crashing denied and invalid creates.
+  The independent pre-merge review then caught the final member of the
+  class on the event-addressed twin: the anonymous guest-RSVP and
+  guest-claim requests answered 403 for an event in a hidden group but
+  404 for a missing one (disagreeing with the public read of the same
+  event, which already folded). Folded those too, with a pin asserting
+  the hidden-event and missing-event responses are byte-identical —
+  status alone being what let every earlier oracle hide.
+
 ### Added
 
 - The `GET /api/v1/instance` `features` object now carries

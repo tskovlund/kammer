@@ -20,13 +20,11 @@ defmodule KammerWeb.Api.FileLibraryController do
   use KammerWeb, :controller
 
   alias Kammer.Authorization
-  alias Kammer.Communities
-  alias Kammer.Communities.Community
   alias Kammer.Files
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
-  alias Kammer.Groups
   alias Kammer.Repo
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -220,20 +218,18 @@ defmodule KammerWeb.Api.FileLibraryController do
   defp fetch_upload(%{"file" => %Plug.Upload{} = upload}), do: upload
   defp fetch_upload(_params), do: {:error, :missing_file}
 
-  # Resolve the community, then the group exactly as the caller sees it
-  # (a hidden group 403s at this level, like events — the group slug is
-  # already known), then gate the files feature (a disabled space 404s,
-  # ADR 0016). The callback's error tuples fall through to one envelope.
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # a group the caller may not even *view*, and a group with the files
+  # feature off (ADR 0016) all fold into the same 404 via
+  # `GroupGate.fetch/4` — never a 403 that would confirm a hidden
+  # group's file space exists. The callback's own error tuples still
+  # fall through to the one envelope.
   defp with_files_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Community{} = community <- Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
-         :ok <- Authorization.feature_gate(group, :files) do
-      fun.(group, user)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug, feature: :files) do
+      {:ok, _community, group} -> fun.(group, user)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

@@ -7,11 +7,19 @@ defmodule KammerWeb.Api.ResourcesTest do
 
   The parity property below sweeps reads (posts index) and writes
   (event creation) over the visibility × sealed × viewer space. Every
-  other API controller funnels through the same single gate
-  (`Groups.fetch_viewable_group`), verified per controller by the
-  deterministic gate tests in FeedWritesTest, EventWritesTest, and
-  FileLibraryTest — file uploads are multipart and stay deterministic
-  there rather than joining this property.
+  other API controller that resolves a group slug funnels through the
+  same single gate (`KammerWeb.Api.GroupGate.fetch/4`, wrapping
+  `Groups.fetch_viewable_group` — since #339 the gate is that fetch's
+  only API caller), each pinned by a deterministic invisible-group 404
+  test in its own suite (feed, events, calendar, assignments,
+  availability, decisions, file library, group members and invites,
+  uploads, and the anonymous newsletter and guest-comment surfaces)
+  rather than joining this property; the event-addressed anonymous
+  twin (guest-RSVP/guest-claim) folds its `:unauthorized` locally in
+  `guest_controller.ex` and carries its own byte-identity pin. An invisible group answers
+  exactly 404, never 403 (no existence oracle, #156/#161/#339) — the
+  property used to accept either, which is exactly how the #339
+  existence oracle went unnoticed for as long as it did.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -288,13 +296,16 @@ defmodule KammerWeb.Api.ResourcesTest do
 
       case {ui_visible?, response.status} do
         {true, 200} -> :ok
-        {false, status} when status in [403, 404] -> :ok
+        # A group the UI can't show answers exactly 404 — never 403,
+        # which would confirm a hidden/sealed group exists (#339).
+        {false, 404} -> :ok
         mismatch -> flunk("UI/API visibility mismatch: #{inspect(mismatch)}")
       end
 
       # Write parity over the same configuration: a hidden group refuses
-      # writes without confirming existence; a visible one answers on the
-      # merits (created, or an honest 403 for a viewer without rights).
+      # writes with the same neutral 404, never confirming existence; a
+      # visible one answers on the merits (created, or an honest 403 for
+      # a viewer without rights).
       write_response =
         viewer
         |> api_conn()
@@ -305,7 +316,7 @@ defmodule KammerWeb.Api.ResourcesTest do
 
       case {ui_visible?, write_response.status} do
         {true, status} when status in [201, 403] -> :ok
-        {false, status} when status in [403, 404] -> :ok
+        {false, 404} -> :ok
         mismatch -> flunk("UI/API write-parity mismatch: #{inspect(mismatch)}")
       end
     end

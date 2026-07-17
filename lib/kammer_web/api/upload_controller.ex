@@ -10,18 +10,20 @@ defmodule KammerWeb.Api.UploadController do
 
   use KammerWeb, :controller
 
-  alias Kammer.Communities
   alias Kammer.Files
-  alias Kammer.Groups
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
+  # No-oracle (#339): a missing community, a missing group, and a group
+  # the caller may not even *view* all fold into the same 404 via
+  # `GroupGate.fetch/3`; a viewer without posting rights in a visible
+  # group still gets the context's honest 403.
   @spec create(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def create(conn, %{"community_slug" => slug, "group_slug" => group_slug} = params) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <- Communities.get_community_by_slug(slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
+    with {:ok, _community, group} <- GroupGate.fetch(user, slug, group_slug),
          %Plug.Upload{} = upload <- params["file"] || {:error, :missing_file},
          {:ok, stored_file} <-
            Files.create_from_upload(
@@ -35,7 +37,6 @@ defmodule KammerWeb.Api.UploadController do
       |> put_status(201)
       |> json(%{data: Serializer.stored_file(stored_file)})
     else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
       {:error, :missing_file} -> ApiError.send(conn, :bad_request, "Send a `file` part.")
       error -> ApiError.from_result(conn, error)
     end

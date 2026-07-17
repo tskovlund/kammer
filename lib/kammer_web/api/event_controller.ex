@@ -29,8 +29,8 @@ defmodule KammerWeb.Api.EventController do
   alias Kammer.Events.SlotClaim
   alias Kammer.Feed
   alias Kammer.Feed.Comment
-  alias Kammer.Groups
   alias Kammer.Moderation
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
@@ -304,16 +304,17 @@ defmodule KammerWeb.Api.EventController do
     end
   end
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # and a group the caller may not even *view* all fold into the same
+  # 404 via `GroupGate.fetch/3` — an unviewable group must be
+  # indistinguishable from a nonexistent one, exactly like the
+  # id-addressed event routes above.
   defp with_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <-
-           Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug) do
-      fun.(community, group)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug) do
+      {:ok, community, group} -> fun.(community, group)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 
