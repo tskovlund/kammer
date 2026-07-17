@@ -256,7 +256,13 @@ defmodule Kammer.Accounts do
              )
            ),
          # Concurrent revokes race on this delete; the loser reads as
-         # already-gone rather than a StaleEntryError 500.
+         # already-gone rather than a StaleEntryError 500. Lock-order
+         # invariant (ADR 0029): this single-statement delete acquires
+         # the device row FIRST, then its cascade takes any pending
+         # step-up token — `confirm_step_up/1` deliberately locks in
+         # that same device→token order; a future edit that reads or
+         # deletes step-up tokens BEFORE the device row here would
+         # reopen the deadlock the #294 security review closed.
          {1, _deleted} <- Repo.delete_all(from(t in UserToken, where: t.id == ^token.id)) do
       {:ok, token}
     else
@@ -569,6 +575,9 @@ defmodule Kammer.Accounts do
   """
   @spec purge_stale_api_devices(User.t(), Ecto.UUID.t()) :: {non_neg_integer(), nil}
   def purge_stale_api_devices(%User{} = user, keep_id) do
+    # Deletes device rows first; each cascade then takes that row's
+    # pending step-up tokens — the device→token lock order every other
+    # path keeps (see revoke_user_device/2 and ADR 0029).
     Repo.delete_all(
       from(token in UserToken,
         where:
@@ -615,12 +624,24 @@ defmodule Kammer.Accounts do
   @doc """
   Marks the given api-device token row as stepped up now. The window
   it stays fresh is `Kammer.Config.step_up_validity_minutes/0`.
+
+  Update-by-query, not `Repo.update!`: the passkey path calls this on
+  an unlocked row, and a concurrent sign-out/revoke deleting it must
+  read as `{:error, :not_found}` (the caller's neutral failure), never
+  a `StaleEntryError` 500 — the same already-gone discipline the
+  revoke path keeps (#197).
   """
-  @spec step_up_device(UserToken.t()) :: UserToken.t()
-  def step_up_device(%UserToken{context: "api-device"} = device) do
-    device
-    |> Ecto.Changeset.change(stepped_up_at: DateTime.utc_now(:second))
-    |> Repo.update!()
+  @spec step_up_device(UserToken.t()) :: {:ok, UserToken.t()} | {:error, :not_found}
+  def step_up_device(%UserToken{context: "api-device", id: id} = device) do
+    now = DateTime.utc_now(:second)
+
+    case Repo.update_all(
+           from(t in UserToken, where: t.id == ^id and t.context == "api-device"),
+           set: [stepped_up_at: now]
+         ) do
+      {1, _} -> {:ok, %{device | stepped_up_at: now}}
+      {0, _} -> {:error, :not_found}
+    end
   end
 
   @doc """
@@ -691,11 +712,16 @@ defmodule Kammer.Accounts do
                Repo.one(
                  from(t in UserToken,
                    where: t.id == ^step_up_token.target_token_id,
+                   # Belt-and-braces: the target is fixed at mint to the
+                   # requester's own device, but binding the owner here
+                   # makes cross-user elevation impossible by
+                   # construction against any future mint path.
+                   where: t.user_id == ^step_up_token.user_id,
                    lock: "FOR UPDATE"
                  )
                ),
              {1, _} <- Repo.delete_all(from(t in UserToken, where: t.id == ^step_up_token.id)) do
-          {:ok, step_up_device(device)}
+          step_up_device(device)
         else
           # The target row vanished between verify and here (the FK
           # normally cascades a revoked device's pending links away).

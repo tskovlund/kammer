@@ -7,7 +7,7 @@ sudo-mode gate the LiveView surface had, on the reasoning that "the
 API has no recent-re-auth concept" — recorded as an open call in
 issue #294 and a note on ADR 0018. The gap it left: most API actions
 can't escalate beyond what a stolen device token already grants, but
-a few *outlive or sever* that credential — adding a passkey creates a
+a few _outlive or sever_ that credential — adding a passkey creates a
 login credential that survives device-token revocation, revoking a
 different device is how a thief locks the owner out, and changing the
 account email redirects every future magic link (the root credential
@@ -69,7 +69,7 @@ code `step_up_required` so clients don't read it as "signed out"):
   delete) — a passkey outlives device-token revocation.
 - Revoking a device other than the caller's own — self-revoke is
   sign-out, which mere possession already allows, and stays ungated.
-- Email-change *initiation* (`POST /me/email-change`) — this reverses
+- Email-change _initiation_ (`POST /me/email-change`) — this reverses
   the #258-era rationale ("device tokens have no re-auth equivalent"),
   which this ADR's machinery made false. The confirm side stays
   ungated: its single-use token is already account-bound, and gating
@@ -94,8 +94,28 @@ window means the retry simply succeeds.
 - Two tokens-with-a-window now coexist on `users_tokens`
   (`authenticated_at` for browser sudo-history, `stepped_up_at` for
   API step-up); they never read each other.
-- The sign-in flow needed no change: signing in *is* a root-of-trust
+- The sign-in flow needed no change: signing in _is_ a root-of-trust
   assertion, so freshly exchanged tokens simply start un-stepped-up
   and the first credential change after sign-in asks once.
 - ADR 0018's "sudo-mode gated" note is resolved: the PWA surface is
   now gated at least as strongly as the LiveView one it replaced.
+- **Lock-order invariant**: every path touching a device row and its
+  pending step-up tokens acquires the device row FIRST — the token
+  second (or via the FK cascade, which is the same order).
+  `confirm_step_up/1` locks the target device `FOR UPDATE` before
+  consuming the token precisely so it cannot deadlock against
+  `revoke_user_device/2`'s delete-with-cascade; mirrored comments
+  guard both sites. Any new path must keep device→token order.
+- **Enforcement lives in the web layer by design**: the elevation is
+  a property of the _Bearer credential_, which only the transport
+  knows — `Kammer.Authorization` deals in user↔resource policy and
+  cannot see the calling token. The freshness predicate
+  (`device_stepped_up?/1`) lives in Accounts; the gate
+  (`require_stepped_up`) in the API layer. Native apps ride the same
+  JSON API and controllers, so they are safe by construction; only a
+  hypothetical new transport would need to re-mount the gate.
+- **Open question, deliberately excluded here**: whether `DELETE /me`
+  (irreversible destruction) and `GET /me/export` (bulk PII) should
+  also be gated is decision issue #323 — the exclusion above reasons
+  about credential takeover, and the destructive-DoS residual is the
+  owner's call.

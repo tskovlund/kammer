@@ -23,8 +23,13 @@ defmodule Kammer.AccountsStepUpTest do
       refute Accounts.device_stepped_up?(device)
       refute Accounts.device_stepped_up?(nil)
 
-      stepped_up = Accounts.step_up_device(device)
+      {:ok, stepped_up} = Accounts.step_up_device(device)
       assert Accounts.device_stepped_up?(stepped_up)
+
+      # A row deleted out from under the caller (concurrent revoke)
+      # reads as not-found, never a raise.
+      Repo.delete_all(from(t in Kammer.Accounts.UserToken, where: t.id == ^device.id))
+      assert {:error, :not_found} = Accounts.step_up_device(device)
 
       # One second past the configured window (default 10 minutes) is
       # stale — the boundary, not some comfortable margin.

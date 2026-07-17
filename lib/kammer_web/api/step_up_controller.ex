@@ -109,8 +109,10 @@ defmodule KammerWeb.Api.StepUpController do
          # credential's owner, whoever that is. Only the caller's own
          # passkey may step the caller up.
          true <- verified_user.id == caller.id,
-         %Accounts.UserToken{} = device <- current_device(conn) do
-      Accounts.step_up_device(device)
+         %Accounts.UserToken{} = device <- current_device(conn),
+         # A concurrent sign-out/revoke deleting the row mid-request
+         # reads as the same neutral failure — never a 500.
+         {:ok, _device} <- Accounts.step_up_device(device) do
       json(conn, %{status: "stepped_up"})
     else
       _error -> neutral_failure(conn)
