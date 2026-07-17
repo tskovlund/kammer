@@ -577,6 +577,7 @@
 	"manage.moderation.audit.title": "Audit log",
 	"manage.moderation.audit.empty.title": "No audit events yet",
 	"manage.moderation.audit.empty.body": "Admin actions in this community will show up here.",
+	"manage.moderation.audit.loadMore": "Show older",
 	"manage.error.title": "Something went wrong",
 	"manage.error.body": "Please try again.",
 	"manage.error.forbiddenTitle": "Not allowed",

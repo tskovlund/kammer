@@ -31,12 +31,17 @@ defmodule KammerWeb.Api.Pagination do
     end
   end
 
-  @doc "Clamps a client-supplied limit into [1, #{@max_limit}]."
-  @spec limit(map()) :: pos_integer()
-  def limit(params) do
-    case Integer.parse(to_string(params["limit"] || @default_limit)) do
+  @doc """
+  Clamps a client-supplied limit into [1, #{@max_limit}]. `default` is
+  what an absent or unparsable `limit` falls back to — most endpoints
+  want the shared #{@default_limit}, but a couple (the audit log) keep
+  a larger pre-existing default (issue #340).
+  """
+  @spec limit(map(), pos_integer()) :: pos_integer()
+  def limit(params, default \\ @default_limit) do
+    case Integer.parse(to_string(params["limit"] || default)) do
       {value, ""} when value in 1..@max_limit -> value
-      _invalid -> @default_limit
+      _invalid -> default
     end
   end
 end

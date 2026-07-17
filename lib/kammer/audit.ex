@@ -66,4 +66,53 @@ defmodule Kammer.Audit do
       []
     end
   end
+
+  @doc """
+  One cursor page of the community's audit log, newest first (issue
+  #340) — same contract as `Kammer.Notifications.list_notifications_page/3`:
+  `{events, next_cursor}`, `next_cursor` `nil` on the last page. Gated
+  the same way as `list_events/3`: anyone but a community admin sees
+  an empty page with no cursor, never an error that would confirm the
+  log exists.
+  """
+  @spec list_events_page(
+          User.t() | nil,
+          Community.t(),
+          {DateTime.t(), Ecto.UUID.t()} | nil,
+          pos_integer()
+        ) :: {[AuditEvent.t()], {DateTime.t(), Ecto.UUID.t()} | nil}
+  def list_events_page(actor, %Community{} = community, cursor, limit)
+      when limit > 0 and limit <= 100 do
+    if Authorization.can?(actor, :manage_community, community) do
+      query =
+        from(event in AuditEvent,
+          where: event.community_id == ^community.id,
+          order_by: [desc: event.inserted_at, desc: event.id],
+          limit: ^(limit + 1),
+          preload: [:actor_user]
+        )
+
+      query =
+        case cursor do
+          nil ->
+            query
+
+          {cursor_at, cursor_id} ->
+            from(event in query,
+              where:
+                event.inserted_at < ^cursor_at or
+                  (event.inserted_at == ^cursor_at and event.id < ^cursor_id)
+            )
+        end
+
+      events = Repo.all(query)
+
+      case Enum.split(events, limit) do
+        {page, []} -> {page, nil}
+        {page, _more} -> {page, page |> List.last() |> then(&{&1.inserted_at, &1.id})}
+      end
+    else
+      {[], nil}
+    end
+  end
 end

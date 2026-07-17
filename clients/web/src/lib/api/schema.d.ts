@@ -461,7 +461,7 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** The community audit log (newest first) */
+		/** The community audit log (cursor-paginated, newest first) */
 		get: operations['audit_log'];
 		put?: never;
 		post?: never;
@@ -5836,7 +5836,12 @@ export interface operations {
 	};
 	audit_log: {
 		parameters: {
-			query?: never;
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 50 */
+				limit?: string;
+			};
 			header?: never;
 			path: {
 				community_slug: string;

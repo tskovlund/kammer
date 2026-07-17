@@ -845,10 +845,12 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/communities/{community_slug}/audit-log" => %PathItem{
         get:
           operation(
-            "The community audit log (newest first)",
+            "The community audit log (cursor-paginated, newest first)",
             :audit_log,
             [
-              path_param(:community_slug)
+              path_param(:community_slug),
+              query_param(:after, "Opaque cursor from next_cursor"),
+              query_param(:limit, "1..100, default 50")
             ],
             response: data_response(Schemas.AuditEvent)
           )

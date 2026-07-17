@@ -577,6 +577,7 @@
 	"manage.moderation.audit.title": "Handlingslog",
 	"manage.moderation.audit.empty.title": "Ingen handlinger endnu",
 	"manage.moderation.audit.empty.body": "Administratorhandlinger i dette fællesskab vises her.",
+	"manage.moderation.audit.loadMore": "Vis ældre",
 	"manage.error.title": "Noget gik galt",
 	"manage.error.body": "Prøv igen.",
 	"manage.error.forbiddenTitle": "Ingen adgang",
