@@ -363,6 +363,12 @@ and this project adheres to
 
 ### Removed
 
+- The gettext catalogs dropped the 661 msgids whose only consumers
+  were the LiveView templates deleted in the #187 cut (issue #325, the
+  cleanup #294's build deliberately deferred): `mix gettext.extract
+--merge` on a clean tree, verified lossless — every surviving msgid
+  keeps its EN and DA translation, `errors.po` untouched.
+
 - **LiveView is gone — the Svelte PWA is now the only web UI** (issue
   #187, closes #165; ADR 0024). The entire `lib/kammer_web/live/` tree,
   the LiveView-only web layer (core/feed/Kammer components, layouts, the
