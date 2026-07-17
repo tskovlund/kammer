@@ -45,13 +45,17 @@ defmodule Kammer.EventsRecurrenceTest do
                Events.create_recurring_event(
                  member,
                  group,
-                 %{"title" => "Choir practice", "starts_at" => starts_at},
+                 %{"title" => "Choir practice", "starts_at" => starts_at, "capacity" => 12},
                  %{"frequency" => "weekly", "until" => Date.to_iso8601(until)}
                )
 
       assert length(events) == 4
       assert Enum.all?(events, &(&1.title == "Choir practice"))
       assert Enum.all?(events, &(&1.series_id == hd(events).series_id))
+      # Capacity copies to every occurrence like the other shared fields
+      # (issue #318); a per-occurrence override is just update_event on
+      # that row (ADR 0019).
+      assert Enum.all?(events, &(&1.capacity == 12))
 
       starts = Enum.map(events, & &1.starts_at)
       assert starts == Enum.sort(starts, DateTime)

@@ -67,8 +67,18 @@ defmodule Kammer.Notifications.NotificationEmail do
       :event_reminder ->
         gettext("Event reminder")
 
+      :event_promoted ->
+        gettext("A spot opened up — you're attending %{title}", title: event_title(references))
+
       :post ->
         gettext("%{name} posted", name: actor_name)
+    end
+  end
+
+  defp event_title(references) do
+    case Keyword.get(references, :event) do
+      %Kammer.Events.Event{title: title} -> title
+      _absent -> gettext("the event")
     end
   end
 

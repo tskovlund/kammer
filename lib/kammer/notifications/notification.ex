@@ -14,7 +14,8 @@ defmodule Kammer.Notifications.Notification do
     :reply,
     :acknowledgment_required,
     :event_created,
-    :event_reminder
+    :event_reminder,
+    :event_promoted
   ]
 
   @primary_key {:id, :binary_id, autogenerate: true}

@@ -91,11 +91,12 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 
 - Fields: title, Markdown description, start (+ optional end), **all-day and multi-day supported**, timezone-aware, location (free text + optional URL; map links derived client-side — no embedded trackers), cover image, host group.
 - **RSVP** yes/no/maybe for members. **Guest RSVP** on public events: name + email, confirmation email with **ICS attachment** and signed management link. No account required.
+- **Capacity & waitlist** (owner-decided v1, 2026-07-16 — issue #318): optional per-event cap on attending RSVPs, members and confirmed guests counted under one cap. Over-cap "yes" answers join an ordered waitlist (arrival order, own position shown); the ordered waitlist with names is member-visible on the event page, while public/tokenless callers see counts only (attending identities aren't public either); a freed seat promotes from the front atomically, notifying the promoted member through the notification machinery (guests by email). Recurrence copies the cap to occurrences; lowering a cap never demotes anyone already attending.
 - **Recurrence**: weekly / biweekly / monthly series (constrained RRULE; no freeform editor), per-instance overrides (cancel/move one date), **per-instance RSVP**, and an organizer **attendance matrix** (members × upcoming instances).
 - **Reminders**: push + email, per-user configurable.
 - **ICS feeds**: per group and per user (merged), secret-token URLs.
 - Event pages use the same comment engine.
-- Roadmap: capacity, waitlists, ticketing (evaluate **Pretix** integration before building), cross-group co-hosting.
+- Roadmap: ticketing (evaluate **Pretix** integration before building), cross-group co-hosting.
 
 ## 7. Files
 

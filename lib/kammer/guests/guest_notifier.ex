@@ -12,6 +12,7 @@ defmodule Kammer.Guests.GuestNotifier do
   alias Kammer.Calendar.ICS
   alias Kammer.Communities
   alias Kammer.Events.Event
+  alias Kammer.Events.EventRsvp
   alias Kammer.Events.EventSlot
   alias Kammer.Groups.Group
   alias Kammer.Guests.GuestIdentity
@@ -42,12 +43,25 @@ defmodule Kammer.Guests.GuestNotifier do
 
   @doc """
   Confirms the recorded RSVP: calendar file attached, management link
-  for changing the answer or erasing the guest's data (SPEC §12).
+  for changing the answer or erasing the guest's data (SPEC §12). A
+  `:waitlisted` outcome (issue #318 — the event was full) says so
+  instead of implying a seat; the ICS still rides along in case a spot
+  opens up.
   """
-  @spec deliver_confirmed(GuestIdentity.t(), Event.t(), String.t()) ::
+  @spec deliver_confirmed(GuestIdentity.t(), Event.t(), String.t(), EventRsvp.status()) ::
           {:ok, Swoosh.Email.t()} | {:error, term()}
-  def deliver_confirmed(%GuestIdentity{} = identity, %Event{} = event, manage_url) do
+  def deliver_confirmed(%GuestIdentity{} = identity, %Event{} = event, manage_url, status \\ :yes) do
     with_instance_locale(fn ->
+      recorded_line =
+        if status == :waitlisted do
+          gettext(
+            "%{title} is currently full, so you're on the waitlist — we'll email you if a spot opens up.",
+            title: event.title
+          )
+        else
+          gettext("Your RSVP to %{title} is recorded.", title: event.title)
+        end
+
       email =
         base_email(
           identity.email,
@@ -55,7 +69,7 @@ defmodule Kammer.Guests.GuestNotifier do
           """
           #{gettext("Hi %{name},", name: identity.display_name)}
 
-          #{gettext("Your RSVP to %{title} is recorded.", title: event.title)}
+          #{recorded_line}
 
           #{gettext("Change your answer, or erase everything we store about you, anytime:")}
 
@@ -72,6 +86,27 @@ defmodule Kammer.Guests.GuestNotifier do
       with {:ok, _metadata} <- Mailer.deliver(email) do
         {:ok, email}
       end
+    end)
+  end
+
+  @doc """
+  Tells a guest their waitlisted RSVP was promoted to attending
+  (issue #318) — the guest counterpart of the member's
+  `:event_promoted` notification.
+  """
+  @spec deliver_waitlist_promoted(GuestIdentity.t(), Event.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_waitlist_promoted(%GuestIdentity{} = identity, %Event{} = event) do
+    with_instance_locale(fn ->
+      deliver(
+        identity.email,
+        gettext("A spot opened up: %{title}", title: event.title),
+        """
+        #{gettext("Hi %{name},", name: identity.display_name)}
+
+        #{gettext("A spot opened up for %{title} — you're now attending.", title: event.title)}
+        """
+      )
     end)
   end
 

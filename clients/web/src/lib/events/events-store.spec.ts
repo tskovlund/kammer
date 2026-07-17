@@ -53,8 +53,9 @@ function event(id: string, startsAt: string, groupId = 'g'): Event {
 		location_url: null,
 		cancelled: false,
 		comments_locked: false,
-		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
+		rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 },
 		my_rsvp: null,
+		waitlist: [],
 		slots: [],
 		comments: []
 	};

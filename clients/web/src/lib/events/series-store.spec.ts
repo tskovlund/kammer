@@ -32,7 +32,7 @@ function detail(overrides: Partial<EventSeriesDetail> = {}): EventSeriesDetail {
 				ends_at: null,
 				all_day: false,
 				cancelled: false,
-				rsvp_counts: { yes: 2, maybe: 1, no: 0 }
+				rsvp_counts: { yes: 2, maybe: 1, no: 0, waitlisted: 0 }
 			}
 		],
 		attendance: {
@@ -76,7 +76,7 @@ describe('createSeriesStore', () => {
 					ends_at: null,
 					all_day: false,
 					cancelled: true,
-					rsvp_counts: { yes: 2, maybe: 1, no: 0 }
+					rsvp_counts: { yes: 2, maybe: 1, no: 0, waitlisted: 0 }
 				}
 			],
 			// The cancelled occurrence has dropped out of the matrix columns.

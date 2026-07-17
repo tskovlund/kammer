@@ -123,6 +123,7 @@ describe('eventParamsErrorKeys', () => {
 				validation({
 					location_url: ['must be a valid http(s) URL'],
 					ends_at: ['must be after the start'],
+					capacity: ['must be greater than 0'],
 					until: ['must be on or after the start date']
 				})
 			)
@@ -131,6 +132,7 @@ describe('eventParamsErrorKeys', () => {
 			endsAtKey: 'events.field.error.endsAt',
 			locationNameKey: null,
 			locationUrlKey: 'events.field.error.locationUrl',
+			capacityKey: 'events.field.error.capacity',
 			untilKey: 'events.field.error.until',
 			bannerKind: null
 		});

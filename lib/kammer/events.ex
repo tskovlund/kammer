@@ -9,6 +9,27 @@ defmodule Kammer.Events do
   viewing an event requires `:view_group` on its host group; creating
   follows the group's posting policy; editing is for the creator and
   moderators.
+
+  ## Capacity and the waitlist (issue #318)
+
+  An event with a `capacity` caps its attending RSVPs — members and
+  confirmed guests count under the one cap (they're rows in the same
+  RSVP set); signup slots keep their own separate caps. A "yes" beyond
+  the cap becomes `:waitlisted`, queued by `waitlisted_at` (id as
+  tiebreaker). Every capacity-relevant write runs in a transaction that
+  locks the event row (the same strategy slot claims use), so
+  concurrent writes can never overbook a seat or promote two people
+  into one; each write ends by promoting as many waitlisted RSVPs as
+  fit, in order. That covers a freed seat (an attendee switching away
+  from yes), a raised or removed capacity, and reconciliation after
+  out-of-band row deletions (a guest erasure or account deletion
+  cascades RSVPs away without firing a promotion — the next
+  capacity-relevant write on that event heals the gap, and a new "yes"
+  never jumps an existing queue). **Lowering the capacity never demotes
+  anyone already attending** — the surplus simply blocks promotions
+  until attrition catches up. Promotions notify the promoted member
+  through the notification machinery at their level (kind
+  `:event_promoted`), and a promoted guest by email.
   """
 
   import Ecto.Query, warn: false
@@ -360,6 +381,7 @@ defmodule Kammer.Events do
                 timezone: base_event.timezone,
                 location_name: base_event.location_name,
                 location_url: base_event.location_url,
+                capacity: base_event.capacity,
                 community_id: base_event.community_id,
                 group_id: base_event.group_id,
                 created_by_user_id: base_event.created_by_user_id,
@@ -378,6 +400,11 @@ defmodule Kammer.Events do
   @doc """
   Updates an event (creator or moderators). Reminder timing follows the
   new start automatically — the reminder worker re-reads the event.
+
+  Capacity edits follow the waitlist rules in the moduledoc: raising or
+  removing the cap promotes as many waitlisted RSVPs as now fit (in
+  order, atomically); introducing or lowering one never demotes anyone
+  already attending.
   """
   @spec update_event(User.t(), Event.t(), map()) ::
           {:ok, Event.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
@@ -387,7 +414,22 @@ defmodule Kammer.Events do
     if can_manage_event?(actor, event, group) do
       attrs = Map.drop(attrs, ["community_id", "group_id", "created_by_user_id"])
 
-      with {:ok, updated_event} <- event |> Event.changeset(attrs) |> Repo.update() do
+      result =
+        Repo.transact(fn ->
+          locked_event = lock_event!(event.id)
+
+          with {:ok, updated_event} <- locked_event |> Event.changeset(attrs) |> Repo.update() do
+            promoted =
+              if capacity_expanded?(locked_event, updated_event),
+                do: promote_waitlisted(updated_event),
+                else: []
+
+            schedule_promotion_notifications(updated_event, promoted)
+            {:ok, updated_event}
+          end
+        end)
+
+      with {:ok, updated_event} <- result do
         if updated_event.starts_at != event.starts_at, do: schedule_reminder(updated_event)
         {:ok, updated_event}
       end
@@ -395,6 +437,14 @@ defmodule Kammer.Events do
       {:error, :unauthorized}
     end
   end
+
+  # Raising the cap (or removing it) can seat waitlisted people;
+  # introducing or lowering one never demotes, so it promotes nobody.
+  defp capacity_expanded?(%Event{capacity: nil}, %Event{}), do: false
+  defp capacity_expanded?(%Event{}, %Event{capacity: nil}), do: true
+
+  defp capacity_expanded?(%Event{capacity: old_capacity}, %Event{capacity: new_capacity}),
+    do: new_capacity > old_capacity
 
   @doc """
   Deletes an event (creator or moderators).
@@ -555,7 +605,9 @@ defmodule Kammer.Events do
   ## RSVPs
 
   @doc """
-  Sets the actor's RSVP (yes/no/maybe). Group members only.
+  Sets the actor's RSVP (yes/no/maybe). Group members only. On an event
+  with a capacity, a "yes" beyond it lands as `:waitlisted` (see the
+  moduledoc) — callers read the returned status rather than assume.
   """
   @spec rsvp(User.t(), Event.t(), EventRsvp.status()) ::
           {:ok, EventRsvp.t()} | {:error, term()}
@@ -564,12 +616,17 @@ defmodule Kammer.Events do
     relationship = Authorization.relationship(actor, group)
 
     if Authorization.can_react?(actor, group, relationship) do
-      %EventRsvp{}
-      |> EventRsvp.changeset(%{status: status, event_id: event.id, user_id: actor.id})
-      |> Repo.insert(
-        on_conflict: [set: [status: status, updated_at: DateTime.utc_now(:second)]],
-        conflict_target: [:event_id, :user_id],
-        returning: true
+      write_rsvp(
+        event,
+        status,
+        fn -> Repo.get_by(EventRsvp, event_id: event.id, user_id: actor.id) end,
+        fn resolved_status ->
+          EventRsvp.changeset(%EventRsvp{}, %{
+            status: resolved_status,
+            event_id: event.id,
+            user_id: actor.id
+          })
+        end
       )
     else
       {:error, :unauthorized}
@@ -584,6 +641,165 @@ defmodule Kammer.Events do
 
   def get_rsvp(%Event{} = event, %User{} = user) do
     Repo.get_by(EventRsvp, event_id: event.id, user_id: user.id)
+  end
+
+  ## Capacity & waitlist internals (issue #318 — see the moduledoc)
+
+  # The one write path for member and guest RSVPs alike: lock the event
+  # row, resolve what the requested status means against the locked
+  # truth, write it, then fill any free seats from the waitlist in
+  # order. Promotion notifications are enqueued inside the same
+  # transaction, so they commit exactly with the promotions they report.
+  defp write_rsvp(%Event{} = event, requested_status, get_existing, build_insert) do
+    Repo.transact(fn ->
+      locked_event = lock_event!(event.id)
+      existing = get_existing.()
+
+      {resolved_status, waitlisted_at} =
+        resolve_rsvp_status(locked_event, existing, requested_status)
+
+      written =
+        case existing do
+          nil ->
+            resolved_status
+            |> build_insert.()
+            |> Ecto.Changeset.put_change(:waitlisted_at, waitlisted_at)
+            |> Repo.insert()
+
+          %EventRsvp{} = rsvp ->
+            rsvp
+            |> Ecto.Changeset.change(status: resolved_status, waitlisted_at: waitlisted_at)
+            |> Repo.update()
+        end
+
+      with {:ok, rsvp} <- written do
+        promoted = promote_waitlisted(locked_event)
+
+        # The caller's own RSVP may be among the promoted (a stale free
+        # seat): reflect that in the returned struct, but don't notify
+        # them of an outcome the response already carries.
+        schedule_promotion_notifications(
+          locked_event,
+          Enum.reject(promoted, &(&1.id == rsvp.id))
+        )
+
+        if Enum.any?(promoted, &(&1.id == rsvp.id)) do
+          {:ok, %EventRsvp{rsvp | status: :yes, waitlisted_at: nil}}
+        else
+          {:ok, rsvp}
+        end
+      end
+    end)
+  end
+
+  defp resolve_rsvp_status(%Event{capacity: nil}, _existing, requested_status),
+    do: {requested_status, nil}
+
+  defp resolve_rsvp_status(%Event{} = event, existing, :yes) do
+    case existing do
+      # Already seated — a repeated yes never re-runs the seat math.
+      %EventRsvp{status: :yes} ->
+        {:yes, nil}
+
+      # Re-asking for yes keeps the queue spot, never resets the position.
+      %EventRsvp{status: :waitlisted, waitlisted_at: waitlisted_at} ->
+        {:waitlisted, waitlisted_at}
+
+      _no_seat_held ->
+        # A new yes joins the back of a non-empty queue even when a seat
+        # looks free (a cascade-deleted RSVP left a gap): the promotion
+        # pass below fills seats in order, so nobody jumps the line.
+        if attending_count(event.id) >= event.capacity or waitlist_count(event.id) > 0 do
+          {:waitlisted, DateTime.utc_now()}
+        else
+          {:yes, nil}
+        end
+    end
+  end
+
+  defp resolve_rsvp_status(%Event{}, _existing, requested_status), do: {requested_status, nil}
+
+  # Fills free seats from the waitlist in order — the caller holds the
+  # event lock. With the capacity removed entirely, everyone waitlisted
+  # is promoted. Returns the promoted RSVPs.
+  defp promote_waitlisted(%Event{} = locked_event) do
+    promotable =
+      case locked_event.capacity do
+        nil ->
+          Repo.all(waitlist_queue(locked_event.id))
+
+        capacity ->
+          case capacity - attending_count(locked_event.id) do
+            free when free > 0 ->
+              Repo.all(from(rsvp in waitlist_queue(locked_event.id), limit: ^free))
+
+            _none_free ->
+              []
+          end
+      end
+
+    case promotable do
+      [] ->
+        []
+
+      to_promote ->
+        ids = Enum.map(to_promote, & &1.id)
+
+        Repo.update_all(from(rsvp in EventRsvp, where: rsvp.id in ^ids),
+          set: [status: :yes, waitlisted_at: nil, updated_at: DateTime.utc_now(:second)]
+        )
+
+        Enum.map(to_promote, &%EventRsvp{&1 | status: :yes, waitlisted_at: nil})
+    end
+  end
+
+  # One job per promotion, inserted inside the promoting transaction so
+  # they commit together; the worker re-checks the RSVP still stands
+  # before delivering (a promoted attendee may have cancelled again by
+  # the time the job runs).
+  defp schedule_promotion_notifications(_event, []), do: :ok
+
+  defp schedule_promotion_notifications(%Event{} = event, promoted) do
+    Enum.each(promoted, fn %EventRsvp{} = rsvp ->
+      recipient =
+        case rsvp do
+          %EventRsvp{user_id: user_id} when is_binary(user_id) ->
+            %{"user_id" => user_id}
+
+          %EventRsvp{guest_identity_id: guest_identity_id} when is_binary(guest_identity_id) ->
+            %{"guest_identity_id" => guest_identity_id}
+        end
+
+      recipient
+      |> Map.merge(%{"type" => "event_promotion", "event_id" => event.id})
+      |> Kammer.Workers.NotificationFanoutWorker.new()
+      |> Oban.insert()
+    end)
+  end
+
+  defp waitlist_queue(event_id) do
+    from(rsvp in EventRsvp,
+      where: rsvp.event_id == ^event_id and rsvp.status == :waitlisted,
+      order_by: [asc: rsvp.waitlisted_at, asc: rsvp.id]
+    )
+  end
+
+  defp attending_count(event_id) do
+    Repo.aggregate(
+      from(rsvp in EventRsvp, where: rsvp.event_id == ^event_id and rsvp.status == :yes),
+      :count
+    )
+  end
+
+  defp waitlist_count(event_id) do
+    Repo.aggregate(
+      from(rsvp in EventRsvp, where: rsvp.event_id == ^event_id and rsvp.status == :waitlisted),
+      :count
+    )
+  end
+
+  defp lock_event!(event_id) do
+    Repo.one!(from(event in Event, where: event.id == ^event_id, lock: "FOR UPDATE"))
   end
 
   ## Guest RSVPs (SPEC §6): name + email on public events, no account.
@@ -648,9 +864,9 @@ defmodule Kammer.Events do
          %Group{} = group <- Repo.get(Group, event.group_id),
          true <- Authorization.can_guest_rsvp?(group),
          {:ok, identity} <- Guests.verify_identity(email, display_name),
-         {:ok, _rsvp} <- upsert_guest_rsvp(event, identity, status) do
+         {:ok, rsvp} <- upsert_guest_rsvp(event, identity, status) do
       manage_token = GuestToken.sign_manage(%{identity_id: identity.id})
-      GuestNotifier.deliver_confirmed(identity, event, manage_url_fun.(manage_token))
+      GuestNotifier.deliver_confirmed(identity, event, manage_url_fun.(manage_token), rsvp.status)
       {:ok, Repo.preload(event, :community), identity}
     else
       _invalid_or_gone -> {:error, :invalid}
@@ -660,35 +876,35 @@ defmodule Kammer.Events do
   @doc """
   Changes a guest's answer through their management link. Only answers
   the guest already gave can change — the management page lists exactly
-  those; new RSVPs go through the confirm flow.
+  those; new RSVPs go through the confirm flow. Capacity applies the
+  same as for members: a switch to yes on a full event waitlists.
   """
   @spec update_guest_rsvp(String.t(), Ecto.UUID.t(), EventRsvp.status()) ::
-          {:ok, EventRsvp.t()} | {:error, :invalid}
+          {:ok, EventRsvp.t()} | {:error, :invalid | Ecto.Changeset.t()}
   def update_guest_rsvp(manage_token, event_id, status) when status in [:yes, :no, :maybe] do
     with {:ok, %{identity_id: identity_id}} <- GuestToken.verify_manage(manage_token),
          %GuestIdentity{} = identity <- Guests.get_identity(identity_id),
          %EventRsvp{} = rsvp <-
-           Repo.get_by(EventRsvp, event_id: event_id, guest_identity_id: identity.id) do
-      rsvp
-      |> Ecto.Changeset.change(status: status)
-      |> Repo.update()
+           Repo.get_by(EventRsvp, event_id: event_id, guest_identity_id: identity.id),
+         %Event{} = event <- Repo.get(Event, rsvp.event_id) do
+      upsert_guest_rsvp(event, identity, status)
     else
       _invalid_or_gone -> {:error, :invalid}
     end
   end
 
   defp upsert_guest_rsvp(%Event{} = event, %GuestIdentity{} = identity, status) do
-    %EventRsvp{}
-    |> EventRsvp.guest_changeset(%{
-      status: status,
-      event_id: event.id,
-      guest_identity_id: identity.id
-    })
-    |> Repo.insert(
-      on_conflict: [set: [status: status, updated_at: DateTime.utc_now(:second)]],
-      conflict_target:
-        {:unsafe_fragment, "(event_id, guest_identity_id) WHERE guest_identity_id IS NOT NULL"},
-      returning: true
+    write_rsvp(
+      event,
+      status,
+      fn -> Repo.get_by(EventRsvp, event_id: event.id, guest_identity_id: identity.id) end,
+      fn resolved_status ->
+        EventRsvp.guest_changeset(%EventRsvp{}, %{
+          status: resolved_status,
+          event_id: event.id,
+          guest_identity_id: identity.id
+        })
+      end
     )
   end
 
@@ -696,7 +912,7 @@ defmodule Kammer.Events do
     types = %{
       email: :string,
       display_name: :string,
-      status: Ecto.ParameterizedType.init(Ecto.Enum, values: EventRsvp.statuses())
+      status: Ecto.ParameterizedType.init(Ecto.Enum, values: EventRsvp.requestable_statuses())
     }
 
     {%{}, types}

@@ -26,6 +26,7 @@
 		endsAt: null,
 		locationName: null,
 		locationUrl: null,
+		capacity: null,
 		until: null
 	});
 
@@ -33,7 +34,14 @@
 		if (!instance) return;
 		submitting = true;
 		bannerKind = null;
-		fieldErrors = { title: null, endsAt: null, locationName: null, locationUrl: null, until: null };
+		fieldErrors = {
+			title: null,
+			endsAt: null,
+			locationName: null,
+			locationUrl: null,
+			capacity: null,
+			until: null
+		};
 		try {
 			const created = await createEvent(instance, communitySlug, groupSlug, params);
 			await goto(resolve(`/i/${page.params.instance}/c/${communitySlug}/e/${created.id}`));
@@ -46,6 +54,7 @@
 				endsAt: keys.endsAtKey ? t(keys.endsAtKey) : null,
 				locationName: keys.locationNameKey ? t(keys.locationNameKey) : null,
 				locationUrl: keys.locationUrlKey ? t(keys.locationUrlKey) : null,
+				capacity: keys.capacityKey ? t(keys.capacityKey) : null,
 				until: keys.untilKey ? t(keys.untilKey) : null
 			};
 			bannerKind = keys.bannerKind;

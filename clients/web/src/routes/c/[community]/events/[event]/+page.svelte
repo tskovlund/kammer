@@ -142,7 +142,20 @@
 			<Chip>{t('events.rsvp.yes')} · {event.rsvp_counts.yes}</Chip>
 			<Chip>{t('events.rsvp.maybe')} · {event.rsvp_counts.maybe}</Chip>
 			<Chip>{t('events.rsvp.no')} · {event.rsvp_counts.no}</Chip>
+			{#if event.capacity != null}
+				<Chip>
+					{t('events.detail.attendingWithCapacity', {
+						attending: String(event.rsvp_counts.yes),
+						capacity: String(event.capacity)
+					})}
+				</Chip>
+			{/if}
 		</div>
+
+		{#if event.capacity != null && event.rsvp_counts.yes >= event.capacity}
+			<!-- A guest RSVPing to a full event is queued, not seated (issue #318). -->
+			<p class="mt-2 text-sm text-ink-muted">{t('events.detail.fullHint')}</p>
+		{/if}
 
 		{#if group?.guest_rsvp_allowed && !event.cancelled}
 			<section class="mt-6 rounded-xl border border-line bg-surface p-4">

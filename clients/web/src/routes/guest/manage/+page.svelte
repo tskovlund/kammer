@@ -214,6 +214,13 @@
 											)}
 										class="h-10 rounded-lg border border-line bg-surface px-2 text-sm text-ink"
 									>
+										{#if rsvp.status === 'waitlisted'}
+											<!-- Their yes queued past the event's capacity (issue #318):
+											     show the state; picking yes again keeps the queue spot. -->
+											<option value="waitlisted" disabled>
+												{t('guest.manage.rsvp.status.waitlisted')}
+											</option>
+										{/if}
 										{#each ['yes', 'maybe', 'no'] as const as status (status)}
 											<option value={status}>{rsvpStatusLabel[status]()}</option>
 										{/each}

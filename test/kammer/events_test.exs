@@ -6,6 +6,8 @@ defmodule Kammer.EventsTest do
 
   alias Kammer.Calendar.ICS
   alias Kammer.Events
+  alias Kammer.Events.EventRsvp
+  alias Kammer.Workers.NotificationFanoutWorker
 
   defp event_context do
     {community, _owner} = community_with_owner_fixture()
@@ -16,6 +18,10 @@ defmodule Kammer.EventsTest do
   end
 
   defp future(hours), do: DateTime.add(DateTime.utc_now(:second), hours, :hour)
+
+  defp promotion_args(event, user) do
+    %{"type" => "event_promotion", "event_id" => event.id, "user_id" => user.id}
+  end
 
   defp drain_delivered_emails do
     receive do
@@ -249,6 +255,306 @@ defmodule Kammer.EventsTest do
       assert updated.title == "Mine (edited)"
 
       assert {:ok, _deleted} = Events.delete_event(group_owner, updated)
+    end
+  end
+
+  describe "capacity and waitlist (issue #318)" do
+    setup do
+      context = event_context()
+
+      {:ok, event} =
+        Events.create_event(context.member, context.group, %{
+          "title" => "Capped",
+          "starts_at" => future(48),
+          "capacity" => 1
+        })
+
+      Map.put(context, :event, event)
+    end
+
+    test "the cap admits until full, then waitlists in arrival order; re-yes keeps the spot", %{
+      group: group,
+      event: event,
+      member: attendee
+    } do
+      first_in_line = group_member_fixture(group)
+      second_in_line = group_member_fixture(group)
+
+      assert {:ok, %EventRsvp{status: :yes, waitlisted_at: nil}} =
+               Events.rsvp(attendee, event, :yes)
+
+      assert {:ok, %EventRsvp{status: :waitlisted} = queued} =
+               Events.rsvp(first_in_line, event, :yes)
+
+      assert queued.waitlisted_at
+      assert {:ok, %EventRsvp{status: :waitlisted}} = Events.rsvp(second_in_line, event, :yes)
+
+      # Asking again neither seats them nor resets their queue spot.
+      assert {:ok, %EventRsvp{status: :waitlisted, waitlisted_at: kept_at}} =
+               Events.rsvp(first_in_line, event, :yes)
+
+      assert kept_at == queued.waitlisted_at
+    end
+
+    test "cancelling frees the seat for the first in line, who is notified at their level", %{
+      group: group,
+      event: event,
+      member: attendee
+    } do
+      first_in_line = group_member_fixture(group)
+      second_in_line = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(first_in_line, event, :yes)
+      {:ok, _queued} = Events.rsvp(second_in_line, event, :yes)
+
+      assert {:ok, %EventRsvp{status: :no}} = Events.rsvp(attendee, event, :no)
+
+      assert Events.get_rsvp(event, first_in_line).status == :yes
+      assert Events.get_rsvp(event, second_in_line).status == :waitlisted
+
+      assert_enqueued(
+        worker: NotificationFanoutWorker,
+        args: promotion_args(event, first_in_line)
+      )
+
+      refute_enqueued(
+        worker: NotificationFanoutWorker,
+        args: promotion_args(event, second_in_line)
+      )
+
+      drain_delivered_emails()
+      assert :ok = perform_job(NotificationFanoutWorker, promotion_args(event, first_in_line))
+
+      assert Repo.get_by(Kammer.Notifications.Notification,
+               user_id: first_in_line.id,
+               event_id: event.id,
+               kind: :event_promoted
+             )
+
+      assert [email] = delivered_emails()
+      assert Enum.any?(email.to, fn {_name, address} -> address == first_in_line.email end)
+      assert email.subject =~ "you're attending Capped"
+    end
+
+    test "a waitlisted decline leaves the queue without promoting anyone", %{
+      group: group,
+      event: event,
+      member: attendee
+    } do
+      first_in_line = group_member_fixture(group)
+      second_in_line = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(first_in_line, event, :yes)
+      {:ok, _queued} = Events.rsvp(second_in_line, event, :yes)
+
+      assert {:ok, %EventRsvp{status: :no}} = Events.rsvp(first_in_line, event, :no)
+      assert Events.get_rsvp(event, attendee).status == :yes
+      refute_enqueued(worker: NotificationFanoutWorker, args: %{"type" => "event_promotion"})
+
+      # The queue shifted: the next freed seat goes to the remaining waiter.
+      {:ok, _cancelled} = Events.rsvp(attendee, event, :no)
+      assert Events.get_rsvp(event, second_in_line).status == :yes
+    end
+
+    test "raising the cap promotes as many as fit in order; lowering demotes nobody", %{
+      group: group,
+      event: event,
+      member: creator
+    } do
+      [first_in_line, second_in_line, third_in_line] =
+        for _n <- 1..3, do: group_member_fixture(group)
+
+      {:ok, _seated} = Events.rsvp(creator, event, :yes)
+      {:ok, _queued} = Events.rsvp(first_in_line, event, :yes)
+      {:ok, _queued} = Events.rsvp(second_in_line, event, :yes)
+      {:ok, _queued} = Events.rsvp(third_in_line, event, :yes)
+
+      assert {:ok, raised} = Events.update_event(creator, event, %{"capacity" => 3})
+
+      assert Events.get_rsvp(event, first_in_line).status == :yes
+      assert Events.get_rsvp(event, second_in_line).status == :yes
+      assert Events.get_rsvp(event, third_in_line).status == :waitlisted
+
+      assert_enqueued(
+        worker: NotificationFanoutWorker,
+        args: promotion_args(event, first_in_line)
+      )
+
+      assert_enqueued(
+        worker: NotificationFanoutWorker,
+        args: promotion_args(event, second_in_line)
+      )
+
+      # Removing the cap seats everyone still queued.
+      assert {:ok, unlimited} = Events.update_event(creator, raised, %{"capacity" => nil})
+      assert unlimited.capacity == nil
+      assert Events.get_rsvp(event, third_in_line).status == :yes
+
+      # Lowering below the seated count demotes nobody, and blocks
+      # promotion until attrition catches up: a cancel at 4/1 seats no one.
+      assert {:ok, _lowered} = Events.update_event(creator, unlimited, %{"capacity" => 1})
+      assert Events.get_rsvp(event, second_in_line).status == :yes
+      late = group_member_fixture(group)
+      assert {:ok, %EventRsvp{status: :waitlisted}} = Events.rsvp(late, event, :yes)
+      assert {:ok, _freed} = Events.rsvp(first_in_line, event, :no)
+      assert Events.get_rsvp(event, late).status == :waitlisted
+    end
+
+    # The sandbox hands every allowed Task the parent's single
+    # connection, so these racing writers physically run one at a time —
+    # the FOR UPDATE lock in `write_rsvp` is never actually contended
+    # here (deleting it wouldn't fail this test). What it pins is the
+    # funnel itself: each writer re-reads the seat count inside its own
+    # transaction, so racing writers applied in sequence yield exactly
+    # one seat and three queue spots, whatever the arrival order.
+    test "racing yes RSVPs funnel through the transaction sequentially — one seat, three queued",
+         %{group: group, event: event} do
+      contenders = for _n <- 1..4, do: group_member_fixture(group)
+      parent = self()
+
+      statuses =
+        contenders
+        |> Enum.map(fn user ->
+          Task.async(fn ->
+            Ecto.Adapters.SQL.Sandbox.allow(Repo, parent, self())
+            {:ok, rsvp} = Events.rsvp(user, event, :yes)
+            rsvp.status
+          end)
+        end)
+        |> Task.await_many(:infinity)
+
+      assert Enum.count(statuses, &(&1 == :yes)) == 1
+      assert Enum.count(statuses, &(&1 == :waitlisted)) == 3
+    end
+
+    # Same sandbox caveat as above: the two cancels share one connection
+    # and run sequentially, so the lock is uncontended — this pins that
+    # cancels applied back-to-back promote the lone waiter exactly once
+    # (the second freed seat finds an empty queue, not a re-promotion).
+    test "racing cancels applied sequentially promote the lone waiter exactly once", %{
+      group: group,
+      member: creator
+    } do
+      {:ok, event} =
+        Events.create_event(creator, group, %{
+          "title" => "Double cancel",
+          "starts_at" => future(48),
+          "capacity" => 2
+        })
+
+      [seated_one, seated_two] = for _n <- 1..2, do: group_member_fixture(group)
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(seated_one, event, :yes)
+      {:ok, _seated} = Events.rsvp(seated_two, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      parent = self()
+
+      [seated_one, seated_two]
+      |> Enum.map(fn user ->
+        Task.async(fn ->
+          Ecto.Adapters.SQL.Sandbox.allow(Repo, parent, self())
+          Events.rsvp(user, event, :no)
+        end)
+      end)
+      |> Task.await_many(:infinity)
+
+      assert Events.get_rsvp(event, waiter).status == :yes
+
+      promotion_jobs =
+        all_enqueued(worker: NotificationFanoutWorker)
+        |> Enum.filter(&(&1.args["type"] == "event_promotion"))
+
+      assert [job] = promotion_jobs
+      assert job.args["user_id"] == waiter.id
+    end
+
+    test "a seat freed out-of-band never lets a new yes jump the queue", %{
+      group: group,
+      member: creator
+    } do
+      {:ok, event} =
+        Events.create_event(creator, group, %{
+          "title" => "Self-heal",
+          "starts_at" => future(48),
+          "capacity" => 2
+        })
+
+      [seated, waiter, newcomer] = for _n <- 1..3, do: group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(creator, event, :yes)
+      {:ok, _seated} = Events.rsvp(seated, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      # A cascade-style erasure (e.g. account deletion) removes a seated
+      # RSVP without running the promotion pass — the freed seat is stale.
+      Repo.delete_all(
+        from(rsvp in EventRsvp, where: rsvp.event_id == ^event.id and rsvp.user_id == ^seated.id)
+      )
+
+      # The next yes must not grab that stale seat past a non-empty
+      # queue: it queues, and the same write's promotion pass seats the
+      # earlier waiter — the advertised no-jump reconciliation invariant.
+      assert {:ok, %EventRsvp{status: :waitlisted}} = Events.rsvp(newcomer, event, :yes)
+      assert Events.get_rsvp(event, waiter).status == :yes
+    end
+
+    test "a promotion job delivers nothing when the promoted RSVP flipped back before it ran", %{
+      group: group,
+      event: event,
+      member: attendee
+    } do
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+      {:ok, _freed} = Events.rsvp(attendee, event, :no)
+
+      assert_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+
+      # The seat came and went before the job ran: the worker's re-check
+      # sees the RSVP no longer stands as attending and delivers nothing.
+      assert {:ok, %EventRsvp{status: :no}} = Events.rsvp(waiter, event, :no)
+
+      drain_delivered_emails()
+      assert :ok = perform_job(NotificationFanoutWorker, promotion_args(event, waiter))
+
+      refute Repo.get_by(Kammer.Notifications.Notification,
+               user_id: waiter.id,
+               event_id: event.id
+             )
+
+      assert delivered_emails() == []
+    end
+
+    test "a promotion job never notifies someone removed from the group after waitlisting", %{
+      group: group,
+      group_owner: group_owner,
+      event: event,
+      member: attendee
+    } do
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      # Removal doesn't erase RSVPs, so the queue entry survives and the
+      # freed seat still promotes it — but the worker must not deliver to
+      # an ex-member (effective_level would fall back to the group
+      # default and leak the event title in-app, by push, and by email).
+      membership = Kammer.Groups.get_membership(group, waiter)
+      {:ok, _removed} = Kammer.Groups.remove_member(group_owner, group, membership)
+
+      {:ok, _freed} = Events.rsvp(attendee, event, :no)
+      assert Events.get_rsvp(event, waiter).status == :yes
+      assert_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+
+      drain_delivered_emails()
+      assert :ok = perform_job(NotificationFanoutWorker, promotion_args(event, waiter))
+
+      refute Repo.get_by(Kammer.Notifications.Notification,
+               user_id: waiter.id,
+               event_id: event.id
+             )
+
+      assert delivered_emails() == []
     end
   end
 

@@ -39,6 +39,45 @@ afterEach(() => {
 });
 
 describe('new event page', () => {
+	it('sends the optional capacity with the create, empty meaning unlimited (issue #318)', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(201, { data: { id: 'e1' } }));
+		render(Page);
+
+		await fireEvent.input(document.querySelector('#event-form-title')!, {
+			target: { value: 'Sommerfest' }
+		});
+		await fireEvent.input(document.querySelector('#event-form-starts-at')!, {
+			target: { value: '2026-08-01T10:00' }
+		});
+		await fireEvent.input(document.querySelector('#event-form-capacity')!, {
+			target: { value: '40' }
+		});
+		await fireEvent.submit(document.querySelector('#event-form')!);
+
+		await waitFor(() => expect(goto).toHaveBeenCalled());
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		const body = (await request.json()) as { capacity: number | null };
+		expect(body.capacity).toBe(40);
+	});
+
+	it('sends capacity null when the field is left empty (unlimited)', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(201, { data: { id: 'e1' } }));
+		render(Page);
+
+		await fireEvent.input(document.querySelector('#event-form-title')!, {
+			target: { value: 'Sommerfest' }
+		});
+		await fireEvent.input(document.querySelector('#event-form-starts-at')!, {
+			target: { value: '2026-08-01T10:00' }
+		});
+		await fireEvent.submit(document.querySelector('#event-form')!);
+
+		await waitFor(() => expect(goto).toHaveBeenCalled());
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		const body = (await request.json()) as { capacity: number | null };
+		expect(body.capacity).toBeNull();
+	});
+
 	it('lights the location-link field when the server rejects a non-http(s) URL, and stays put', async () => {
 		// #247: `location_url` is validated to be http(s) server-side; a bad
 		// link 422s keyed on `location_url`, which the form must route to that

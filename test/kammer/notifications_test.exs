@@ -74,7 +74,13 @@ defmodule Kammer.NotificationsTest do
     end
 
     test "highlight-class kinds get all channels at highlights" do
-      for kind <- [:reply, :acknowledgment_required, :event_created, :event_reminder] do
+      for kind <- [
+            :reply,
+            :acknowledgment_required,
+            :event_created,
+            :event_reminder,
+            :event_promoted
+          ] do
         assert Notifications.channels_for(kind, :highlights) == [:in_app, :push, :email]
         assert Notifications.channels_for(kind, :mentions_only) == []
       end

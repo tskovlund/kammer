@@ -26,7 +26,13 @@ defmodule Kammer.Notifications do
 
   @type channel() :: :in_app | :push | :email
   @type kind() ::
-          :post | :mention | :reply | :acknowledgment_required | :event_created | :event_reminder
+          :post
+          | :mention
+          | :reply
+          | :acknowledgment_required
+          | :event_created
+          | :event_reminder
+          | :event_promoted
 
   ## Policy — pure
 
@@ -45,7 +51,13 @@ defmodule Kammer.Notifications do
   def channels_for(:post, :highlights), do: [:in_app]
 
   def channels_for(kind, level)
-      when kind in [:reply, :acknowledgment_required, :event_created, :event_reminder] and
+      when kind in [
+             :reply,
+             :acknowledgment_required,
+             :event_created,
+             :event_reminder,
+             :event_promoted
+           ] and
              level in [:everything, :highlights],
       do: [:in_app, :push, :email]
 
@@ -364,6 +376,18 @@ defmodule Kammer.Notifications do
         )
       end
     end)
+  end
+
+  @doc """
+  Tells one member their waitlisted RSVP was promoted to attending
+  (issue #318) — event-activity highlight class, so push+email at the
+  member's level like the other event kinds. One recipient, not a
+  fan-out: the promotion itself names exactly who moved up.
+  """
+  @spec notify_waitlist_promotion(User.t(), Kammer.Events.Event.t()) :: :ok
+  def notify_waitlist_promotion(%User{} = user, %Kammer.Events.Event{} = event) do
+    group = Repo.get!(Group, event.group_id)
+    deliver(user, group, :event_promoted, event: event)
   end
 
   defp memberships_with_users(%Group{} = group) do

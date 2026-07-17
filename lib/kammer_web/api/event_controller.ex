@@ -38,7 +38,7 @@ defmodule KammerWeb.Api.EventController do
   # The event fields a caller may set on create/edit; programmatic
   # fields (community_id, group_id, created_by_user_id, series_id) are
   # never cast from the request — the context sets them.
-  @event_fields ~w(title description_markdown starts_at ends_at all_day timezone location_name location_url)
+  @event_fields ~w(title description_markdown starts_at ends_at all_day timezone location_name location_url capacity)
 
   @spec index(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def index(conn, %{"community_slug" => slug}) do

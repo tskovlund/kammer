@@ -4118,3 +4118,28 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this, don't click the link — someone may have access to your account. Review your devices and sign out anything you don't recognize."
 msgstr ""
+
+#: lib/kammer/guests/guest_notifier.ex:57
+#, elixir-autogen, elixir-format
+msgid "%{title} is currently full, so you're on the waitlist — we'll email you if a spot opens up."
+msgstr ""
+
+#: lib/kammer/guests/guest_notifier.ex:103
+#, elixir-autogen, elixir-format
+msgid "A spot opened up: %{title}"
+msgstr ""
+
+#: lib/kammer/guests/guest_notifier.ex:107
+#, elixir-autogen, elixir-format
+msgid "A spot opened up for %{title} — you're now attending."
+msgstr ""
+
+#: lib/kammer/notifications/notification_email.ex:71
+#, elixir-autogen, elixir-format
+msgid "A spot opened up — you're attending %{title}"
+msgstr ""
+
+#: lib/kammer/notifications/notification_email.ex:81
+#, elixir-autogen, elixir-format
+msgid "the event"
+msgstr ""

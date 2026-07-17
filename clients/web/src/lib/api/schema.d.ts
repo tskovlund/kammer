@@ -634,7 +634,7 @@ export interface paths {
 			cookie?: never;
 		};
 		get?: never;
-		/** Set my RSVP */
+		/** Set my RSVP — a yes beyond the event's capacity answers waitlisted (issue #318) */
 		put: operations['events_rsvp'];
 		post?: never;
 		delete?: never;
@@ -2518,7 +2518,7 @@ export interface components {
 				rows: {
 					member: components['schemas']['UserRef'];
 					/** @description The member's RSVP per matrix occurrence, aligned by index to attendance.occurrences; null where they haven't answered */
-					statuses: ('yes' | 'no' | 'maybe' | null)[];
+					statuses: ('yes' | 'no' | 'maybe' | 'waitlisted' | null)[];
 				}[];
 			};
 			/** @description Every occurrence, soonest first — including past and cancelled ones */
@@ -2532,6 +2532,7 @@ export interface components {
 				rsvp_counts: {
 					maybe: number;
 					no: number;
+					waitlisted: number;
 					yes: number;
 				};
 				/** Format: date-time */
@@ -2651,6 +2652,8 @@ export interface components {
 		 */
 		EventParams: {
 			all_day?: boolean | null;
+			/** @description Cap on attending RSVPs (issue #318); null/absent means unlimited. Raising it promotes from the waitlist; lowering never demotes. */
+			capacity?: number | null;
 			description_markdown?: string | null;
 			/** Format: date-time */
 			ends_at?: string | null;
@@ -2971,6 +2974,8 @@ export interface components {
 			all_day: boolean;
 			/** @description A cancelled occurrence stays viewable but leaves listings and feeds */
 			cancelled: boolean;
+			/** @description Cap on attending RSVPs (issue #318) — members and confirmed guests under one cap; null means unlimited. Beyond it, yes answers waitlist. */
+			capacity?: number | null;
 			/** @description Present on event detail, empty on lists */
 			comments: components['schemas']['Comment'][];
 			comments_locked: boolean;
@@ -2991,10 +2996,12 @@ export interface components {
 			location_name?: string | null;
 			location_url?: string | null;
 			/** @enum {string|null} */
-			my_rsvp?: 'yes' | 'no' | 'maybe' | null;
+			my_rsvp?: 'yes' | 'no' | 'maybe' | 'waitlisted' | null;
 			rsvp_counts: {
 				maybe: number;
 				no: number;
+				waitlisted: number;
+				/** @description The attending count capacity caps */
 				yes: number;
 			};
 			/**
@@ -3015,6 +3022,13 @@ export interface components {
 			starts_at: string;
 			timezone: string;
 			title: string;
+			/** @description The ordered waitlist — present on the authenticated event detail; empty on lists and on the public (tokenless) event read, which gets counts and capacity but no queued identities */
+			waitlist: {
+				attendee?: components['schemas']['Author'];
+				position: number;
+			}[];
+			/** @description The caller's 1-based spot in the queue — set only while waitlisted */
+			waitlist_position?: number | null;
 		};
 		/**
 		 * StoredFile
@@ -3131,7 +3145,8 @@ export interface components {
 				| 'reply'
 				| 'acknowledgment_required'
 				| 'event_created'
-				| 'event_reminder';
+				| 'event_reminder'
+				| 'event_promoted';
 			/** Format: uuid */
 			post_id?: string | null;
 			read: boolean;
@@ -3213,7 +3228,7 @@ export interface components {
 					event_id: string;
 					event_title: string;
 					/** @enum {string} */
-					status: 'yes' | 'no' | 'maybe';
+					status: 'yes' | 'no' | 'maybe' | 'waitlisted';
 				}[];
 				subscriptions: {
 					/** @enum {string} */
@@ -6584,7 +6599,7 @@ export interface operations {
 							/** Format: uuid */
 							event_id: string;
 							/** @enum {string} */
-							status: 'yes' | 'no' | 'maybe';
+							status: 'yes' | 'no' | 'maybe' | 'waitlisted';
 						};
 					};
 				};

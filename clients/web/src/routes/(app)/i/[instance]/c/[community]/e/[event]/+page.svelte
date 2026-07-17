@@ -193,11 +193,62 @@
 			{/if}
 
 			{#if !event.cancelled}
-				<RsvpControl {event} onRsvp={(status) => store?.rsvp(status)} />
+				<div class="flex flex-col gap-2">
+					<RsvpControl {event} onRsvp={(status) => store?.rsvp(status)} />
+
+					{#if event.capacity != null}
+						<p id="event-capacity-line" class="text-sm text-ink-muted">
+							{t('events.detail.attendingWithCapacity', {
+								attending: String(event.rsvp_counts.yes),
+								capacity: String(event.capacity)
+							})}
+							{#if event.rsvp_counts.yes >= event.capacity && event.my_rsvp !== 'yes' && event.my_rsvp !== 'waitlisted'}
+								· {t('events.detail.fullHint')}
+							{/if}
+						</p>
+					{/if}
+
+					{#if event.my_rsvp === 'waitlisted'}
+						<p
+							id="event-waitlist-notice"
+							class="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-accent"
+							role="status"
+						>
+							{#if event.waitlist_position != null}
+								{t('events.detail.waitlistPosition', {
+									position: String(event.waitlist_position)
+								})}
+							{:else}
+								{t('events.detail.waitlisted')}
+							{/if}
+						</p>
+					{/if}
+				</div>
 			{/if}
 
 			{#if event.description_markdown}
 				<Markdown source={event.description_markdown} class="text-ink" />
+			{/if}
+
+			{#if event.waitlist.length > 0}
+				<!-- The ordered queue — the attendee-list counterpart the organizer
+				     reads; the same name exposure slot claimants already have. -->
+				<section class="flex flex-col gap-2" aria-labelledby="event-waitlist-heading">
+					<h2
+						id="event-waitlist-heading"
+						class="text-xs font-medium tracking-wide text-ink-faint uppercase"
+					>
+						{t('events.detail.waitlistTitle')}
+					</h2>
+					<ol id="event-waitlist" class="flex flex-col gap-1">
+						{#each event.waitlist as entry (entry.position)}
+							<li class="text-sm text-ink">
+								<span class="text-ink-faint">{entry.position}.</span>
+								{entry.attendee?.display_name ?? t('feed.author.unknown')}
+							</li>
+						{/each}
+					</ol>
+				</section>
 			{/if}
 
 			<SlotList {event} store={store!} currentUserId={instance.user.id} />

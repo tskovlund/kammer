@@ -84,21 +84,29 @@ export async function fetchEventSeries(
 	});
 }
 
+/**
+ * The status the server actually recorded — `waitlisted` when a yes landed
+ * beyond the event's capacity (issue #318), so callers must read the
+ * outcome rather than assume the request stuck.
+ */
+export type RsvpOutcome = RsvpStatus | 'waitlisted';
+
 export async function rsvp(
 	instance: Instance,
 	communitySlug: string,
 	eventId: string,
 	status: RsvpStatus
-): Promise<void> {
+): Promise<RsvpOutcome> {
 	return guard(async () => {
-		const { error, response } = await client(instance).PUT(
+		const { data, error, response } = await client(instance).PUT(
 			'/api/v1/communities/{community_slug}/events/{event_id}/rsvp',
 			{
 				params: { path: { community_slug: communitySlug, event_id: eventId } },
 				body: { status }
 			}
 		);
-		if (error) throw fail(error, response, 'Could not save your RSVP.');
+		if (error || !data) throw fail(error, response, 'Could not save your RSVP.');
+		return data.data.status;
 	});
 }
 
@@ -403,6 +411,7 @@ export interface EventParamsErrors {
 	endsAtKey: MessageKey | null;
 	locationNameKey: MessageKey | null;
 	locationUrlKey: MessageKey | null;
+	capacityKey: MessageKey | null;
 	untilKey: MessageKey | null;
 	/** Fallback banner kind; null exactly when a field-level key was set. */
 	bannerKind: ApiErrorKind | null;
@@ -411,10 +420,11 @@ export interface EventParamsErrors {
 /**
  * Maps a failed event create/edit onto per-field keys. `location_url` is the
  * live #247 target (a non-http(s) link 422s), `ends_at` the end-before-start
- * cross-field check, and `until` the recurring-create date whose window is too
- * narrow to yield an occurrence. A lone unmapped field resolves to the banner;
- * a 422 naming both a mapped and an unmapped field shows the mapped one and
- * suppresses the banner that round — an accepted, UI-unreachable edge.
+ * cross-field check, `capacity` the positive-integer bound (issue #318), and
+ * `until` the recurring-create date whose window is too narrow to yield an
+ * occurrence. A lone unmapped field resolves to the banner; a 422 naming both
+ * a mapped and an unmapped field shows the mapped one and suppresses the
+ * banner that round — an accepted, UI-unreachable edge.
  */
 export function eventParamsErrorKeys(cause: unknown): EventParamsErrors {
 	if (cause instanceof ApiError && cause.kind === 'validation') {
@@ -426,13 +436,16 @@ export function eventParamsErrorKeys(cause: unknown): EventParamsErrors {
 		const locationUrlKey = cause.details.location_url
 			? ('events.field.error.locationUrl' as const)
 			: null;
+		const capacityKey = cause.details.capacity ? ('events.field.error.capacity' as const) : null;
 		const untilKey = cause.details.until ? ('events.field.error.until' as const) : null;
-		const matched = titleKey ?? endsAtKey ?? locationNameKey ?? locationUrlKey ?? untilKey;
+		const matched =
+			titleKey ?? endsAtKey ?? locationNameKey ?? locationUrlKey ?? capacityKey ?? untilKey;
 		return {
 			titleKey,
 			endsAtKey,
 			locationNameKey,
 			locationUrlKey,
+			capacityKey,
 			untilKey,
 			bannerKind: matched ? null : 'validation'
 		};
@@ -442,6 +455,7 @@ export function eventParamsErrorKeys(cause: unknown): EventParamsErrors {
 		endsAtKey: null,
 		locationNameKey: null,
 		locationUrlKey: null,
+		capacityKey: null,
 		untilKey: null,
 		bannerKind: errorKind(cause)
 	};
