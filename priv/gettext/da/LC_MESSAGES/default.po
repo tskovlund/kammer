@@ -4149,3 +4149,28 @@ msgstr "Bekræft, at det er dig"
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this, don't click the link — someone may have access to your account. Review your devices and sign out anything you don't recognize."
 msgstr "Hvis du ikke har bedt om dette, så lad være med at klikke på linket — nogen kan have adgang til din konto. Gennemgå dine enheder, og log alt ud, du ikke genkender."
+
+#: lib/kammer/guests/guest_notifier.ex:57
+#, elixir-autogen, elixir-format
+msgid "%{title} is currently full, so you're on the waitlist — we'll email you if a spot opens up."
+msgstr "Der er ikke flere pladser til %{title} lige nu, så du er på ventelisten — vi sender dig en e-mail, hvis der bliver en plads ledig."
+
+#: lib/kammer/guests/guest_notifier.ex:103
+#, elixir-autogen, elixir-format
+msgid "A spot opened up: %{title}"
+msgstr "Der blev en plads ledig: %{title}"
+
+#: lib/kammer/guests/guest_notifier.ex:107
+#, elixir-autogen, elixir-format
+msgid "A spot opened up for %{title} — you're now attending."
+msgstr "Der blev en plads ledig til %{title} — du er nu tilmeldt."
+
+#: lib/kammer/notifications/notification_email.ex:71
+#, elixir-autogen, elixir-format
+msgid "A spot opened up — you're attending %{title}"
+msgstr "Der blev en plads ledig — du er tilmeldt %{title}"
+
+#: lib/kammer/notifications/notification_email.ex:81
+#, elixir-autogen, elixir-format
+msgid "the event"
+msgstr "begivenheden"

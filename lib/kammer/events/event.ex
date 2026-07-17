@@ -10,6 +10,12 @@ defmodule Kammer.Events.Event do
   is the per-instance "cancel one date" override — the row (and its
   RSVPs/comments) stays, just excluded from listings, reminders, and
   ICS feeds.
+
+  `capacity` (issue #318) caps attending RSVPs — members and confirmed
+  guests count under the one cap; `nil` means unlimited. Beyond the cap
+  new "yes" answers become `:waitlisted` (`Kammer.Events.EventRsvp`),
+  and `Kammer.Events` promotes from the waitlist whenever seats free
+  up. Lowering the capacity never demotes anyone already attending.
   """
 
   use Ecto.Schema
@@ -31,6 +37,7 @@ defmodule Kammer.Events.Event do
     field :timezone, :string, default: "Etc/UTC"
     field :location_name, :string
     field :location_url, :string
+    field :capacity, :integer
     field :comment_locked_at, :utc_datetime
     field :cancelled_at, :utc_datetime
 
@@ -61,11 +68,13 @@ defmodule Kammer.Events.Event do
       :timezone,
       :location_name,
       :location_url,
+      :capacity,
       :community_id,
       :group_id,
       :created_by_user_id
     ])
     |> validate_required([:title, :starts_at, :community_id, :group_id])
+    |> validate_number(:capacity, greater_than: 0)
     |> validate_length(:title, min: 1, max: 200)
     |> validate_length(:description_markdown, max: 50_000)
     |> validate_length(:location_name, max: 200)

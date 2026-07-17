@@ -1,7 +1,7 @@
 import { ApiError, type ApiErrorKind } from '$lib/feed/api.js';
 import type { Instance } from '$lib/instances/types.js';
 import * as api from './api.js';
-import { applyRsvp, upsertComment } from './event-logic.js';
+import { applyRsvp, rsvpNeedsRefetch, upsertComment } from './event-logic.js';
 import type { Event, RsvpStatus } from './types.js';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
@@ -35,12 +35,29 @@ export function createEventStore(instance: Instance, communitySlug: string, even
 		}
 	}
 
+	// Quiet refetch after a write: replaces the event data in place without
+	// touching `loadState` — `load()` would flip the page back to its
+	// skeleton, remounting the comment form and losing any draft. A failed
+	// refresh keeps the current event and surfaces like any other action.
+	async function refresh(): Promise<void> {
+		try {
+			event = await api.fetchEvent(instance, communitySlug, eventId);
+		} catch (error) {
+			report(error);
+		}
+	}
+
 	async function rsvp(status: RsvpStatus): Promise<void> {
 		if (!event) return;
 		const previous = event;
 		event = applyRsvp(event, status);
 		try {
-			await api.rsvp(instance, communitySlug, eventId, status);
+			const outcome = await api.rsvp(instance, communitySlug, eventId, status);
+			// The optimistic patch only moves the caller's own row; when the
+			// outcome landed elsewhere than requested, or the write can have
+			// moved *other* rows (promotions, queue renumbering — issue #318),
+			// pull the server truth quietly rather than patch around it.
+			if (rsvpNeedsRefetch(previous, status, outcome)) await refresh();
 		} catch (error) {
 			event = previous;
 			report(error);

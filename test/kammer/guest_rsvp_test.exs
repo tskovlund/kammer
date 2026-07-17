@@ -1,5 +1,6 @@
 defmodule Kammer.GuestRsvpTest do
   use Kammer.DataCase, async: true
+  use Oban.Testing, repo: Kammer.Repo
 
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
@@ -77,6 +78,48 @@ defmodule Kammer.GuestRsvpTest do
 
     assert_received {:manage_token, manage_token}
     {event, identity, manage_token}
+  end
+
+  describe "capacity and waitlist (issue #318)" do
+    test "guests count under the one cap, hear about it, and are promoted by email" do
+      %{event: event, group: group, member: member} = public_event_context()
+      {:ok, event} = Events.update_event(member, event, %{"capacity" => 1})
+      {:ok, _seated} = Events.rsvp(member, event, :yes)
+
+      # The confirm flow records the RSVP as waitlisted, and the
+      # confirmation email says so rather than implying a seat.
+      token = request!(event, group, guest_attrs())
+
+      assert {:ok, _event, identity} =
+               Events.confirm_guest_rsvp(token, fn manage_token -> "manage/#{manage_token}" end)
+
+      rsvp = Repo.get_by!(EventRsvp, event_id: event.id, guest_identity_id: identity.id)
+      assert rsvp.status == :waitlisted
+
+      assert_email_sent(fn email ->
+        email.subject =~ "Your RSVP" and email.text_body =~ "you're on the waitlist"
+      end)
+
+      # The member's cancellation promotes the guest; delivery goes out
+      # by email (guests have no notification levels).
+      assert {:ok, _freed} = Events.rsvp(member, event, :no)
+      assert Repo.reload!(rsvp).status == :yes
+
+      args = %{
+        "type" => "event_promotion",
+        "event_id" => event.id,
+        "guest_identity_id" => identity.id
+      }
+
+      assert_enqueued(worker: Kammer.Workers.NotificationFanoutWorker, args: args)
+      drain_delivered_emails()
+      assert :ok = perform_job(Kammer.Workers.NotificationFanoutWorker, args)
+
+      assert_email_sent(fn email ->
+        Enum.any?(email.to, fn {_name, address} -> address == identity.email end) and
+          email.subject =~ "A spot opened up" and email.text_body =~ "you're now attending"
+      end)
+    end
   end
 
   describe "authorization" do

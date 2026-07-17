@@ -41,4 +41,63 @@ defmodule Kammer.Workers.NotificationFanoutWorker do
       event -> Notifications.fanout_event(event)
     end
   end
+
+  # Waitlist promotions (issue #318): one job per promoted RSVP,
+  # enqueued inside the promoting transaction. Delivery re-checks that
+  # the world still matches the promotion it reports: the event isn't
+  # cancelled (`cancelled_at: nil` in the match — "a spot opened up"
+  # for an event that won't happen is worse than silence), the RSVP
+  # still stands as attending — a promoted attendee may have cancelled
+  # again (or been erased) before the job ran — and the member is
+  # still in the host group: removal doesn't erase RSVPs, and
+  # `Notifications.effective_level/2` falls back to the group default
+  # for a non-member, so without this check a promotion would leak the
+  # event title (in-app, push, and email) to someone already removed.
+  def perform(%Oban.Job{
+        args: %{"type" => "event_promotion", "event_id" => event_id, "user_id" => user_id}
+      }) do
+    with %Kammer.Events.Event{cancelled_at: nil} = event <-
+           Repo.get(Kammer.Events.Event, event_id),
+         %Kammer.Accounts.User{} = user <- Repo.get(Kammer.Accounts.User, user_id),
+         %Kammer.Events.EventRsvp{status: :yes} <-
+           Repo.get_by(Kammer.Events.EventRsvp, event_id: event_id, user_id: user_id),
+         %Kammer.Groups.GroupMembership{} <-
+           Repo.get_by(Kammer.Groups.GroupMembership,
+             group_id: event.group_id,
+             user_id: user_id
+           ) do
+      Notifications.notify_waitlist_promotion(user, event)
+    else
+      _gone_or_changed -> :ok
+    end
+  end
+
+  # The guest twin re-checks the same cancellation and RSVP facts, and
+  # — in place of the member's group-membership check — that the group
+  # still allows guest RSVPs at all: a group sealed or switched off the
+  # public presets after the promotion must not email guests.
+  def perform(%Oban.Job{
+        args: %{
+          "type" => "event_promotion",
+          "event_id" => event_id,
+          "guest_identity_id" => guest_identity_id
+        }
+      }) do
+    with %Kammer.Events.Event{cancelled_at: nil} = event <-
+           Repo.get(Kammer.Events.Event, event_id),
+         %Kammer.Guests.GuestIdentity{} = identity <-
+           Repo.get(Kammer.Guests.GuestIdentity, guest_identity_id),
+         %Kammer.Events.EventRsvp{status: :yes} <-
+           Repo.get_by(Kammer.Events.EventRsvp,
+             event_id: event_id,
+             guest_identity_id: guest_identity_id
+           ),
+         %Kammer.Groups.Group{} = group <- Repo.get(Kammer.Groups.Group, event.group_id),
+         true <- Kammer.Authorization.can_guest_rsvp?(group) do
+      Kammer.Guests.GuestNotifier.deliver_waitlist_promoted(identity, event)
+      :ok
+    else
+      _gone_or_changed -> :ok
+    end
+  end
 end

@@ -66,7 +66,11 @@ function event(overrides: {
 		timezone: 'UTC',
 		cancelled: false,
 		comments_locked: false,
-		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
+		capacity: null,
+		rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 },
+		my_rsvp: null,
+		waitlist_position: null,
+		waitlist: [],
 		slots: [],
 		comments: [],
 		community: {

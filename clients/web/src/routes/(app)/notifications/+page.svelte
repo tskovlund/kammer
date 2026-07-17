@@ -38,6 +38,8 @@
 				return t('notifications.kind.eventCreated', { name });
 			case 'event_reminder':
 				return t('notifications.kind.eventReminder');
+			case 'event_promoted':
+				return t('notifications.kind.eventPromoted');
 			default:
 				return t('notifications.kind.post', { name });
 		}

@@ -22,14 +22,15 @@ export type RsvpStatus = 'yes' | 'no' | 'maybe';
  * page from `eventParamsErrorKeys`. Each is the message an `Input`'s `error`
  * prop renders, or `null` when that field is clean. Only the fields whose
  * changeset validations a form control can actually trip live here (title,
- * end time, the two location fields, and the create-only repeat-until date);
- * everything else falls to the shared banner.
+ * end time, the two location fields, capacity, and the create-only
+ * repeat-until date); everything else falls to the shared banner.
  */
 export interface EventFieldErrors {
 	title: string | null;
 	endsAt: string | null;
 	locationName: string | null;
 	locationUrl: string | null;
+	capacity: string | null;
 	until: string | null;
 }
 

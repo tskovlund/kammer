@@ -54,14 +54,24 @@ defmodule KammerWeb.Api.GuestController do
   @spec request_rsvp(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def request_rsvp(conn, %{"community_slug" => slug, "event_id" => event_id} = params) do
     with_viewable_event(conn, slug, event_id, fn event ->
-      attrs = Map.take(params, @guest_fields ++ ["status"])
+      # A status outside the request vocabulary — above all `waitlisted`,
+      # which is an outcome the server assigns, never one a caller may
+      # ask for (issue #318) — gets the same deliberate 400 the member
+      # RSVP and the guest manage endpoints give. A *missing* status
+      # still falls through to the changeset's required-field 422
+      # alongside the other form fields.
+      if is_map_key(params, "status") and not is_map_key(@statuses, params["status"]) do
+        ApiError.send(conn, :bad_request, "status must be one of yes, no, maybe.")
+      else
+        attrs = Map.take(params, @guest_fields ++ ["status"])
 
-      case Events.request_guest_rsvp(event, event.group, attrs,
-             client_ip: conn.remote_ip,
-             confirm_url_fun: &PublicLinks.confirm_url(conn, :rsvp, &1)
-           ) do
-        :ok -> confirmation_sent(conn)
-        error -> ApiError.from_result(conn, error)
+        case Events.request_guest_rsvp(event, event.group, attrs,
+               client_ip: conn.remote_ip,
+               confirm_url_fun: &PublicLinks.confirm_url(conn, :rsvp, &1)
+             ) do
+          :ok -> confirmation_sent(conn)
+          error -> ApiError.from_result(conn, error)
+        end
       end
     end)
   end

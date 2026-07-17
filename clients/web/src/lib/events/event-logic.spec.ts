@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyRsvp, claimedByMe, slotHasRoom, upsertComment } from './event-logic.js';
+import {
+	applyRsvp,
+	claimedByMe,
+	rsvpNeedsRefetch,
+	slotHasRoom,
+	upsertComment
+} from './event-logic.js';
 import type { Comment, Event } from './types.js';
 
 function baseEvent(overrides: Partial<Event> = {}): Event {
@@ -18,8 +24,11 @@ function baseEvent(overrides: Partial<Event> = {}): Event {
 		location_url: null,
 		cancelled: false,
 		comments_locked: false,
-		rsvp_counts: { yes: 0, maybe: 0, no: 0 },
+		capacity: null,
+		rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 },
 		my_rsvp: null,
+		waitlist_position: null,
+		waitlist: [],
 		slots: [],
 		comments: [],
 		...overrides
@@ -46,26 +55,68 @@ describe('applyRsvp', () => {
 	it('adds a first answer and bumps that count', () => {
 		const next = applyRsvp(baseEvent(), 'yes');
 		expect(next.my_rsvp).toBe('yes');
-		expect(next.rsvp_counts).toEqual({ yes: 1, maybe: 0, no: 0 });
+		expect(next.rsvp_counts).toEqual({ yes: 1, maybe: 0, no: 0, waitlisted: 0 });
 	});
 
 	it('moves the answer, shifting counts both ways', () => {
-		const event = baseEvent({ my_rsvp: 'yes', rsvp_counts: { yes: 3, maybe: 1, no: 0 } });
+		const event = baseEvent({
+			my_rsvp: 'yes',
+			rsvp_counts: { yes: 3, maybe: 1, no: 0, waitlisted: 0 }
+		});
 		const next = applyRsvp(event, 'maybe');
 		expect(next.my_rsvp).toBe('maybe');
-		expect(next.rsvp_counts).toEqual({ yes: 2, maybe: 2, no: 0 });
+		expect(next.rsvp_counts).toEqual({ yes: 2, maybe: 2, no: 0, waitlisted: 0 });
+	});
+
+	it('never pretends a waitlisted viewer got seated, but lets them leave the queue', () => {
+		// A yes while waitlisted keeps the queue spot server-side (issue
+		// #318), so optimism must not fake a seat…
+		const queued = baseEvent({
+			capacity: 1,
+			my_rsvp: 'waitlisted',
+			waitlist_position: 2,
+			rsvp_counts: { yes: 1, maybe: 0, no: 0, waitlisted: 2 }
+		});
+		expect(applyRsvp(queued, 'yes')).toBe(queued);
+
+		// …while declining really does leave the waitlist.
+		const declined = applyRsvp(queued, 'no');
+		expect(declined.my_rsvp).toBe('no');
+		expect(declined.waitlist_position).toBeNull();
+		expect(declined.rsvp_counts).toEqual({ yes: 1, maybe: 0, no: 1, waitlisted: 1 });
 	});
 
 	it('is a no-op when re-selecting the same answer', () => {
-		const event = baseEvent({ my_rsvp: 'no', rsvp_counts: { yes: 0, maybe: 0, no: 1 } });
+		const event = baseEvent({
+			my_rsvp: 'no',
+			rsvp_counts: { yes: 0, maybe: 0, no: 1, waitlisted: 0 }
+		});
 		expect(applyRsvp(event, 'no')).toBe(event);
 	});
 
 	it('never drives a count below zero', () => {
-		const event = baseEvent({ my_rsvp: 'yes', rsvp_counts: { yes: 0, maybe: 0, no: 0 } });
+		const event = baseEvent({
+			my_rsvp: 'yes',
+			rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 }
+		});
 		const next = applyRsvp(event, 'no');
 		expect(next.rsvp_counts.yes).toBe(0);
 		expect(next.rsvp_counts.no).toBe(1);
+	});
+});
+
+describe('rsvpNeedsRefetch', () => {
+	it('refetches any yes→away on a capped event, even when the snapshot shows no queue', () => {
+		// The snapshot may be stale — a queue can have formed (or a cap been
+		// added in another tab) since load — so a freed seat's effects are
+		// re-read from the server, never inferred from local counts.
+		const counts = { yes: 2, maybe: 0, no: 0, waitlisted: 0 };
+		const capped = baseEvent({ capacity: 2, my_rsvp: 'yes', rsvp_counts: counts });
+		expect(rsvpNeedsRefetch(capped, 'no', 'no')).toBe(true);
+
+		// Uncapped, a freed seat promotes nobody: the optimistic patch stands.
+		const uncapped = baseEvent({ my_rsvp: 'yes', rsvp_counts: counts });
+		expect(rsvpNeedsRefetch(uncapped, 'no', 'no')).toBe(false);
 	});
 });
 

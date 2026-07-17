@@ -20,6 +20,7 @@
 		endsAt: null,
 		locationName: null,
 		locationUrl: null,
+		capacity: null,
 		until: null
 	};
 
@@ -50,6 +51,10 @@
 	let locationName = $state(initial?.location_name ?? '');
 	// svelte-ignore state_referenced_locally
 	let locationUrl = $state(initial?.location_url ?? '');
+	// Capacity is optional (issue #318): empty = unlimited. Held as string
+	// for the shared `Input`; parsed back to a number (or null) on submit.
+	// svelte-ignore state_referenced_locally
+	let capacity = $state(initial?.capacity != null ? String(initial.capacity) : '');
 
 	// Recurrence is create-only (ADR 0019: editing is per-occurrence).
 	let repeats = $state(false);
@@ -70,6 +75,14 @@
 		submitEvent.preventDefault();
 		if (!canSubmit) return;
 
+		// A `type="number"` input hands its binding back as a number (or
+		// null when cleared) despite the string-typed prop — normalize.
+		const capacityText = capacity == null ? '' : String(capacity).trim();
+		// `Number(<garbage>)` is NaN, which JSON.stringify serializes as
+		// null — junk input would silently become "unlimited". Guard so a
+		// non-finite parse is an explicit null, not an accidental one.
+		const parsedCapacity = Number(capacityText);
+
 		const params: EventParams = {
 			title: title.trim(),
 			description_markdown: description.trim() || null,
@@ -78,7 +91,8 @@
 			all_day: allDay,
 			timezone: browserTz,
 			location_name: locationName.trim() || null,
-			location_url: locationUrl.trim() || null
+			location_url: locationUrl.trim() || null,
+			capacity: capacityText === '' || !Number.isFinite(parsedCapacity) ? null : parsedCapacity
 		};
 
 		if (mode === 'create' && repeats && until) {
@@ -149,6 +163,19 @@
 			inputmode="url"
 		/>
 	</div>
+
+	<Input
+		id="event-form-capacity"
+		class="sm:max-w-48"
+		type="number"
+		min="1"
+		step="1"
+		inputmode="numeric"
+		label={t('events.form.capacity')}
+		hint={t('events.form.capacityHint')}
+		bind:value={capacity}
+		error={errors.capacity}
+	/>
 
 	{#if mode === 'create'}
 		<div class="flex flex-col gap-3 rounded-lg border border-line p-3">

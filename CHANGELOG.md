@@ -41,6 +41,24 @@ and this project adheres to
   accent. Merged, multi-community surfaces (Home, cross-instance
   lists) and the app chrome keep the neutral default.
 
+- Per-event capacity limit with an automatic ordered waitlist (issue
+  #318). An event can now cap its attending RSVPs (`capacity`, empty =
+  unlimited, set from the event form): once full, further "yes"
+  answers — member and confirmed-guest alike, one cap over the whole
+  RSVP set — land on a waitlist in arrival order, shown to the caller
+  ("You're #3 on the waitlist") and to members on the event page as an
+  ordered waitlist section (the public event read carries counts only,
+  never queued identities). A freed seat (an attendee cancelling, the
+  organizer raising or removing the cap) promotes from the front of the
+  queue atomically — concurrent writes serialize on a row lock, so a
+  seat is never double-filled — and the promoted member is notified
+  through the notification machinery at their level (new
+  `event_promoted` kind); a promoted guest gets an email, and a guest
+  whose RSVP queued is told so in their confirmation email. Lowering
+  the capacity never demotes anyone already attending. Deliberately
+  decoupled from ticketing (#133): capacity is a small delta on the
+  existing RSVP machinery.
+
 - Newsletter subscription form on the PWA's public group page (issue
   #185, part of #187, SPEC §8). When a group opts guests into its
   newsletter (`guest_subscribe_allowed`), its public page now offers a

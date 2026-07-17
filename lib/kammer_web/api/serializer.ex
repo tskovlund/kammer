@@ -46,6 +46,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Feed.PostAttachment
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
+  alias Kammer.Groups
   alias Kammer.Groups.Group
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
@@ -365,8 +366,16 @@ defmodule KammerWeb.Api.Serializer do
       location_url: if(Validation.http_url?(event.location_url), do: event.location_url),
       cancelled: event.cancelled_at != nil,
       comments_locked: event.comment_locked_at != nil,
+      # `rsvp_counts.yes` is the attending count a capacity is measured
+      # against (issue #318); the named `waitlist` is member-gated —
+      # see `waitlist/2`. Counts, capacity, and the caller's own
+      # `my_rsvp`/`waitlist_position` answer every caller the read
+      # itself admits.
+      capacity: event.capacity,
       rsvp_counts: rsvp_counts(event),
       my_rsvp: my_rsvp && my_rsvp.status,
+      waitlist_position: waitlist_position(event, my_rsvp),
+      waitlist: waitlist(event, viewer),
       slots: slots(event),
       comments:
         if(is_list(event.comments),
@@ -701,20 +710,87 @@ defmodule KammerWeb.Api.Serializer do
         title: slot.title,
         capacity: slot.capacity,
         taken: if(is_list(slot.claims), do: length(slot.claims), else: 0),
-        claimants: if(is_list(slot.claims), do: Enum.map(slot.claims, &claimant/1), else: [])
+        claimants: if(is_list(slot.claims), do: Enum.map(slot.claims, &participant/1), else: [])
       }
     end)
   end
 
   defp slots(_event), do: []
 
-  defp claimant(%{user: %{id: id, display_name: name}}),
+  # The ordered waitlist (issue #318), names included — member-visible
+  # only (SPEC §6). Disclosure symmetry: attending identities are never
+  # serialized at all, so queueing must not expose more identity than
+  # attending does — the named queue answers only viewers who hold a
+  # membership in the event's host group. Everyone else — lists,
+  # viewerless (public) reads, and authenticated non-members alike —
+  # gets `[]`; the caller's own `waitlist_position` is unaffected.
+  # The membership lookup is the one viewer-dependent read here that
+  # costs a query, kept deliberately last so it runs only when a
+  # loaded, non-empty queue is about to be emitted (the detail read) —
+  # lists and public reads never pay it.
+  defp waitlist(%Event{rsvps: rsvps} = event, viewer) when is_list(rsvps) do
+    waitlisted = waitlisted_in_order(rsvps)
+
+    if waitlisted != [] and Enum.all?(waitlisted, &rsvp_identity_loaded?/1) and
+         host_group_member?(event, viewer) do
+      waitlisted
+      |> Enum.with_index(1)
+      |> Enum.map(fn {rsvp, position} ->
+        %{position: position, attendee: participant(rsvp)}
+      end)
+    else
+      []
+    end
+  end
+
+  defp waitlist(_event, _viewer), do: []
+
+  defp host_group_member?(%Event{group: %Group{} = group}, %User{} = viewer),
+    do: Groups.get_membership(group, viewer) != nil
+
+  defp host_group_member?(_event, _viewer), do: false
+
+  # The caller's 1-based spot in the queue, from the already-loaded
+  # RSVPs — same order the context promotes in (waitlisted_at, then id).
+  defp waitlist_position(
+         %Event{rsvps: rsvps},
+         %Kammer.Events.EventRsvp{status: :waitlisted} = my_rsvp
+       )
+       when is_list(rsvps) do
+    rsvps
+    |> waitlisted_in_order()
+    |> Enum.find_index(&(&1.id == my_rsvp.id))
+    |> then(&(&1 && &1 + 1))
+  end
+
+  defp waitlist_position(_event, _my_rsvp), do: nil
+
+  defp waitlisted_in_order(rsvps) do
+    rsvps
+    |> Enum.filter(&(&1.status == :waitlisted))
+    |> Enum.sort_by(&waitlist_sort_key/1)
+  end
+
+  # DateTime structs don't sort chronologically under term order —
+  # compare by microseconds since the epoch, id as the tiebreaker. A
+  # missing `waitlisted_at` sorts LAST, matching the promotion query
+  # (`ORDER BY waitlisted_at ASC` — Postgres puts NULLs last on ASC),
+  # so a displayed position can never contradict promotion order.
+  defp waitlist_sort_key(%{waitlisted_at: %DateTime{} = waitlisted_at, id: id}),
+    do: {0, DateTime.to_unix(waitlisted_at, :microsecond), id}
+
+  defp waitlist_sort_key(%{id: id}), do: {1, 0, id}
+
+  defp rsvp_identity_loaded?(%{user_id: nil} = rsvp), do: Ecto.assoc_loaded?(rsvp.guest_identity)
+  defp rsvp_identity_loaded?(rsvp), do: Ecto.assoc_loaded?(rsvp.user)
+
+  defp participant(%{user: %{id: id, display_name: name}}),
     do: %{type: "user", id: id, display_name: name}
 
-  defp claimant(%{guest_identity: %Kammer.Guests.GuestIdentity{} = guest}),
+  defp participant(%{guest_identity: %Kammer.Guests.GuestIdentity{} = guest}),
     do: %{type: "guest", id: guest.id, display_name: guest.display_name}
 
-  defp claimant(_claim), do: nil
+  defp participant(_holder), do: nil
 
   defp reaction_counts(reactions) when is_list(reactions) do
     reactions
@@ -1110,14 +1186,14 @@ defmodule KammerWeb.Api.Serializer do
 
   defp rsvp_counts(%Event{rsvps: rsvps}) when is_list(rsvps) do
     Map.merge(
-      %{yes: 0, maybe: 0, no: 0},
+      %{yes: 0, maybe: 0, no: 0, waitlisted: 0},
       rsvps
       |> Enum.group_by(& &1.status)
       |> Map.new(fn {status, list} -> {status, length(list)} end)
     )
   end
 
-  defp rsvp_counts(_event), do: %{yes: 0, maybe: 0, no: 0}
+  defp rsvp_counts(_event), do: %{yes: 0, maybe: 0, no: 0, waitlisted: 0}
 
   @doc """
   A guest's full management inventory (issue #185): everything behind

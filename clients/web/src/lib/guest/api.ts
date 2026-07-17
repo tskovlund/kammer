@@ -4,7 +4,12 @@ import type { components } from '$lib/api/schema.js';
 
 export type GuestConfirmation = components['schemas']['GuestConfirmation']['data'];
 export type GuestManageState = components['schemas']['GuestManageState']['data'];
-export type GuestRsvpStatus = GuestManageState['rsvps'][number]['status'];
+/**
+ * What a guest may ask for — `waitlisted` appears in manage-state reads
+ * but is derived server-side from the event's capacity (issue #318),
+ * never requested.
+ */
+export type GuestRsvpStatus = Exclude<GuestManageState['rsvps'][number]['status'], 'waitlisted'>;
 export type GuestCadence = GuestManageState['subscriptions'][number]['cadence'];
 
 /**

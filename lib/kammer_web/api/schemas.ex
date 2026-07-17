@@ -654,16 +654,49 @@ defmodule KammerWeb.Api.Schemas do
           description: "A cancelled occurrence stays viewable but leaves listings and feeds"
         },
         comments_locked: %Schema{type: :boolean},
+        capacity: %Schema{
+          type: :integer,
+          nullable: true,
+          description:
+            "Cap on attending RSVPs (issue #318) — members and confirmed guests " <>
+              "under one cap; null means unlimited. Beyond it, yes answers waitlist."
+        },
         rsvp_counts: %Schema{
           type: :object,
           properties: %{
-            yes: %Schema{type: :integer},
+            yes: %Schema{type: :integer, description: "The attending count capacity caps"},
             maybe: %Schema{type: :integer},
-            no: %Schema{type: :integer}
+            no: %Schema{type: :integer},
+            waitlisted: %Schema{type: :integer}
           },
-          required: [:yes, :maybe, :no]
+          required: [:yes, :maybe, :no, :waitlisted]
         },
-        my_rsvp: %Schema{type: :string, enum: ["yes", "no", "maybe"], nullable: true},
+        my_rsvp: %Schema{
+          type: :string,
+          enum: ["yes", "no", "maybe", "waitlisted"],
+          nullable: true
+        },
+        waitlist_position: %Schema{
+          type: :integer,
+          nullable: true,
+          description: "The caller's 1-based spot in the queue — set only while waitlisted"
+        },
+        waitlist: %Schema{
+          type: :array,
+          description:
+            "The ordered waitlist — member-visible (SPEC §6): present on " <>
+              "the event detail for host-group members; empty on lists, " <>
+              "for authenticated non-members, and on the public (tokenless) " <>
+              "event read, which get counts and capacity but no queued identities",
+          items: %Schema{
+            type: :object,
+            properties: %{
+              position: %Schema{type: :integer},
+              attendee: Author
+            },
+            required: [:position]
+          }
+        },
         slots: %Schema{
           type: :array,
           description: "Volunteer signup slots — present on event detail, empty on lists",
@@ -694,7 +727,11 @@ defmodule KammerWeb.Api.Schemas do
         :timezone,
         :cancelled,
         :comments_locked,
+        :capacity,
         :rsvp_counts,
+        :my_rsvp,
+        :waitlist_position,
+        :waitlist,
         :slots,
         :comments
       ]
@@ -722,6 +759,14 @@ defmodule KammerWeb.Api.Schemas do
         timezone: %Schema{type: :string, nullable: true},
         location_name: %Schema{type: :string, nullable: true},
         location_url: %Schema{type: :string, nullable: true},
+        capacity: %Schema{
+          type: :integer,
+          minimum: 1,
+          nullable: true,
+          description:
+            "Cap on attending RSVPs (issue #318); null/absent means unlimited. " <>
+              "Raising it promotes from the waitlist; lowering never demotes."
+        },
         recurrence: %Schema{
           type: :object,
           nullable: true,
@@ -761,7 +806,8 @@ defmodule KammerWeb.Api.Schemas do
             "reply",
             "acknowledgment_required",
             "event_created",
-            "event_reminder"
+            "event_reminder",
+            "event_promoted"
           ]
         },
         read: %Schema{type: :boolean},
@@ -1755,9 +1801,10 @@ defmodule KammerWeb.Api.Schemas do
                 properties: %{
                   yes: %Schema{type: :integer},
                   maybe: %Schema{type: :integer},
-                  no: %Schema{type: :integer}
+                  no: %Schema{type: :integer},
+                  waitlisted: %Schema{type: :integer}
                 },
-                required: [:yes, :maybe, :no]
+                required: [:yes, :maybe, :no, :waitlisted]
               }
             },
             required: [:id, :starts_at, :all_day, :cancelled, :rsvp_counts]
@@ -1795,7 +1842,7 @@ defmodule KammerWeb.Api.Schemas do
                         "attendance.occurrences; null where they haven't answered",
                     items: %Schema{
                       type: :string,
-                      enum: ["yes", "no", "maybe"],
+                      enum: ["yes", "no", "maybe", "waitlisted"],
                       nullable: true
                     }
                   }
@@ -2050,7 +2097,7 @@ defmodule KammerWeb.Api.Schemas do
                 properties: %{
                   event_id: %Schema{type: :string, format: :uuid},
                   event_title: %Schema{type: :string},
-                  status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}
+                  status: %Schema{type: :string, enum: ["yes", "no", "maybe", "waitlisted"]}
                 },
                 required: [:event_id, :event_title, :status]
               }

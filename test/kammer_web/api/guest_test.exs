@@ -113,6 +113,19 @@ defmodule KammerWeb.Api.GuestTest do
       assert %{"error" => %{"code" => "rate_limited"}} =
                public_conn() |> post(path, params) |> json_response(429)
     end
+
+    test "waitlisted is an outcome, never a requestable status (issue #318)", %{
+      community: community,
+      event: event
+    } do
+      assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =
+               public_conn()
+               |> post(
+                 ~p"/api/v1/communities/#{community.slug}/events/#{event.id}/guest-rsvp",
+                 Map.put(guest(), "status", "waitlisted")
+               )
+               |> json_response(400)
+    end
   end
 
   describe "signup claim" do

@@ -289,14 +289,17 @@ defmodule KammerWeb.Api.PublicControllerTest do
       group: group
     } do
       organizer = group_member_fixture(group)
+      waitlisted_member = group_member_fixture(group)
 
       {:ok, event} =
         Events.create_event(organizer, group, %{
           "title" => "Open rehearsal",
-          "starts_at" => DateTime.add(DateTime.utc_now(:second), 3600)
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 3600),
+          "capacity" => 1
         })
 
       {:ok, _rsvp} = Events.rsvp(organizer, event, :yes)
+      {:ok, _queued} = Events.rsvp(waitlisted_member, event, :yes)
 
       body =
         public_conn()
@@ -308,6 +311,13 @@ defmodule KammerWeb.Api.PublicControllerTest do
       assert body["data"]["rsvp_counts"]["yes"] == 1
       refute Map.has_key?(body["data"], "rsvps")
       assert body["data"]["slots"] == []
+
+      # Counts and capacity are public; who is queued is not — attending
+      # identities are never serialized, and the named waitlist is
+      # member-visible only (issue #318).
+      assert body["data"]["capacity"] == 1
+      assert body["data"]["rsvp_counts"]["waitlisted"] == 1
+      assert body["data"]["waitlist"] == []
     end
 
     test "a sealed public_listed group's event 404s, matching a nonexistent event", %{

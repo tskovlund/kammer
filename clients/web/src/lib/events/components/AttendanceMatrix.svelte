@@ -11,10 +11,15 @@
 
 	type Status = EventSeriesDetail['attendance']['rows'][number]['statuses'][number];
 
-	const glyphs: Record<'yes' | 'maybe' | 'no', string> = { yes: '✅', maybe: '❔', no: '❌' };
+	const glyphs: Record<'yes' | 'maybe' | 'no' | 'waitlisted', string> = {
+		yes: '✅',
+		maybe: '❔',
+		no: '❌',
+		waitlisted: '⏳'
+	};
 
 	function glyph(status: Status): string {
-		return status === 'yes' || status === 'maybe' || status === 'no' ? glyphs[status] : '—';
+		return status ? glyphs[status] : '—';
 	}
 
 	// The cell's accessible name is the RSVP word; the glyph is decorative.

@@ -1294,7 +1294,7 @@ defmodule KammerWeb.ApiSpec do
       "/api/v1/communities/{community_slug}/events/{event_id}/rsvp" => %PathItem{
         put:
           operation(
-            "Set my RSVP",
+            "Set my RSVP — a yes beyond the event's capacity answers waitlisted (issue #318)",
             :events_rsvp,
             event_params(),
             request_body:
@@ -1304,7 +1304,7 @@ defmodule KammerWeb.ApiSpec do
                 type: :object,
                 properties: %{
                   event_id: %Schema{type: :string, format: :uuid},
-                  status: %Schema{type: :string, enum: ["yes", "no", "maybe"]}
+                  status: %Schema{type: :string, enum: ["yes", "no", "maybe", "waitlisted"]}
                 },
                 required: [:event_id, :status]
               })

@@ -143,6 +143,98 @@ defmodule KammerWeb.Api.EventWritesTest do
     end
   end
 
+  describe "capacity and waitlist (issue #318)" do
+    test "create carries the cap; zero is a 422 keyed on capacity", %{
+      creator: creator,
+      create_path: path
+    } do
+      body =
+        creator
+        |> api_conn()
+        |> post(path, %{
+          "title" => "Lille sal",
+          "starts_at" => DateTime.to_iso8601(starts_at()),
+          "capacity" => 40
+        })
+        |> tap(&assert_operation_response(&1, "events_create"))
+        |> json_response(201)
+
+      assert body["data"]["capacity"] == 40
+
+      %{"error" => %{"details" => details}} =
+        creator
+        |> api_conn()
+        |> post(path, %{
+          "title" => "Ingen plads",
+          "starts_at" => DateTime.to_iso8601(starts_at()),
+          "capacity" => 0
+        })
+        |> json_response(422)
+
+      assert details["capacity"]
+    end
+
+    test "an RSVP past the cap answers waitlisted, and the detail carries the queue", %{
+      community: community,
+      creator: creator,
+      group: group,
+      member: member
+    } do
+      %{event: event} = create_event(creator, community, group, %{"capacity" => 1})
+      {:ok, _seated} = Events.rsvp(creator, event, :yes)
+
+      %{"data" => %{"status" => "waitlisted"}} =
+        member
+        |> api_conn()
+        |> put(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/rsvp", %{
+          "status" => "yes"
+        })
+        |> tap(&assert_operation_response(&1, "events_rsvp"))
+        |> json_response(200)
+
+      %{"data" => shown} =
+        member
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}")
+        |> tap(&assert_operation_response(&1, "events_show"))
+        |> json_response(200)
+
+      assert shown["capacity"] == 1
+      assert shown["my_rsvp"] == "waitlisted"
+      assert shown["waitlist_position"] == 1
+      assert shown["rsvp_counts"] == %{"yes" => 1, "maybe" => 0, "no" => 0, "waitlisted" => 1}
+
+      assert [%{"position" => 1, "attendee" => attendee}] = shown["waitlist"]
+      assert attendee["display_name"] == member.display_name
+
+      # The named queue is member-visible only (SPEC §6): an
+      # authenticated viewer outside the host group — here a community
+      # member who can view the group's events but holds no membership
+      # — gets counts and capacity, never queued identities (attending
+      # identities aren't serialized either, so queueing must not
+      # disclose more than attending does).
+      %{"data" => outsider_view} =
+        member_fixture(community)
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}")
+        |> json_response(200)
+
+      assert outsider_view["waitlist"] == []
+      assert outsider_view["capacity"] == 1
+      assert outsider_view["rsvp_counts"]["waitlisted"] == 1
+
+      # `waitlisted` is an outcome the server assigns, never a status a
+      # caller may request — the endpoint's vocabulary stays yes/no/maybe.
+      assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =
+               member
+               |> api_conn()
+               |> put(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/rsvp", %{
+                 "status" => "waitlisted"
+               })
+               |> json_response(400)
+    end
+  end
+
   describe "edit and delete" do
     test "the creator edits; another member may not", %{
       community: community,
