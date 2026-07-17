@@ -4,11 +4,12 @@
 	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import { fetchCommunity } from '$lib/feed/api.js';
 	import type { Community } from '$lib/feed/types.js';
-	import { fetchAuditLog, type AuditEvent } from '$lib/manage/api.js';
+	import { fetchAuditLogPage, type AuditEvent } from '$lib/manage/api.js';
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Card from '$lib/ui/Card.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import ErrorBanner from '$lib/ui/ErrorBanner.svelte';
 	import RelativeTime from '$lib/ui/RelativeTime.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
@@ -18,8 +19,16 @@
 
 	let community = $state<Community | null>(null);
 	let events = $state<AuditEvent[]>([]);
+	// Non-null exactly when there's an older page left to fetch (#340) —
+	// same contract as the notification center's per-account cursor.
+	let nextCursor = $state<string | null>(null);
 	let loading = $state(true);
+	let loadingMore = $state(false);
 	let error = $state<ApiErrorKind | null>(null);
+	// Kept separate from `error`: a failed "show older" must not blank the
+	// page already showing older entries (mirrors the group feed's
+	// load-more `actionError`), so the cursor is left untouched for retry.
+	let loadMoreError = $state<ApiErrorKind | null>(null);
 
 	const canManage = $derived(community?.viewer_can.includes('manage_community') ?? false);
 
@@ -31,18 +40,20 @@
 		let cancelled = false;
 		loading = true;
 		error = null;
+		loadMoreError = null;
 
 		(async () => {
 			try {
 				// The audit read is silently empty for non-admins (no-oracle),
 				// so the community's `viewer_can` is what gates the page.
-				const [resolvedCommunity, resolvedEvents] = await Promise.all([
+				const [resolvedCommunity, firstPage] = await Promise.all([
 					fetchCommunity(inst, slug),
-					fetchAuditLog(inst, slug)
+					fetchAuditLogPage(inst, slug)
 				]);
 				if (cancelled) return;
 				community = resolvedCommunity;
-				events = resolvedEvents;
+				events = firstPage.events;
+				nextCursor = firstPage.nextCursor;
 			} catch (cause) {
 				if (!cancelled) error = errorKind(cause);
 			} finally {
@@ -54,6 +65,32 @@
 			cancelled = true;
 		};
 	});
+
+	async function loadMore(): Promise<void> {
+		if (!instance || !nextCursor || loadingMore) return;
+		const requested = instance;
+		const slug = page.params.community;
+		if (!slug) return;
+
+		loadingMore = true;
+		loadMoreError = null;
+		try {
+			const nextPage = await fetchAuditLogPage(requested, slug, nextCursor);
+			// SvelteKit reuses this component across param changes, and unlike
+			// the group feed there's no per-community store to abandon — so a
+			// page that resolves after navigating away must not splice one
+			// community's log into another's.
+			if (page.params.community !== slug || instance !== requested) return;
+			events = [...events, ...nextPage.events];
+			nextCursor = nextPage.nextCursor;
+		} catch (cause) {
+			if (page.params.community === slug && instance === requested) {
+				loadMoreError = errorKind(cause);
+			}
+		} finally {
+			loadingMore = false;
+		}
+	}
 
 	const backHref = $derived(
 		resolve(`/i/${page.params.instance}/c/${page.params.community}/moderation`)
@@ -104,4 +141,22 @@
 			</div>
 		{/each}
 	</Card>
+
+	{#if loadMoreError}
+		<ErrorBanner kind={loadMoreError} ondismiss={() => (loadMoreError = null)} class="mt-4" />
+	{/if}
+
+	{#if nextCursor}
+		<div class="mt-4 flex justify-center">
+			<button
+				type="button"
+				id="audit-log-load-more"
+				onclick={() => loadMore()}
+				disabled={loadingMore}
+				class="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors duration-150 hover:border-ink-faint/60 disabled:opacity-60"
+			>
+				{loadingMore ? t('common.loading') : t('manage.moderation.audit.loadMore')}
+			</button>
+		</div>
+	{/if}
 {/if}

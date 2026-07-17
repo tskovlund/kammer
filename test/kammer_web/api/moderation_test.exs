@@ -18,6 +18,7 @@ defmodule KammerWeb.Api.ModerationTest do
   import OpenApiSpex.TestAssertions
 
   alias Kammer.Assignments
+  alias Kammer.Audit
   alias Kammer.Events
   alias Kammer.Feed
   alias Kammer.Groups.Group
@@ -628,6 +629,29 @@ defmodule KammerWeb.Api.ModerationTest do
         |> json_response(200)
 
       assert Enum.any?(body["data"], &(&1["action"] == "report.dismissed"))
+    end
+
+    test "cursor-paginates newest first (issue #340)", %{community: community, owner: owner} do
+      for summary <- ["one", "two", "three"] do
+        Audit.record(community, owner, "community.settings_updated", summary)
+      end
+
+      %{"data" => [first, second], "next_cursor" => cursor} =
+        owner
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/audit-log?limit=2")
+        |> json_response(200)
+
+      assert cursor
+      assert [first["summary"], second["summary"]] == ["three", "two"]
+
+      %{"data" => [third], "next_cursor" => nil} =
+        owner
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/audit-log?limit=2&after=#{cursor}")
+        |> json_response(200)
+
+      assert third["summary"] == "one"
     end
   end
 end

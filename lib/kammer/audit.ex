@@ -47,23 +47,74 @@ defmodule Kammer.Audit do
   end
 
   @doc """
-  A page of the community's audit log, newest first. Community admins
-  only — everyone else gets an empty list, the same not-found-shaped
-  silence the rest of the product uses for things you can't see.
+  The capped recent slice of the community's audit log, newest first —
+  the context tests' read-back helper; the API paginates via
+  `list_events_page/4` instead. Community admins only — everyone else
+  gets an empty list, the same not-found-shaped silence the rest of
+  the product uses for things you can't see.
   """
-  @spec list_events(User.t() | nil, Community.t(), keyword()) :: [AuditEvent.t()]
-  def list_events(actor, %Community{} = community, opts \\ []) do
+  @spec list_events(User.t() | nil, Community.t()) :: [AuditEvent.t()]
+  def list_events(actor, %Community{} = community) do
     if Authorization.can?(actor, :manage_community, community) do
       Repo.all(
         from(event in AuditEvent,
           where: event.community_id == ^community.id,
           order_by: [desc: event.inserted_at],
-          limit: ^Keyword.get(opts, :limit, @per_page),
+          limit: @per_page,
           preload: [:actor_user]
         )
       )
     else
       []
+    end
+  end
+
+  @doc """
+  One cursor page of the community's audit log, newest first (issue
+  #340) — same contract as `Kammer.Notifications.list_notifications_page/3`:
+  `{events, next_cursor}`, `next_cursor` `nil` on the last page. Gated
+  the same way as `list_events/2`: anyone but a community admin sees
+  an empty page with no cursor, never an error that would confirm the
+  log exists.
+  """
+  @spec list_events_page(
+          User.t() | nil,
+          Community.t(),
+          {DateTime.t(), Ecto.UUID.t()} | nil,
+          pos_integer()
+        ) :: {[AuditEvent.t()], {DateTime.t(), Ecto.UUID.t()} | nil}
+  def list_events_page(actor, %Community{} = community, cursor, limit)
+      when limit > 0 and limit <= 100 do
+    if Authorization.can?(actor, :manage_community, community) do
+      query =
+        from(event in AuditEvent,
+          where: event.community_id == ^community.id,
+          order_by: [desc: event.inserted_at, desc: event.id],
+          limit: ^(limit + 1),
+          preload: [:actor_user]
+        )
+
+      query =
+        case cursor do
+          nil ->
+            query
+
+          {cursor_at, cursor_id} ->
+            from(event in query,
+              where:
+                event.inserted_at < ^cursor_at or
+                  (event.inserted_at == ^cursor_at and event.id < ^cursor_id)
+            )
+        end
+
+      events = Repo.all(query)
+
+      case Enum.split(events, limit) do
+        {page, []} -> {page, nil}
+        {page, _more} -> {page, page |> List.last() |> then(&{&1.inserted_at, &1.id})}
+      end
+    else
+      {[], nil}
     end
   end
 end

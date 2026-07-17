@@ -397,6 +397,23 @@ and this project adheres to
 
 ### Fixed
 
+- Community audit log cursor pagination (issue #340, 2026-07-17
+  dismissal audit). `Audit.list_events` hard-capped at 50 rows with no
+  way to see anything older, the API took no pagination params, and
+  the PWA audit page fetched once — an append-only accountability log
+  that silently dropped history for any active community. Originally
+  dismissed as "parity with the LiveView ceiling," which is exactly
+  the limitation-carry-forward this file's process section bars.
+  `GET /api/v1/communities/{slug}/audit-log` now takes the same
+  `after`/`limit` cursor params as the notification center and group
+  feed (`Kammer.Audit.list_events_page/4`, same `{events, next_cursor}`
+  contract; default page size stays 50, `Pagination.limit/2` gained an
+  optional default override for it); the PWA audit page grows a "Show
+  older" button matching the notification center's, appending pages
+  and hiding once `next_cursor` is `nil` — a failed page keeps the
+  loaded log on screen and stays retryable, mirroring the group feed's
+  load-more error handling.
+
 - RSS/Atom group feed items now link to the post itself instead of the
   group page (issue #341). Feeds shipped in #54 before any per-post
   page existed, so every item's `<link>` (RSS) / `<link href>` (Atom)

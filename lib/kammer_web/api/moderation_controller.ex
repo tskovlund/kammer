@@ -23,8 +23,14 @@ defmodule KammerWeb.Api.ModerationController do
   alias Kammer.Moderation.CommunityBan
   alias Kammer.Moderation.InstanceBan
   alias Kammer.Moderation.Report
+  alias KammerWeb.Api.Pagination
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
+
+  # The audit log predates cursor pagination (issue #340) at a 50-row
+  # default; kept on migrating to `Pagination` rather than dropping to
+  # the shared 25, so an unpaginated existing client sees no change.
+  @audit_default_limit 50
 
   @spec reports(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def reports(conn, %{"community_slug" => slug}) do
@@ -156,11 +162,22 @@ defmodule KammerWeb.Api.ModerationController do
   end
 
   @spec audit_log(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def audit_log(conn, %{"community_slug" => slug}) do
+  def audit_log(conn, %{"community_slug" => slug} = params) do
     with_community(conn, slug, fn community ->
       user = conn.assigns.current_scope.user
-      events = Audit.list_events(user, community)
-      json(conn, %{data: Enum.map(events, &Serializer.audit_event/1)})
+
+      {events, next_cursor} =
+        Audit.list_events_page(
+          user,
+          community,
+          Pagination.decode(params["after"]),
+          Pagination.limit(params, @audit_default_limit)
+        )
+
+      json(conn, %{
+        data: Enum.map(events, &Serializer.audit_event/1),
+        next_cursor: Pagination.encode(next_cursor)
+      })
     end)
   end
 

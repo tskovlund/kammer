@@ -126,17 +126,28 @@ export async function liftBan(
 	});
 }
 
-export async function fetchAuditLog(
+export interface AuditLogPage {
+	events: AuditEvent[];
+	nextCursor: string | null;
+}
+
+export async function fetchAuditLogPage(
 	instance: Instance,
-	communitySlug: string
-): Promise<AuditEvent[]> {
+	communitySlug: string,
+	cursor?: string | null
+): Promise<AuditLogPage> {
 	return guard(async () => {
 		const { data, error, response } = await client(instance).GET(
 			'/api/v1/communities/{community_slug}/audit-log',
-			{ params: { path: { community_slug: communitySlug } } }
+			{
+				params: {
+					path: { community_slug: communitySlug },
+					query: cursor ? { after: cursor } : undefined
+				}
+			}
 		);
 		if (error || !data) throw fail(error, response, 'Could not load the audit log.');
-		return data.data;
+		return { events: data.data, nextCursor: data.next_cursor ?? null };
 	});
 }
 
