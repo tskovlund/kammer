@@ -130,10 +130,29 @@ independent pass like any other substantive change. What's exempt is
 the _judgment-free_ doc edit: a typo, a dead link, or verbatim
 transcription of an already-settled decision. Address what it finds, or note in
 the PR why not — don't just run it and move on regardless of what it
-says. A finding — the reviewer's or your own observation — is
-dismissed only with a _concrete_ reason: "minor" is not a reason;
-either fix it or say specifically why it's acceptable (owner-stated,
-2026-07-12).
+says.
+
+**The dismissal bar** (owner-stated 2026-07-12; recalibrated
+2026-07-17 after the owner overruled three dismissals): a finding —
+the reviewer's or your own observation — is dismissed only when
+fixing it costs something real (complexity, risk, genuine scope) or
+the finding is factually wrong. "Minor", "small", "rare",
+"established wording", and "doesn't need to scale" are **not**
+acceptable reasons — the owner's test is "if it's that cheap, name
+one good reason to not do it now." When in doubt, fix it. This bar
+triggered a full re-audit of every dismissal in the repo's history
+(2026-07-17; four earlier dismissals failed the re-test and became
+issues), so dismissals recorded before that date don't set precedent
+for what's dismissable.
+
+**A conditional disposition ("fix when X lands") must put its trigger
+on a GitHub issue** — the issue X's implementer will actually touch,
+or a new one — never only in a PR comment or review reply. A
+PR-thread deferral is invisible to the future session that lands X:
+the RSS item-link fix was deferred in #54 pending public post pages,
+the pages landed, and nobody re-found the deferral until a 2026-07-17
+audit surfaced it as #341. If the condition isn't worth an issue
+comment, the deferral isn't real — fix it now instead.
 
 **"Done" means present in the committed tree, not intended.** Verify
 your own claims against the tree before asserting them in a PR body, a
@@ -173,14 +192,35 @@ wrong client mapping shipped.
 When a slice is large enough to hand to a build Agent rather than
 implement inline, run it in a **worktree** (`isolation: "worktree"`)
 so parallel agents don't collide on the tree. The brief MUST say, in
-spirit verbatim: **do NOT spawn sub-agents, do NOT wait on
-notifications, return raw data as your final message.** The agent
-delivers a patch plus a commit-message file to the session scratchpad
-— but scratchpad paths die with the container, so a new session's
-agents write to a _fresh_ scratchpad, never a path carried over from a
+spirit verbatim: **FIRST ACTION: run `pwd` and confirm you are inside
+your assigned worktree — if you are in the shared checkout, STOP; do
+NOT spawn sub-agents; run every gate inline in the foreground and
+wait for it to finish; do NOT wait on notifications; deliver the
+patch plus a commit-message file to the session scratchpad AND bank
+a copy into `$(git rev-parse --git-common-dir)/banked-patches/`
+(`mkdir -p` it first — that expression resolves to the main
+checkout's `.git` from inside any worktree); return raw data as your
+final message.** Each clause earns its place: a builder once ran
+`git fetch && git reset --hard origin/main` in the shared checkout
+before locating its worktree and yanked the session's branch pointer
+out from under in-flight edits; three builders backgrounded
+`mix precommit` and reported "done" with the gate still running,
+making their reports unverified fiction; and the scratchpad has been
+wiped mid-session — the banked copy is what survived that (only
+pushed commits survive the container itself). A new session's agents
+write to a _fresh_ scratchpad, never a path carried over from a
 prior session's notes. A fresh worktree may first need
 `mix local.hex --force && mix deps.get`, `pnpm install`, and — when
 plain `nix develop` fails on the worktree — `nix develop "path:$PWD"`.
+
+**Model selection for delegation** (owner-approved, 2026-07-17):
+creation can be cheaper; verification must not be. A builder whose
+brief fully enumerates the changes (files, functions, expected tests)
+runs on Sonnet; finders, adversarial reviewers, design work, and
+orchestration stay on the top model tier. Escalate a build
+back to the top tier when its gates fail repeatedly or the slice
+carries authorization-critical control flow — those briefs can't be
+fully enumerated, which is the tell that Sonnet is the wrong tier.
 
 Never trust a build agent's committed generated artifact (above all
 `schema.d.ts`): regenerate it on the integrated branch and require a
@@ -403,6 +443,17 @@ much higher.
   the option you'd pick — clearly flagged as your recommendation — and
   the reasoning; alternatives come after. This holds for a `decision`
   issue and an in-chat question alike.
+- **Anything asking the owner to decide leads with a TL;DR-ask
+  block** (owner-prompted, 2026-07-17: "I have no idea what to read
+  or what to reply to"): **Decision needed** in one sentence, **My
+  recommendation** in one sentence, then **Reply with:** the literal
+  short answers that unblock the work ("Go" / "Keep gate" / …) —
+  answer tokens for the recommendation above, not a menu of undecided
+  options — with an explicit note that reading the full analysis is
+  optional. The
+  long-form reasoning goes _below_ that block, never above it. A
+  decision post the owner can't answer in one line from the first
+  screen is a defect in the post, not in the owner's attention.
 - Surface a process/convention question when there's no precedent in
   this file or the linked docs, rather than picking one silently —
   and once answered, write the answer down here so it isn't asked
@@ -517,7 +568,9 @@ asked for once and must never need to be asked for again.
 - Node and pnpm are pre-installed at `/opt/node22/bin` (not via Nix):
   `export PATH=/opt/node22/bin:$PATH` and
   `export NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` for the client
-  gates and the root `npx prettier@3.9.5` check. Run client gates from
+  gates and the root `npx prettier@3.8.1 --check .` (the version CI
+  pins in `ci.yml` and the `Makefile`'s `format` target both use —
+  keep all three in lockstep). Run client gates from
   absolute paths / `pnpm --dir clients/web ...`; **never `cd`
   mid-chain** — the Bash tool's cwd persists between calls, so a stray
   `cd` leaks into the next command and has caused repeated failed runs.
@@ -539,13 +592,27 @@ asked for once and must never need to be asked for again.
   `playwright install`). It is **destructive to `kammer_dev`** (drops
   and recreates it), so don't point it at a database you care about.
 - Regenerate `schema.d.ts` after any API-file change and require a
-  byte-identical diff. From repo root:
+  byte-identical diff, using the **project-pinned tools exactly as
+  written here** — five independent agents have confirmed the
+  alternatives are traps. From repo root: `rm -f /tmp/spec.json`
+  first (a compile failure leaves the old spec behind, and the next
+  step happily regenerates from it), then
   `nix develop --command bash -c 'mix run --no-start -e "File.write!(\"/tmp/spec.json\", Jason.encode!(KammerWeb.ApiSpec.spec()))"'`
   then, with node on PATH,
-  `npx openapi-typescript /tmp/spec.json -o clients/web/src/lib/api/schema.d.ts && npx prettier@3.9.5 --write clients/web/src/lib/api/schema.d.ts`,
+  `clients/web/node_modules/.bin/openapi-typescript /tmp/spec.json -o clients/web/src/lib/api/schema.d.ts`
+  then
+  `pnpm --dir clients/web exec prettier --write src/lib/api/schema.d.ts`,
   then confirm `git diff --quiet clients/web/src/lib/api/schema.d.ts`.
-  A non-empty diff means the committed copy was hand-edited or stale —
-  never ship it.
+  (The two node steps mirror `clients/web`'s `generate:api` script,
+  spelled out with explicit pinned paths — if that script's pipeline
+  ever changes, sync this recipe.)
+  Do **not** substitute a root-level `npx prettier` for the last
+  step: the root `.prettierignore` excludes `clients/web/`, so it
+  exits 0 having formatted _nothing_, and the unformatted output
+  reads as a false ~30k-line drift. Floating `npx` tool versions
+  differ from the client's pinned ones for the same false-drift
+  effect. After the pinned recipe, a non-empty diff is real: the
+  committed copy was hand-edited or stale — never ship it.
 - Screenshots: `docs/screenshots/` gets a single batch refresh before
   v1 (owner-stated, 2026-07-12) — just note UI changes in the PR and
   let that batch cover them; no per-PR regen, and don't block a merge
