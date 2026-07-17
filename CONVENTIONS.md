@@ -165,6 +165,14 @@ literal. Both review gates check this.
   emails. `mix gettext.extract --merge` before every UI commit.
 - API error messages are deliberately English-only — clients localize
   them, not the server.
+- Client (PWA) key naming: when one message needs several renderings,
+  the base key is the default/most common form and the variant key
+  suffixes the _deviation_ from it — e.g. `home.failed.network`
+  (multi-account, names the instance) vs `home.failed.networkSolo`
+  (single-account variant, #322). One pre-#322 pair
+  (`events.subscribe.personalButton` / `personalButtonNamed`) predates
+  this rule and marks the named variant instead — don't invent a third
+  style; fold that pair into the rule if it's ever touched.
 
 ## Documentation
 

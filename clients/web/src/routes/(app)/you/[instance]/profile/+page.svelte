@@ -298,7 +298,9 @@
 		<div>
 			<h1 class="text-xl font-semibold tracking-tight text-ink">{t('profile.title')}</h1>
 			<p class="mt-0.5 text-sm text-ink-muted">
-				{t('profile.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('profile.descriptionSolo')
+					: t('profile.description', { name: instance.instanceName })}
 			</p>
 		</div>
 	</header>
@@ -406,13 +408,17 @@
 
 			<h2 class="mt-4 text-sm font-medium text-ink">{t('profile.settings.title')}</h2>
 			<p class="-mt-3 text-sm text-ink-muted">
-				{t('profile.settings.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('profile.settings.descriptionSolo')
+					: t('profile.settings.description', { name: instance.instanceName })}
 			</p>
 
 			<Select
 				id="profile-locale"
 				label={t('profile.settings.language')}
-				hint={t('profile.settings.language.hint', { name: instance.instanceName })}
+				hint={instances.solo
+					? t('profile.settings.language.hintSolo')
+					: t('profile.settings.language.hint', { name: instance.instanceName })}
 				options={localeOptions}
 				bind:value={locale}
 			/>
@@ -453,7 +459,9 @@
 				{t('profile.emailChange.title')}
 			</h2>
 			<p class="mt-1 text-sm text-ink-muted">
-				{t('profile.emailChange.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('profile.emailChange.descriptionSolo')
+					: t('profile.emailChange.description', { name: instance.instanceName })}
 			</p>
 			<p class="mt-2 text-sm text-ink">
 				{t('profile.emailChange.current', { email: profile.email })}

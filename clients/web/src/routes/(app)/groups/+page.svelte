@@ -58,7 +58,7 @@
 		};
 	});
 
-	const multiInstance = $derived(instances.list.length > 1);
+	const multiInstance = $derived(instances.several);
 
 	function groupHref(section: Section, group: Group): string {
 		return resolve(`/i/${section.instance.id}/c/${section.community.slug}/g/${group.slug}`);

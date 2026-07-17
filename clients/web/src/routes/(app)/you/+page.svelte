@@ -79,15 +79,21 @@
 
 <section class="mt-8" aria-labelledby="you-accounts-heading">
 	<h2 id="you-accounts-heading" class="text-sm font-medium text-ink">
-		{t('you.accounts.title')}
+		{instances.solo ? t('you.accounts.titleSolo') : t('you.accounts.title')}
 	</h2>
-	<p class="mt-1 text-sm text-ink-muted">{t('you.accounts.description')}</p>
+	<!-- The description only explains the several-servers model — with a
+	     single account (#322) there is no model to explain, so it goes. -->
+	{#if instances.several}
+		<p class="mt-1 text-sm text-ink-muted">{t('you.accounts.description')}</p>
+	{/if}
 
 	<Card class="mt-4 divide-y divide-line">
 		{#each instances.list as instance (instance.id)}
 			<ListItem>
-				<p class="truncate text-sm font-medium text-ink">{instance.instanceName}</p>
-				<p class="truncate text-sm text-ink-muted">
+				{#if instances.several}
+					<p class="truncate text-sm font-medium text-ink">{instance.instanceName}</p>
+				{/if}
+				<p class="truncate text-sm {instances.solo ? 'font-medium text-ink' : 'text-ink-muted'}">
 					{t('you.accounts.signedInAs', { email: instance.user.email })}
 				</p>
 				<p class="truncate text-xs text-ink-faint">
@@ -130,7 +136,9 @@
 						variant="danger"
 						size="sm"
 						id="sign-out-{instance.id}"
-						aria-label={t('you.accounts.signOutOf', { name: instance.instanceName })}
+						aria-label={instances.solo
+							? undefined
+							: t('you.accounts.signOutOf', { name: instance.instanceName })}
 						disabled={signingOutId === instance.id}
 						onclick={() => signOut(instance.id)}
 					>

@@ -267,6 +267,22 @@ and this project adheres to
 
 ### Changed
 
+- Single-account display collapse in the PWA (issue #322, SPEC §21).
+  With exactly one instance added — the overwhelmingly common case, and
+  the entire pilot — the chrome now hides the multi-instance
+  abstraction instead of presenting a one-item federation: Home,
+  Groups, and Search drop the instance-name provenance labels, the You
+  tab presents one plain account (no instance-named card header, no
+  several-servers explainer, "Your account" instead of "Your
+  communities"), the You sub-pages (profile, devices, push
+  notifications, data & account) drop "on <instance>" from their
+  descriptions, and the failed-instance banners say "your community"
+  rather than naming the only server there is. Everything derives from
+  a shared `instances.solo` flag, so adding a second account restores
+  the current multi-account presentation unchanged — and URLs keep
+  their `[instance]` segment either way (deep-link stability; this is
+  presentation-only, the data model and routes are untouched).
+
 - PWA API error handling collapsed into one shared `ApiError` (issue
   #270, part of #187). The ~10 near-identical per-module error classes —
   each carrying its own copy of the status→kind mapping, envelope

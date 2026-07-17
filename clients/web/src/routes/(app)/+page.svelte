@@ -91,7 +91,9 @@
 			<section class="flex flex-col gap-3">
 				<div class="flex items-baseline gap-2">
 					<h2 class="text-base font-semibold text-ink">{bucket.key.communityName}</h2>
-					{#if home.allBuckets.length > 1}
+					<!-- Instance provenance is disambiguation, so it needs both several
+					     sources (#322: never with a single account) and several buckets. -->
+					{#if instances.several && home.allBuckets.length > 1}
 						<span class="text-xs text-ink-faint">{bucket.key.instanceName}</span>
 					{/if}
 				</div>
