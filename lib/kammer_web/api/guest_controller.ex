@@ -162,7 +162,7 @@ defmodule KammerWeb.Api.GuestController do
         confirmed(
           conn,
           identity.display_name,
-          PublicLinks.community_group_path(post.community, post.group)
+          PublicLinks.post_path(post.community, post.group, post)
         )
 
       {:error, :invalid} ->

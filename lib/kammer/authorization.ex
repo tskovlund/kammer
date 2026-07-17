@@ -368,31 +368,28 @@ defmodule Kammer.Authorization do
 
   @doc """
   Whether account-less guests may subscribe to this group's feed by
-  email (newsletter subscriptions): the same public-and-live gate as
-  the RSS/Atom feeds every public group already exposes — a
+  email (newsletter subscriptions): exactly `publicly_readable?/1` — a
   subscription is just a different delivery channel for the same
-  already-public content, so no separate feature toggle.
+  already-public content, so it must draw the same line the public
+  JSON API and the RSS/Atom feeds draw (issue #345 unified the three
+  previously divergent "public" predicates on that one line; this
+  surface used to skip the sealed check, letting guests subscribe to
+  content every link in the email would then refuse to serve).
   """
   @spec can_guest_subscribe?(Group.t()) :: boolean()
-  def can_guest_subscribe?(%Group{} = group) do
-    group.visibility in [:public_link, :public_listed] and not Group.archived?(group)
-  end
+  def can_guest_subscribe?(%Group{} = group), do: publicly_readable?(group)
 
   @doc """
-  Whether an anonymous visitor may read this group's content over the
-  tokenless public JSON API (issue #185 slice B): the same
-  public-and-live gate the RSS/Atom feeds, the group page, and the
-  guest RSVP/comment/subscribe checks above already use — `public_link`
-  or `public_listed`, never archived — plus excluding sealed groups.
-  Sealed is orthogonal to `visibility` in the schema (nothing stops a
-  sealed group from also being `public_listed`) and none of the
-  existing guest predicates above check it, since it exists to limit
-  *admin* override (ADR 0005), not visitor visibility. This is the one
-  newly-browsable surface (issue #185 slice B opens JSON reads, not
-  just direct-link actions, to a wider unauthenticated audience than
-  before), so it draws the stricter line explicitly rather than
-  inheriting a gap the narrower existing surfaces never had reason to
-  hit in practice.
+  Whether an anonymous visitor may read this group's content over any
+  tokenless public surface — the JSON API (issue #185 slice B), the
+  RSS/Atom feeds, and the newsletter subscribe gate all draw this one
+  line since issue #345: `public_link` or `public_listed`, never
+  archived, never sealed. Sealed is orthogonal to `visibility` in the
+  schema (nothing stops a sealed group from also being
+  `public_listed`); it exists to limit *admin* override (ADR 0005),
+  but a sealed-yet-public group serving feeds and emails whose every
+  link the public API then refuses was the incoherence #345 closed —
+  one predicate, so the surfaces can never diverge again.
   """
   @spec publicly_readable?(Group.t()) :: boolean()
   def publicly_readable?(%Group{} = group) do

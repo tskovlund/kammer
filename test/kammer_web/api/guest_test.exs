@@ -177,6 +177,11 @@ defmodule KammerWeb.Api.GuestTest do
         public_conn()
         |> post(~p"/api/v1/guest/comment/confirm", %{"token" => token})
         |> tap(&assert_operation_response(&1, "guest_confirm_comment"))
+        |> tap(fn conn ->
+          # The confirm lands on the commented post (#345), not the
+          # group's whole feed.
+          assert json_response(conn, 200)["data"]["redirect_path"] =~ "/p/#{post.id}"
+        end)
         |> manage_token()
 
       body =

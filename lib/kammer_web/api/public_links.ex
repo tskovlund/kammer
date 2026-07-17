@@ -19,6 +19,7 @@ defmodule KammerWeb.Api.PublicLinks do
 
   alias Kammer.Communities.Community
   alias Kammer.Events.Event
+  alias Kammer.Feed.Post
   alias Kammer.Groups.Group
 
   @confirm_paths %{
@@ -87,6 +88,15 @@ defmodule KammerWeb.Api.PublicLinks do
   @spec community_group_path(Community.t(), Group.t()) :: String.t()
   def community_group_path(%Community{} = community, %Group{} = group),
     do: "/c/#{community.slug}/g/#{group.slug}"
+
+  @doc """
+  The post's own public page (issue #345) — where a confirmed guest
+  comment lands, so the commenter sees the thread they just joined
+  rather than the group's whole feed.
+  """
+  @spec post_path(Community.t(), Group.t(), Post.t()) :: String.t()
+  def post_path(%Community{} = community, %Group{} = group, %Post{} = post),
+    do: "#{community_group_path(community, group)}/p/#{post.id}"
 
   defp pwa_url(conn, path) do
     # `path` already starts with "/". When the base is the root ("/",

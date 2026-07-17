@@ -56,6 +56,25 @@ defmodule KammerWeb.GroupFeedControllerTest do
       assert atom_body =~ ~s(<link href="#{group_page}/p/#{post.id}"/>)
     end
 
+    test "an archived or sealed public group's feed is gone, matching the public API (#345)",
+         %{conn: conn} do
+      # The feed used to gate on visibility alone, serving a live feed
+      # whose every link landed on the SPA error state once the public
+      # API (publicly_readable?) refused the group.
+      {community, _owner} = community_with_owner_fixture()
+
+      archived =
+        community
+        |> group_fixture(visibility: :public_listed)
+        |> Ecto.Changeset.change(archived_at: DateTime.utc_now(:second))
+        |> Kammer.Repo.update!()
+
+      sealed = group_fixture(community, visibility: :public_listed, sealed: true)
+
+      assert conn |> get(~p"/c/#{community.slug}/g/#{archived.slug}/feed.rss") |> response(404)
+      assert conn |> get(~p"/c/#{community.slug}/g/#{sealed.slug}/feed.atom") |> response(404)
+    end
+
     test "a community-visibility group 404s for an anonymous visitor", %{conn: conn} do
       {community, _owner} = community_with_owner_fixture()
       group = group_fixture(community, visibility: :community)

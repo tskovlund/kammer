@@ -1,11 +1,11 @@
 defmodule KammerWeb.GroupFeedController do
   @moduledoc """
   RSS/Atom syndication for public groups (SPEC §8). No secret token —
-  gated by the exact same `Authorization.authorize(nil, :view_group,
-  group)` check anonymous visitors already pass to view the group
-  page (`Groups.fetch_viewable_group/3`), so private and
-  community-only groups 404 like any other content an anonymous
-  visitor can't see.
+  gated by `Authorization.publicly_readable?/1`, the one shared
+  public line (issue #345): private and community-only groups 404
+  like any other content an anonymous visitor can't see, and so do
+  archived and sealed public groups — a feed whose every item links
+  into pages the public API refuses to serve would be all dead ends.
 
   The `<link>` back to the group page is an `unverified_url/2`: since
   the LiveView removal (#187) `/c/:slug/g/:slug` is a PWA client-side
@@ -20,6 +20,7 @@ defmodule KammerWeb.GroupFeedController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Feed.Post
@@ -74,7 +75,8 @@ defmodule KammerWeb.GroupFeedController do
   defp fetch(%{"community_slug" => community_slug, "group_slug" => group_slug}) do
     with %Communities.Community{} = community <-
            Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(nil, community, group_slug) do
+         {:ok, group} <- Groups.fetch_viewable_group(nil, community, group_slug),
+         true <- Authorization.publicly_readable?(group) do
       {posts, _next_cursor} = Feed.list_group_feed_page(nil, group, nil, @post_limit)
       {:ok, community, group, Enum.reject(posts, &Post.deleted?/1)}
     end

@@ -91,7 +91,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
       #{excerpt(post.body_markdown)}
 
-      #{post_url(group)}
+      #{post_url(group, post)}
 
       #{gettext("Unsubscribe, or change how often you hear from us:")}
 
@@ -131,7 +131,7 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
 
       #{lines}
 
-      #{post_url(group)}
+      #{group_url(group)}
 
       #{gettext("Unsubscribe, or change how often you hear from us:")}
 
@@ -181,10 +181,15 @@ defmodule Kammer.Newsletters.NewsletterNotifier do
   defp cadence_label(:daily), do: gettext("a daily digest")
   defp cadence_label(:weekly), do: gettext("a weekly digest")
 
-  defp post_url(group) do
+  # Misnamed post_url/1 until issue #345: it always returned the group
+  # page, which is right for the digest's roundup link but sent the
+  # single-post email to the wrong place.
+  defp group_url(group) do
     community = group.community
     "#{KammerWeb.Endpoint.url()}/c/#{community.slug}/g/#{group.slug}"
   end
+
+  defp post_url(group, post), do: "#{group_url(group)}/p/#{post.id}"
 
   # Full-power, 60-day manage token, deliberately still embedded here
   # (contrast `unsubscribe_url/1` below) — this is a link a human must

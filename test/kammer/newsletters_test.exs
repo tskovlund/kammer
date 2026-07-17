@@ -107,6 +107,12 @@ defmodule Kammer.NewslettersTest do
         |> Repo.update!()
 
       refute Authorization.can_guest_subscribe?(archived)
+
+      # Sealed joined the gate when #345 unified the public predicates
+      # on publicly_readable?/1 — an email subscription to content the
+      # public API refuses would be all dead links.
+      sealed = group_fixture(community, visibility: :public_listed, sealed: true)
+      refute Authorization.can_guest_subscribe?(sealed)
     end
 
     test "requests against non-public groups are refused" do
@@ -230,6 +236,9 @@ defmodule Kammer.NewslettersTest do
 
       assert_email_sent(fn email ->
         assert email.text_body =~ "Nyt indlæg!"
+        # The single-post email links to the post itself (#345), not
+        # the group page the misnamed helper used to return.
+        assert email.text_body =~ "/g/#{group.slug}/p/#{post.id}"
         assert email.headers["List-Unsubscribe"] =~ "/newsletter/unsubscribe/"
         assert email.headers["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
         true

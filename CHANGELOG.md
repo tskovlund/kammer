@@ -403,6 +403,18 @@ and this project adheres to
 
 ### Fixed
 
+- The three public-surface link/gate incoherences from PR #344's
+  review (issue #345), unified on one rule: `publicly_readable?/1` is
+  now the single "public" predicate — the RSS/Atom feed gate joins it
+  (an archived or sealed `public_listed` group used to keep serving a
+  live feed whose every link landed on the SPA error state), and the
+  newsletter subscribe gate gains its missing sealed check. The
+  single-post newsletter email now links to the post itself instead
+  of the group page (the digest's roundup link was correct and stays;
+  the misnamed `post_url/1` helper is renamed), and a confirmed guest
+  comment now lands on the commented post rather than the group's
+  whole feed.
+
 - Leaving or being removed from a group no longer leaves an ex-member's
   RSVP sitting on that group's future events (issue #329, owner-decided
   option 1). Before #318 added capacity and a waitlist, a stale RSVP
