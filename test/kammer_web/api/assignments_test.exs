@@ -96,6 +96,18 @@ defmodule KammerWeb.Api.AssignmentsTest do
     |> json_response(404)
   end
 
+  test "someone who cannot see the group gets 404 creating in it, not 403 (#339)" do
+    %{community: community, group: group} = assignments_context(visibility: :private)
+    outsider = user_fixture()
+
+    outsider
+    |> api_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/assignments", %{
+      title: "Nope"
+    })
+    |> json_response(404)
+  end
+
   test "a hidden assignment answers 404 to an outsider (#156/#161)" do
     %{community: community, group: group, creator: creator} =
       assignments_context(visibility: :private)

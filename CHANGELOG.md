@@ -560,6 +560,30 @@ and this project adheres to
   are either server-generated paths or sourced from GitHub's release
   API, not user input.
 
+- Slug-addressed group sub-endpoints no longer leak private/sealed
+  group existence through a 403-vs-404 split (issue #339, found by the
+  2026-07-17 dismissal audit). `#224` folded a view-denied group into
+  the same neutral 404 a missing one gets on the group management
+  endpoint itself; eight private `with_group`/`with_feature_group`/
+  `with_files_group` copies in the post, event, calendar, assignment,
+  availability, decision, file-library, and group-member controllers
+  didn't make the same fold, so an outsider probing a slug could tell
+  a real hidden group from a typo by whether the group's feed,
+  calendar token, assignment/availability/decision list-or-create,
+  file library, or membership surface answered 403 or 404 — a live
+  existence oracle the #224 fix was supposed to close everywhere.
+  Extracted the fold into one shared `KammerWeb.Api.GroupGate.fetch/4`
+  (optionally folding a disabled feature toggle too, ADR 0016) that
+  all nine controllers — the original included — now call; only the
+  `:view_group` resolution folds to 404, so a group a viewer can see
+  but isn't allowed to write to, join, or manage still answers an
+  honest 403. Flipped the tests that had pinned the wrong 403, tightened
+  the `ResourcesTest` authorization-parity property (it previously
+  accepted 403 *or* 404 for an invisible group, which is exactly how
+  this got past it), and added the group-hidden create/list case to
+  the assignment, availability, decision, and feed write-parity suites
+  where nothing had pinned it before.
+
 ### Added
 
 - The `GET /api/v1/instance` `features` object now carries

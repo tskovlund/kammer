@@ -8,10 +8,11 @@ defmodule KammerWeb.Api.GroupMemberController do
   same context functions and authorization the group LiveViews use;
   the controller adds transport, never policy.
 
-  No-oracle: a group the caller can't see 403s at resolution exactly
-  like the feed/event/file routes. Within a visible group the member
-  list is visible to every viewer, so member-addressed writes answer
-  an honest 403 when refused — but join requests are admin-only
+  No-oracle (#156/#161, #339): a group the caller can't see 404s at
+  resolution, indistinguishable from a nonexistent one, exactly like
+  the feed/event/file routes. Within a visible group the member list
+  is visible to every viewer, so member-addressed writes answer an
+  honest 403 when refused — but join requests are admin-only
   information, so approving or denying one without that right answers
   404 for every request id.
   """
@@ -19,11 +20,11 @@ defmodule KammerWeb.Api.GroupMemberController do
   use KammerWeb, :controller
 
   alias Kammer.Authorization
-  alias Kammer.Communities
   alias Kammer.Groups
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
   alias Kammer.Notifications
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -192,15 +193,17 @@ defmodule KammerWeb.Api.GroupMemberController do
     end
   end
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # and a group the caller may not even *view* all fold into the same
+  # 404 via `GroupGate.fetch/3`.
   defp with_group(conn, %{"community_slug" => slug, "group_slug" => group_slug}, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Communities.Community{} = community <- Communities.get_community_by_slug(slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
+    with {:ok, _community, group} <- GroupGate.fetch(user, slug, group_slug),
          %Plug.Conn{} = responded <- fun.(group, user) do
       responded
     else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
       error -> ApiError.from_result(conn, error)
     end
   end

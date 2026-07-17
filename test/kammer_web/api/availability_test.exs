@@ -89,6 +89,19 @@ defmodule KammerWeb.Api.AvailabilityTest do
     |> json_response(404)
   end
 
+  test "someone who cannot see the group gets 404 creating a poll in it, not 403 (#339)" do
+    %{community: community, group: group} = poll_context(visibility: :private)
+    outsider = user_fixture()
+
+    outsider
+    |> api_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/availability", %{
+      title: "Nope",
+      options: [iso(24)]
+    })
+    |> json_response(404)
+  end
+
   test "a poll in a hidden group is 404, not 403, to an outsider (#156/#161)" do
     %{community: community, group: group, creator: creator} = poll_context(visibility: :private)
 

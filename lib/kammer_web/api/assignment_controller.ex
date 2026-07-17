@@ -19,10 +19,9 @@ defmodule KammerWeb.Api.AssignmentController do
   alias Kammer.Assignments.AssignmentClaim
   alias Kammer.Authorization
   alias Kammer.Communities
-  alias Kammer.Communities.Community
   alias Kammer.Feed.Comment
-  alias Kammer.Groups
   alias Kammer.Moderation
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.ReportIntake
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
@@ -171,16 +170,15 @@ defmodule KammerWeb.Api.AssignmentController do
     Serializer.assignment(assignment, user, group, Authorization.relationship(user, group))
   end
 
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # a group the caller may not even *view*, and a group with the tool
+  # off all fold into the same 404 via `GroupGate.fetch/4`.
   defp with_feature_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Community{} = community <- Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
-         :ok <- Authorization.feature_gate(group, @feature) do
-      fun.(community, group, user)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug, feature: @feature) do
+      {:ok, community, group} -> fun.(community, group, user)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

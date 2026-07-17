@@ -536,6 +536,21 @@ defmodule KammerWeb.Api.FeedWritesTest do
       |> post("#{path}/#{post.id}/comments/#{pending_comment.id}/report", %{"reason" => "?"})
       |> json_response(404)
     end
+
+    test "a hidden group's feed 404s to index and create, not 403 (#339)", %{
+      community: community
+    } do
+      # A private group the caller isn't in: the group itself is
+      # invisible, so its whole feed surface answers the same neutral
+      # 404 a missing group would — a 403 here would confirm the
+      # private group exists.
+      private = group_fixture(community, visibility: :private)
+      outsider = member_fixture(community)
+      path = ~p"/api/v1/communities/#{community.slug}/groups/#{private.slug}/posts"
+
+      outsider |> api_conn() |> get(path) |> json_response(404)
+      outsider |> api_conn() |> post(path, %{"body_markdown" => "Nope"}) |> json_response(404)
+    end
   end
 
   property "write parity: reacting through the API mirrors UI visibility" do

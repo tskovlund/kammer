@@ -127,9 +127,12 @@ defmodule KammerWeb.Api.EventWritesTest do
       assert Enum.count(events, &(&1["title"] == "Ugentlig øvning")) >= 3
     end
 
-    test "someone who cannot see the group cannot create in it", %{community: community} do
+    test "someone who cannot see the group gets 404 creating in it, not 403 (no oracle, #339)", %{
+      community: community
+    } do
       # A community member who isn't in a private group can't view it, so
-      # the create is refused the same way viewing it would be.
+      # the create answers the same neutral 404 a missing group would —
+      # a 403 here would confirm the private group exists.
       private = group_fixture(community, visibility: :private)
       outsider = member_fixture(community)
 
@@ -139,7 +142,7 @@ defmodule KammerWeb.Api.EventWritesTest do
         "title" => "Nope",
         "starts_at" => DateTime.to_iso8601(starts_at())
       })
-      |> json_response(403)
+      |> json_response(404)
     end
   end
 

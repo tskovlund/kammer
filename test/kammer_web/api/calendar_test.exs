@@ -5,14 +5,15 @@ defmodule KammerWeb.Api.CalendarTest do
   fetch; the endpoints hand back the token and a ready-to-subscribe feed
   URL. The group endpoint gates exactly as the group's own feed does —
   viewable, with the events feature on — so a dead feed is never
-  tokenised: an absent community or group is a 404, an existing-but-
-  unviewable group the same 403 the rest of the group-scoped surface
-  gives, and a group with events off a 404 (its feed 404s too).
+  tokenised: an absent community or group, an existing-but-unviewable
+  group, and a group with events off all answer the same neutral 404
+  (no oracle, #156/#161/#339 — a 403 here would confirm a hidden
+  group's existence).
 
   Also the single-event ICS download (issue #307): Bearer-authenticated,
   so "add to calendar" works for members-only events the tokenless
-  browser route 404s — and, addressing an event, it follows the events
-  surface's no-oracle 404 rather than the group endpoints' 403.
+  browser route 404s — addressing an event, it follows the same
+  no-oracle 404 stance as the group endpoints above.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -105,18 +106,19 @@ defmodule KammerWeb.Api.CalendarTest do
       |> json_response(404)
     end
 
-    test "a group the caller cannot view is forbidden — the same 403 every group endpoint gives" do
+    test "a group the caller cannot view answers 404, not 403 (no existence oracle, #339)" do
       {community, _owner} = community_with_owner_fixture()
       private = group_fixture(community, %{visibility: :private})
       # A community member who is not in the private group can't view it —
-      # `fetch_viewable_group` answers :unauthorized (403), consistent with
-      # the events API and the rest of the group-scoped surface.
+      # `fetch_viewable_group`'s :unauthorized folds into the same neutral
+      # 404 a missing group gets; a 403 here would confirm the private
+      # group exists.
       outsider = member_fixture(community)
 
       outsider
       |> api_conn()
       |> get(~p"/api/v1/communities/#{community.slug}/groups/#{private.slug}/calendar-token")
-      |> json_response(403)
+      |> json_response(404)
     end
   end
 

@@ -7,6 +7,7 @@ defmodule KammerWeb.Api.DecisionsTest do
 
   use KammerWeb.ConnCase, async: true
 
+  import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
   import KammerWeb.ApiHelpers
   import OpenApiSpex.TestAssertions
@@ -76,6 +77,18 @@ defmodule KammerWeb.Api.DecisionsTest do
     |> api_conn()
     |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/decisions", %{
       title: "Nej"
+    })
+    |> json_response(404)
+  end
+
+  test "someone who cannot see the group gets 404 raising a motion in it, not 403 (#339)" do
+    %{community: community, group: group} = decisions_context(visibility: :private)
+    outsider = user_fixture()
+
+    outsider
+    |> api_conn()
+    |> post(~p"/api/v1/communities/#{community.slug}/groups/#{group.slug}/decisions", %{
+      title: "Nope"
     })
     |> json_response(404)
   end

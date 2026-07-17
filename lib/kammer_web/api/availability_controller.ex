@@ -21,8 +21,7 @@ defmodule KammerWeb.Api.AvailabilityController do
   alias Kammer.Availability
   alias Kammer.Availability.AvailabilityOption
   alias Kammer.Communities
-  alias Kammer.Communities.Community
-  alias Kammer.Groups
+  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.Serializer
   alias KammerWeb.ApiError
 
@@ -142,19 +141,15 @@ defmodule KammerWeb.Api.AvailabilityController do
     end
   end
 
-  # Resolve the community, then the group as the caller sees it (a hidden
-  # group 403s — the slug is known), then gate the feature (a disabled
-  # tool 404s, ADR 0016).
+  # No-oracle (#156/#161, #339): a missing community, a missing group,
+  # a group the caller may not even *view*, and a group with the tool
+  # off all fold into the same 404 via `GroupGate.fetch/4`.
   defp with_feature_group(conn, community_slug, group_slug, fun) do
     user = conn.assigns.current_scope.user
 
-    with %Community{} = community <- Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(user, community, group_slug),
-         :ok <- Authorization.feature_gate(group, @feature) do
-      fun.(community, group, user)
-    else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      error -> ApiError.from_result(conn, error)
+    case GroupGate.fetch(user, community_slug, group_slug, feature: @feature) do
+      {:ok, community, group} -> fun.(community, group, user)
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

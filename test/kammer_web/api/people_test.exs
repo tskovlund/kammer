@@ -544,14 +544,15 @@ defmodule KammerWeb.Api.PeopleTest do
       refute Groups.get_membership(gated, denied_requester)
       %{"data" => []} = admin |> api_conn() |> get(base) |> json_response(200)
 
-      # Hidden group, hidden queue: outsiders never reach the gate.
+      # Hidden group, hidden queue: outsiders get the group's own
+      # no-oracle 404, never a 403 that would confirm it exists (#339).
       hidden = group_fixture(community, visibility: :private)
       outsider = AccountsFixtures.user_fixture()
 
       outsider
       |> api_conn()
       |> get(~p"/api/v1/communities/#{community.slug}/groups/#{hidden.slug}/join-requests")
-      |> json_response(403)
+      |> json_response(404)
     end
 
     test "member list, role changes, removal, and leaving", %{
