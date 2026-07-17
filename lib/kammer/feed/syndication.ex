@@ -10,6 +10,15 @@ defmodule Kammer.Feed.Syndication do
   caller (a plain controller, gated the same way the group page itself
   is — `Groups.fetch_viewable_group/3`) resolves every URL and passes
   in the posts to render.
+
+  The feed-level `link` is the group page — that's the right target
+  for "what is this feed a feed of." Each item's own `<link>` /
+  `<link href>` is different: it must point at that one post's public
+  page (issue #341; the group-page link every item carried until then
+  was correct only until #246 gave posts a page of their own), so the
+  caller also passes `post_link_fun`, a `Post.t() -> String.t()`
+  resolver, the same "caller hands over a resolved URL" convention
+  `KammerWeb.Api.PublicLinks`'s `*_fun` options use.
   """
 
   alias Kammer.Feed.Post
@@ -21,8 +30,15 @@ defmodule Kammer.Feed.Syndication do
   An RSS 2.0 `<rss>` document listing `posts`, newest first.
   """
   @spec rss(map()) :: String.t()
-  def rss(%{title: title, description: description, link: link, feed_url: feed_url, posts: posts}) do
-    items = Enum.map_join(posts, "", &rss_item(&1, link))
+  def rss(%{
+        title: title,
+        description: description,
+        link: link,
+        feed_url: feed_url,
+        posts: posts,
+        post_link_fun: post_link_fun
+      }) do
+    items = Enum.map_join(posts, "", &rss_item(&1, post_link_fun))
 
     """
     <?xml version="1.0" encoding="UTF-8"?>
@@ -41,8 +57,14 @@ defmodule Kammer.Feed.Syndication do
   An Atom 1.0 `<feed>` document listing `posts`, newest first.
   """
   @spec atom(map()) :: String.t()
-  def atom(%{title: title, link: link, feed_url: feed_url, posts: posts}) do
-    entries = Enum.map_join(posts, "", &atom_entry(&1, link))
+  def atom(%{
+        title: title,
+        link: link,
+        feed_url: feed_url,
+        posts: posts,
+        post_link_fun: post_link_fun
+      }) do
+    entries = Enum.map_join(posts, "", &atom_entry(&1, post_link_fun))
     updated = posts |> List.first() |> post_updated_at()
 
     """
@@ -57,11 +79,11 @@ defmodule Kammer.Feed.Syndication do
     """
   end
 
-  defp rss_item(%Post{} = post, group_link) do
+  defp rss_item(%Post{} = post, post_link_fun) do
     """
     <item>
     <title>#{escape(title_for(post))}</title>
-    <link>#{escape(group_link)}</link>
+    <link>#{escape(post_link_fun.(post))}</link>
     <guid isPermaLink="false">#{post.id}</guid>
     <pubDate>#{rfc822(post_updated_at(post))}</pubDate>
     <description>#{cdata(Markdown.to_html(post.body_markdown))}</description>
@@ -69,11 +91,11 @@ defmodule Kammer.Feed.Syndication do
     """
   end
 
-  defp atom_entry(%Post{} = post, group_link) do
+  defp atom_entry(%Post{} = post, post_link_fun) do
     """
     <entry>
     <title>#{escape(title_for(post))}</title>
-    <link href="#{escape(group_link)}"/>
+    <link href="#{escape(post_link_fun.(post))}"/>
     <id>urn:uuid:#{post.id}</id>
     <updated>#{DateTime.to_iso8601(post_updated_at(post))}</updated>
     <content type="html">#{escape(Markdown.to_html(post.body_markdown))}</content>

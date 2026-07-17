@@ -35,6 +35,27 @@ defmodule KammerWeb.GroupFeedControllerTest do
       assert response(conn, 200)
     end
 
+    test "an item's <link> is the post's public page, not the group page (issue #341)",
+         %{conn: conn} do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, visibility: :public_listed)
+      author = group_member_fixture(group)
+      {:ok, post} = Feed.create_post(author, group, %{"body_markdown" => "Hello, world!"})
+
+      conn = get(conn, ~p"/c/#{community.slug}/g/#{group.slug}/feed.rss")
+      body = response(conn, 200)
+
+      group_page = "http://localhost:4000/c/#{community.slug}/g/#{group.slug}"
+      assert body =~ "<link>#{group_page}</link>"
+      assert body =~ "<link>#{group_page}/p/#{post.id}</link>"
+
+      # The Atom action wires its own post_link_fun on a separate line —
+      # pin it too, or a regression there stays invisible to the suite.
+      atom_conn = get(conn, ~p"/c/#{community.slug}/g/#{group.slug}/feed.atom")
+      atom_body = response(atom_conn, 200)
+      assert atom_body =~ ~s(<link href="#{group_page}/p/#{post.id}"/>)
+    end
+
     test "a community-visibility group 404s for an anonymous visitor", %{conn: conn} do
       {community, _owner} = community_with_owner_fixture()
       group = group_fixture(community, visibility: :community)
