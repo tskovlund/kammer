@@ -18,15 +18,17 @@ defmodule KammerWeb.Api.GroupGate do
   the dismissal #339 revisits. A review pass over that fix caught four
   more of the same oracle — uploads, group invites, the anonymous
   newsletter subscribe, and anonymous guest comments — and a second,
-  independent pass caught the last one on the event-addressed twin:
-  the anonymous guest-RSVP/guest-claim surfaces (`guest_controller`'s
-  `with_viewable_event`), which fold their `:unauthorized` locally
-  since they resolve an event id, not a group slug. All are covered
-  now. This is the one shared fetch; each
-  controller still wraps it in its own thin `with_group` so the
-  callback shape (community and/or user in scope, alongside group)
-  stays whatever that controller's call sites already expect — the
-  fetch was the duplicated, bug-prone part, not the callback shape.
+  independent pass caught the last one on the event-addressed twin
+  (the anonymous guest-RSVP/guest-claim surfaces). Since #345 the
+  anonymous surfaces resolve through `Groups.fetch_public_group/2` /
+  `Events.fetch_public_event/2` instead of this gate — the stricter
+  publicly-readable fold — so this gate's callers are the
+  authenticated slug-addressed controllers. It is the one shared
+  fetch for them; each controller still wraps it in its own thin
+  `with_group` so the callback shape (community and/or user in scope,
+  alongside group) stays whatever that controller's call sites
+  already expect — the fetch was the duplicated, bug-prone part, not
+  the callback shape.
 
   Contract for those thin wrappers: a wrapper that matches only
   `{:ok, ...}` / `{:error, :not_found}` (post, event, calendar,

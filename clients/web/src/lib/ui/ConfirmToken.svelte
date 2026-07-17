@@ -71,7 +71,11 @@
 	{/if}
 {:else if result}
 	{@render success(result)}
-	{#if result.redirect_path}
+	{#if result.redirect_path && result.redirect_path.startsWith('/') && !result.redirect_path.startsWith('//')}
+		<!-- Render only same-origin paths: today the confirm call is pinned
+		     to window.location.origin, but the field is typed as arbitrary
+		     server data, and a future reuse against a remote instance
+		     baseUrl must not inherit an unguarded href. -->
 		<!-- The server points each confirm at the page it acted on — the
 		     commented post, the RSVP'd event, the subscribed group
 		     (issue #345); without this link the field went unread. -->
@@ -81,7 +85,7 @@
 			     directly (same result at runtime). -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a href={base + result.redirect_path} class="text-sm text-accent hover:underline">
-				{t('guest.confirm.viewLink')}
+				{t('confirm.viewLink')}
 			</a>
 		</p>
 	{/if}

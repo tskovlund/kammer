@@ -112,7 +112,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 ## 8. Reaching people without accounts (differentiator — build well)
 
 - **RSS/Atom** for every publicly readable group feed (public visibility, not archived, not sealed — the one shared gate, issue #345).
-- **Email newsletter subscriptions** to public feeds: double opt-in, per-post or daily/weekly digest, one-click unsubscribe (List-Unsubscribe), signed management links.
+- **Email newsletter subscriptions** to those same publicly readable feeds (one gate, re-checked at every delivery): double opt-in, per-post or daily/weekly digest, one-click unsubscribe (List-Unsubscribe), signed management links.
 - Guest RSVP and approval-queued guest comments — all on the same email/magic-link primitives.
 
 ## 9. Notifications

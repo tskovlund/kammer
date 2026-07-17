@@ -213,6 +213,21 @@ defmodule Kammer.EventSlotsTest do
                )
     end
 
+    test "a group gone non-public refuses at confirm time, not just request time" do
+      # The signed token predates the flip, so only the confirm-time
+      # re-check of `can_guest_rsvp?/1` (#345 review) can refuse it —
+      # neutrally, same as a garbage token.
+      %{creator: creator, group: group, event: event} = event_context()
+      {:ok, slot} = Events.create_slot(creator, event, %{"title" => "Kage", "capacity" => "2"})
+
+      token = request_claim!(slot, event, group, guest_attrs())
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      assert {:error, :invalid} = Events.confirm_guest_claim(token, fn _manage -> "unused" end)
+      assert Repo.aggregate(SlotClaim, :count) == 0
+    end
+
     test "erasure removes claims; sign-in claims them" do
       %{creator: creator, group: group, event: event} = event_context()
       {:ok, slot} = Events.create_slot(creator, event, %{"title" => "Kage", "capacity" => "3"})

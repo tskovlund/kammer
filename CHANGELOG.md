@@ -416,8 +416,9 @@ and this project adheres to
   visibility boundary indefinitely. The anonymous subscribe, guest
   comment, and guest RSVP requests all resolve through the shared
   public fetches now, folding sealed/archived public groups into the
-  same 404 their pages give (the old 403 confirmed existence to slug
-  probers). The single-post newsletter email links to the post itself
+  same 404 their pages give (the old answers confirmed existence to
+  slug probers: 403 for archived, and for sealed a 202 acceptance of
+  a flow whose confirm link then died). The single-post newsletter email links to the post itself
   (the digest's roundup link was correct and stays; the misnamed
   `post_url/1` helper is renamed, and all email links now build
   through `PublicLinks`, sharing the confirm links' base handling),

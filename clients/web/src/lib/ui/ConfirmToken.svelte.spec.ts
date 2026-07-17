@@ -25,6 +25,18 @@ describe('ConfirmToken', () => {
 		expect(link.getAttribute('href')).toBe('/x');
 	});
 
+	it('renders no onward link for a non-relative redirect_path', async () => {
+		// The same-origin guard: a confirmation carrying `//evil.example`
+		// (or any absolute URL) must not become a clickable href.
+		const confirm = vi
+			.fn()
+			.mockResolvedValue({ guest_name: 'Alice', redirect_path: '//evil.example' });
+		render(ConfirmTokenHarness, { props: { token: 'tok-1', confirm } });
+
+		await waitFor(() => expect(screen.getByText('Hi Alice')).toBeTruthy());
+		expect(screen.queryByText('Go to the page')).toBeNull();
+	});
+
 	it('shows the neutral error state when the token is rejected', async () => {
 		const confirm = vi.fn().mockRejectedValue(new Error('nope'));
 		render(ConfirmTokenHarness, { props: { token: 'stale', confirm } });

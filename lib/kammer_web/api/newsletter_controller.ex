@@ -28,8 +28,9 @@ defmodule KammerWeb.Api.NewsletterController do
   # missing group, and a group that isn't publicly readable (private,
   # community-only, archived, or sealed) all fold into the same 404. A
   # 403 for a hidden-but-real group would hand a slug-guessing prober
-  # a live existence oracle; the remaining 403 is only ever "this
-  # group's page is public, but guest subscriptions are off."
+  # a live existence oracle. (`can_guest_subscribe?/1` IS the public
+  # line, so once the fetch passes, the context gate below is
+  # defense-in-depth that can't currently refuse.)
   @spec subscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def subscribe(conn, %{"community_slug" => slug, "group_slug" => group_slug} = params) do
     with %Community{} = community <-

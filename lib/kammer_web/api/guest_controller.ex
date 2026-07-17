@@ -288,17 +288,13 @@ defmodule KammerWeb.Api.GuestController do
     end
   end
 
-  # No-oracle (#339): the anonymous caller holds no session, so an
-  # event whose group the public may not view answers exactly like a
-  # missing one — the 403 this used to return leaked event existence
-  # the same way the slug surfaces did, and disagreed with the public
-  # read of the identical event (`PublicController.event`, always 404).
   # No-oracle (#339, tightened in #345): anonymous surfaces resolve
   # through the public fetches, so a missing event and one in a group
   # that isn't publicly readable (private, community-only, archived,
   # sealed, or feature-gated) answer the same neutral 404 the public
-  # read of the same event gives — never a 403 that would leak
-  # existence, never a flow whose confirmation links 404.
+  # read of the same event gives (`PublicController.event`) — never a
+  # 403 that would leak existence, never a flow whose confirmation
+  # links 404.
   defp with_viewable_event(conn, slug, event_id, fun) do
     with %Community{} = community <- Communities.get_community_by_slug(slug) || :gone,
          {:ok, event} <- Events.fetch_public_event(community, event_id) do
@@ -310,13 +306,16 @@ defmodule KammerWeb.Api.GuestController do
   end
 
   # Same fold for the group-slug surfaces, via the same shared public
-  # fetch the group page itself uses.
+  # fetch the group page itself uses. The else clauses are spelled out
+  # (never a catch-all): a new return shape from the fetch must crash
+  # loudly here rather than silently read as 404.
   defp with_viewable_group(conn, slug, group_slug, fun) do
     with %Community{} = community <- Communities.get_community_by_slug(slug) || :gone,
          {:ok, group} <- Groups.fetch_public_group(community, group_slug) do
       fun.(group)
     else
-      _error -> ApiError.send(conn, :not_found, "Not found.")
+      :gone -> ApiError.send(conn, :not_found, "Not found.")
+      {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

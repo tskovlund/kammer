@@ -161,6 +161,21 @@ defmodule Kammer.NewslettersTest do
       assert Repo.aggregate(NewsletterSubscription, :count) == 1
     end
 
+    test "a group gone non-public refuses at confirm time, not just request time" do
+      # The signed token predates the flip, so only the confirm-time
+      # re-check of `can_guest_subscribe?/1` (#345 review) can refuse
+      # it — neutrally, same as a garbage token.
+      %{group: group} = public_group_context()
+      token = request!(group, subscribe_attrs())
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      assert {:error, :invalid} =
+               Newsletters.confirm_subscription(token, fn _token -> "unused" end)
+
+      assert Repo.aggregate(NewsletterSubscription, :count) == 0
+    end
+
     test "rejects garbage tokens and validates the request" do
       %{group: group} = public_group_context()
 
@@ -430,12 +445,15 @@ defmodule Kammer.NewslettersTest do
       group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
 
       drain_delivered_emails()
+      now = DateTime.utc_now(:second)
       assert :ok = Newsletters.notify_subscribers(post)
-      assert :skipped = Newsletters.deliver_digest(digest, DateTime.utc_now(:second))
+      assert :skipped = Newsletters.deliver_digest(digest, now)
       refute_email_sent()
 
       assert Repo.reload!(per_post)
-      assert Repo.reload!(digest)
+      # The skip still stamps last_sent_at, so a group flipped back
+      # public resumes from now — not with the withheld backlog.
+      assert Repo.reload!(digest).last_sent_at == now
     end
   end
 end
