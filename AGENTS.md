@@ -71,10 +71,13 @@ side branch. Never more than one open PR _per lane_, and never use a
 side branch to dodge the one-coherent-concern rule.
 
 1. `git fetch origin main && git checkout -B <branch> origin/main`.
-2. Implement. Verify with **all three** gates, not just the first:
+2. Implement. Verify with **all four** gates, not just the first:
    `mix precommit` (format, Credo strict, compile warnings-as-errors,
    tests), `mix dialyzer --format short`, `mix sobelow --config` —
-   dialyzer and sobelow are not part of the `precommit` alias.
+   dialyzer and sobelow are not part of the `precommit` alias — and
+   the root `npx prettier@3.8.1 --check .` (the CI Prettier job's
+   exact command; nothing else covers root markdown, which is how a
+   CHANGELOG emphasis-marker escape failed a PR's CI on 2026-07-17).
 3. Self-review before opening the PR: run the `code-review` skill
    against the diff (per CONTRIBUTING.md — "is the code
    well-structured, not just lint-clean" is the one thing genuinely
@@ -120,7 +123,12 @@ catches those instead. Neither is covered by automated tooling
 rules and style, not design quality or "does this test actually test
 what it claims to." Tell the independent reviewer to be adversarial
 and report ranked findings rather than default to a clean bill of
-health. Skip independent review only for a purely mechanical change
+health — and that **GitHub is read-only for it**: agents can reach
+the session's GitHub tools, and an agent that "helpfully" comments
+on or edits a PR mid-review corrupts the main session's record of
+who wrote what (an unattributable PR-body edit on 2026-07-17 is why
+this clause exists; findings come back as the agent's final message,
+nowhere else). Skip independent review only for a purely mechanical change
 (a dependency bump, a typo fix). **"Docs-only" is not itself a
 mechanical category** (owner-stated, 2026-07-12): docs are part of the
 product, so any doc change that _authors_ normative content — a SPEC
@@ -194,7 +202,9 @@ implement inline, run it in a **worktree** (`isolation: "worktree"`)
 so parallel agents don't collide on the tree. The brief MUST say, in
 spirit verbatim: **FIRST ACTION: run `pwd` and confirm you are inside
 your assigned worktree — if you are in the shared checkout, STOP; do
-NOT spawn sub-agents; run every gate inline in the foreground and
+NOT spawn sub-agents; GitHub is READ-ONLY for you — never create,
+edit, comment on, or label any issue or PR; run every gate inline in
+the foreground and
 wait for it to finish; do NOT wait on notifications; deliver the
 patch plus a commit-message file to the session scratchpad AND bank
 a copy into `$(git rev-parse --git-common-dir)/banked-patches/`
@@ -325,6 +335,14 @@ standing maintenance, not a task to schedule once:
   an existing one, and pair filing with closing — a work session that
   only ever adds issues is a hygiene smell. Closing what a merge
   completed is part of landing the merge, not a separate chore.
+  Refined 2026-07-17: what the owner wants to see is **turnover and
+  an eventually-shrinking pile** — steady closes prove progress even
+  while audits mint new work, but once the audit backlog clears,
+  sessions must trend net-negative. **No milestones** (owner-declined
+  explicitly): a milestone is extra management that grows stale; the
+  open list itself, kept honest, is the tracker. Audit swarms fold
+  findings into existing issues wherever possible and close their
+  trackers promptly rather than minting freely.
 - **Stale/superseded issues get closed, not left open.** If a
   reprioritization, a merged PR, or new scope makes an issue's ask
   moot, close it with a comment explaining why (`state_reason:
