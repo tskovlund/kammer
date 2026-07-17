@@ -582,11 +582,11 @@ and this project adheres to
   newsletter-subscribe and guest-comment surfaces (the anonymous two
   the worst, being tokenless probes) — plus a latent 500 in the
   assignment/availability/decision create actions, where a denied
-  write or invalid changeset in a *visible* group escaped
+  write or invalid changeset in a _visible_ group escaped
   `with_feature_group` unhandled instead of answering the honest
   403/422. Flipped the tests that had pinned the wrong 403, tightened
   the `ResourcesTest` and `FeedWritesTest` parity properties (each
-  previously accepted 403 *or* 404 for an invisible group, which is
+  previously accepted 403 _or_ 404 for an invisible group, which is
   exactly how this got past them), and pinned every gated surface with
   a deterministic invisible-group 404 test — added for create on the
   assignment/availability/decision suites, index and create on the
