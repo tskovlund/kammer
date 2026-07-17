@@ -397,6 +397,25 @@ and this project adheres to
 
 ### Fixed
 
+- Leaving or being removed from a group no longer leaves an ex-member's
+  RSVP sitting on that group's future events (issue #329, owner-decided
+  option 1). Before #318 added capacity and a waitlist, a stale RSVP
+  after removal was cosmetic; afterwards it was consequential — an
+  ex-member could keep an attending seat or a promotable waitlist spot
+  on an event they could no longer even view. `Kammer.Events` gains
+  `drop_member_future_rsvps/2` (and the bulk
+  `drop_member_future_rsvps_in_groups/2` for callers ending a
+  membership across several groups at once): it deletes the user's RSVP
+  — any status, including waitlisted — on the group's future events,
+  then runs the same locked promotion pass a member's own cancellation
+  triggers, so a freed seat or a removed waitlist row promotes the next
+  waitlisted member in order. Past-event RSVPs are untouched, staying as
+  attendance history. Wired into every path that ends a group
+  membership: `Groups.leave_group/2`, `Groups.remove_member/3`,
+  `Groups.remove_memberships_in_community/2` (the community-wide
+  removal `Communities.remove_member/3` already delegates to), and
+  `Moderation`'s community and instance bans.
+
 - Community audit log cursor pagination (issue #340, 2026-07-17
   dismissal audit). `Audit.list_events` hard-capped at 50 rows with no
   way to see anything older, the API took no pagination params, and

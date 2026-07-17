@@ -553,22 +553,44 @@ defmodule Kammer.EventsTest do
       assert delivered_emails() == []
     end
 
-    test "a promotion job never notifies someone removed from the group after waitlisting", %{
-      group: group,
-      group_owner: group_owner,
-      event: event,
-      member: attendee
-    } do
+    test "removing a waitlisted member drops their queue spot outright — no stale promotion to notify (issue #329)",
+         %{
+           group: group,
+           group_owner: group_owner,
+           event: event,
+           member: attendee
+         } do
       waiter = group_member_fixture(group)
       {:ok, _seated} = Events.rsvp(attendee, event, :yes)
       {:ok, _queued} = Events.rsvp(waiter, event, :yes)
 
-      # Removal doesn't erase RSVPs, so the queue entry survives and the
-      # freed seat still promotes it — but the worker must not deliver to
-      # an ex-member (effective_level would fall back to the group
-      # default and leak the event title in-app, by push, and by email).
+      # Removal ends the waiter's queue spot immediately (see the
+      # "membership departures" describe below) — so the later freed
+      # seat finds nobody queued, and no promotion job is ever created
+      # for the worker to (correctly) refuse to deliver.
       membership = Kammer.Groups.get_membership(group, waiter)
       {:ok, _removed} = Kammer.Groups.remove_member(group_owner, group, membership)
+      assert Events.get_rsvp(event, waiter) == nil
+
+      {:ok, _freed} = Events.rsvp(attendee, event, :no)
+      refute_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+    end
+
+    test "a promotion job still refuses to notify when the membership is gone by some other means",
+         %{group: group, event: event, member: attendee} do
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      # Every real membership-ending path drops the RSVP too (issue
+      # #329, see the "membership departures" describe below) — this
+      # pins the worker's own defense-in-depth membership recheck by
+      # simulating a membership gone by some other means (a direct row
+      # delete, bypassing `Kammer.Groups.remove_member/3` entirely),
+      # the same way "a seat freed out-of-band" above simulates a
+      # cascade-style erasure to pin the promotion pass's self-heal.
+      membership = Kammer.Groups.get_membership(group, waiter)
+      Repo.delete!(membership)
 
       {:ok, _freed} = Events.rsvp(attendee, event, :no)
       assert Events.get_rsvp(event, waiter).status == :yes
@@ -583,6 +605,166 @@ defmodule Kammer.EventsTest do
              )
 
       assert delivered_emails() == []
+    end
+  end
+
+  describe "membership departures drop future RSVPs (issue #329)" do
+    test "leaving drops a future-event RSVP but keeps a past one as attendance history" do
+      %{group: group, member: member} = event_context()
+
+      {:ok, future_event} =
+        Events.create_event(member, group, %{"title" => "Ahead", "starts_at" => future(24)})
+
+      {:ok, past_event} =
+        Events.create_event(member, group, %{"title" => "Behind", "starts_at" => future(24)})
+
+      {:ok, _yes} = Events.rsvp(member, future_event, :yes)
+      {:ok, _yes} = Events.rsvp(member, past_event, :yes)
+
+      past_event
+      |> Ecto.Changeset.change(starts_at: DateTime.add(DateTime.utc_now(:second), -1, :day))
+      |> Repo.update!()
+
+      assert {:ok, _left} = Kammer.Groups.leave_group(member, group)
+
+      assert Events.get_rsvp(future_event, member) == nil
+      assert Events.get_rsvp(past_event, member).status == :yes
+    end
+
+    test "removing a seated attendee frees the seat and promotes the next waitlisted member, who's still a current member" do
+      %{group: group, group_owner: group_owner, member: attendee} = event_context()
+
+      {:ok, event} =
+        Events.create_event(attendee, group, %{
+          "title" => "Capped",
+          "starts_at" => future(48),
+          "capacity" => 1
+        })
+
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      membership = Kammer.Groups.get_membership(group, attendee)
+      assert {:ok, _removed} = Kammer.Groups.remove_member(group_owner, group, membership)
+
+      assert Events.get_rsvp(event, attendee) == nil
+      assert Events.get_rsvp(event, waiter).status == :yes
+      assert Kammer.Groups.get_membership(group, waiter)
+
+      assert_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+    end
+
+    test "removing a waitlisted member renumbers the queue for the remaining waiters" do
+      %{group: group, group_owner: group_owner, member: attendee} = event_context()
+
+      {:ok, event} =
+        Events.create_event(attendee, group, %{
+          "title" => "Capped",
+          "starts_at" => future(48),
+          "capacity" => 1
+        })
+
+      first_in_line = group_member_fixture(group)
+      second_in_line = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(first_in_line, event, :yes)
+      {:ok, _queued} = Events.rsvp(second_in_line, event, :yes)
+
+      membership = Kammer.Groups.get_membership(group, first_in_line)
+      assert {:ok, _removed} = Kammer.Groups.remove_member(group_owner, group, membership)
+      assert Events.get_rsvp(event, first_in_line) == nil
+
+      # The freed seat finds the remaining waiter, not a gap left by the
+      # removed queue slot.
+      assert {:ok, _freed} = Events.rsvp(attendee, event, :no)
+      assert Events.get_rsvp(event, second_in_line).status == :yes
+    end
+
+    test "removing a community member drops future RSVPs across every one of their groups" do
+      {community, _owner} = community_with_owner_fixture()
+      group_a = group_fixture(community)
+      group_b = group_fixture(community)
+      member = group_member_fixture(group_a)
+      {:ok, _membership} = Kammer.Groups.add_member(group_b, member)
+
+      {:ok, future_a} =
+        Events.create_event(member, group_a, %{"title" => "A", "starts_at" => future(24)})
+
+      {:ok, future_b} =
+        Events.create_event(member, group_b, %{"title" => "B", "starts_at" => future(24)})
+
+      {:ok, past_a} =
+        Events.create_event(member, group_a, %{"title" => "Old A", "starts_at" => future(24)})
+
+      {:ok, _yes} = Events.rsvp(member, future_a, :yes)
+      {:ok, _yes} = Events.rsvp(member, future_b, :yes)
+      {:ok, _yes} = Events.rsvp(member, past_a, :yes)
+
+      past_a
+      |> Ecto.Changeset.change(starts_at: DateTime.add(DateTime.utc_now(:second), -1, :day))
+      |> Repo.update!()
+
+      community_membership = Kammer.Communities.get_membership(community, member)
+
+      assert {:ok, _removed} =
+               Kammer.Communities.remove_member(member, community, community_membership)
+
+      assert Events.get_rsvp(future_a, member) == nil
+      assert Events.get_rsvp(future_b, member) == nil
+      assert Events.get_rsvp(past_a, member).status == :yes
+    end
+
+    test "a community ban drops the target's future group RSVPs in that community" do
+      {community, owner} = community_with_owner_fixture()
+      group = group_fixture(community)
+      member = group_member_fixture(group)
+
+      {:ok, future_event} =
+        Events.create_event(member, group, %{"title" => "Soon", "starts_at" => future(24)})
+
+      {:ok, past_event} =
+        Events.create_event(member, group, %{"title" => "Then", "starts_at" => future(24)})
+
+      {:ok, _yes} = Events.rsvp(member, future_event, :yes)
+      {:ok, _yes} = Events.rsvp(member, past_event, :yes)
+
+      past_event
+      |> Ecto.Changeset.change(starts_at: DateTime.add(DateTime.utc_now(:second), -1, :day))
+      |> Repo.update!()
+
+      assert {:ok, _ban} = Kammer.Moderation.ban_member(owner, community, member, nil)
+
+      assert Events.get_rsvp(future_event, member) == nil
+      assert Events.get_rsvp(past_event, member).status == :yes
+    end
+
+    test "an instance ban drops the target's future group RSVPs across every community" do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community)
+      member = group_member_fixture(group)
+      operator = instance_operator_fixture()
+
+      {other_community, _other_owner} = community_with_owner_fixture()
+      other_group = group_fixture(other_community)
+      {:ok, _other_membership} = Kammer.Groups.add_member(other_group, member)
+
+      {:ok, future_event} =
+        Events.create_event(member, group, %{"title" => "Soon", "starts_at" => future(24)})
+
+      {:ok, other_future_event} =
+        Events.create_event(member, other_group, %{
+          "title" => "Elsewhere",
+          "starts_at" => future(24)
+        })
+
+      {:ok, _yes} = Events.rsvp(member, future_event, :yes)
+      {:ok, _yes} = Events.rsvp(member, other_future_event, :yes)
+
+      assert {:ok, _ban} = Kammer.Moderation.ban_instance(operator, member.email, nil)
+
+      assert Events.get_rsvp(future_event, member) == nil
+      assert Events.get_rsvp(other_future_event, member) == nil
     end
   end
 

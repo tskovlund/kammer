@@ -639,6 +639,100 @@ defmodule Kammer.Events do
     Repo.get_by(EventRsvp, event_id: event.id, user_id: user.id)
   end
 
+  ## Membership departures (issue #329): leaving a group, being removed
+  ## from one, or a moderation ban all end a group membership, and the
+  ## same rule applies whichever door it came through — a member's spot
+  ## on that group's future events goes with them; a past event stays
+  ## exactly as it was, attendance history nobody rewrites. Every
+  ## membership-ending path in `Kammer.Groups`, `Kammer.Communities`, and
+  ## `Kammer.Moderation` funnels through here.
+
+  @doc """
+  Drops the user's RSVPs — any status, including a waitlist spot — on
+  every future event hosted by the group. Past-event RSVPs are left
+  untouched. Each affected event runs under the same per-event lock the
+  capacity machinery already uses (see the moduledoc): a freed seat or
+  a removed waitlist row promotes the next waitlisted RSVP in order,
+  exactly as a member's own cancellation would.
+
+  Unauthenticated: callers own the authorization decision (a group
+  membership already ended by the time this runs).
+  """
+  @spec drop_member_future_rsvps(User.t(), Group.t()) :: :ok
+  def drop_member_future_rsvps(%User{} = user, %Group{} = group) do
+    drop_member_future_rsvps_in_groups(user.id, [group.id])
+  end
+
+  @doc """
+  Bulk form of `drop_member_future_rsvps/2`, for a membership ending
+  across several groups at once — a community-wide removal or a
+  moderation ban — where the caller only has group ids on hand, not
+  loaded `Group` structs.
+  """
+  @spec drop_member_future_rsvps_in_groups(Ecto.UUID.t(), [Ecto.UUID.t()]) :: :ok
+  def drop_member_future_rsvps_in_groups(_user_id, []), do: :ok
+
+  def drop_member_future_rsvps_in_groups(user_id, group_ids) when is_list(group_ids) do
+    now = DateTime.utc_now(:second)
+
+    event_ids =
+      Repo.all(
+        from(rsvp in EventRsvp,
+          join: event in assoc(rsvp, :event),
+          where:
+            rsvp.user_id == ^user_id and event.group_id in ^group_ids and
+              (event.starts_at >= ^now or event.ends_at >= ^now),
+          select: rsvp.event_id
+        )
+      )
+
+    Enum.each(event_ids, &drop_future_rsvp_and_promote(&1, user_id))
+
+    :ok
+  end
+
+  # One transaction per event, same shape as every other capacity write
+  # (`write_rsvp/4`, `update_event/3`): lock the event row, apply the
+  # change, then run the shared promotion pass. A membership ending
+  # across several events never needs to be atomic as one unit — each
+  # event's write already is, and the next locked write on any event
+  # this pass somehow missed self-heals exactly like any other
+  # out-of-band gap (see the moduledoc).
+  #
+  # Unlike every other lock site here, `event_id` comes from a bulk
+  # query run moments earlier rather than a struct the caller already
+  # holds — over a whole batch, the odds of one of those events being
+  # deleted out from under this pass before its turn are no longer
+  # negligible, so this uses a nil-safe lock (`lock_event!/1`'s
+  # `Repo.one!` would raise and abort the entire membership removal
+  # over one unrelated, already-gone event) and just skips it.
+  defp drop_future_rsvp_and_promote(event_id, user_id) do
+    Repo.transact(fn ->
+      case lock_event(event_id) do
+        nil ->
+          {:ok, :ok}
+
+        locked_event ->
+          Repo.delete_all(
+            from(rsvp in EventRsvp,
+              where: rsvp.event_id == ^event_id and rsvp.user_id == ^user_id
+            )
+          )
+
+          promoted = promote_waitlisted(locked_event)
+          schedule_promotion_notifications(locked_event, promoted)
+
+          {:ok, :ok}
+      end
+    end)
+
+    :ok
+  end
+
+  defp lock_event(event_id) do
+    Repo.one(from(event in Event, where: event.id == ^event_id, lock: "FOR UPDATE"))
+  end
+
   ## Capacity & waitlist internals (issue #318 — see the moduledoc)
 
   # The one write path for member and guest RSVPs alike: lock the event
