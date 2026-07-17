@@ -19,9 +19,10 @@ and this project adheres to
   unsubscribes. Mail clients' one-click POST keeps its semantics —
   same delete, same neutral 200 (the response body is now the same
   small HTML page instead of plain text); both endpoints still answer
-  identically for valid and garbage tokens alike. The issue's second item — the email body's
-  manage link carrying the full token in the URL path — had already
-  been fixed in the #187 cut (the link rides the URL fragment), so
+  identically for valid and garbage tokens alike. The issue's second
+  item — the email body's manage link carrying the full token in the
+  URL path — had already been fixed in the #187 cut (the link rides
+  the URL fragment), so
   this closes the issue. Alongside: the instance-locale wrapper the
   guest and newsletter notifiers each carried a private copy of moved
   to `KammerWeb.Gettext.with_instance_locale/1`, now shared by the

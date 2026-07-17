@@ -86,8 +86,9 @@ defmodule KammerWeb.NewsletterController do
   # since the LiveView cut (#187), so no layout or asset pipeline
   # stands behind it. The inline styles echo the PWA's paper/ink/accent
   # palette (SPEC §21, clients/web/src/routes/layout.css) in both
-  # themes. Every interpolated value is HTML-escaped by the callers
-  # above; `inner_html` is markup by contract.
+  # themes. Every interpolated value is HTML-escaped — `heading` and
+  # the `lang` locale here, the token and copy in the callers above;
+  # only `inner_html` is markup, by contract.
   defp page(heading, inner_html) do
     """
     <!DOCTYPE html>

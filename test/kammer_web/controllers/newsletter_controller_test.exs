@@ -124,6 +124,7 @@ defmodule KammerWeb.NewsletterControllerTest do
     assert [csp] = get_resp_header(conn, "content-security-policy")
     assert csp =~ "form-action 'self'"
     assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert get_resp_header(conn, "x-frame-options") == ["DENY"]
     assert Repo.aggregate(NewsletterSubscription, :count) == 1
 
     # Follow the form's action (raw attribute value — base64url tokens
