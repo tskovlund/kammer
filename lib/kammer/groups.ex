@@ -14,6 +14,7 @@ defmodule Kammer.Groups do
   alias Kammer.Audit
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Events
   alias Kammer.Groups.Group
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
@@ -402,22 +403,36 @@ defmodule Kammer.Groups do
   end
 
   @doc """
-  Leaves a group. Owners must transfer ownership first.
+  Leaves a group. Owners must transfer ownership first. Ends the
+  member's spot on the group's future events too (issue #329) — past
+  RSVPs stay as attendance history; see `Kammer.Events.drop_member_future_rsvps/2`.
   """
   @spec leave_group(User.t(), Group.t()) ::
           {:ok, GroupMembership.t()} | {:error, :not_a_member | :owner_cannot_leave}
   def leave_group(%User{} = user, %Group{} = group) do
     case get_membership(group, user) do
-      nil -> {:error, :not_a_member}
-      %GroupMembership{role: :owner} -> {:error, :owner_cannot_leave}
-      %GroupMembership{} = membership -> Repo.delete(membership)
+      nil ->
+        {:error, :not_a_member}
+
+      %GroupMembership{role: :owner} ->
+        {:error, :owner_cannot_leave}
+
+      %GroupMembership{} = membership ->
+        Repo.transact(fn ->
+          with {:ok, deleted} <- Repo.delete(membership) do
+            Events.drop_member_future_rsvps(user, group)
+            {:ok, deleted}
+          end
+        end)
     end
   end
 
   @doc """
   Removes a member from the group. Owners cannot be removed (transfer
   ownership first); members may remove themselves (same as leaving);
-  otherwise requires `:manage_group`.
+  otherwise requires `:manage_group`. Ends the removed member's spot on
+  the group's future events too (issue #329) — past RSVPs stay as
+  attendance history; see `Kammer.Events.drop_member_future_rsvps/2`.
   """
   @spec remove_member(User.t(), Group.t(), GroupMembership.t()) ::
           {:ok, GroupMembership.t()} | {:error, :unauthorized | :owner_cannot_leave}
@@ -427,12 +442,23 @@ defmodule Kammer.Groups do
         {:error, :owner_cannot_leave}
 
       membership.user_id == actor.id ->
-        Repo.delete(membership)
+        Repo.transact(fn ->
+          with {:ok, removed} <- Repo.delete(membership) do
+            Events.drop_member_future_rsvps(actor, group)
+            {:ok, removed}
+          end
+        end)
 
       Authorization.can?(actor, :manage_group, group) ->
-        with {:ok, removed} <- Repo.delete(membership) do
-          target = Repo.get!(User, membership.user_id)
+        target = Repo.get!(User, membership.user_id)
 
+        with {:ok, removed} <-
+               Repo.transact(fn ->
+                 with {:ok, removed} <- Repo.delete(membership) do
+                   Events.drop_member_future_rsvps(target, group)
+                   {:ok, removed}
+                 end
+               end) do
           audit_group_action(
             actor,
             group,
@@ -452,17 +478,25 @@ defmodule Kammer.Groups do
   Removes every group membership `user_id` holds within `community` —
   the group half of `Communities.remove_member/3`'s community removal
   (which cascades across every group in the community, not just one).
+  Also ends the member's spot on every one of those groups' future
+  events (issue #329); see `Kammer.Events.drop_member_future_rsvps_in_groups/2`.
   Unauthenticated: callers own the authorization decision.
   """
   @spec remove_memberships_in_community(Community.t(), Ecto.UUID.t()) ::
           {non_neg_integer(), nil}
   def remove_memberships_in_community(%Community{} = community, user_id) do
-    Repo.delete_all(
-      from(membership in GroupMembership,
-        join: group in assoc(membership, :group),
-        where: group.community_id == ^community.id and membership.user_id == ^user_id
+    {count, group_ids} =
+      Repo.delete_all(
+        from(membership in GroupMembership,
+          join: group in assoc(membership, :group),
+          where: group.community_id == ^community.id and membership.user_id == ^user_id,
+          select: membership.group_id
+        )
       )
-    )
+
+    Events.drop_member_future_rsvps_in_groups(user_id, group_ids)
+
+    {count, nil}
   end
 
   @doc """

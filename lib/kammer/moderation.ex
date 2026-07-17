@@ -20,6 +20,7 @@ defmodule Kammer.Moderation do
   alias Kammer.Audit
   alias Kammer.Authorization
   alias Kammer.Communities.Community
+  alias Kammer.Events
   alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Post
@@ -462,13 +463,22 @@ defmodule Kammer.Moderation do
     end
   end
 
+  # Also ends the target's spot on every one of those groups' future
+  # events (issue #329) — a ban's group-membership removal is just
+  # another door into the same membership-ending rule `Groups.leave_group/2`
+  # and `Groups.remove_member/3` enforce; past RSVPs stay as attendance
+  # history. See `Kammer.Events.drop_member_future_rsvps_in_groups/2`.
   defp remove_memberships(community, target) do
-    Repo.delete_all(
-      from(membership in Kammer.Groups.GroupMembership,
-        join: group in assoc(membership, :group),
-        where: group.community_id == ^community.id and membership.user_id == ^target.id
+    {_count, group_ids} =
+      Repo.delete_all(
+        from(membership in Kammer.Groups.GroupMembership,
+          join: group in assoc(membership, :group),
+          where: group.community_id == ^community.id and membership.user_id == ^target.id,
+          select: membership.group_id
+        )
       )
-    )
+
+    Events.drop_member_future_rsvps_in_groups(target.id, group_ids)
 
     Repo.delete_all(
       from(membership in Kammer.Communities.CommunityMembership,
@@ -477,10 +487,18 @@ defmodule Kammer.Moderation do
     )
   end
 
+  # Same rule, instance-wide: every group across every community the
+  # target belongs to (issue #329).
   defp remove_all_memberships(target) do
-    Repo.delete_all(
-      from(membership in Kammer.Groups.GroupMembership, where: membership.user_id == ^target.id)
-    )
+    {_count, group_ids} =
+      Repo.delete_all(
+        from(membership in Kammer.Groups.GroupMembership,
+          where: membership.user_id == ^target.id,
+          select: membership.group_id
+        )
+      )
+
+    Events.drop_member_future_rsvps_in_groups(target.id, group_ids)
 
     Repo.delete_all(
       from(membership in Kammer.Communities.CommunityMembership,
