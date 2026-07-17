@@ -904,32 +904,38 @@ defmodule Kammer.EventsTest do
       refute ics =~ "\rORGANIZER"
     end
 
-    test "Unicode line separators are escaped too, not just CR/LF (#313)", %{
+    test "every Unicode line separator is escaped too, not just CR/LF (#313)", %{
       group: group,
       member: member
     } do
       # NEL (U+0085) and the line/paragraph separators (U+2028/U+2029)
       # are what a Unicode-aware unfolder breaks on — same injection
-      # class as the bare CR, different bytes.
-      {:ok, event} =
-        Events.create_event(member, group, %{
-          "title" => "Line one\u{2028}ORGANIZER:mailto:evil@example.org",
-          "starts_at" => future(48)
-        })
+      # class as the bare CR, different bytes. Each is handled by its own
+      # replace, so pin all three (not just one) or a dropped line ships
+      # a raw separator with a green suite.
+      for separator <- ["\u{0085}", "\u{2028}", "\u{2029}"] do
+        {:ok, event} =
+          Events.create_event(member, group, %{
+            "title" => "Line one#{separator}ORGANIZER:mailto:evil@example.org",
+            "starts_at" => future(48)
+          })
 
-      ics = ICS.single(event)
+        ics = ICS.single(event)
 
-      assert ics =~ "SUMMARY:Line one\\nORGANIZER:mailto:evil@example.org"
-      refute ics =~ "\u{2028}"
+        assert ics =~ "SUMMARY:Line one\\nORGANIZER:mailto:evil@example.org"
+        refute ics =~ separator
+      end
     end
 
     test "other control characters are dropped from text values (#313)", %{
       group: group,
       member: member
     } do
+      # A C0 control (BEL), a C0 the newline passes don't touch (VT), and
+      # a C1 control (CSI, U+009B) — each stripped by a different branch.
       {:ok, event} =
         Events.create_event(member, group, %{
-          "title" => "Bell\a and vtab\v gone",
+          "title" => "Bell\a and vtab\v and c1\u{009B} gone",
           "starts_at" => future(48)
         })
 
@@ -938,7 +944,7 @@ defmodule Kammer.EventsTest do
       # The stripped result is the sharp assertion — a strip that dropped
       # to a space instead of nothing would fail it, and any surviving
       # control char breaks the literal match.
-      assert ics =~ "SUMMARY:Bell and vtab gone"
+      assert ics =~ "SUMMARY:Bell and vtab and c1 gone"
     end
 
     test "a cancelled occurrence exports STATUS:CANCELLED; a live one has no STATUS (#313)", %{

@@ -144,11 +144,14 @@ defmodule Kammer.Calendar.ICS do
     |> String.replace("\u{0085}", "\\n")
     |> String.replace("\u{2028}", "\\n")
     |> String.replace("\u{2029}", "\\n")
-    # Remaining control characters — C0 + DEL (byte-oriented) and the C1
-    # range (codepoint-oriented, needs the `u` flag) — are illegal in
-    # RFC 5545 text and have no legitimate use in these fields (TAB
-    # stays, it's permitted); drop them so no exotic separator a lenient
-    # parser might honor survives. NEL (U+0085) is already handled above.
+    # Remaining control characters are dropped (TAB stays — it's
+    # permitted). C0 + DEL are RFC 5545 CONTROLs, forbidden in TEXT
+    # outright (byte-oriented regex). The C1 range (U+0080–U+009F,
+    # codepoint-oriented, needs the `u` flag) is *permitted* by the
+    # grammar as NON-US-ASCII, but stripped as defense-in-depth: a
+    # lenient or Unicode-aware client may still honor one as a control,
+    # and these have no legitimate use in these fields. NEL (U+0085) is
+    # already handled above.
     |> String.replace(~r/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
     |> String.replace(~r/[\x{0080}-\x{009F}]/u, "")
   end
