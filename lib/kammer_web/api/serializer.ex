@@ -46,6 +46,7 @@ defmodule KammerWeb.Api.Serializer do
   alias Kammer.Feed.PostAttachment
   alias Kammer.Files.Folder
   alias Kammer.Files.StoredFile
+  alias Kammer.Groups
   alias Kammer.Groups.Group
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
@@ -366,15 +367,15 @@ defmodule KammerWeb.Api.Serializer do
       cancelled: event.cancelled_at != nil,
       comments_locked: event.comment_locked_at != nil,
       # `rsvp_counts.yes` is the attending count a capacity is measured
-      # against (issue #318); `waitlist` names ride only the
-      # authenticated detail read — a viewerless read (the tokenless
-      # public event endpoint) gets counts and capacity but never who
-      # is queued, since attending identities aren't serialized either.
+      # against (issue #318); the named `waitlist` is member-gated —
+      # see `waitlist/2`. Counts, capacity, and the caller's own
+      # `my_rsvp`/`waitlist_position` answer every caller the read
+      # itself admits.
       capacity: event.capacity,
       rsvp_counts: rsvp_counts(event),
       my_rsvp: my_rsvp && my_rsvp.status,
       waitlist_position: waitlist_position(event, my_rsvp),
-      waitlist: if(viewer, do: waitlist(event), else: []),
+      waitlist: waitlist(event, viewer),
       slots: slots(event),
       comments:
         if(is_list(event.comments),
@@ -716,14 +717,22 @@ defmodule KammerWeb.Api.Serializer do
 
   defp slots(_event), do: []
 
-  # The ordered waitlist (issue #318), names included. Present on the
-  # authenticated event detail (identities preloaded); empty on lists —
-  # and `event/3` empties it for viewerless (public) reads, so queued
-  # names never ship to anonymous callers.
-  defp waitlist(%Event{rsvps: rsvps}) when is_list(rsvps) do
+  # The ordered waitlist (issue #318), names included — member-visible
+  # only (SPEC §6). Disclosure symmetry: attending identities are never
+  # serialized at all, so queueing must not expose more identity than
+  # attending does — the named queue answers only viewers who hold a
+  # membership in the event's host group. Everyone else — lists,
+  # viewerless (public) reads, and authenticated non-members alike —
+  # gets `[]`; the caller's own `waitlist_position` is unaffected.
+  # The membership lookup is the one viewer-dependent read here that
+  # costs a query, kept deliberately last so it runs only when a
+  # loaded, non-empty queue is about to be emitted (the detail read) —
+  # lists and public reads never pay it.
+  defp waitlist(%Event{rsvps: rsvps} = event, viewer) when is_list(rsvps) do
     waitlisted = waitlisted_in_order(rsvps)
 
-    if Enum.all?(waitlisted, &rsvp_identity_loaded?/1) do
+    if waitlisted != [] and Enum.all?(waitlisted, &rsvp_identity_loaded?/1) and
+         host_group_member?(event, viewer) do
       waitlisted
       |> Enum.with_index(1)
       |> Enum.map(fn {rsvp, position} ->
@@ -734,7 +743,12 @@ defmodule KammerWeb.Api.Serializer do
     end
   end
 
-  defp waitlist(_event), do: []
+  defp waitlist(_event, _viewer), do: []
+
+  defp host_group_member?(%Event{group: %Group{} = group}, %User{} = viewer),
+    do: Groups.get_membership(group, viewer) != nil
+
+  defp host_group_member?(_event, _viewer), do: false
 
   # The caller's 1-based spot in the queue, from the already-loaded
   # RSVPs — same order the context promotes in (waitlisted_at, then id).

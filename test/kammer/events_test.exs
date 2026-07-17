@@ -525,6 +525,34 @@ defmodule Kammer.EventsTest do
       assert delivered_emails() == []
     end
 
+    test "a promotion job delivers nothing when the event was cancelled before it ran", %{
+      group: group,
+      event: event,
+      member: attendee
+    } do
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+      {:ok, _freed} = Events.rsvp(attendee, event, :no)
+
+      assert Events.get_rsvp(event, waiter).status == :yes
+      assert_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+
+      # Cancelled between the promotion and the job run: "a spot opened
+      # up" for an event that won't happen must not go out.
+      {:ok, _cancelled} = Events.cancel_occurrence(attendee, event)
+
+      drain_delivered_emails()
+      assert :ok = perform_job(NotificationFanoutWorker, promotion_args(event, waiter))
+
+      refute Repo.get_by(Kammer.Notifications.Notification,
+               user_id: waiter.id,
+               event_id: event.id
+             )
+
+      assert delivered_emails() == []
+    end
+
     test "a promotion job never notifies someone removed from the group after waitlisting", %{
       group: group,
       group_owner: group_owner,

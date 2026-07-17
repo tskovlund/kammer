@@ -684,9 +684,10 @@ defmodule KammerWeb.Api.Schemas do
         waitlist: %Schema{
           type: :array,
           description:
-            "The ordered waitlist — present on the authenticated event " <>
-              "detail; empty on lists and on the public (tokenless) event " <>
-              "read, which gets counts and capacity but no queued identities",
+            "The ordered waitlist — member-visible (SPEC §6): present on " <>
+              "the event detail for host-group members; empty on lists, " <>
+              "for authenticated non-members, and on the public (tokenless) " <>
+              "event read, which get counts and capacity but no queued identities",
           items: %Schema{
             type: :object,
             properties: %{
@@ -726,7 +727,10 @@ defmodule KammerWeb.Api.Schemas do
         :timezone,
         :cancelled,
         :comments_locked,
+        :capacity,
         :rsvp_counts,
+        :my_rsvp,
+        :waitlist_position,
         :waitlist,
         :slots,
         :comments

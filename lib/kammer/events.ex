@@ -23,9 +23,9 @@ defmodule Kammer.Events do
   fit, in order. That covers a freed seat (an attendee switching away
   from yes), a raised or removed capacity, and reconciliation after
   out-of-band row deletions (a guest erasure or account deletion
-  cascades RSVPs away without firing a promotion — the next
-  capacity-relevant write on that event heals the gap, and a new "yes"
-  never jumps an existing queue). **Lowering the capacity never demotes
+  cascades RSVPs away without firing a promotion — the next locked
+  write on that event, any RSVP or event edit, heals the gap, and a
+  new "yes" never jumps an existing queue). **Lowering the capacity never demotes
   anyone already attending** — the surplus simply blocks promotions
   until attrition catches up. Promotions notify the promoted member
   through the notification machinery at their level (kind
@@ -401,10 +401,12 @@ defmodule Kammer.Events do
   Updates an event (creator or moderators). Reminder timing follows the
   new start automatically — the reminder worker re-reads the event.
 
-  Capacity edits follow the waitlist rules in the moduledoc: raising or
-  removing the cap promotes as many waitlisted RSVPs as now fit (in
-  order, atomically); introducing or lowering one never demotes anyone
-  already attending.
+  Every edit runs under the event lock and ends with the promotion
+  pass from the moduledoc's waitlist rules: raising or removing the
+  cap promotes as many waitlisted RSVPs as now fit (in order,
+  atomically); introducing or lowering one never demotes anyone
+  already attending (and promotes nobody — the pass self-limits); any
+  other edit simply heals seats freed out-of-band, like an RSVP write.
   """
   @spec update_event(User.t(), Event.t(), map()) ::
           {:ok, Event.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
@@ -419,11 +421,13 @@ defmodule Kammer.Events do
           locked_event = lock_event!(event.id)
 
           with {:ok, updated_event} <- locked_event |> Event.changeset(attrs) |> Repo.update() do
-            promoted =
-              if capacity_expanded?(locked_event, updated_event),
-                do: promote_waitlisted(updated_event),
-                else: []
-
+            # Every locked edit ends with the same promotion pass every
+            # RSVP write runs — not just capacity raises. It self-limits
+            # (`free = capacity - attending`), so introducing or
+            # lowering a cap still promotes nobody, while any edit heals
+            # seats freed out-of-band (a cascade-erased RSVP) exactly as
+            # the next RSVP write would.
+            promoted = promote_waitlisted(updated_event)
             schedule_promotion_notifications(updated_event, promoted)
             {:ok, updated_event}
           end
@@ -437,14 +441,6 @@ defmodule Kammer.Events do
       {:error, :unauthorized}
     end
   end
-
-  # Raising the cap (or removing it) can seat waitlisted people;
-  # introducing or lowering one never demotes, so it promotes nobody.
-  defp capacity_expanded?(%Event{capacity: nil}, %Event{}), do: false
-  defp capacity_expanded?(%Event{}, %Event{capacity: nil}), do: true
-
-  defp capacity_expanded?(%Event{capacity: old_capacity}, %Event{capacity: new_capacity}),
-    do: new_capacity > old_capacity
 
   @doc """
   Deletes an event (creator or moderators).

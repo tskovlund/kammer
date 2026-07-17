@@ -9,9 +9,11 @@ import type { Comment, Event, RsvpStatus } from './types.js';
  * - the caller was waitlisted before the tap: a re-yes can come back
  *   `yes` (the server's self-heal promoted them, same outcome as
  *   requested), and leaving the queue renumbers everyone behind them;
- * - the caller was seated on a capped event with a non-empty queue:
- *   their yes→no/maybe frees a seat and promotes the queue head —
- *   other rows (named waitlist, counts) the patch never touches.
+ * - the caller was seated on a capped event and moved away: the freed
+ *   seat can promote the queue head — rows the patch never touches —
+ *   and the snapshot can't be trusted to know whether a queue even
+ *   exists (one may have formed since load), so any yes→away on a
+ *   capped event refetches rather than inferring from stale counts.
  */
 export function rsvpNeedsRefetch(
 	previous: Event,
@@ -21,7 +23,7 @@ export function rsvpNeedsRefetch(
 	return (
 		outcome !== requested ||
 		previous.my_rsvp === 'waitlisted' ||
-		(previous.my_rsvp === 'yes' && previous.capacity != null && previous.rsvp_counts.waitlisted > 0)
+		(previous.my_rsvp === 'yes' && previous.capacity != null)
 	);
 }
 

@@ -2975,7 +2975,7 @@ export interface components {
 			/** @description A cancelled occurrence stays viewable but leaves listings and feeds */
 			cancelled: boolean;
 			/** @description Cap on attending RSVPs (issue #318) — members and confirmed guests under one cap; null means unlimited. Beyond it, yes answers waitlist. */
-			capacity?: number | null;
+			capacity: number | null;
 			/** @description Present on event detail, empty on lists */
 			comments: components['schemas']['Comment'][];
 			comments_locked: boolean;
@@ -2996,7 +2996,7 @@ export interface components {
 			location_name?: string | null;
 			location_url?: string | null;
 			/** @enum {string|null} */
-			my_rsvp?: 'yes' | 'no' | 'maybe' | 'waitlisted' | null;
+			my_rsvp: 'yes' | 'no' | 'maybe' | 'waitlisted' | null;
 			rsvp_counts: {
 				maybe: number;
 				no: number;
@@ -3022,13 +3022,13 @@ export interface components {
 			starts_at: string;
 			timezone: string;
 			title: string;
-			/** @description The ordered waitlist — present on the authenticated event detail; empty on lists and on the public (tokenless) event read, which gets counts and capacity but no queued identities */
+			/** @description The ordered waitlist — member-visible (SPEC §6): present on the event detail for host-group members; empty on lists, for authenticated non-members, and on the public (tokenless) event read, which get counts and capacity but no queued identities */
 			waitlist: {
 				attendee?: components['schemas']['Author'];
 				position: number;
 			}[];
 			/** @description The caller's 1-based spot in the queue — set only while waitlisted */
-			waitlist_position?: number | null;
+			waitlist_position: number | null;
 		};
 		/**
 		 * StoredFile

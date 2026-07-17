@@ -207,6 +207,22 @@ defmodule KammerWeb.Api.EventWritesTest do
       assert [%{"position" => 1, "attendee" => attendee}] = shown["waitlist"]
       assert attendee["display_name"] == member.display_name
 
+      # The named queue is member-visible only (SPEC §6): an
+      # authenticated viewer outside the host group — here a community
+      # member who can view the group's events but holds no membership
+      # — gets counts and capacity, never queued identities (attending
+      # identities aren't serialized either, so queueing must not
+      # disclose more than attending does).
+      %{"data" => outsider_view} =
+        member_fixture(community)
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}")
+        |> json_response(200)
+
+      assert outsider_view["waitlist"] == []
+      assert outsider_view["capacity"] == 1
+      assert outsider_view["rsvp_counts"]["waitlisted"] == 1
+
       # `waitlisted` is an outcome the server assigns, never a status a
       # caller may request — the endpoint's vocabulary stays yes/no/maybe.
       assert %{"error" => %{"code" => "bad_request", "message" => "status" <> _rest}} =

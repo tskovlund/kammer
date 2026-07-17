@@ -38,8 +38,10 @@ function event(overrides: Partial<Event> = {}): Event {
 		location_url: null,
 		cancelled: false,
 		comments_locked: false,
+		capacity: null,
 		rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 },
 		my_rsvp: null,
+		waitlist_position: null,
 		waitlist: [],
 		slots: [],
 		comments: [],
@@ -67,7 +69,7 @@ describe('optimistic RSVP rollback', () => {
 			event({ my_rsvp: 'no', rsvp_counts: { yes: 2, maybe: 0, no: 1, waitlisted: 0 } })
 		);
 
-		let midFlight: Event['my_rsvp'];
+		let midFlight: Event['my_rsvp'] | undefined;
 		vi.mocked(api.rsvp).mockImplementation(async () => {
 			midFlight = store.event?.my_rsvp;
 			throw new ApiError('server', 'nope', 500);

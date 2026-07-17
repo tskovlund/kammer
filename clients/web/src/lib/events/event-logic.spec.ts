@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyRsvp, claimedByMe, slotHasRoom, upsertComment } from './event-logic.js';
+import {
+	applyRsvp,
+	claimedByMe,
+	rsvpNeedsRefetch,
+	slotHasRoom,
+	upsertComment
+} from './event-logic.js';
 import type { Comment, Event } from './types.js';
 
 function baseEvent(overrides: Partial<Event> = {}): Event {
@@ -18,8 +24,10 @@ function baseEvent(overrides: Partial<Event> = {}): Event {
 		location_url: null,
 		cancelled: false,
 		comments_locked: false,
+		capacity: null,
 		rsvp_counts: { yes: 0, maybe: 0, no: 0, waitlisted: 0 },
 		my_rsvp: null,
+		waitlist_position: null,
 		waitlist: [],
 		slots: [],
 		comments: [],
@@ -94,6 +102,21 @@ describe('applyRsvp', () => {
 		const next = applyRsvp(event, 'no');
 		expect(next.rsvp_counts.yes).toBe(0);
 		expect(next.rsvp_counts.no).toBe(1);
+	});
+});
+
+describe('rsvpNeedsRefetch', () => {
+	it('refetches any yes→away on a capped event, even when the snapshot shows no queue', () => {
+		// The snapshot may be stale — a queue can have formed (or a cap been
+		// added in another tab) since load — so a freed seat's effects are
+		// re-read from the server, never inferred from local counts.
+		const counts = { yes: 2, maybe: 0, no: 0, waitlisted: 0 };
+		const capped = baseEvent({ capacity: 2, my_rsvp: 'yes', rsvp_counts: counts });
+		expect(rsvpNeedsRefetch(capped, 'no', 'no')).toBe(true);
+
+		// Uncapped, a freed seat promotes nobody: the optimistic patch stands.
+		const uncapped = baseEvent({ my_rsvp: 'yes', rsvp_counts: counts });
+		expect(rsvpNeedsRefetch(uncapped, 'no', 'no')).toBe(false);
 	});
 });
 
