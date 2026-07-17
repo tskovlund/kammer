@@ -1,9 +1,10 @@
 defmodule KammerWeb.Api.StepUpTest do
   @moduledoc """
   Step-up re-auth over the API (issue #294, ADR 0029): the passkey and
-  email-link step-up ceremonies, and the gate they open — every
-  credential-changing endpoint answers 401 `step_up_required` until
-  the calling device token has freshly re-asserted a root of trust.
+  email-link step-up ceremonies, and the gate they open — every gated
+  endpoint (credential changes, plus account deletion and export since
+  #323) answers 401 `step_up_required` until the calling device token
+  has freshly re-asserted a root of trust.
   """
 
   use KammerWeb.ConnCase, async: true
@@ -194,7 +195,12 @@ defmodule KammerWeb.Api.StepUpTest do
         post(conn, ~p"/api/v1/me/passkeys", %{"challenge_token" => "x"}),
         delete(conn, ~p"/api/v1/me/passkeys/#{Ecto.UUID.generate()}"),
         post(conn, ~p"/api/v1/me/email-change", %{"email" => "ny@example.org"}),
-        delete(conn, ~p"/api/v1/me/devices/#{other_id}")
+        delete(conn, ~p"/api/v1/me/devices/#{other_id}"),
+        # Deletion and export joined the gated set on #323. The delete
+        # carries the CORRECT typed-back email on purpose: the gate must
+        # answer before the confirmation check ever runs.
+        delete(conn, ~p"/api/v1/me", %{"confirm_email" => user.email}),
+        get(conn, ~p"/api/v1/me/export")
       ]
 
       for refused <- gated_requests do
@@ -203,6 +209,7 @@ defmodule KammerWeb.Api.StepUpTest do
 
       # Nothing behind the gate happened.
       assert Accounts.get_device_token(other_bearer)
+      assert Accounts.get_user_by_email(user.email)
 
       # Self-revoke is sign-out, not a credential change — ungated.
       conn |> delete(~p"/api/v1/me/devices/#{own_device_id}") |> json_response(200)

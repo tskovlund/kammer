@@ -27,13 +27,20 @@ defmodule KammerWeb.Api.AccountController do
   `device_token` the client swaps in, while every other device signs
   out — the conservative reading of an account-identity change.
 
+  **Deletion and export sit behind the step-up gate too** (issue
+  #323, widening ADR 0029's original scope): deletion is one
+  irreversible request a token thief could fire as pure destruction,
+  and the export bundles every stored byte of the account's PII into
+  a single response — both worth more to an attacker than to a
+  scripted accident.
+
   **Deletion confirmation semantics**: the request must carry the
   account's own email typed back (`confirm_email`; mismatch is a
   422). This is accidental-click protection, *not* a security
   control — an attacker holding the device token can read the address
-  from `GET /me` and type it back, so possession of the token is the
-  real credential (the same possession a fresh magic link would
-  prove; Kammer is passwordless). What the typed email stops is the
+  from `GET /me` and type it back, so the step-up gate above is the
+  security layer and this check stacks beneath it. What the typed
+  email stops is the
   one honest failure mode: a reflexive or scripted DELETE. The
   response is sent after the row is gone — the conn was authenticated
   at the start of the request, so answering 200 as the account
@@ -60,7 +67,13 @@ defmodule KammerWeb.Api.AccountController do
   # ADR 0029). Only initiation: the confirm endpoint consumes a
   # single-use token already bound to this account, and gating it too
   # would strand the legitimate flow when the window expires mid-email.
-  plug :require_stepped_up when action in [:request_email_change]
+  # Deletion and export joined the gated set on #323 (ADR 0029 update):
+  # ADR 0029's original exclusion reasoned about credential takeover,
+  # but a token thief needs no persistence to destroy the account
+  # outright or to pull every stored byte of PII in one request. The
+  # typed-back-email check in `delete` still runs after the gate —
+  # accidental-click protection layered on top, not replaced.
+  plug :require_stepped_up when action in [:request_email_change, :export, :delete]
 
   @spec request_email_change(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def request_email_change(conn, %{"email" => email} = _params) when is_binary(email) do

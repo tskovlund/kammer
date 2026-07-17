@@ -10,7 +10,11 @@ defmodule KammerWeb.ApiStepUp do
   calling credential): passkey enrollment and removal, revoking a
   *different* device, and initiating an email change. Self-revoke
   (sign-out) stays ungated — it only destroys the caller's own
-  credential, which mere possession already allows.
+  credential, which mere possession already allows. Account deletion
+  and the GDPR export joined the set on #323 (ADR 0029 update):
+  irreversible destruction and one-shot bulk PII exfiltration are
+  exactly what a transient token thief wants, even without
+  persistence.
   """
 
   import Plug.Conn, only: [halt: 1]

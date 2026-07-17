@@ -1,5 +1,5 @@
 import { createApiClient } from '$lib/api/client.js';
-import { ApiError, fail, guard, kindForStatus } from '$lib/api/errors.js';
+import { ApiError, fail, guard } from '$lib/api/errors.js';
 import type { components } from '$lib/api/schema.js';
 import type { Instance } from '$lib/instances/types.js';
 import type { Comment, Community, Poll, Post, StoredFile } from './types.js';
@@ -443,7 +443,19 @@ export async function fetchAuthedObjectUrl(instance: Instance, path: string): Pr
 	const response = await fetch(fileUrl(instance, path), {
 		headers: { authorization: `Bearer ${instance.deviceToken}` }
 	});
-	if (!response.ok) throw new ApiError(kindForStatus(response.status), 'Could not load file.');
+	if (!response.ok) {
+		// Read the error envelope like the upload path above: the account
+		// export rides this helper and is step-up-gated (#323), so its 401
+		// must map to `step_up`, not a dead session — only `fail` sees the
+		// `step_up_required` code a bare status check would miss.
+		let body: unknown;
+		try {
+			body = await response.json();
+		} catch {
+			/* non-JSON error body */
+		}
+		throw fail(body, response, 'Could not load file.');
+	}
 	const blob = await response.blob();
 	return URL.createObjectURL(blob);
 }

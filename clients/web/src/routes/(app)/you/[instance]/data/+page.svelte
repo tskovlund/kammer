@@ -6,10 +6,12 @@
 	import { t } from '$lib/i18n/i18n.svelte.js';
 	import { revokeAndRemoveInstance } from '$lib/instances/api.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
+	import { isStepUpRequired } from '$lib/instances/stepup.js';
 	import { deleteAccount, fetchAccountExportUrl } from '$lib/people/api.js';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
+	import StepUpModal from '$lib/ui/StepUpModal.svelte';
 
 	const instance = $derived(
 		instances.list.find((candidate) => candidate.id === page.params.instance)
@@ -30,26 +32,53 @@
 		instance !== undefined && typedEmail.trim().toLowerCase() === instance.user.email.toLowerCase()
 	);
 
+	// Both flows are step-up-gated (issue #323, ADR 0029): a 401
+	// step_up_required opens the confirmation modal, which retries the
+	// original action afterwards.
+	let stepUpRetry = $state<(() => Promise<void>) | null>(null);
+
+	async function doExport(): Promise<void> {
+		if (!instance) return;
+		const url = await fetchAccountExportUrl(instance);
+		// Same anchor dance as the search page's attachment download.
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = `kammer-export-${new Date().toISOString().slice(0, 10)}.zip`;
+		anchor.rel = 'noopener';
+		document.body.appendChild(anchor);
+		anchor.click();
+		anchor.remove();
+		URL.revokeObjectURL(url);
+	}
+
 	async function exportData(): Promise<void> {
 		if (!instance) return;
 		exporting = true;
 		exportError = null;
 		try {
-			const url = await fetchAccountExportUrl(instance);
-			// Same anchor dance as the search page's attachment download.
-			const anchor = document.createElement('a');
-			anchor.href = url;
-			anchor.download = `kammer-export-${new Date().toISOString().slice(0, 10)}.zip`;
-			anchor.rel = 'noopener';
-			document.body.appendChild(anchor);
-			anchor.click();
-			anchor.remove();
-			URL.revokeObjectURL(url);
-		} catch {
-			exportError = t('account.export.error');
+			await doExport();
+		} catch (error) {
+			if (isStepUpRequired(error)) {
+				stepUpRetry = () => doExport();
+			} else {
+				exportError = t('account.export.error');
+			}
 		} finally {
 			exporting = false;
 		}
+	}
+
+	async function doDelete(typed: string): Promise<void> {
+		if (!instance) return;
+		await deleteAccount(instance, typed);
+		// The account is gone server-side; drop the instance locally the
+		// same way sign-out does (best-effort revoke of the now-dead
+		// token, push unsubscribe, snapshot clear).
+		await revokeAndRemoveInstance(instance.id);
+		instances.refresh();
+		// The (app) layout's guard redirects to /welcome if this was the
+		// last account.
+		await goto(resolve('/you'));
 	}
 
 	async function confirmDelete(submitEvent: SubmitEvent): Promise<void> {
@@ -57,21 +86,18 @@
 		if (!instance) return;
 		deleting = true;
 		deleteError = null;
+		const typed = typedEmail.trim();
 		try {
-			await deleteAccount(instance, typedEmail.trim());
-			// The account is gone server-side; drop the instance locally the
-			// same way sign-out does (best-effort revoke of the now-dead
-			// token, push unsubscribe, snapshot clear).
-			await revokeAndRemoveInstance(instance.id);
-			instances.refresh();
-			// The (app) layout's guard redirects to /welcome if this was the
-			// last account.
-			await goto(resolve('/you'));
+			await doDelete(typed);
 		} catch (error) {
-			deleteError =
-				error instanceof ApiError && error.kind === 'validation'
-					? t('account.delete.error.mismatch')
-					: t('account.delete.error.generic');
+			if (isStepUpRequired(error)) {
+				stepUpRetry = () => doDelete(typed);
+			} else {
+				deleteError =
+					error instanceof ApiError && error.kind === 'validation'
+						? t('account.delete.error.mismatch')
+						: t('account.delete.error.generic');
+			}
 			deleting = false;
 		}
 	}
@@ -189,4 +215,13 @@
 			</div>
 		{/if}
 	</section>
+
+	{#if stepUpRetry}
+		<StepUpModal
+			{instance}
+			retry={stepUpRetry}
+			onsuccess={() => (stepUpRetry = null)}
+			oncancel={() => (stepUpRetry = null)}
+		/>
+	{/if}
 {/if}

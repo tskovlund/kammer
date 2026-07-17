@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { ApiError } from '$lib/api/errors.js';
 import { testInstance } from '$lib/instances/test-support.js';
 import type { Instance } from '$lib/instances/types.js';
 
@@ -18,6 +19,7 @@ vi.mock('$lib/people/api.js', () => ({
 	fetchAccountExportUrl: vi.fn()
 }));
 
+import { deleteAccount } from '$lib/people/api.js';
 import Page from './+page.svelte';
 
 beforeEach(() => {
@@ -41,5 +43,25 @@ describe('data & account — single-account collapse (#322)', () => {
 
 		expect(screen.getByText('Your data and your account on Example Club.')).toBeTruthy();
 		expect(screen.getByText(/Download everything Example Club stores about you/)).toBeTruthy();
+	});
+});
+
+describe('data & account — step-up gate (#323)', () => {
+	it('opens the step-up dialog, not the error copy, when deletion is gated', async () => {
+		// The server's 401 step_up_required is a gate, not a failure: the
+		// dialog must open and the delete error copy must NOT render.
+		vi.mocked(deleteAccount).mockRejectedValueOnce(
+			new ApiError('step_up', 'step up', 401, {}, 'step_up_required')
+		);
+		render(Page);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
+		await fireEvent.input(screen.getByLabelText(/Type your email address/), {
+			target: { value: 'a@example.com' }
+		});
+		await fireEvent.submit(document.querySelector('#account-delete-form')!);
+
+		await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+		expect(document.querySelector('[role="alert"]')).toBeNull();
 	});
 });

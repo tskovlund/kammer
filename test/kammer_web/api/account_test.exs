@@ -184,12 +184,16 @@ defmodule KammerWeb.Api.AccountTest do
   end
 
   describe "account deletion" do
+    # Deletion is step-up-gated since #323 (the gate itself is
+    # exercised in step_up_test.exs); these conns arrive stepped up,
+    # pinning that the typed-back-email check still runs AFTER the
+    # gate — both protections stack.
     test "a mismatched confirm_email is a 422 and deletes nothing" do
       user = AccountsFixtures.user_fixture()
 
       %{"error" => %{"code" => "invalid_params"}} =
         user
-        |> api_conn()
+        |> api_conn(stepped_up: true)
         |> delete(~p"/api/v1/me", %{"confirm_email" => "forkert@example.org"})
         |> json_response(422)
 
@@ -199,6 +203,7 @@ defmodule KammerWeb.Api.AccountTest do
     test "the typed-back email deletes the account, revokes credentials, severs sockets" do
       user = AccountsFixtures.user_fixture()
       token = Accounts.create_device_token(user, "Min telefon")
+      Accounts.step_up_device(Accounts.get_device_token(token))
       KammerWeb.Endpoint.subscribe("api_user_socket:#{user.id}")
 
       %{"status" => "deleted"} =
@@ -217,10 +222,12 @@ defmodule KammerWeb.Api.AccountTest do
   end
 
   describe "export" do
+    # Export is step-up-gated since #323 (the gate itself is exercised
+    # in step_up_test.exs).
     test "streams the caller's export zip with their data.json inside" do
       user = AccountsFixtures.user_fixture()
 
-      conn = user |> api_conn() |> get(~p"/api/v1/me/export")
+      conn = user |> api_conn(stepped_up: true) |> get(~p"/api/v1/me/export")
 
       assert response_content_type(conn, :zip)
       assert [disposition] = get_resp_header(conn, "content-disposition")
@@ -238,11 +245,17 @@ defmodule KammerWeb.Api.AccountTest do
       user = AccountsFixtures.user_fixture()
 
       for _request <- 1..3 do
-        assert response_content_type(user |> api_conn() |> get(~p"/api/v1/me/export"), :zip)
+        assert response_content_type(
+                 user |> api_conn(stepped_up: true) |> get(~p"/api/v1/me/export"),
+                 :zip
+               )
       end
 
       assert %{"error" => %{"code" => "rate_limited"}} =
-               user |> api_conn() |> get(~p"/api/v1/me/export") |> json_response(429)
+               user
+               |> api_conn(stepped_up: true)
+               |> get(~p"/api/v1/me/export")
+               |> json_response(429)
     end
   end
 end
