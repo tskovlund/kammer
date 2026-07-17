@@ -484,7 +484,7 @@
 	"confirmEmail.notSignedIn.signIn": "Gå til login",
 	"stepUpConfirm.title": "Bekræft, at det er dig",
 	"stepUpConfirm.ready.title": "Bekræft, at det er dig",
-	"stepUpConfirm.ready.body": "En enhed, der er logget ind på din konto, har bedt om at ændre dine sikkerhedsindstillinger. Hvis det var dig, så bekræft herunder — og vend derefter tilbage til appen og prøv igen.",
+	"stepUpConfirm.ready.body": "En enhed, der er logget ind på din konto, har bedt om at foretage en sikkerhedsfølsom ændring — administrere adgangsnøgler eller enheder, ændre din e-mailadresse, slette kontoen eller hente en kopi af alle dens data. Hvis det var dig, så bekræft herunder — og vend derefter tilbage til appen og prøv igen.",
 	"stepUpConfirm.ready.confirm": "Ja, det er mig",
 	"stepUpConfirm.success.title": "Bekræftet",
 	"stepUpConfirm.success.body": "Alt er klar. Vend tilbage til den app, du brugte, og prøv ændringen igen.",

@@ -337,7 +337,7 @@ defmodule KammerWeb.ApiSpec do
               "Requires a fresh step-up (issue #323) — 401 `step_up_required` otherwise",
             :me_export,
             [],
-            extra_errors: [400],
+            extra_errors: [400, 429],
             response: binary_response("The export zip: data.json plus every uploaded file")
           )
       },

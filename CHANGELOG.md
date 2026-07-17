@@ -479,7 +479,12 @@ and this project adheres to
   stays, layered after the gate — accidental-click protection on top
   of, not instead of, the security control. The PWA's delete and
   export flows open the same step-up dialog and retry, like every
-  other gated flow.
+  other gated flow. The consent copy — the step-up email and the
+  confirmation landing page — now names the widened stakes
+  explicitly (deleting the account, downloading all its data)
+  instead of the original "security settings" phrasing, so a user
+  approving a step-up knows the worst the action-generic grant can
+  do (adversarial review of the #323 widening).
 
 - `Event.location_url` now rejects anything but `http`/`https` on
   write (issue #247, found by the adversarial review of #246):

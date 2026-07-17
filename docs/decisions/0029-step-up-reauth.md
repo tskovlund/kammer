@@ -140,3 +140,19 @@ a security control, exactly as documented on #258. No new machinery —
 the widening is two more actions on the existing controller plug, and
 the PWA's delete/export flows ride the same `step_up_required` →
 `StepUpModal` → retry path every gated flow already uses.
+
+**Residual risks.** The window is per-token but action-generic: once
+a device steps up, that token can perform _any_ gated action until
+the window lapses. A thief holding the victim's own device token
+therefore doesn't need the victim's mailbox or passkey — they can
+ride a legitimate step-up the victim performs during the window (the
+same-token piggyback), turning, say, a routine passkey enrollment
+into an open door for deletion or the export. That residual was
+acceptable while the gated surface was reversible credential
+plumbing; this widening makes it carry irreversible stakes.
+Mitigations: the short window (default 10 minutes) bounds the ride,
+and the consent copy — the step-up email and the `/step-up/{token}`
+landing page — now names deletion and export explicitly, so a user
+approving a step-up knows the worst the grant can do. Notifying the
+owner when a deletion or export actually executes is tracked as
+follow-up #338.

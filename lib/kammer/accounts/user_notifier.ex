@@ -79,11 +79,14 @@ defmodule Kammer.Accounts.UserNotifier do
 
   @doc """
   Deliver the step-up confirmation link (issue #294, ADR 0029): the
-  emailed proof-of-mailbox a device presents before a credential
-  change when it has no usable passkey. Deliberately says which kind
-  of action prompted it and what to do if the recipient didn't ask —
-  an unexpected one of these is the signal a device token is in the
-  wrong hands.
+  emailed proof-of-mailbox a device presents before a gated,
+  security-sensitive action when it has no usable passkey. The
+  elevation is action-generic, so the body cannot say which specific
+  action prompted it — instead it names the gated class including its
+  most consequential members (account deletion and the full data
+  export, issue #323), and says what to do if the recipient didn't
+  ask: an unexpected one of these is the signal a device token is in
+  the wrong hands.
   """
   @spec deliver_step_up_instructions(User.t(), String.t()) ::
           {:ok, Swoosh.Email.t()} | {:error, term()}
@@ -92,7 +95,7 @@ defmodule Kammer.Accounts.UserNotifier do
       deliver(user.email, gettext("Confirm it's you"), """
       #{gettext("Hi %{name},", name: user.display_name)}
 
-      #{gettext("A device signed in to your account wants to change your security settings (such as passkeys, devices, or your email address). Confirm it's you by visiting the link below:")}
+      #{gettext("A device signed in to your account wants to make a security-sensitive change — managing passkeys or devices, changing your email address, deleting the account, or downloading a copy of all its data. Confirm it's you by visiting the link below:")}
 
       #{url}
 

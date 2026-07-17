@@ -484,7 +484,7 @@
 	"confirmEmail.notSignedIn.signIn": "Go to sign-in",
 	"stepUpConfirm.title": "Confirm it's you",
 	"stepUpConfirm.ready.title": "Confirm it's you",
-	"stepUpConfirm.ready.body": "A device signed in to your account asked to change your security settings. If that was you, confirm below — then return to the app and try again.",
+	"stepUpConfirm.ready.body": "A device signed in to your account asked to make a security-sensitive change — managing passkeys or devices, changing your email address, deleting the account, or downloading a copy of all its data. If that was you, confirm below — then return to the app and try again.",
 	"stepUpConfirm.ready.confirm": "Yes, it's me",
 	"stepUpConfirm.success.title": "Confirmed",
 	"stepUpConfirm.success.body": "All set. Return to the app you were using and try the change again.",
