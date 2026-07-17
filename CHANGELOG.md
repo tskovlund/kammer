@@ -398,6 +398,22 @@ and this project adheres to
   means for a defaulted setting. Pinned by an API test driving null
   through both create and update.
 
+- Three previously-dismissed review findings, remediated after the
+  owner overruled the dismissals (2026-07-17). The invite landing page
+  now re-tints with the invited community's accent once the token
+  resolves — the community is known from that moment, so the page
+  carries its branding like every other community-owned surface (the
+  invite preview payload gains the community's `accent_color`; the
+  guest confirm and manage pages stay untinted — their payloads carry
+  no single community, and a guest's inventory can span several). The
+  single-account failure banners no longer presume one community:
+  "your community" copy is now count-agnostic in English and Danish
+  (one instance can host several communities, so the old wording was
+  wrong for multi-community accounts). Internally, waitlist-promotion
+  notification jobs are enqueued with one `Oban.insert_all` instead of
+  a per-promotion insert loop — same in-transaction atomicity, one
+  statement per promotion burst.
+
 - Invite creation now validates `invited_email` (issue #305). The
   changeset cast the address with no format check, so an admin could
   invite `jhon@` or `alice@example ` — the API answered 201 and the

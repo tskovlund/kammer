@@ -876,6 +876,10 @@ defmodule KammerWeb.Api.Serializer do
         name: community.name,
         slug: community.slug,
         description: community.description,
+        # The community is known the moment the token resolves, so the
+        # landing page can carry its branding (SPEC §21) — same
+        # always-loaded column the full Community shape exposes.
+        accent_color: community.accent_color,
         require_real_names: community.require_real_names
       },
       group: invite_group(invite)

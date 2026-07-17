@@ -1226,9 +1226,10 @@ defmodule KammerWeb.Api.Schemas do
             name: %Schema{type: :string},
             slug: %Schema{type: :string},
             description: %Schema{type: :string, nullable: true},
+            accent_color: %Schema{type: :string, description: "Hex theme color, e.g. #8a4b24"},
             require_real_names: %Schema{type: :boolean}
           },
-          required: [:id, :name, :slug, :require_real_names]
+          required: [:id, :name, :slug, :accent_color, :require_real_names]
         },
         group: %Schema{
           type: :object,

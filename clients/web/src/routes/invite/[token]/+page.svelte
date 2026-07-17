@@ -22,6 +22,7 @@
 	import { extractMagicToken } from '$lib/instances/signin.js';
 	import type { Instance } from '$lib/instances/types.js';
 	import Button from '$lib/ui/Button.svelte';
+	import CommunityAccent from '$lib/ui/CommunityAccent.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import PublicShell from '$lib/ui/PublicShell.svelte';
@@ -251,167 +252,174 @@
 	<title>{preview ? `${t('invite.title', { name: targetName })} · ` : ''}{t('app.name')}</title>
 </svelte:head>
 
-<PublicShell>
-	{#if loadState === 'loading'}
-		<div aria-busy="true" aria-live="polite" class="flex flex-col gap-3">
-			<Skeleton class="h-11 w-full" />
-			<Skeleton class="h-11 w-2/3" />
-		</div>
-	{:else if loadState === 'invalid'}
-		<EmptyState title={t('invite.invalid.title')} body={t('invite.invalid.body')} />
-	{:else if loadState === 'error'}
-		<EmptyState title={t('invite.error.title')} body={t('invite.error.body')}>
-			<Button id="invite-retry" variant="primary" onclick={load}>{t('common.retry')}</Button>
-		</EmptyState>
-	{:else if preview}
-		{#if step === 'landing'}
-			<div class="text-center">
-				<h1 class="text-lg font-semibold text-ink">{t('invite.title', { name: targetName })}</h1>
-				{#if preview.group}
-					<p class="mt-1 text-sm text-ink-muted">
-						{t('invite.groupContext', { name: preview.community.name })}
-					</p>
-				{:else if preview.community.description}
-					<p class="mt-1 text-sm leading-relaxed text-ink-muted">
-						{preview.community.description}
-					</p>
-				{/if}
-				{#if preview.community.require_real_names}
-					<p class="mt-4 rounded-lg border border-line p-3 text-sm text-ink-muted">
-						{t('invite.realNames')}
-					</p>
-				{/if}
-
-				{#if signedIn && !showAlternatives}
-					<div class="mt-6 flex flex-col gap-3">
-						<p class="text-sm text-ink-muted">
-							{t('invite.signedInAs', { email: signedIn.user.email })}
-						</p>
-						<Button id="invite-accept" variant="primary" disabled={busy} onclick={acceptSignedIn}>
-							{t('invite.accept')}
-						</Button>
-					</div>
-				{:else}
-					<div class="mt-6 flex flex-col gap-3">
-						{#if registrationOpen}
-							<Button id="invite-register" variant="primary" onclick={() => goTo('register')}>
-								{t('invite.register')}
-							</Button>
-						{/if}
-						<Button
-							id="invite-signin"
-							variant={registrationOpen ? 'ghost' : 'primary'}
-							onclick={() => goTo('signin')}
-						>
-							{t('invite.signIn')}
-						</Button>
-						{#if registrationOpen}
-							<p class="text-sm text-ink-faint">{t('invite.newHere')}</p>
-						{/if}
-					</div>
-				{/if}
-				<p class="mt-3 text-sm text-danger" role="alert" aria-live="polite">
-					{#if error}{error}{/if}
-				</p>
+<!-- Once the token resolves, the community IS known — so the landing
+     carries its branding (SPEC §21), same best-effort re-tint as the
+     public community tree: null until then keeps the default accent,
+     no extra fetch — the preview this page already loads carries the
+     `accent_color`. -->
+<CommunityAccent accentColor={preview?.community.accent_color ?? null}>
+	<PublicShell>
+		{#if loadState === 'loading'}
+			<div aria-busy="true" aria-live="polite" class="flex flex-col gap-3">
+				<Skeleton class="h-11 w-full" />
+				<Skeleton class="h-11 w-2/3" />
 			</div>
-		{:else if step === 'register'}
-			<h1 class="text-lg font-semibold text-ink">{t('register.title')}</h1>
-			<p class="mt-1 text-sm leading-relaxed text-ink-muted">{t('register.description')}</p>
-			<form id="invite-register-form" class="mt-6 flex flex-col gap-4" onsubmit={submitRegister}>
-				<Input
-					id="register-display-name"
-					label={t('register.displayName')}
-					bind:value={displayName}
-					error={nameError}
-					type="text"
-					autocomplete="name"
-					required
-				/>
-				<Input
-					id="register-email"
-					label={t('register.email')}
-					bind:value={email}
-					error={emailError}
-					type="email"
-					autocomplete="email"
-					required
-				/>
-				<Button id="register-submit" variant="primary" type="submit" disabled={busy}>
-					{t('register.submit')}
-				</Button>
-				<Button id="register-back" variant="ghost" onclick={() => goTo('landing')}>
-					{t('common.back')}
-				</Button>
-				<p class="text-sm text-danger" role="alert" aria-live="polite">
-					{#if error}{error}{/if}
-				</p>
-			</form>
-		{:else if step === 'signin'}
-			<h1 class="text-lg font-semibold text-ink">
-				{t('signin.email.title', { name: instanceName })}
-			</h1>
-			<p class="mt-1 text-sm leading-relaxed text-ink-muted">{t('signin.email.description')}</p>
-			<form id="invite-signin-form" class="mt-6 flex flex-col gap-4" onsubmit={submitEmail}>
-				<Input
-					id="invite-signin-email"
-					label={t('signin.email.label')}
-					bind:value={email}
-					{error}
-					type="email"
-					autocomplete="email"
-					required
-				/>
-				<Button id="invite-signin-submit" variant="primary" type="submit" disabled={busy}>
-					{t('signin.email.submit')}
-				</Button>
-				<Button id="invite-signin-back" variant="ghost" onclick={() => goTo('landing')}>
-					{t('common.back')}
-				</Button>
-			</form>
-		{:else}
-			<h1 class="text-lg font-semibold text-ink">{t('signin.confirm.title')}</h1>
-			<p class="mt-1 text-sm leading-relaxed text-ink-muted">
-				{t('signin.confirm.description', { email })}
-			</p>
-			<form id="invite-confirm-form" class="mt-6 flex flex-col gap-4" onsubmit={submitPaste}>
-				<Input
-					id="invite-paste"
-					label={t('signin.confirm.pasteLabel')}
-					bind:value={paste}
-					{error}
-					hint={t('signin.confirm.pasteHint')}
-					type="text"
-					autocomplete="off"
-					autocapitalize="off"
-					spellcheck={false}
-					required
-				/>
-				<Button id="invite-confirm-submit" variant="primary" type="submit" disabled={busy}>
-					{t('signin.confirm.submit')}
-				</Button>
-				<div class="flex items-center justify-between">
-					<Button
-						id="invite-confirm-back"
-						variant="ghost"
-						size="sm"
-						onclick={() => goTo('landing')}
-					>
+		{:else if loadState === 'invalid'}
+			<EmptyState title={t('invite.invalid.title')} body={t('invite.invalid.body')} />
+		{:else if loadState === 'error'}
+			<EmptyState title={t('invite.error.title')} body={t('invite.error.body')}>
+				<Button id="invite-retry" variant="primary" onclick={load}>{t('common.retry')}</Button>
+			</EmptyState>
+		{:else if preview}
+			{#if step === 'landing'}
+				<div class="text-center">
+					<h1 class="text-lg font-semibold text-ink">{t('invite.title', { name: targetName })}</h1>
+					{#if preview.group}
+						<p class="mt-1 text-sm text-ink-muted">
+							{t('invite.groupContext', { name: preview.community.name })}
+						</p>
+					{:else if preview.community.description}
+						<p class="mt-1 text-sm leading-relaxed text-ink-muted">
+							{preview.community.description}
+						</p>
+					{/if}
+					{#if preview.community.require_real_names}
+						<p class="mt-4 rounded-lg border border-line p-3 text-sm text-ink-muted">
+							{t('invite.realNames')}
+						</p>
+					{/if}
+
+					{#if signedIn && !showAlternatives}
+						<div class="mt-6 flex flex-col gap-3">
+							<p class="text-sm text-ink-muted">
+								{t('invite.signedInAs', { email: signedIn.user.email })}
+							</p>
+							<Button id="invite-accept" variant="primary" disabled={busy} onclick={acceptSignedIn}>
+								{t('invite.accept')}
+							</Button>
+						</div>
+					{:else}
+						<div class="mt-6 flex flex-col gap-3">
+							{#if registrationOpen}
+								<Button id="invite-register" variant="primary" onclick={() => goTo('register')}>
+									{t('invite.register')}
+								</Button>
+							{/if}
+							<Button
+								id="invite-signin"
+								variant={registrationOpen ? 'ghost' : 'primary'}
+								onclick={() => goTo('signin')}
+							>
+								{t('invite.signIn')}
+							</Button>
+							{#if registrationOpen}
+								<p class="text-sm text-ink-faint">{t('invite.newHere')}</p>
+							{/if}
+						</div>
+					{/if}
+					<p class="mt-3 text-sm text-danger" role="alert" aria-live="polite">
+						{#if error}{error}{/if}
+					</p>
+				</div>
+			{:else if step === 'register'}
+				<h1 class="text-lg font-semibold text-ink">{t('register.title')}</h1>
+				<p class="mt-1 text-sm leading-relaxed text-ink-muted">{t('register.description')}</p>
+				<form id="invite-register-form" class="mt-6 flex flex-col gap-4" onsubmit={submitRegister}>
+					<Input
+						id="register-display-name"
+						label={t('register.displayName')}
+						bind:value={displayName}
+						error={nameError}
+						type="text"
+						autocomplete="name"
+						required
+					/>
+					<Input
+						id="register-email"
+						label={t('register.email')}
+						bind:value={email}
+						error={emailError}
+						type="email"
+						autocomplete="email"
+						required
+					/>
+					<Button id="register-submit" variant="primary" type="submit" disabled={busy}>
+						{t('register.submit')}
+					</Button>
+					<Button id="register-back" variant="ghost" onclick={() => goTo('landing')}>
 						{t('common.back')}
 					</Button>
-					<Button
-						id="invite-confirm-resend"
-						variant="ghost"
-						size="sm"
-						disabled={busy}
-						onclick={resend}
-					>
-						{t('signin.confirm.resend')}
+					<p class="text-sm text-danger" role="alert" aria-live="polite">
+						{#if error}{error}{/if}
+					</p>
+				</form>
+			{:else if step === 'signin'}
+				<h1 class="text-lg font-semibold text-ink">
+					{t('signin.email.title', { name: instanceName })}
+				</h1>
+				<p class="mt-1 text-sm leading-relaxed text-ink-muted">{t('signin.email.description')}</p>
+				<form id="invite-signin-form" class="mt-6 flex flex-col gap-4" onsubmit={submitEmail}>
+					<Input
+						id="invite-signin-email"
+						label={t('signin.email.label')}
+						bind:value={email}
+						{error}
+						type="email"
+						autocomplete="email"
+						required
+					/>
+					<Button id="invite-signin-submit" variant="primary" type="submit" disabled={busy}>
+						{t('signin.email.submit')}
 					</Button>
-				</div>
-				<p class="text-sm text-ink-muted" aria-live="polite">
-					{#if resent}{t('signin.confirm.resent')}{/if}
+					<Button id="invite-signin-back" variant="ghost" onclick={() => goTo('landing')}>
+						{t('common.back')}
+					</Button>
+				</form>
+			{:else}
+				<h1 class="text-lg font-semibold text-ink">{t('signin.confirm.title')}</h1>
+				<p class="mt-1 text-sm leading-relaxed text-ink-muted">
+					{t('signin.confirm.description', { email })}
 				</p>
-			</form>
+				<form id="invite-confirm-form" class="mt-6 flex flex-col gap-4" onsubmit={submitPaste}>
+					<Input
+						id="invite-paste"
+						label={t('signin.confirm.pasteLabel')}
+						bind:value={paste}
+						{error}
+						hint={t('signin.confirm.pasteHint')}
+						type="text"
+						autocomplete="off"
+						autocapitalize="off"
+						spellcheck={false}
+						required
+					/>
+					<Button id="invite-confirm-submit" variant="primary" type="submit" disabled={busy}>
+						{t('signin.confirm.submit')}
+					</Button>
+					<div class="flex items-center justify-between">
+						<Button
+							id="invite-confirm-back"
+							variant="ghost"
+							size="sm"
+							onclick={() => goTo('landing')}
+						>
+							{t('common.back')}
+						</Button>
+						<Button
+							id="invite-confirm-resend"
+							variant="ghost"
+							size="sm"
+							disabled={busy}
+							onclick={resend}
+						>
+							{t('signin.confirm.resend')}
+						</Button>
+					</div>
+					<p class="text-sm text-ink-muted" aria-live="polite">
+						{#if resent}{t('signin.confirm.resent')}{/if}
+					</p>
+				</form>
+			{/if}
 		{/if}
-	{/if}
-</PublicShell>
+	</PublicShell>
+</CommunityAccent>

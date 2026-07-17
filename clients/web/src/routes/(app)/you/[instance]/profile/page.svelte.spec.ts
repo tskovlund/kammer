@@ -56,7 +56,7 @@ describe('profile page — single-account collapse (#322)', () => {
 		await waitFor(() =>
 			expect(
 				screen.getByText(
-					'Emails from your community — sign-in links, notifications, and digests — use these settings.'
+					'Emails about your account — sign-in links, notifications, and digests — use these settings.'
 				)
 			).toBeTruthy()
 		);

@@ -752,26 +752,36 @@ defmodule Kammer.Events do
   # One job per promotion, inserted inside the promoting transaction so
   # they commit together; the worker re-checks the RSVP still stands
   # before delivering (a promoted attendee may have cancelled again by
-  # the time the job runs).
+  # the time the job runs). The batch goes through one `Oban.insert_all`
+  # rather than a per-promotion `Oban.insert` loop: a single INSERT on
+  # the same repo connection, so it participates in the ambient
+  # transaction exactly like the individual inserts did (Basic engine)
+  # while a whole promotion burst costs one statement. A failure raises
+  # and rolls the promotions back with it — strictly safer than the old
+  # loop, which discarded each insert's result. (Holds while `oban_jobs`
+  # has no unique indexes: the Basic engine bulk-inserts with
+  # `on_conflict: :nothing`, so a conflict would be dropped, not raised.)
   defp schedule_promotion_notifications(_event, []), do: :ok
 
   defp schedule_promotion_notifications(%Event{} = event, promoted) do
-    Enum.each(promoted, fn %EventRsvp{} = rsvp ->
-      recipient =
-        case rsvp do
-          %EventRsvp{user_id: user_id} when is_binary(user_id) ->
-            %{"user_id" => user_id}
-
-          %EventRsvp{guest_identity_id: guest_identity_id} when is_binary(guest_identity_id) ->
-            %{"guest_identity_id" => guest_identity_id}
-        end
-
-      recipient
+    promoted
+    |> Enum.map(fn %EventRsvp{} = rsvp ->
+      rsvp
+      |> promotion_recipient()
       |> Map.merge(%{"type" => "event_promotion", "event_id" => event.id})
       |> Kammer.Workers.NotificationFanoutWorker.new()
-      |> Oban.insert()
     end)
+    |> Oban.insert_all()
+
+    :ok
   end
+
+  defp promotion_recipient(%EventRsvp{user_id: user_id}) when is_binary(user_id),
+    do: %{"user_id" => user_id}
+
+  defp promotion_recipient(%EventRsvp{guest_identity_id: guest_identity_id})
+       when is_binary(guest_identity_id),
+       do: %{"guest_identity_id" => guest_identity_id}
 
   defp waitlist_queue(event_id) do
     from(rsvp in EventRsvp,

@@ -23,7 +23,7 @@ describe('failed-instances banner — single-account collapse (#322)', () => {
 			props: { failures: [{ instance: only, kind: 'network' as const }] }
 		});
 
-		expect(screen.getByText("Couldn't reach your community just now.")).toBeTruthy();
+		expect(screen.getByText("We couldn't connect just now.")).toBeTruthy();
 		expect(screen.queryByText(/North Sea Club/)).toBeNull();
 	});
 

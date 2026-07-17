@@ -3086,6 +3086,8 @@ export interface components {
 		 */
 		InvitePreview: {
 			community: {
+				/** @description Hex theme color, e.g. #8a4b24 */
+				accent_color: string;
 				description?: string | null;
 				/** Format: uuid */
 				id: string;

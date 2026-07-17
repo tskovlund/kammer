@@ -47,7 +47,7 @@ describe('search — instance provenance collapse (#322)', () => {
 	it('drops instance names from failure copy and bucket headings with a single account', () => {
 		render(Page);
 
-		expect(screen.getByText(/had trouble responding/)).toBeTruthy();
+		expect(screen.getByText(/Something went wrong just now/)).toBeTruthy();
 		expect(screen.getByText('Our Club')).toBeTruthy();
 		expect(screen.queryByText(/North Sea Club/)).toBeNull();
 	});
