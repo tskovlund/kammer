@@ -22,4 +22,16 @@ defmodule KammerWeb.Gettext do
   See the [Gettext Docs](https://gettext.hexdocs.pm) for detailed usage.
   """
   use Gettext.Backend, otp_app: :kammer
+
+  @doc """
+  Runs `fun` with the instance's default locale — the locale for
+  everything aimed at guests, who have no locale preference of their
+  own (guest and newsletter emails, the server-rendered unsubscribe
+  pages, stored decision-poll texts).
+  """
+  @spec with_instance_locale((-> result)) :: result when result: var
+  def with_instance_locale(fun) do
+    locale = Kammer.Communities.get_instance_settings().default_locale || "en"
+    Gettext.with_locale(__MODULE__, to_string(locale), fun)
+  end
 end

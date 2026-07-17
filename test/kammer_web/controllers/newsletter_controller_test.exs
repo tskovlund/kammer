@@ -1,15 +1,17 @@
 defmodule KammerWeb.NewsletterControllerTest do
   @moduledoc """
-  The newsletter unsubscribe endpoints (SPEC §8, issue #233): the RFC
-  8058 one-click POST email clients fire from the `List-Unsubscribe`
-  header (no session, no CSRF token, so it must work bare), and the
-  plain GET twin a human might follow. Both take a scoped,
-  single-purpose token — never the guest's full-power management token,
-  since mail gateways auto-fetch the header with no human in the loop —
-  and both answer a neutral 200 regardless of validity. These routes are
-  the only newsletter surface that stayed server-rendered through the
-  LiveView removal cut (#187); confirming a subscription moved to the
-  JSON API (`test/kammer_web/api/newsletter_test.exs`).
+  The newsletter unsubscribe endpoints (SPEC §8, issues #233 and #239):
+  the RFC 8058 one-click POST email clients fire from the
+  `List-Unsubscribe` header (no session, no CSRF token, so it must work
+  bare), and the GET confirm page a human lands on from the same URL.
+  Both take a scoped, single-purpose token — never the guest's
+  full-power management token, since mail gateways auto-fetch the
+  header with no human in the loop — and both answer a neutral 200
+  regardless of validity. Only the POST deletes: GET is a safe method,
+  and link-prefetching mail scanners GET every URL in an email. These
+  routes are the only newsletter surface that stayed server-rendered
+  through the LiveView removal cut (#187); confirming a subscription
+  moved to the JSON API (`test/kammer_web/api/newsletter_test.exs`).
   """
 
   use KammerWeb.ConnCase, async: true
@@ -60,7 +62,9 @@ defmodule KammerWeb.NewsletterControllerTest do
     String.trim_trailing(rest, ">")
   end
 
-  test "one-click unsubscribe (RFC 8058): a bare POST with no session or CSRF token still works" do
+  # A live subscription plus the unsubscribe URL its delivery email's
+  # header carried — the exact URL both endpoints serve.
+  defp subscribed_header_url! do
     {community, _owner} = community_with_owner_fixture()
     group = group_fixture(community, visibility: :public_listed)
     member = group_member_fixture(group)
@@ -90,24 +94,61 @@ defmodule KammerWeb.NewsletterControllerTest do
     {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Nyt indlæg!"})
     assert :ok = Newsletters.notify_subscribers(post)
 
-    conn = build_conn() |> post(unsubscribe_header_url())
+    unsubscribe_header_url()
+  end
+
+  test "one-click unsubscribe (RFC 8058): a bare POST with no session or CSRF token still works" do
+    url = subscribed_header_url!()
+
+    conn = build_conn() |> post(url)
 
     assert conn.status == 200
-    assert conn.resp_body == "Unsubscribed."
+    assert conn.resp_body =~ "You&#39;re unsubscribed."
     assert Repo.aggregate(NewsletterSubscription, :count) == 0
   end
 
-  test "an invalid or garbage scoped token still gets the same neutral 200" do
-    conn = build_conn() |> post(~p"/newsletter/unsubscribe/garbage")
+  test "the GET renders a confirm page and deletes nothing; the POST its form fires deletes" do
+    # The regression #239 fixed: the GET used to delete inline, so a
+    # link-prefetching mail scanner silently unsubscribed the guest.
+    url = subscribed_header_url!()
+
+    conn = build_conn() |> get(url)
 
     assert conn.status == 200
-    assert conn.resp_body == "Unsubscribed."
+    assert response_content_type(conn, :html)
+    assert conn.resp_body =~ "Confirm unsubscribe"
+    # The page sets its own strict CSP (see .sobelow-conf's Config.CSP
+    # note — Sobelow can't see controller-set headers) and, as a
+    # token-bearing URL, must never be stored by a shared cache.
+    assert [csp] = get_resp_header(conn, "content-security-policy")
+    assert csp =~ "form-action 'self'"
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert Repo.aggregate(NewsletterSubscription, :count) == 1
+
+    # Follow the form exactly as a browser would — its action must be
+    # the route that deletes, or the page is a dead end.
+    assert [action] =
+             Regex.run(~r{<form method="post" action="([^"]+)"}, conn.resp_body,
+               capture: :all_but_first
+             )
+
+    confirmed = build_conn() |> post(action)
+    assert confirmed.status == 200
+    assert Repo.aggregate(NewsletterSubscription, :count) == 0
   end
 
-  test "the human-facing GET unsubscribe answers 200 in plain text, neutral on a bad token" do
-    conn = build_conn() |> get(~p"/newsletter/unsubscribe/garbage")
+  test "both endpoints answer an invalid token with the same page as a valid one — no oracle" do
+    url = subscribed_header_url!()
+    valid_get = build_conn() |> get(url) |> Map.fetch!(:resp_body)
 
-    assert conn.status == 200
-    assert conn.resp_body == "You're unsubscribed."
+    garbage_get =
+      build_conn() |> get(~p"/newsletter/unsubscribe/garbage") |> Map.fetch!(:resp_body)
+
+    replace_token = &String.replace(&1, ~r{unsubscribe/[^"]+}, "unsubscribe/TOKEN")
+    assert replace_token.(valid_get) == replace_token.(garbage_get)
+
+    garbage_post = build_conn() |> post(~p"/newsletter/unsubscribe/garbage")
+    assert garbage_post.status == 200
+    assert garbage_post.resp_body =~ "You&#39;re unsubscribed."
   end
 end

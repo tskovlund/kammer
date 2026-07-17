@@ -6,11 +6,12 @@ defmodule KammerWeb.Router do
 
   # Server-rendered non-SPA surfaces that survive the LiveView removal
   # (#187): syndication feeds, ICS downloads, newsletter unsubscribe.
-  # All responses are XML/text/calendar or a plain redirect — no HTML
-  # layout, no LiveView flash, no inline scripts, so the root-layout,
-  # live-flash and CSP-nonce plugs the LiveView UI needed are gone. The
-  # session is still read (`fetch_current_scope_for_user`) so an
-  # authenticated single-event ICS download authorizes like its page.
+  # Responses are XML/text/calendar or the one self-contained HTML page
+  # (the unsubscribe confirm, #239) — no HTML layout, no LiveView
+  # flash, no inline scripts, so the root-layout, live-flash and
+  # CSP-nonce plugs the LiveView UI needed are gone. The session is
+  # still read (`fetch_current_scope_for_user`) so an authenticated
+  # single-event ICS download authorizes like its page.
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -40,16 +41,19 @@ defmodule KammerWeb.Router do
   # RFC 8058 one-click unsubscribe: a mail client POSTs this with no
   # session and no CSRF token — the signed, expiring token in the URL
   # is the whole credential, same as every other guest link. No
-  # session, no CSP, no forgery protection to skip around.
+  # session, no CSP, no forgery protection to skip around. No
+  # `:accepts` either (#239 review): a headless mail client may send
+  # any Accept header or none, and content negotiation would 406 it —
+  # the controller sets the response content type itself.
   pipeline :newsletter_one_click do
-    plug :accepts, ["html"]
     plug :put_secure_browser_headers
   end
 
   # Instance-level browser surfaces that survive the cut: the secret-token
-  # ICS feeds (SPEC §6) and the plain GET a human clicks to unsubscribe
-  # from a newsletter (SPEC §8 — no PWA route for it; the RFC 8058
-  # one-click POST is a separate route below).
+  # ICS feeds (SPEC §6) and the newsletter-unsubscribe confirm page
+  # (SPEC §8 — no PWA route for it). The GET only renders (#239: GET is
+  # a safe method, and mail scanners prefetch it); the delete happens on
+  # the RFC 8058 POST route below, which its form targets.
   scope "/", KammerWeb do
     pipe_through :browser
 
@@ -506,7 +510,8 @@ defmodule KammerWeb.Router do
   # RFC 8058 one-click unsubscribe (SPEC §8): a mail client POSTs this
   # with no session and no CSRF token — the scoped, expiring token in
   # the URL is the whole credential (issue #233). The human-facing GET
-  # twin lives in the :browser scope above.
+  # confirm page in the :browser scope above submits its form here too
+  # (#239) — the token authorizes the POST the same either way.
   scope "/", KammerWeb do
     pipe_through [:newsletter_one_click]
 
