@@ -58,10 +58,10 @@ mid-session.
 **Parallel PRs via side branches** (owner-approved, 2026-07-09): the
 designated branch is the _main lane_, reserved for ladder/server
 feature PRs — those all touch the same hotspots (CHANGELOG,
-serializer, api_spec, schemas, router, the generated `schema.d.ts`),
+serializer, api*spec, schemas, router, the generated `schema.d.ts`),
 so running two of them as open PRs just converts merge-waits into
 rebase-waits; keep the main lane strictly serial. Genuinely
-_orthogonal_ PRs may run in parallel on suffixed side branches —
+\_orthogonal* PRs may run in parallel on suffixed side branches —
 `<designated-branch>-docs`, `-client`, `-site`, `-ci` — one coherent
 concern each, same gates and review rules, created fresh from
 `origin/main` per PR and deleted after merge. The agent manages merge
