@@ -389,6 +389,15 @@ and this project adheres to
 
 ### Fixed
 
+- An explicit JSON `accent_color: null` on community create, community
+  settings, or the setup wizard no longer escapes as a 500. The request
+  bodies declare the field nullable, but the column is `NOT NULL`, so
+  the cast nil died at Postgres. A null now means "no choice": the
+  changeset drops it, keeping the stored value on update and the
+  schema default on create — which is what `nullable: true` honestly
+  means for a defaulted setting. Pinned by an API test driving null
+  through both create and update.
+
 - Invite creation now validates `invited_email` (issue #305). The
   changeset cast the address with no format check, so an admin could
   invite `jhon@` or `alice@example ` — the API answered 201 and the
