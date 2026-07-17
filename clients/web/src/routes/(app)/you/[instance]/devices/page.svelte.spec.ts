@@ -1,25 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 
-const mocks = vi.hoisted(() => ({
-	instance: {
+const mocks = vi.hoisted(() => {
+	// Literal on purpose, not `testInstance`: vi.hoisted runs before imports,
+	// and the localhost baseUrl is load-bearing for the same-origin passkey
+	// tests below.
+	const instance = {
 		id: 'i1',
 		baseUrl: 'http://localhost:3000',
 		instanceName: 'Example',
 		deviceToken: 'token-1',
 		user: { id: 'u1', email: 'a@example.com', displayName: 'Alice' },
 		addedAt: '2026-01-01T00:00:00Z'
-	}
-}));
+	};
+	return { instance, list: [instance] };
+});
 vi.mock('$app/state', () => ({ page: { params: { instance: 'i1' } } }));
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
-vi.mock('$lib/instances/instances.svelte.js', () => ({
-	instances: {
-		get list() {
-			return [mocks.instance];
-		}
-	}
-}));
+vi.mock('$lib/instances/instances.svelte.js', async () => {
+	const { instancesMock } = await import('$lib/instances/test-support.js');
+	return instancesMock(mocks);
+});
 
 import Page from './+page.svelte';
 
@@ -43,10 +44,33 @@ async function renderReady() {
 beforeEach(() => {
 	vi.stubGlobal('fetch', vi.fn());
 	mocks.instance.baseUrl = 'http://localhost:3000';
+	mocks.list = [mocks.instance];
 });
 afterEach(() => {
 	vi.unstubAllGlobals();
 	document.body.innerHTML = '';
+});
+
+describe('devices page — single-account collapse (#322)', () => {
+	it('drops the instance name from the descriptions when it is the only account', async () => {
+		await renderReady();
+		expect(
+			screen.getByText("Everything signed in to your account. Revoke anything you don't recognize.")
+		).toBeTruthy();
+		expect(
+			screen.getByText('Sign in with your fingerprint, face, or device PIN — no email needed.')
+		).toBeTruthy();
+	});
+
+	it('names the instance when several accounts are added', async () => {
+		mocks.list = [mocks.instance, { ...mocks.instance, id: 'i2', instanceName: 'Other' }];
+		await renderReady();
+		expect(
+			screen.getByText(
+				"Everything signed in to your account on Example. Revoke anything you don't recognize."
+			)
+		).toBeTruthy();
+	});
 });
 
 describe('devices page — passkey enrollment', () => {

@@ -1,20 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
+import { testInstance } from '$lib/instances/test-support.js';
+import type { Instance } from '$lib/instances/types.js';
 
-vi.mock('$lib/instances/instances.svelte.js', () => ({
-	instances: {
-		list: [
-			{
-				id: 'i1',
-				baseUrl: 'https://kammer.example.com',
-				instanceName: 'Example',
-				deviceToken: 'token-1',
-				user: { id: 'u1', email: 'a@example.com', displayName: 'Alice' },
-				addedAt: '2026-01-01T00:00:00Z'
-			}
-		]
-	}
-}));
+const mocks = vi.hoisted(() => ({ list: [] as Instance[] }));
+
+vi.mock('$lib/instances/instances.svelte.js', async () => {
+	const { instancesMock } = await import('$lib/instances/test-support.js');
+	return instancesMock(mocks);
+});
 
 import Page from './+page.svelte';
 
@@ -36,10 +30,40 @@ function stubEmptyCommunity(viewerCan: string[]) {
 		.mockResolvedValueOnce(jsonResponse({ data: [] }));
 }
 
-beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+beforeEach(() => {
+	vi.stubGlobal('fetch', vi.fn());
+	mocks.list = [testInstance('i1', 'Example')];
+});
 afterEach(() => {
 	vi.unstubAllGlobals();
 	document.body.innerHTML = '';
+});
+
+describe('groups directory — instance provenance collapse (#322)', () => {
+	it('shows the community heading without an instance qualifier with a single account', async () => {
+		stubEmptyCommunity([]);
+		render(Page);
+
+		await waitFor(() => expect(screen.getByText('Our Club')).toBeTruthy());
+		expect(screen.queryByText(/· Example/)).toBeNull();
+	});
+
+	it('qualifies each community with its instance when several accounts are added', async () => {
+		mocks.list = [testInstance('i1', 'Example'), testInstance('i2', 'Other')];
+		// Both instances load in parallel, so route by URL instead of queueing.
+		vi.mocked(fetch).mockImplementation(async (input) => {
+			const url = String(input);
+			return url.includes('/groups')
+				? jsonResponse({ data: [] })
+				: jsonResponse({
+						data: [{ id: 'c1', name: 'Our Club', slug: 'our-club', viewer_can: [] }]
+					});
+		});
+		render(Page);
+
+		await waitFor(() => expect(screen.getByText('· Example')).toBeTruthy());
+		expect(screen.getByText('· Other')).toBeTruthy();
+	});
 });
 
 describe('groups directory cold-start', () => {

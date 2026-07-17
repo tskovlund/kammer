@@ -234,7 +234,9 @@
 		<div>
 			<h1 class="text-xl font-semibold tracking-tight text-ink">{t('devices.title')}</h1>
 			<p class="mt-0.5 text-sm text-ink-muted">
-				{t('devices.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('devices.descriptionSolo')
+					: t('devices.description', { name: instance.instanceName })}
 			</p>
 		</div>
 	</header>
@@ -287,7 +289,9 @@
 		<section class="mt-10">
 			<h2 class="text-lg font-semibold tracking-tight text-ink">{t('passkeys.title')}</h2>
 			<p class="mt-0.5 text-sm text-ink-muted">
-				{t('passkeys.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('passkeys.descriptionSolo')
+					: t('passkeys.description', { name: instance.instanceName })}
 			</p>
 
 			{#if passkeyError}

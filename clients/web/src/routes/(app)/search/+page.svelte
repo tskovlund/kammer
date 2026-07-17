@@ -3,6 +3,7 @@
 	import { fetchAuthedObjectUrl } from '$lib/feed/api.js';
 	import { formatDate } from '$lib/i18n/datetime.js';
 	import { i18n, t } from '$lib/i18n/i18n.svelte.js';
+	import { failureMessage } from '$lib/instances/failure-copy.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import type { Instance } from '$lib/instances/types.js';
 	import { createSearchStore } from '$lib/tools/search-store.svelte.js';
@@ -14,7 +15,7 @@
 	const store = createSearchStore();
 	let queryInput = $state('');
 
-	const multiInstance = $derived(instances.list.length > 1);
+	const multiInstance = $derived(instances.several);
 
 	// Debounced fanout: a new query settles for 300ms before searching every
 	// account, so keystrokes don't each trigger a round of requests. The store's
@@ -84,7 +85,7 @@
 	{:else}
 		{#each store.failedInstances as failed (failed.instance.id)}
 			<p class="mb-3 rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink-muted">
-				{t(`home.failed.${failed.kind}`, { name: failed.instance.instanceName })}
+				{failureMessage(failed)}
 			</p>
 		{/each}
 

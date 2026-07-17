@@ -97,7 +97,9 @@
 		<div>
 			<h1 class="text-xl font-semibold tracking-tight text-ink">{t('account.title')}</h1>
 			<p class="mt-0.5 text-sm text-ink-muted">
-				{t('account.description', { name: instance.instanceName })}
+				{instances.solo
+					? t('account.descriptionSolo')
+					: t('account.description', { name: instance.instanceName })}
 			</p>
 		</div>
 	</header>
@@ -107,7 +109,9 @@
 			{t('account.export.title')}
 		</h2>
 		<p class="mt-1 text-sm text-ink-muted">
-			{t('account.export.description', { name: instance.instanceName })}
+			{instances.solo
+				? t('account.export.descriptionSolo')
+				: t('account.export.description', { name: instance.instanceName })}
 		</p>
 		{#if exportError}
 			<div
@@ -129,7 +133,9 @@
 			{t('account.delete.title')}
 		</h2>
 		<p class="mt-1 text-sm text-ink-muted">
-			{t('account.delete.description', { name: instance.instanceName })}
+			{instances.solo
+				? t('account.delete.descriptionSolo')
+				: t('account.delete.description', { name: instance.instanceName })}
 		</p>
 
 		{#if deleteError}
