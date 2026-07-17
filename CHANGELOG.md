@@ -593,6 +593,13 @@ and this project adheres to
   feed and invite suites, and the single write each of the upload,
   newsletter, and guest-comment surfaces exposes — alongside new
   403/422 pins for the formerly-crashing denied and invalid creates.
+  The independent pre-merge review then caught the final member of the
+  class on the event-addressed twin: the anonymous guest-RSVP and
+  guest-claim requests answered 403 for an event in a hidden group but
+  404 for a missing one (disagreeing with the public read of the same
+  event, which already folded). Folded those too, with a pin asserting
+  the hidden-event and missing-event responses are byte-identical —
+  status alone being what let every earlier oracle hide.
 
 ### Added
 

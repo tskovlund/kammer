@@ -17,12 +17,27 @@ defmodule KammerWeb.Api.GroupGate do
   controllers didn't, and were dismissed as "established pattern" —
   the dismissal #339 revisits. A review pass over that fix caught four
   more of the same oracle — uploads, group invites, the anonymous
-  newsletter subscribe, and anonymous guest comments — now routed
-  through here too. This is the one shared fetch; each
+  newsletter subscribe, and anonymous guest comments — and a second,
+  independent pass caught the last one on the event-addressed twin:
+  the anonymous guest-RSVP/guest-claim surfaces (`guest_controller`'s
+  `with_viewable_event`), which fold their `:unauthorized` locally
+  since they resolve an event id, not a group slug. All are covered
+  now. This is the one shared fetch; each
   controller still wraps it in its own thin `with_group` so the
   callback shape (community and/or user in scope, alongside group)
   stays whatever that controller's call sites already expect — the
   fetch was the duplicated, bug-prone part, not the callback shape.
+
+  Contract for those thin wrappers: a wrapper that matches only
+  `{:ok, ...}` / `{:error, :not_found}` (post, event, calendar,
+  file-library, group, guest) commits its callback to *always* return
+  a rendered `%Plug.Conn{}` — an error tuple escaping such a callback
+  is a 500, the exact bug #339 fixed in the feature controllers.
+  A wrapper whose callbacks can return error tuples must thread
+  `%Plug.Conn{} = responded <-` and route the else through
+  `ApiError.from_result` (assignment, availability, decision,
+  group-member, invite). When adding an action, match the wrapper's
+  shape — or upgrade the wrapper, never the callback alone.
 
   Only the `:view_group` (and feature-gate) resolution folds to 404
   here. A group the actor *can* see but isn't allowed to write to,

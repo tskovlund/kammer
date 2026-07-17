@@ -14,7 +14,9 @@ defmodule KammerWeb.Api.ResourcesTest do
   test in its own suite (feed, events, calendar, assignments,
   availability, decisions, file library, group members and invites,
   uploads, and the anonymous newsletter and guest-comment surfaces)
-  rather than joining this property. An invisible group answers
+  rather than joining this property; the event-addressed anonymous
+  twin (guest-RSVP/guest-claim) folds its `:unauthorized` locally in
+  `guest_controller.ex` and carries its own byte-identity pin. An invisible group answers
   exactly 404, never 403 (no existence oracle, #156/#161/#339) — the
   property used to accept either, which is exactly how the #339
   existence oracle went unnoticed for as long as it did.

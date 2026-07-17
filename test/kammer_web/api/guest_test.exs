@@ -205,6 +205,34 @@ defmodule KammerWeb.Api.GuestTest do
       )
       |> json_response(404)
     end
+
+    test "an event in a hidden group answers the missing-event 404, byte-identical (#339)", %{
+      community: community
+    } do
+      # Guest-RSVP (and guest-claim, which shares `with_viewable_event`)
+      # is anonymous: a 403 for a real-but-hidden event would leak event
+      # existence — and disagree with the public read of the same event,
+      # which already 404s. Oracle-closure means indistinguishable, so
+      # this pin compares the whole body, not just the status.
+      hidden = group_fixture(community, visibility: :private)
+      insider = group_member_fixture(hidden)
+
+      {:ok, event} =
+        Events.create_event(insider, hidden, %{
+          "title" => "Hemmelig koncert",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 72, :hour)
+        })
+
+      params = Map.put(guest(), "status", "yes")
+
+      probe = fn id ->
+        public_conn()
+        |> post(~p"/api/v1/communities/#{community.slug}/events/#{id}/guest-rsvp", params)
+        |> json_response(404)
+      end
+
+      assert probe.(event.id) == probe.(Ecto.UUID.generate())
+    end
   end
 
   describe "cross-guest isolation (#156/#161)" do

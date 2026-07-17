@@ -288,12 +288,18 @@ defmodule KammerWeb.Api.GuestController do
     end
   end
 
+  # No-oracle (#339): the anonymous caller holds no session, so an
+  # event whose group the public may not view answers exactly like a
+  # missing one — the 403 this used to return leaked event existence
+  # the same way the slug surfaces did, and disagreed with the public
+  # read of the identical event (`PublicController.event`, always 404).
   defp with_viewable_event(conn, slug, event_id, fun) do
     with %Community{} = community <- Communities.get_community_by_slug(slug) || :gone,
          {:ok, event} <- Events.fetch_viewable_event(nil, community, event_id) do
       fun.(event)
     else
       :gone -> ApiError.send(conn, :not_found, "Not found.")
+      {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
       error -> ApiError.from_result(conn, error)
     end
   end
