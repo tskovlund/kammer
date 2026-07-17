@@ -71,10 +71,15 @@ side branch. Never more than one open PR _per lane_, and never use a
 side branch to dodge the one-coherent-concern rule.
 
 1. `git fetch origin main && git checkout -B <branch> origin/main`.
-2. Implement. Verify with **all three** gates, not just the first:
+2. Implement. Verify with **all four** gates, not just the first:
    `mix precommit` (format, Credo strict, compile warnings-as-errors,
-   tests), `mix dialyzer --format short`, `mix sobelow --config` —
-   dialyzer and sobelow are not part of the `precommit` alias.
+   tests), `mix dialyzer --format short`, `mix sobelow --config`, and
+   the root `npx prettier@3.8.1 --check .` (the CI Prettier job's
+   exact command; the version-lockstep set lives in the
+   remote-container notes). None of the last three is part of the
+   `precommit` alias, and nothing else covers root markdown — which
+   is how asterisk emphasis in the CHANGELOG slipped past the local
+   gates and failed a PR's CI on 2026-07-17.
 3. Self-review before opening the PR: run the `code-review` skill
    against the diff (per CONTRIBUTING.md — "is the code
    well-structured, not just lint-clean" is the one thing genuinely
@@ -116,11 +121,18 @@ cheaply, but the session that just wrote the code can't see its own
 blind spots. **Independent review** — a fresh Agent spawned with no
 context from the implementing session, before merge — is what
 catches those instead. Neither is covered by automated tooling
-(`mix precommit`, dialyzer, sobelow, CI), which enforces correctness
+(the four step-2 gates, CI), which enforces correctness
 rules and style, not design quality or "does this test actually test
 what it claims to." Tell the independent reviewer to be adversarial
 and report ranked findings rather than default to a clean bill of
-health. Skip independent review only for a purely mechanical change
+health — and that **GitHub is read-only for it**. That clause goes in
+_every_ spawned agent's brief — finders and builders too: agents can
+reach the session's GitHub tools, and an agent that "helpfully"
+comments on, edits, reviews, merges, or pushes anything corrupts the
+main session's record of who wrote what (an unattributable PR-body
+edit on 2026-07-17 is why this clause exists; findings and patches
+come back as the agent's final message, nowhere else). Skip
+independent review only for a purely mechanical change
 (a dependency bump, a typo fix). **"Docs-only" is not itself a
 mechanical category** (owner-stated, 2026-07-12): docs are part of the
 product, so any doc change that _authors_ normative content — a SPEC
@@ -194,8 +206,11 @@ implement inline, run it in a **worktree** (`isolation: "worktree"`)
 so parallel agents don't collide on the tree. The brief MUST say, in
 spirit verbatim: **FIRST ACTION: run `pwd` and confirm you are inside
 your assigned worktree — if you are in the shared checkout, STOP; do
-NOT spawn sub-agents; run every gate inline in the foreground and
-wait for it to finish; do NOT wait on notifications; deliver the
+NOT spawn sub-agents; GitHub is READ-ONLY for you — never create,
+edit, comment on, or label any issue or PR, nor write to GitHub in
+any other form (reviews, merges, pushes included); run every gate
+inline in the foreground and wait for it to finish; do NOT wait on
+notifications; deliver the
 patch plus a commit-message file to the session scratchpad AND bank
 a copy into `$(git rev-parse --git-common-dir)/banked-patches/`
 (`mkdir -p` it first — that expression resolves to the main
@@ -325,6 +340,14 @@ standing maintenance, not a task to schedule once:
   an existing one, and pair filing with closing — a work session that
   only ever adds issues is a hygiene smell. Closing what a merge
   completed is part of landing the merge, not a separate chore.
+  Refined 2026-07-17: what the owner wants to see is **turnover and
+  an eventually-shrinking pile** — steady closes prove progress even
+  while audits mint new work, but once the audit backlog clears,
+  sessions must trend net-negative. **No GitHub milestones** (owner-declined
+  explicitly): a milestone is extra management that grows stale; the
+  open list itself, kept honest, is the tracker. Audit swarms fold
+  findings into existing issues wherever possible and close their
+  trackers promptly rather than minting freely.
 - **Stale/superseded issues get closed, not left open.** If a
   reprioritization, a merged PR, or new scope makes an issue's ask
   moot, close it with a comment explaining why (`state_reason:
@@ -569,8 +592,10 @@ asked for once and must never need to be asked for again.
   `export PATH=/opt/node22/bin:$PATH` and
   `export NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` for the client
   gates and the root `npx prettier@3.8.1 --check .` (the version CI
-  pins in `ci.yml` and the `Makefile`'s `format` target both use —
-  keep all three in lockstep). Run client gates from
+  pins in `ci.yml`, the `Makefile`'s `format` target uses, and
+  PR-lifecycle step 2 names — on a version bump, update every one of
+  those in lockstep, both AGENTS.md mentions included). Run client
+  gates from
   absolute paths / `pnpm --dir clients/web ...`; **never `cd`
   mid-chain** — the Bash tool's cwd persists between calls, so a stray
   `cd` leaks into the next command and has caused repeated failed runs.
