@@ -98,13 +98,23 @@ defmodule KammerWeb.Api.PublicLinks do
   def post_path(%Community{} = community, %Group{} = group, %Post{} = post),
     do: "#{community_group_path(community, group)}/p/#{post.id}"
 
-  defp pwa_url(conn, path) do
-    # `path` already starts with "/". When the base is the root ("/",
-    # since the #187 flip) prepending it would double the slash, so
-    # treat "/" as an empty prefix; a non-root base like "/app" is
-    # prepended as-is.
+  @doc """
+  Absolute URL for a client-relative path, built without a conn — for
+  links assembled outside a request cycle (newsletter email bodies,
+  issue #345). Applies the same `:pwa_base_path` as `pwa_url/2`, so
+  email links and confirm links can't disagree about the base.
+  """
+  @spec absolute_url(String.t()) :: String.t()
+  def absolute_url(path), do: KammerWeb.Endpoint.url() <> base_prefix() <> path
+
+  defp pwa_url(conn, path), do: unverified_url(conn, base_prefix() <> path)
+
+  # Paths already start with "/". When the base is the root ("/",
+  # since the #187 flip) prepending it would double the slash, so
+  # treat "/" as an empty prefix; a non-root base like "/app" is
+  # prepended as-is.
+  defp base_prefix do
     base = Application.get_env(:kammer, :pwa_base_path, "/app")
-    prefix = if base == "/", do: "", else: base
-    unverified_url(conn, prefix <> path)
+    if base == "/", do: "", else: base
   end
 end

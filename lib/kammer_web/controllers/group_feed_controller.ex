@@ -20,7 +20,6 @@ defmodule KammerWeb.GroupFeedController do
 
   use KammerWeb, :controller
 
-  alias Kammer.Authorization
   alias Kammer.Communities
   alias Kammer.Feed
   alias Kammer.Feed.Post
@@ -73,10 +72,12 @@ defmodule KammerWeb.GroupFeedController do
   end
 
   defp fetch(%{"community_slug" => community_slug, "group_slug" => group_slug}) do
+    # Literally the public JSON API's fetch (issue #345): one shared
+    # path, so the feed's gate can't drift from the pages its links
+    # land on.
     with %Communities.Community{} = community <-
            Communities.get_community_by_slug(community_slug),
-         {:ok, group} <- Groups.fetch_viewable_group(nil, community, group_slug),
-         true <- Authorization.publicly_readable?(group) do
+         {:ok, group} <- Groups.fetch_public_group(community, group_slug) do
       {posts, _next_cursor} = Feed.list_group_feed_page(nil, group, nil, @post_limit)
       {:ok, community, group, Enum.reject(posts, &Post.deleted?/1)}
     end

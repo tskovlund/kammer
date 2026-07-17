@@ -342,28 +342,29 @@ defmodule Kammer.Authorization do
 
   @doc """
   Whether account-less guests may RSVP to events in this group
-  (SPEC §6): only on the public presets, never once archived, and only
-  while the events feature is enabled. This is the whole guest-RSVP
-  policy — the web layer adds email verification and rate limits, not
+  (SPEC §6): `publicly_readable?/1` — a guest can only act on content
+  they could read (ADR 0005's "sealed limits admin override" rationale
+  once kept sealed out of this check, but a write flow whose every
+  confirmation link 404s is no visitor feature; #345) — and only while
+  the events feature is enabled. This is the whole guest-RSVP policy —
+  the web layer adds email verification and rate limits, not
   permissions.
   """
   @spec can_guest_rsvp?(Group.t()) :: boolean()
   def can_guest_rsvp?(%Group{} = group) do
-    group.visibility in [:public_link, :public_listed] and not Group.archived?(group) and
-      Group.feature_enabled?(group, :events)
+    publicly_readable?(group) and Group.feature_enabled?(group, :events)
   end
 
   @doc """
   Whether account-less guests may comment on posts in this group
-  (SPEC §3 comment policy `members_and_guests`): only where the feed is
-  publicly readable, only while the group is live, and only when the
-  group opted in. As with guest RSVPs, the web layer adds email
+  (SPEC §3 comment policy `members_and_guests`): `publicly_readable?/1`
+  — same reasoning as `can_guest_rsvp?/1` — and only when the group
+  opted in. As with guest RSVPs, the web layer adds email
   verification, rate limits, and moderator approval — not permissions.
   """
   @spec can_guest_comment?(Group.t()) :: boolean()
   def can_guest_comment?(%Group{} = group) do
-    group.visibility in [:public_link, :public_listed] and not Group.archived?(group) and
-      group.comment_policy == :members_and_guests
+    publicly_readable?(group) and group.comment_policy == :members_and_guests
   end
 
   @doc """
@@ -381,15 +382,17 @@ defmodule Kammer.Authorization do
 
   @doc """
   Whether an anonymous visitor may read this group's content over any
-  tokenless public surface — the JSON API (issue #185 slice B), the
-  RSS/Atom feeds, and the newsletter subscribe gate all draw this one
-  line since issue #345: `public_link` or `public_listed`, never
+  tokenless public surface. Since issue #345 every such surface —
+  the public JSON API (issue #185 slice B), the RSS/Atom feeds, the
+  guest RSVP/comment gates, newsletter subscription *and* delivery —
+  composes on this one line: `public_link` or `public_listed`, never
   archived, never sealed. Sealed is orthogonal to `visibility` in the
   schema (nothing stops a sealed group from also being
   `public_listed`); it exists to limit *admin* override (ADR 0005),
-  but a sealed-yet-public group serving feeds and emails whose every
-  link the public API then refuses was the incoherence #345 closed —
-  one predicate, so the surfaces can never diverge again.
+  but a sealed-yet-public group serving feeds, emails, and guest
+  flows whose every link the public API then refuses was the
+  incoherence #345 closed — one predicate, composed everywhere, so
+  the surfaces can't silently diverge.
   """
   @spec publicly_readable?(Group.t()) :: boolean()
   def publicly_readable?(%Group{} = group) do

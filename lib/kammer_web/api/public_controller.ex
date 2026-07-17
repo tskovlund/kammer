@@ -8,15 +8,14 @@ defmodule KammerWeb.Api.PublicController do
   piece gating the LiveView removal, issue #187).
 
   Every fetch is scoped through `Kammer.Authorization.publicly_readable?/1`
-  (groups) — the same public_link/public_listed-and-not-archived
-  boundary the RSS/Atom feeds, `GroupLive.Show`/`EventLive.Show`, and
-  the guest request endpoints already expose, hardened here against
-  sealed groups since this is a newly-browsable JSON surface (see that
-  function's doc). A community/group/event/post that exists but isn't
-  publicly readable answers the same neutral 404 a nonexistent one
-  gets — no oracle (issue #156/#161) — via `Groups.fetch_public_group/2`
-  and `Events.fetch_public_event/2`, the public twins of the
-  `fetch_viewable_*` functions the authenticated controllers use.
+  — since issue #345 the one boundary every tokenless surface draws
+  (this controller, the RSS/Atom feeds, and the guest request
+  endpoints; see that function's doc). A community/group/event/post
+  that exists but isn't publicly readable answers the same neutral 404
+  a nonexistent one gets — no oracle (issue #156/#161) — via
+  `Groups.fetch_public_group/2` and `Events.fetch_public_event/2`, the
+  public twins of the `fetch_viewable_*` functions the authenticated
+  controllers use.
 
   A community itself has no separate "public" gate to fail: any
   existing community shows this same public face (name, description,

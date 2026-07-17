@@ -16,19 +16,25 @@ defmodule KammerWeb.Api.NewsletterController do
 
   use KammerWeb, :controller
 
+  alias Kammer.Communities
+  alias Kammer.Communities.Community
+  alias Kammer.Groups
   alias Kammer.Newsletters
-  alias KammerWeb.Api.GroupGate
   alias KammerWeb.Api.PublicLinks
   alias KammerWeb.ApiError
 
-  # No-oracle (#339): this surface is anonymous (nil actor — the caller
-  # holds no token), so a missing community, a missing group, and a
-  # group the public may not view all fold into the same 404 via
-  # `GroupGate.fetch/3` — a 403 would hand a slug-guessing prober a
-  # live existence oracle.
+  # No-oracle (#339, tightened in #345): this surface is anonymous, so
+  # it resolves through the public fetch — a missing community, a
+  # missing group, and a group that isn't publicly readable (private,
+  # community-only, archived, or sealed) all fold into the same 404. A
+  # 403 for a hidden-but-real group would hand a slug-guessing prober
+  # a live existence oracle; the remaining 403 is only ever "this
+  # group's page is public, but guest subscriptions are off."
   @spec subscribe(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def subscribe(conn, %{"community_slug" => slug, "group_slug" => group_slug} = params) do
-    with {:ok, _community, group} <- GroupGate.fetch(nil, slug, group_slug),
+    with %Community{} = community <-
+           Communities.get_community_by_slug(slug) || {:error, :not_found},
+         {:ok, group} <- Groups.fetch_public_group(community, group_slug),
          :ok <-
            Newsletters.request_subscription(
              group,

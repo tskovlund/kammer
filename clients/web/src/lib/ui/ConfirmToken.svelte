@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
+	import { t } from '$lib/i18n/i18n.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 
@@ -69,4 +71,18 @@
 	{/if}
 {:else if result}
 	{@render success(result)}
+	{#if result.redirect_path}
+		<!-- The server points each confirm at the page it acted on — the
+		     commented post, the RSVP'd event, the subscribed group
+		     (issue #345); without this link the field went unread. -->
+		<p class="mt-4 text-center">
+			<!-- redirect_path is a server-built client-relative path, not a
+			     route id, so `resolve()` can't type it — prepend `base`
+			     directly (same result at runtime). -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href={base + result.redirect_path} class="text-sm text-accent hover:underline">
+				{t('guest.confirm.viewLink')}
+			</a>
+		</p>
+	{/if}
 {/if}

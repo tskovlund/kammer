@@ -403,17 +403,27 @@ and this project adheres to
 
 ### Fixed
 
-- The three public-surface link/gate incoherences from PR #344's
-  review (issue #345), unified on one rule: `publicly_readable?/1` is
-  now the single "public" predicate — the RSS/Atom feed gate joins it
-  (an archived or sealed `public_listed` group used to keep serving a
-  live feed whose every link landed on the SPA error state), and the
-  newsletter subscribe gate gains its missing sealed check. The
-  single-post newsletter email now links to the post itself instead
-  of the group page (the digest's roundup link was correct and stays;
-  the misnamed `post_url/1` helper is renamed), and a confirmed guest
-  comment now lands on the commented post rather than the group's
-  whole feed.
+- Every tokenless public surface now draws one "public" line (issue
+  #345, expanded by its review round): `publicly_readable?/1` gates
+  the RSS/Atom feeds (an archived or sealed `public_listed` group
+  used to keep serving a live feed whose every link landed on the SPA
+  error state), the guest RSVP/comment gates (a sealed public group
+  accepted whole guest flows whose confirmation links 404), the
+  newsletter subscribe gate, and — the review round's sharpest catch —
+  newsletter _delivery_: per-post and digest sends now re-check the
+  gate, so a group flipped off the public presets stops emailing post
+  excerpts to guest subscribers instead of leaking content across the
+  visibility boundary indefinitely. The anonymous subscribe, guest
+  comment, and guest RSVP requests all resolve through the shared
+  public fetches now, folding sealed/archived public groups into the
+  same 404 their pages give (the old 403 confirmed existence to slug
+  probers). The single-post newsletter email links to the post itself
+  (the digest's roundup link was correct and stays; the misnamed
+  `post_url/1` helper is renamed, and all email links now build
+  through `PublicLinks`, sharing the confirm links' base handling),
+  and a confirmed guest comment redirects to the commented post — with
+  the confirm pages growing the "go to the page" link that makes the
+  redirect visible (the field previously had no client consumer).
 
 - Leaving or being removed from a group no longer leaves an ex-member's
   RSVP sitting on that group's future events (issue #329, owner-decided

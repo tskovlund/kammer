@@ -18,6 +18,11 @@ describe('ConfirmToken', () => {
 
 		await waitFor(() => expect(screen.getByText('Hi Alice')).toBeTruthy());
 		expect(confirm).toHaveBeenCalledWith(window.location.origin, 'tok-1');
+
+		// The server's redirect_path becomes a visible way onward (#345) —
+		// the field existed unread before this link.
+		const link = screen.getByText('Go to the page');
+		expect(link.getAttribute('href')).toBe('/x');
 	});
 
 	it('shows the neutral error state when the token is rejected', async () => {

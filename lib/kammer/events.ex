@@ -102,16 +102,16 @@ defmodule Kammer.Events do
   def get_event!(event_id), do: Repo.get!(Event, event_id)
 
   @doc """
-  Fetches an event for the tokenless public JSON API (issue #185 slice
-  B): everything `fetch_viewable_event/3` loads (including the
-  `:events` feature gate), narrowed from an actor's `:view_group` to
-  `Authorization.publicly_readable?/1` — the same guest-content
-  boundary `Guests`' RSVP/claim request flows already enforce for this
-  same event, hardened against sealed groups since this is a
-  newly-browsable surface. A hidden or feature-gated event's
-  `:unauthorized`/`:not_found` both fold into one neutral 404 here, so
-  a guest can browse to exactly the event they could already RSVP to
-  and no more.
+  Fetches an event for every tokenless public surface — the public
+  JSON API (issue #185 slice B) and, since issue #345, the guest
+  RSVP/claim request paths resolve through here too: everything
+  `fetch_viewable_event/3` loads (including the `:events` feature
+  gate), narrowed from an actor's `:view_group` to
+  `Authorization.publicly_readable?/1`. A hidden or feature-gated
+  event's `:unauthorized`/`:not_found` both fold into one neutral 404
+  here, so a guest can browse to exactly the event they can act on
+  and no more — and never complete a flow whose confirmation links
+  would 404.
   """
   @spec fetch_public_event(Community.t(), Ecto.UUID.t()) ::
           {:ok, Event.t()} | {:error, :not_found}

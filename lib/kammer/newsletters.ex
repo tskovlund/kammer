@@ -195,6 +195,12 @@ defmodule Kammer.Newsletters do
           preload: [:guest_identity, group: :community]
         )
       )
+      # Delivery re-checks the same gate that admitted the subscription
+      # (issue #345): a group sealed at birth (pre-#345 subscriptions)
+      # or flipped off the public presets since must stop emailing its
+      # content to guests — the excerpt below would otherwise cross the
+      # visibility boundary indefinitely.
+      |> Enum.filter(&Authorization.can_guest_subscribe?(&1.group))
 
     Enum.each(subscribers, fn subscription ->
       manage_token = GuestToken.sign_manage(%{identity_id: subscription.guest_identity_id})
@@ -250,8 +256,12 @@ defmodule Kammer.Newsletters do
 
   @doc """
   Builds and delivers one subscription's digest; `:skipped` when the
-  period holds nothing. Stamps `last_sent_at` on send AND on skip —
-  a quiet week counts as covered, same as `Kammer.Digests`.
+  period holds nothing — or when the group no longer passes the guest
+  gate (issue #345: delivery re-checks `can_guest_subscribe?/1`, so a
+  group gone non-public stops emailing content silently; the row stays
+  until the guest erases it, delivering again only if the group comes
+  back). Stamps `last_sent_at` on send AND on skip — a quiet week
+  counts as covered, same as `Kammer.Digests`.
   """
   @spec deliver_digest(NewsletterSubscription.t(), DateTime.t()) :: :sent | :skipped
   def deliver_digest(%NewsletterSubscription{} = subscription, %DateTime{} = now) do
@@ -260,7 +270,7 @@ defmodule Kammer.Newsletters do
     posts = new_posts(subscription.group_id, since, now)
 
     outcome =
-      if posts == [] do
+      if posts == [] or not Authorization.can_guest_subscribe?(subscription.group) do
         :skipped
       else
         manage_token = GuestToken.sign_manage(%{identity_id: subscription.guest_identity_id})

@@ -87,7 +87,7 @@ defmodule Kammer.NewslettersTest do
   end
 
   describe "authorization" do
-    test "guest subscriptions need a public, live group" do
+    test "guest subscriptions need a public, live, unsealed group" do
       {community, _owner} = community_with_owner_fixture()
 
       for {attrs, allowed?} <- [
@@ -388,6 +388,11 @@ defmodule Kammer.NewslettersTest do
 
       assert_email_sent(fn email ->
         assert email.text_body =~ "Ugens nyheder"
+        # The digest's roundup link is the GROUP page — the negative
+        # half of the #345 helper rename, pinned so a slip to a post
+        # link can't pass silently.
+        assert email.text_body =~ "/g/#{group.slug}"
+        refute email.text_body =~ "/p/"
         true
       end)
 
@@ -406,6 +411,31 @@ defmodule Kammer.NewslettersTest do
       assert :skipped = Newsletters.deliver_digest(subscription, now)
       refute_email_sent()
       assert Repo.reload!(subscription).last_sent_at
+    end
+
+    test "a group gone non-public stops delivering, per-post and digest alike (#345)" do
+      # Delivery re-checks the gate that admitted the subscription: a
+      # visibility flip must not keep emailing post excerpts to guests
+      # across the boundary. The row stays (only the guest erases it),
+      # so a group flipped back public resumes delivering.
+      %{group: group, member: member} = public_group_context()
+
+      {_g, per_post, _m} = group |> request!(subscribe_attrs()) |> confirm!()
+
+      {_g, digest, _m} =
+        group |> request!(subscribe_attrs(%{"cadence" => "weekly"})) |> confirm!()
+
+      {:ok, post} = Feed.create_post(member, group, %{"body_markdown" => "Hemmeligt nu"})
+
+      group |> Ecto.Changeset.change(visibility: :private) |> Repo.update!()
+
+      drain_delivered_emails()
+      assert :ok = Newsletters.notify_subscribers(post)
+      assert :skipped = Newsletters.deliver_digest(digest, DateTime.utc_now(:second))
+      refute_email_sent()
+
+      assert Repo.reload!(per_post)
+      assert Repo.reload!(digest)
     end
   end
 end
