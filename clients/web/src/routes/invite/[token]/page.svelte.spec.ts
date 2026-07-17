@@ -21,9 +21,10 @@ vi.mock('$lib/instances/api.js', () => ({
 	registerErrorKeys: vi.fn(),
 	requestLink: vi.fn()
 }));
-vi.mock('$lib/instances/instances.svelte.js', () => ({
-	instances: { list: [], refresh() {} }
-}));
+vi.mock('$lib/instances/instances.svelte.js', async () => {
+	const { instancesMock } = await import('$lib/instances/test-support.js');
+	return instancesMock({ list: [] });
+});
 
 import InvitePage from './+page.svelte';
 import { deriveAccentTokens } from '$lib/ui/accent.js';

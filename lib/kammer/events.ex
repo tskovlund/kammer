@@ -758,7 +758,9 @@ defmodule Kammer.Events do
   # transaction exactly like the individual inserts did (Basic engine)
   # while a whole promotion burst costs one statement. A failure raises
   # and rolls the promotions back with it — strictly safer than the old
-  # loop, which discarded each insert's result.
+  # loop, which discarded each insert's result. (Holds while `oban_jobs`
+  # has no unique indexes: the Basic engine bulk-inserts with
+  # `on_conflict: :nothing`, so a conflict would be dropped, not raised.)
   defp schedule_promotion_notifications(_event, []), do: :ok
 
   defp schedule_promotion_notifications(%Event{} = event, promoted) do
