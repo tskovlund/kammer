@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Fixed
 
+- Hardened ICS calendar output (issue #313, affecting every ICS
+  surface — single-event download, the group/user feeds, and the
+  reminder-email attachment). A lone carriage return in an event's
+  title, description, or location used to survive escaping; RFC-strict
+  parsers only break a line on CRLF, but several real calendar clients
+  break on a bare CR too, which let an event's text inject whole
+  property lines (ORGANIZER, ATTENDEE, VALARM) into subscribers'
+  calendars — every newline variant now collapses to one escaped `\n`,
+  and other C0 control characters (illegal in RFC 5545 text) are
+  dropped. Cancelled occurrences now export `STATUS:CANCELLED` instead
+  of looking live, so downloading one marks it cancelled in the
+  calendar rather than planting a normal-looking event.
+
 - The newsletter unsubscribe link no longer deletes on GET (issue
   #239). GET is a safe method, and non-RFC-8058 mail scanners and
   corporate link-checkers prefetch every URL in an email with no human

@@ -49,10 +49,21 @@ defmodule Kammer.Calendar.ICS do
       "SUMMARY:#{escape(event.title)}",
       description(event),
       location(event),
+      status(event),
       "END:VEVENT"
     ]
     |> Enum.reject(&is_nil/1)
   end
+
+  # A cancelled occurrence downloaded on its own (the event page's button
+  # still renders — a re-download is how a subscriber propagates the
+  # cancellation into a calendar they already added it to) must not look
+  # live: STATUS:CANCELLED tells the calendar client the event is off.
+  # The feeds exclude cancelled occurrences upstream, so this only bites
+  # the single-event surface today, but the generator marks any cancelled
+  # event it's handed, whatever the surface.
+  defp status(%Event{cancelled_at: nil}), do: nil
+  defp status(%Event{}), do: "STATUS:CANCELLED"
 
   # All-day events use VALUE=DATE in the event's own timezone wall-date.
   defp dtstart(%Event{all_day: true} = event) do
@@ -118,8 +129,20 @@ defmodule Kammer.Calendar.ICS do
     |> String.replace("\\", "\\\\")
     |> String.replace(";", "\\;")
     |> String.replace(",", "\\,")
+    # Every newline variant collapses to one escaped `\n`. A lone CR (no
+    # LF) used to survive raw: RFC-strict parsers only break a content
+    # line on CRLF, but several real calendar clients break on a bare CR
+    # too, which let an event's title/description/location inject whole
+    # property lines (ORGANIZER, ATTENDEE, VALARM…) into subscribers'
+    # calendars (#313). Order matters — CRLF before the lone-CR and
+    # lone-LF passes, or the split halves double-escape.
     |> String.replace("\r\n", "\\n")
+    |> String.replace("\r", "\\n")
     |> String.replace("\n", "\\n")
+    # Other C0 controls and DEL are illegal in RFC 5545 TEXT and have no
+    # legitimate use in these fields (TAB stays — it's permitted); drop
+    # them so no exotic separator a lenient parser might honor survives.
+    |> String.replace(~r/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
   end
 
   # RFC 5545: lines longer than 75 octets should be folded.

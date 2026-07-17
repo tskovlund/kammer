@@ -884,6 +884,57 @@ defmodule Kammer.EventsTest do
       assert Events.events_for_group_token("bogus") == nil
       assert Events.events_for_user_token("bogus") == nil
     end
+
+    test "a bare CR in text is escaped, not left to inject a property line (#313)", %{
+      group: group,
+      member: member
+    } do
+      {:ok, event} =
+        Events.create_event(member, group, %{
+          "title" => "Team sync\rORGANIZER:mailto:evil@example.org",
+          "starts_at" => ~U[2026-08-01 18:00:00Z]
+        })
+
+      ics = ICS.single(event)
+
+      # The lone CR collapses to the literal two-char escape, so the
+      # injected property stays trapped inside the SUMMARY value...
+      assert ics =~ "SUMMARY:Team sync\\nORGANIZER:mailto:evil@example.org"
+      # ...and never begins a content line a lenient parser would honor
+      # (the only real line breaks left are the CRLF separators).
+      refute ics =~ "\rORGANIZER"
+      refute ics =~ "\nORGANIZER"
+    end
+
+    test "other control characters are dropped from text values (#313)", %{
+      group: group,
+      member: member
+    } do
+      {:ok, event} =
+        Events.create_event(member, group, %{
+          "title" => "Bell\a and vtab\v gone",
+          "starts_at" => ~U[2026-08-01 18:00:00Z]
+        })
+
+      ics = ICS.single(event)
+
+      assert ics =~ "SUMMARY:Bell and vtab gone"
+      refute ics =~ "\a"
+      refute ics =~ "\v"
+    end
+
+    test "a cancelled occurrence exports STATUS:CANCELLED; a live one has no STATUS (#313)", %{
+      group: group,
+      member: member
+    } do
+      {:ok, event} =
+        Events.create_event(member, group, %{"title" => "Maybe off", "starts_at" => future(48)})
+
+      refute ICS.single(event) =~ "STATUS:"
+
+      {:ok, cancelled} = Events.cancel_occurrence(member, event)
+      assert ICS.single(cancelled) =~ "STATUS:CANCELLED"
+    end
   end
 
   describe "reminder worker" do
