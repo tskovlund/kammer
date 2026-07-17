@@ -117,6 +117,40 @@ defmodule Kammer.ModerationTest do
       assert Moderation.list_open_reports(owner, community) == []
     end
 
+    test "a group moderator sees only their own group's reports, not another group's in the same community",
+         %{community: community, moderator: moderator, reporter: reporter, post: post} do
+      {:ok, report} = Moderation.report_post(reporter, post, "Spam")
+
+      other_group = group_fixture(community, visibility: :community)
+      other_author = group_member_fixture(other_group)
+      other_moderator = group_member_fixture(other_group, :admin)
+
+      {:ok, other_post} =
+        Feed.create_post(other_author, other_group, %{"body_markdown" => "Også grimt"})
+
+      {:ok, other_report} = Moderation.report_post(reporter, other_post, "Spam")
+
+      assert [seen] = Moderation.list_open_reports(moderator, community)
+      assert seen.id == report.id
+
+      # Comment reports resolve their group through the preloaded parent
+      # (#346 review) — scope them through the same filter.
+      {:ok, other_comment} =
+        Feed.create_comment(other_author, other_post, %{"body_markdown" => "og her"})
+
+      {:ok, comment_report} = Moderation.report_comment(reporter, other_comment, "Spam")
+
+      assert [seen] = Moderation.list_open_reports(moderator, community)
+      assert seen.id == report.id
+
+      other_seen_ids =
+        Moderation.list_open_reports(other_moderator, community)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert other_seen_ids == Enum.sort([other_report.id, comment_report.id])
+    end
+
     test "resolving removes the content (and the report dies with it)", %{
       community: community,
       owner: owner,

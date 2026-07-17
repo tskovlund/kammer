@@ -124,10 +124,7 @@ defmodule Kammer.Moderation do
     if Authorization.can?(actor, :manage_community, community) do
       reports
     else
-      Enum.filter(reports, fn report ->
-        group = report_group(report)
-        group != nil and Authorization.can?(actor, :moderate_group, group)
-      end)
+      filter_by_moderated_groups(actor, community, reports)
     end
   end
 
@@ -566,9 +563,44 @@ defmodule Kammer.Moderation do
   end
 
   defp report_group(%Report{comment: %Comment{} = comment}) do
-    {group, _subject_id} = Feed.comment_context(comment)
-    group
+    # Prefer the queue's own preloads (comment: [post: :group, ...]) —
+    # `Feed.comment_context/1` re-fetches the parent per call, which
+    # put comment reports back on a per-report query cost (#346 review).
+    case comment do
+      %Comment{post: %Post{group: %Group{} = group}} -> group
+      %Comment{event: %{group: %Group{} = group}} -> group
+      %Comment{assignment: %{group: %Group{} = group}} -> group
+      _not_preloaded -> comment |> Feed.comment_context() |> elem(0)
+    end
   end
 
   defp report_group(_report), do: nil
+
+  # Group moderators only see reports whose subject lives in a group
+  # they moderate. Resolving each report's group once and then asking
+  # `Authorization.can?/3` per report would hit the DB twice per report
+  # (community role + group role) — issue #342. Batching every distinct
+  # group's relationship through `Authorization.group_relationships/3`
+  # (#206) resolves them all in two queries total for the whole page,
+  # the same shape `CommunityController.groups/2` already uses.
+  defp filter_by_moderated_groups(_actor, _community, []), do: []
+
+  defp filter_by_moderated_groups(actor, community, reports) do
+    groups_by_report_id = Map.new(reports, &{&1.id, report_group(&1)})
+
+    groups =
+      groups_by_report_id
+      |> Map.values()
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(& &1.id)
+
+    relationships = Authorization.group_relationships(actor, community, groups)
+
+    Enum.filter(reports, fn report ->
+      case Map.fetch!(groups_by_report_id, report.id) do
+        nil -> false
+        group -> Authorization.can?(actor, :moderate_group, group, relationships[group.id])
+      end
+    end)
+  end
 end
