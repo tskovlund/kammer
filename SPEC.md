@@ -53,7 +53,7 @@ Design ethos: privacy-first, no ads, no algorithmic manipulation, frictionless p
 - **Posting policy**: admins-only ("broadcast/page" mode) / all members; orthogonal **approval queue** toggle.
 - **Comment policy**: members / members + guests (guests always email-verified and approval-queued) / off. **Per-post comment lock** available to the author and admins.
 - **Post as group**: admins may publish under the group identity (`author_type: user | group`).
-- **Sealed flag** (creation-time only, irreversible): no community-admin access of any kind; their sole power is whole-group deletion. UI states honestly: "Sealed: hidden from community admins. The server operator can still technically access all data."
+- **Sealed flag** (creation-time only, irreversible): no community-admin access of any kind; their sole power is whole-group deletion — reachable over the API only where the admin can see the group (sealed non-private groups); for a sealed private group, expulsion is an operator-level action (ADR 0005 amendment, 2026-07-17). UI states honestly: "Sealed: hidden from community admins. The server operator can still technically access all data."
 - **Archive state**: read-only, hidden from active lists, browsable under "Archived", files remain accessible, feeds and notifications stop. Unarchivable by admins. (Bands and committees are seasonal; institutional memory is the product.)
 - **Per-group feature toggles** (ADR 0016): group admins choose which optional tools a group shows (events, files, availability polls, assignments, decisions register — the feed is always on). A disabled feature is fully hidden, not just unlinked: its routes, ICS feeds, and guest surfaces all behave as not-found. Toggling back on restores everything; nothing is deleted.
 
