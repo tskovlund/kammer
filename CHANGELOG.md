@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- RSS/Atom group feed items now link to the post itself instead of the
+  group page (issue #341). Feeds shipped in #54 before any per-post
+  page existed, so every item's `<link>` (RSS) / `<link href>` (Atom)
+  pointed at the group page — the best available target at the time.
+  #246 later added the public post page at
+  `/c/{community_slug}/g/{group_slug}/p/{post_id}`, but nothing
+  circled back to point feed items at it, so a reader following an
+  item from their feed reader landed on the group's whole feed rather
+  than the post they clicked. Each item's link now resolves through a
+  `post_link_fun` the controller passes to `Kammer.Feed.Syndication`
+  (an `unverified_url/2` build of the post's public page, the same
+  convention as the feed's other links); the feed-level `<link>`
+  correctly stays the group page. The RSS `<guid isPermaLink="false">`
+  is unaffected — it was never a URL.
+
 ### Added
 
 - Step-up re-authentication before credential changes (issue #294, ADR
