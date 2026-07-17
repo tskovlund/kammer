@@ -682,6 +682,12 @@ defmodule Kammer.Events do
           where:
             rsvp.user_id == ^user_id and event.group_id in ^group_ids and
               (event.starts_at >= ^now or event.ends_at >= ^now),
+          # Deterministic lock order: every caller wraps this pass in
+          # one outer transaction (see below), so the per-event FOR
+          # UPDATE locks accumulate until its commit — two concurrent
+          # removals walking shared events in different orders would
+          # deadlock without a global ordering.
+          order_by: [asc: rsvp.event_id],
           select: rsvp.event_id
         )
       )
@@ -691,13 +697,17 @@ defmodule Kammer.Events do
     :ok
   end
 
-  # One transaction per event, same shape as every other capacity write
-  # (`write_rsvp/4`, `update_event/3`): lock the event row, apply the
-  # change, then run the shared promotion pass. A membership ending
-  # across several events never needs to be atomic as one unit — each
-  # event's write already is, and the next locked write on any event
-  # this pass somehow missed self-heals exactly like any other
-  # out-of-band gap (see the moduledoc).
+  # The `Repo.transact` here is a standalone-safety shape: in every
+  # real call path the caller (a membership-removal function) already
+  # holds an outer transaction, Ecto joins nested transactions, and so
+  # the whole removal — membership delete, RSVP drops, promotions —
+  # commits as ONE atomic unit with every event lock held until that
+  # commit. That is deliberate (a crash can never leave memberships
+  # deleted but seats kept, or vice versa), and it is why the bulk
+  # query above orders event ids: the accumulated locks need a global
+  # order. Any event this pass somehow misses self-heals via the next
+  # locked write, exactly like any other out-of-band gap (see the
+  # moduledoc).
   #
   # Unlike every other lock site here, `event_id` comes from a bulk
   # query run moments earlier rather than a struct the caller already
@@ -727,10 +737,6 @@ defmodule Kammer.Events do
     end)
 
     :ok
-  end
-
-  defp lock_event(event_id) do
-    Repo.one(from(event in Event, where: event.id == ^event_id, lock: "FOR UPDATE"))
   end
 
   ## Capacity & waitlist internals (issue #318 — see the moduledoc)
@@ -900,6 +906,12 @@ defmodule Kammer.Events do
 
   defp lock_event!(event_id) do
     Repo.one!(from(event in Event, where: event.id == ^event_id, lock: "FOR UPDATE"))
+  end
+
+  # Nil-safe twin for batch callers that must skip a concurrently
+  # deleted event rather than abort (`drop_future_rsvp_and_promote/2`).
+  defp lock_event(event_id) do
+    Repo.one(from(event in Event, where: event.id == ^event_id, lock: "FOR UPDATE"))
   end
 
   ## Guest RSVPs (SPEC §6): name + email on public events, no account.

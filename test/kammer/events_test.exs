@@ -631,6 +631,53 @@ defmodule Kammer.EventsTest do
       assert Events.get_rsvp(past_event, member).status == :yes
     end
 
+    test "an in-progress event (started, not yet ended) still counts as future and is dropped" do
+      # The predicate is starts_at >= now OR ends_at >= now — this pins
+      # the ends_at arm, which no other departure test reaches; a
+      # "simplification" to starts_at-only would strand the leaver on
+      # the attendee list of a still-running event.
+      %{group: group, member: member} = event_context()
+
+      {:ok, event} =
+        Events.create_event(member, group, %{
+          "title" => "Weekend camp",
+          "starts_at" => future(24),
+          "ends_at" => future(48)
+        })
+
+      {:ok, _yes} = Events.rsvp(member, event, :yes)
+
+      event
+      |> Ecto.Changeset.change(starts_at: DateTime.add(DateTime.utc_now(:second), -1, :hour))
+      |> Repo.update!()
+
+      assert {:ok, _left} = Kammer.Groups.leave_group(member, group)
+      assert Events.get_rsvp(event, member) == nil
+    end
+
+    test "account deletion frees the seat and promotes, same as any other departure" do
+      # The sixth door: the FK cascade would delete the RSVP rows
+      # anyway, but only the explicit pass in Gdpr.delete_account hands
+      # the freed seat to the waitlist instead of leaving it idle.
+      %{group: group, member: attendee} = event_context()
+
+      {:ok, event} =
+        Events.create_event(attendee, group, %{
+          "title" => "Capped",
+          "starts_at" => future(48),
+          "capacity" => 1
+        })
+
+      waiter = group_member_fixture(group)
+      {:ok, _seated} = Events.rsvp(attendee, event, :yes)
+      {:ok, _queued} = Events.rsvp(waiter, event, :yes)
+
+      assert :ok = Kammer.Gdpr.delete_account(attendee)
+
+      assert Events.get_rsvp(event, waiter).status == :yes
+      assert_enqueued(worker: NotificationFanoutWorker, args: promotion_args(event, waiter))
+    end
+
     test "removing a seated attendee frees the seat and promotes the next waitlisted member, who's still a current member" do
       %{group: group, group_owner: group_owner, member: attendee} = event_context()
 

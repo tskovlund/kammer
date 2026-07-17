@@ -8,17 +8,22 @@ defmodule Kammer.Gdpr do
   uploaded, into a zip built in a temporary directory and streamed by
   the controller.
 
-  **Erasure** is one `Repo.delete/1`: the schema was designed for it —
-  personal rows (memberships, RSVPs, claims, votes, sessions,
-  notifications) cascade away, while authored content is anonymized to
-  "Deleted user" by `nilify_all` foreign keys. Files the person
-  uploaded into shared spaces remain (they belong to the group's
-  shared memory); their uploader becomes anonymous.
+  **Erasure** is a waitlist-promotion pass plus one `Repo.delete/1`,
+  atomically: the schema was designed for the delete — personal rows
+  (memberships, RSVPs, claims, votes, sessions, notifications) cascade
+  away, while authored content is anonymized to "Deleted user" by
+  `nilify_all` foreign keys — and the promotion pass (issue #329)
+  hands the person's freed future-event seats to their waitlists
+  instead of leaving them idle. Files the person uploaded into shared
+  spaces remain (they belong to the group's shared memory); their
+  uploader becomes anonymous.
   """
 
   import Ecto.Query, warn: false
 
   alias Kammer.Accounts.User
+  alias Kammer.Events
+  alias Kammer.Groups.GroupMembership
   alias Kammer.Repo
   alias Kammer.Storage
 
@@ -56,11 +61,29 @@ defmodule Kammer.Gdpr do
 
   @doc """
   Deletes the account. The schema does the SPEC §12 work: identity
-  gone, personal rows cascaded, authored content anonymized.
+  gone, personal rows cascaded, authored content anonymized. Freed
+  event seats promote their waitlists first (issue #329) — the FK
+  cascade would silently delete the RSVP rows anyway, but without the
+  promotion pass every seat this person held would sit idle until an
+  arbitrary later capacity write self-healed it.
   """
   @spec delete_account(User.t()) :: :ok
   def delete_account(%User{} = user) do
-    Repo.delete!(user)
+    group_ids =
+      Repo.all(
+        from(membership in GroupMembership,
+          where: membership.user_id == ^user.id,
+          select: membership.group_id
+        )
+      )
+
+    {:ok, _} =
+      Repo.transact(fn ->
+        Events.drop_member_future_rsvps_in_groups(user.id, group_ids)
+        Repo.delete!(user)
+        {:ok, :ok}
+      end)
+
     :ok
   end
 

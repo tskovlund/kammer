@@ -413,8 +413,11 @@ and this project adheres to
   attendance history. Wired into every path that ends a group
   membership: `Groups.leave_group/2`, `Groups.remove_member/3`,
   `Groups.remove_memberships_in_community/2` (the community-wide
-  removal `Communities.remove_member/3` already delegates to), and
-  `Moderation`'s community and instance bans.
+  removal `Communities.remove_member/3` already delegates to),
+  `Moderation`'s community and instance bans, and — added by the
+  pre-merge review, which caught it as the sixth door — account
+  deletion (`Gdpr.delete_account/1`), where the FK cascade already
+  deleted the rows but nothing promoted the freed seats.
 
 - Community audit log cursor pagination (issue #340, 2026-07-17
   dismissal audit). `Audit.list_events` hard-capped at 50 rows with no
