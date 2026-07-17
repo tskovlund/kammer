@@ -38,7 +38,7 @@ defmodule Kammer.Communities.Community do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(community, attrs) do
     community
-    |> cast(attrs, [
+    |> cast(reject_nil_accent(attrs), [
       :name,
       :slug,
       :description,
@@ -61,6 +61,16 @@ defmodule Kammer.Communities.Community do
     |> validate_inclusion(:default_locale, ["en", "da"])
     |> unique_constraint(:slug)
   end
+
+  # An explicit JSON `accent_color: null` means "no choice", not "clear
+  # the color": the request schemas mark the field nullable, but the
+  # column is NOT NULL, so casting the nil would escape as a Postgrex
+  # error (a 500 on the API). Dropping the key keeps the existing value
+  # on update and the schema default on create — which is what
+  # `nullable: true` honestly means for a defaulted setting.
+  defp reject_nil_accent(%{"accent_color" => nil} = attrs), do: Map.delete(attrs, "accent_color")
+  defp reject_nil_accent(%{accent_color: nil} = attrs), do: Map.delete(attrs, :accent_color)
+  defp reject_nil_accent(attrs), do: attrs
 
   defp reserved_slugs do
     ~w(new admin settings api instance setup users dev public assets)

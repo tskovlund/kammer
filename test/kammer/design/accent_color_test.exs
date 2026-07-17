@@ -55,7 +55,7 @@ defmodule Kammer.Design.AccentColorTest do
   end
 
   test "css_variables emits all eight properties" do
-    css = AccentColor.css_variables("#3E6B48")
+    css = AccentColor.css_variables("#4A6FA5")
 
     for property_name <- ~w(--accent --accent-strong --accent-soft --on-accent
                             --accent-dark --accent-strong-dark --accent-soft-dark

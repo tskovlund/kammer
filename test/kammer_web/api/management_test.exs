@@ -76,6 +76,41 @@ defmodule KammerWeb.Api.ManagementTest do
       # pass on an unrelated validation error.
       assert details["slug"]
     end
+
+    test "an explicit null accent_color means no choice, never a 500" do
+      # The request schemas mark accent_color nullable, but the column is
+      # NOT NULL — an explicit JSON null must keep the default on create
+      # and the stored value on update, not escape as a Postgrex error.
+      default_accent = %Communities.Community{}.accent_color
+      operator = instance_operator_fixture()
+
+      created =
+        operator
+        |> api_conn()
+        |> post(~p"/api/v1/communities", %{
+          name: "Roklubben",
+          slug: unique_slug("rowing"),
+          accent_color: nil
+        })
+        |> json_response(201)
+
+      assert created["data"]["accent_color"] == default_accent
+
+      slug = created["data"]["slug"]
+
+      operator
+      |> api_conn()
+      |> put(~p"/api/v1/communities/#{slug}", %{accent_color: "#123456"})
+      |> json_response(200)
+
+      kept =
+        operator
+        |> api_conn()
+        |> put(~p"/api/v1/communities/#{slug}", %{accent_color: nil})
+        |> json_response(200)
+
+      assert kept["data"]["accent_color"] == "#123456"
+    end
   end
 
   describe "community settings" do
