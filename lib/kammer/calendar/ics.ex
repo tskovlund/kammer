@@ -45,7 +45,7 @@ defmodule Kammer.Calendar.ICS do
   so a member downloading several couldn't tell them apart. Reduced to a
   bare `[a-z0-9-]` slug — Nordic letters transliterated, every other run
   collapsed to a single dash — so no title character can break out of the
-  `Content-Disposition` header, with `kammer` as the fallback when a
+  `Content-Disposition` header, with `kammer.ics` as the fallback when a
   title has no usable characters (e.g. all emoji). Shared by both the
   browser and API calendar controllers so the two agree.
   """

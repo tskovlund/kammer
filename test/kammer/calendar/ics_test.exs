@@ -35,10 +35,8 @@ defmodule Kammer.Calendar.ICSTest do
     end
 
     test "caps the slug so a runaway title can't produce an unbounded header" do
-      long = ICS.filename(String.duplicate("a", 100))
       # 60-char slug + ".ics".
-      assert String.length(long) == 64
-      assert long == String.duplicate("a", 60) <> ".ics"
+      assert ICS.filename(String.duplicate("a", 100)) == String.duplicate("a", 60) <> ".ics"
     end
 
     test "a hostile title can never break out of the Content-Disposition header" do

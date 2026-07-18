@@ -107,6 +107,21 @@ defmodule KammerWeb.Api.UploadsTest do
            |> Map.fetch!(:status) == 404
   end
 
+  test "the Bearer file routes require a token — no token is 401, not 404 (#315)" do
+    # These moved onto the `:api_binary` pipeline; this pins that
+    # `:api_authenticated` still runs there (auth is checked before the
+    # file lookup, so a random id 401s rather than 404s).
+    id = Ecto.UUID.generate()
+
+    for path <- [
+          "/api/v1/files/#{id}",
+          "/api/v1/files/#{id}/thumbnail",
+          "/api/v1/files/#{id}/download"
+        ] do
+      assert build_conn() |> get(path) |> json_response(401)
+    end
+  end
+
   test "uploads are refused for users who cannot post", %{
     community: community,
     base_path: base_path,
