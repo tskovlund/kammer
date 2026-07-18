@@ -10,6 +10,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import FailedInstancesBanner from '$lib/ui/FailedInstancesBanner.svelte';
+	import { minuteNow } from '$lib/ui/now.js';
 	import Skeleton from '$lib/ui/Skeleton.svelte';
 	import StaleBanner from '$lib/ui/StaleBanner.svelte';
 	import TabIcon from '$lib/ui/TabIcon.svelte';
@@ -23,7 +24,10 @@
 	});
 
 	function dayLabel(day: { key: string; date: Date }): string {
-		const offset = dayOffsetFromToday(day.key);
+		// `minuteNow()` keeps "Today"/"Tomorrow" honest across midnight in a
+		// long-lived installed PWA (#316) — reading it here subscribes the
+		// template, so the labels re-derive rather than fossilize overnight.
+		const offset = dayOffsetFromToday(day.key, minuteNow());
 		if (offset === 0) return t('events.today');
 		if (offset === 1) return t('events.tomorrow');
 		return formatDate(day.date.toISOString(), i18n.locale);

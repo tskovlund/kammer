@@ -9,6 +9,7 @@
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import { resolveNotificationPath } from '$lib/push/notification-routing.js';
 	import { registerServiceWorker } from '$lib/pwa/register-service-worker.js';
+	import BoundaryFallback from '$lib/ui/BoundaryFallback.svelte';
 
 	let { children } = $props();
 
@@ -58,4 +59,28 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{@render children()}
+
+<!--
+	Root render boundary (#316). With SSR off, a client render error on any
+	tokenless shell — /welcome, /sign-in, /setup, public /c/[community]/**,
+	and the guest/legal/invite/newsletter/confirm-email/step-up siblings —
+	never reaches +error.svelte (that catches *load* errors only), so without
+	a boundary it white-screens; a signed-out member is a pilot audience
+	(#260). One root boundary covers them all. The (app) group keeps its own
+	inner boundary (nav outside it), which catches a content crash first and
+	leaves the nav as a way out; this is the outer net for a shell-level
+	crash. svelte:boundary renders no element, so it never disturbs a route's
+	own layout.
+-->
+<svelte:boundary onerror={(error) => console.error('[kammer] app crashed', error)}>
+	{@render children()}
+
+	<!-- The error is logged in onerror; the snippet only needs reset, but
+	     snippet params are positional. -->
+	<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+	{#snippet failed(_error, reset)}
+		<div class="mx-auto w-full max-w-2xl px-4 py-10">
+			<BoundaryFallback {reset} />
+		</div>
+	{/snippet}
+</svelte:boundary>

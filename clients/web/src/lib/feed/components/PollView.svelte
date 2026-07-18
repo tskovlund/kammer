@@ -8,6 +8,7 @@
 		totalPollVotes
 	} from '$lib/feed/interactions.js';
 	import type { Poll } from '$lib/feed/types.js';
+	import { minuteNow } from '$lib/ui/now.js';
 
 	interface Props {
 		poll: Poll;
@@ -17,7 +18,10 @@
 
 	let { poll, onVote, idPrefix }: Props = $props();
 
-	const closed = $derived(pollClosed(poll));
+	// Reactive `now` so an open poll flips to closed the minute its
+	// deadline passes, even on a quiet screen (#316) — not just on the
+	// next user interaction.
+	const closed = $derived(pollClosed(poll, minuteNow()));
 	const total = $derived(totalPollVotes(poll));
 
 	function choose(optionId: string): void {

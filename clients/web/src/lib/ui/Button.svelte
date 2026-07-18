@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { HTMLButtonAttributes } from 'svelte/elements';
+	import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLButtonAttributes {
 		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -40,9 +40,15 @@
 {#if href}
 	<!-- Callers pass resolve()'d paths; the rule can't see through the prop. -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
+	<!-- `rest` is typed for the button element (Props extends
+	     HTMLButtonAttributes); on the anchor, button-only members like
+	     `disabled`/`form` are inert but harmless, and the shared aria-*/
+	     data-*/target/rel/title/on:* that callers actually pass forward
+	     correctly. The cast keeps the spread (so those aren't dropped —
+	     #316) without redesigning Props into a full polymorphic union. -->
 	<a
 		{href}
-		id={rest.id}
+		{...rest as unknown as HTMLAnchorAttributes}
 		class="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors duration-150 {variants[
 			variant
 		]} {sizes[size]} {className}"

@@ -320,13 +320,20 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 		// The local removal is what actually matters — do it first, so the
 		// entry is gone even if a teardown step ever throws.
 		instanceStore.remove(instanceId);
+		// The offline snapshots mix data across instances — on a shared
+		// device the next signer-in must never inherit them (issue #186).
+		// This privacy step runs before the socket teardown so a throw in
+		// `dropSocket` can never skip it (#316).
+		clearSnapshots();
 		// Tear down the instance's realtime socket with the instance itself —
 		// whether or not the revoke landed. Left connected, the manager would
 		// keep the old token's socket alive until a reconnect finally 401s,
-		// with no instance id left to reach it by.
-		dropSocket(instanceId);
-		// The offline snapshots mix data across instances — on a shared
-		// device the next signer-in must never inherit them (issue #186).
-		clearSnapshots();
+		// with no instance id left to reach it by. Best-effort: a failure
+		// here must not undo the removals above.
+		try {
+			dropSocket(instanceId);
+		} catch {
+			// Swallowed — the instance and its snapshots are already gone.
+		}
 	}
 }
