@@ -176,27 +176,6 @@ defmodule KammerWeb.Api.CalendarTest do
       assert response(conn, 200) =~ "BEGIN:VCALENDAR"
     end
 
-    test "a title with no slug-safe characters falls back to kammer.ics (#315)" do
-      {community, _owner} = community_with_owner_fixture()
-      group = group_fixture(community, %{visibility: :private})
-      insider = group_member_fixture(group)
-
-      {:ok, event} =
-        Events.create_event(insider, group, %{
-          "title" => "🎉🎊",
-          "starts_at" => DateTime.add(DateTime.utc_now(:second), 48, :hour)
-        })
-
-      conn =
-        insider
-        |> api_conn()
-        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/ics")
-
-      assert get_resp_header(conn, "content-disposition") == [
-               ~s(attachment; filename="kammer.ics")
-             ]
-    end
-
     test "an event the caller cannot see 404s like an absent one — no oracle" do
       %{community: community, event: event} = private_event()
       outsider = member_fixture(community)

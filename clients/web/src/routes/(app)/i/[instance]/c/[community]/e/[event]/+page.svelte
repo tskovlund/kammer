@@ -5,6 +5,7 @@
 	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import * as api from '$lib/events/api.js';
 	import { createEventStore, type EventStore } from '$lib/events/event-store.svelte.js';
+	import { icsFilename } from '$lib/events/ics-filename.js';
 	import { safeHttpUrl } from '$lib/url.js';
 	import EventComments from '$lib/events/components/EventComments.svelte';
 	import RsvpControl from '$lib/events/components/RsvpControl.svelte';
@@ -92,24 +93,6 @@
 	// tokenless route 404'd every members-only event.
 	let downloadingIcs = $state(false);
 	let icsError = $state<ApiErrorKind | null>(null);
-
-	// A title-derived download name (#315), mirroring the server's
-	// Content-Disposition slug — the browser's `download` attribute wins
-	// over the header for this blob download, so the two must agree. A
-	// static name made every saved .ics identical.
-	function icsFilename(title: string): string {
-		const slug = title
-			.toLowerCase()
-			.replace(/[æä]/g, 'ae')
-			.replace(/[øö]/g, 'oe')
-			.replace(/å/g, 'aa')
-			.replace(/[éèê]/g, 'e')
-			.replace(/ü/g, 'ue')
-			.replace(/[^a-z0-9]+/g, '-')
-			.slice(0, 60)
-			.replace(/^-+|-+$/g, '');
-		return slug ? `${slug}.ics` : 'kammer.ics';
-	}
 
 	async function downloadIcs(): Promise<void> {
 		if (!instance || !event) return;

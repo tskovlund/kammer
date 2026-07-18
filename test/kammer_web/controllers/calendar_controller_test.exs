@@ -38,10 +38,23 @@ defmodule KammerWeb.CalendarControllerTest do
     feed_conn = get(build_conn(), "/calendar/group/#{token}.ics")
     assert feed_conn.status == 200
     assert feed_conn.resp_body =~ "Generalprøve"
+    # The secret-token feed stays out of shared caches, and its download
+    # name is the group's, not a static "kammer.ics" (#315).
+    assert get_resp_header(feed_conn, "cache-control") == ["private, no-store"]
+
+    assert [~s(attachment; filename=") <> rest] =
+             get_resp_header(feed_conn, "content-disposition")
+
+    assert rest =~ ~r/^[a-z0-9-]+\.ics"$/
 
     event_conn = get(conn, "/c/#{community.slug}/events/#{event.id}/ics")
     assert event_conn.status == 200
     assert event_conn.resp_body =~ "BEGIN:VEVENT"
+    assert get_resp_header(event_conn, "cache-control") == ["private, no-store"]
+
+    assert get_resp_header(event_conn, "content-disposition") == [
+             ~s(attachment; filename="generalproeve.ics")
+           ]
 
     # A bogus token answers 404 — the token is the credential.
     bogus_conn = get(build_conn(), "/calendar/group/wrong-token.ics")

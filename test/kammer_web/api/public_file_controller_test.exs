@@ -86,6 +86,10 @@ defmodule KammerWeb.Api.PublicFileControllerTest do
 
       assert response.status == 200
       assert response.resp_body == "hello band"
+      # Unlike the authed twin, this tokenless surface never gets the
+      # `private, no-store` directive — it keeps the framework's default
+      # caching, so public attachments aren't forced out of caches (#315).
+      refute "private, no-store" in get_resp_header(response, "cache-control")
     end
 
     test "download and thumbnail modes work the same as the Bearer-authenticated route", %{
