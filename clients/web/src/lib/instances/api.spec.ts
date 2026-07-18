@@ -397,6 +397,7 @@ describe('revokeAndRemoveInstance', () => {
 	});
 
 	it('clears cross-instance snapshots even if the socket teardown throws (#316, #186)', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		instanceStore.add(instance);
 		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
 		vi.mocked(dropSocket).mockImplementationOnce(() => {
@@ -406,9 +407,14 @@ describe('revokeAndRemoveInstance', () => {
 		// A teardown failure must not reject the removal...
 		await expect(revokeAndRemoveInstance('instance-1')).resolves.toBeUndefined();
 
-		// ...and the shared-device privacy step (#186) must still run — it's
-		// ordered before the socket drop precisely so a throw can't skip it.
+		// ...and the shared-device privacy step (#186) must still run despite
+		// the teardown throwing. (Asserting the guarantee, not the literal
+		// ordering — a fix that caught dropSocket instead would pass too, and
+		// should.)
 		expect(instanceStore.list()).toEqual([]);
 		expect(clearSnapshots).toHaveBeenCalled();
+		// The swallowed teardown failure is logged, not silent.
+		expect(consoleError).toHaveBeenCalled();
+		consoleError.mockRestore();
 	});
 });

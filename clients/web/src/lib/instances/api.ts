@@ -332,8 +332,11 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 		// here must not undo the removals above.
 		try {
 			dropSocket(instanceId);
-		} catch {
-			// Swallowed — the instance and its snapshots are already gone.
+		} catch (error) {
+			// Swallowed — the instance and its snapshots are already gone —
+			// but logged, so a socket that fails to tear down leaves a trace
+			// instead of lingering silently.
+			console.error('[kammer] dropSocket failed during instance removal', error);
 		}
 	}
 }

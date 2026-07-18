@@ -21,11 +21,14 @@ describe('Button', () => {
 		expect(link.getAttribute('target')).toBe('_blank');
 	});
 
-	it('forwards rest props on the default (button) variant', () => {
+	// The button branch already spread rest; the load-bearing assertion here
+	// is the `type="button"` default — a Button inside a form must never
+	// fall back to the native `submit`.
+	it('defaults to type=button (and forwards rest) on the button variant', () => {
 		render(ButtonHarness, { props: { 'aria-label': 'Save', 'data-testid': 'save' } });
 
 		const button = screen.getByRole('button', { name: 'Save' });
-		expect(button.getAttribute('data-testid')).toBe('save');
 		expect(button.getAttribute('type')).toBe('button');
+		expect(button.getAttribute('data-testid')).toBe('save');
 	});
 });
