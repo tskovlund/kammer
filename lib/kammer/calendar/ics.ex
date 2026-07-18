@@ -49,10 +49,23 @@ defmodule Kammer.Calendar.ICS do
       "SUMMARY:#{escape(event.title)}",
       description(event),
       location(event),
+      status(event),
       "END:VEVENT"
     ]
     |> Enum.reject(&is_nil/1)
   end
+
+  # A cancelled occurrence downloaded on its own must not look live:
+  # STATUS:CANCELLED marks it off in the calendar rather than planting a
+  # normal-looking event. (Whether a *re*-download updates a copy the
+  # subscriber already imported is best-effort under METHOD:PUBLISH with
+  # no SEQUENCE — DTSTAMP-gated clients accept it, SEQUENCE-gated ones
+  # may not; proper iTIP revision handling is tracked separately.) The
+  # feeds exclude cancelled occurrences upstream, so this only bites the
+  # single-event surface today, but the generator marks any cancelled
+  # event it's handed, whatever the surface.
+  defp status(%Event{cancelled_at: nil}), do: nil
+  defp status(%Event{}), do: "STATUS:CANCELLED"
 
   # All-day events use VALUE=DATE in the event's own timezone wall-date.
   defp dtstart(%Event{all_day: true} = event) do
@@ -118,8 +131,29 @@ defmodule Kammer.Calendar.ICS do
     |> String.replace("\\", "\\\\")
     |> String.replace(";", "\\;")
     |> String.replace(",", "\\,")
+    # Every line-break variant collapses to one escaped `\n`. Beyond
+    # CRLF/CR/LF (RFC-strict parsers only break a content line on CRLF,
+    # but real calendar clients break on a bare CR too — #313), the
+    # Unicode-aware unfolders some clients use (e.g. .NET's line
+    # splitters) also break on NEL and the line/paragraph separators, so
+    # those inject property lines just the same. Order: CRLF before the
+    # lone-CR and lone-LF passes, or the split halves double-escape.
     |> String.replace("\r\n", "\\n")
+    |> String.replace("\r", "\\n")
     |> String.replace("\n", "\\n")
+    |> String.replace("\u{0085}", "\\n")
+    |> String.replace("\u{2028}", "\\n")
+    |> String.replace("\u{2029}", "\\n")
+    # Remaining control characters are dropped (TAB stays — it's
+    # permitted). C0 + DEL are RFC 5545 CONTROLs, forbidden in TEXT
+    # outright (byte-oriented regex). The C1 range (U+0080–U+009F,
+    # codepoint-oriented, needs the `u` flag) is *permitted* by the
+    # grammar as NON-US-ASCII, but stripped as defense-in-depth: a
+    # lenient or Unicode-aware client may still honor one as a control,
+    # and these have no legitimate use in these fields. NEL (U+0085) is
+    # already handled above.
+    |> String.replace(~r/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
+    |> String.replace(~r/[\x{0080}-\x{009F}]/u, "")
   end
 
   # RFC 5545: lines longer than 75 octets should be folded.
