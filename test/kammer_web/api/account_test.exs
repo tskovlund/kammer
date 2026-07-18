@@ -224,14 +224,27 @@ defmodule KammerWeb.Api.AccountTest do
   describe "export" do
     # Export is step-up-gated since #323 (the gate itself is exercised
     # in step_up_test.exs).
+    test "requires a token — no token is 401 (moved to :api_binary, #315)" do
+      # Pins that `:api_authenticated` still runs on the binary pipeline
+      # this route moved to (it's now in a different scope from /me).
+      assert build_conn() |> get(~p"/api/v1/me/export") |> json_response(401)
+    end
+
     test "streams the caller's export zip with their data.json inside" do
       user = AccountsFixtures.user_fixture()
 
-      conn = user |> api_conn(stepped_up: true) |> get(~p"/api/v1/me/export")
+      # The documented `application/zip` Accept isn't 406'd (#315).
+      conn =
+        user
+        |> api_conn(stepped_up: true)
+        |> put_req_header("accept", "application/zip")
+        |> get(~p"/api/v1/me/export")
 
       assert response_content_type(conn, :zip)
       assert [disposition] = get_resp_header(conn, "content-disposition")
       assert disposition =~ "attachment"
+      # A personal data export must never sit in a shared cache (#315).
+      assert get_resp_header(conn, "cache-control") == ["private, no-store"]
 
       {:ok, entries} = :zip.unzip(response(conn, 200), [:memory])
 

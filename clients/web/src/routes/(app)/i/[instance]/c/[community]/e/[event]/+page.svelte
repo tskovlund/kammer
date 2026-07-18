@@ -5,6 +5,7 @@
 	import { errorKind, type ApiErrorKind } from '$lib/api/errors.js';
 	import * as api from '$lib/events/api.js';
 	import { createEventStore, type EventStore } from '$lib/events/event-store.svelte.js';
+	import { icsFilename } from '$lib/events/ics-filename.js';
 	import { safeHttpUrl } from '$lib/url.js';
 	import EventComments from '$lib/events/components/EventComments.svelte';
 	import RsvpControl from '$lib/events/components/RsvpControl.svelte';
@@ -94,7 +95,10 @@
 	let icsError = $state<ApiErrorKind | null>(null);
 
 	async function downloadIcs(): Promise<void> {
-		if (!instance) return;
+		if (!instance || !event) return;
+		// Captured before the await — `event` is reactive, and the button
+		// only renders in the loaded state anyway.
+		const filename = icsFilename(event.title);
 		downloadingIcs = true;
 		icsError = null;
 		try {
@@ -102,7 +106,7 @@
 			// Same anchor dance as the account page's export download.
 			const anchor = document.createElement('a');
 			anchor.href = url;
-			anchor.download = 'kammer.ics';
+			anchor.download = filename;
 			anchor.rel = 'noopener';
 			document.body.appendChild(anchor);
 			anchor.click();

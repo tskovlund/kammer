@@ -188,7 +188,10 @@ defmodule KammerWeb.Api.AccountController do
         # Gdpr.export leaves cleanup to the caller, and orphaned
         # workdirs would otherwise fill the temp dir over time.
         try do
-          send_download(conn, {:file, zip_path},
+          conn
+          # A personal data export must never sit in a shared cache (#315).
+          |> put_resp_header("cache-control", "private, no-store")
+          |> send_download({:file, zip_path},
             filename: "kammer-export-#{Date.to_iso8601(Date.utc_today())}.zip"
           )
         after

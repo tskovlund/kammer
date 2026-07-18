@@ -63,7 +63,12 @@ defmodule KammerWeb.Api.CalendarController do
          {:ok, event} <- Events.fetch_viewable_event(user, community, event_id) do
       conn
       |> put_resp_content_type("text/calendar")
-      |> put_resp_header("content-disposition", ~s(attachment; filename="kammer.ics"))
+      |> put_resp_header(
+        "content-disposition",
+        ~s(attachment; filename="#{ICS.filename(event.title)}")
+      )
+      # Authed binary download (#315): keep it out of shared caches.
+      |> put_resp_header("cache-control", "private, no-store")
       |> send_resp(200, ICS.single(event))
     else
       # Absent community, absent event, and an event the caller can't

@@ -10,6 +10,22 @@ and this project adheres to
 
 ### Fixed
 
+- Binary API downloads no longer reject their own documented media type
+  (issue #315). Every byte-serving API route (the single-event ICS, the
+  stored-file endpoints, the GDPR export zip) sat in the JSON-only `:api`
+  pipeline, so a client sending the natural Accept header for the payload
+  — `text/calendar` for the ICS, `image/*` for a file, `application/zip`
+  for the export — got a 406 before the controller ran. They now serve
+  through a binary pipeline that keeps the same authentication but drops
+  JSON-only content negotiation (the PWA was unaffected — its `fetch`
+  sends `*/*`). The authed byte responses (including the secret-token
+  calendar feeds, deliberately) now carry a `private, no-store` cache
+  directive — belt-and-braces over RFC 9111; the tokenless public post
+  attachments keep the framework's default caching instead. And
+  single-event `.ics` downloads take a
+  filename derived from the event title instead of a static `kammer.ics`,
+  so several saved files are distinguishable.
+
 - Hardened ICS calendar output (issue #313, affecting every ICS
   surface — the single-event download, the group/user feeds, and the
   reminder and guest-confirmation email attachments). A lone carriage

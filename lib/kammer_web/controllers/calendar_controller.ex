@@ -15,7 +15,7 @@ defmodule KammerWeb.CalendarController do
   def group_feed(conn, %{"token" => token}) do
     case Events.events_for_group_token(strip_extension(token)) do
       nil -> send_resp(conn, 404, "Not found")
-      {group, events} -> send_ics(conn, ICS.calendar(events, group.name))
+      {group, events} -> send_ics(conn, ICS.calendar(events, group.name), group.name)
     end
   end
 
@@ -24,7 +24,7 @@ defmodule KammerWeb.CalendarController do
   def user_feed(conn, %{"token" => token}) do
     case Events.events_for_user_token(strip_extension(token)) do
       nil -> send_resp(conn, 404, "Not found")
-      {_user, events} -> send_ics(conn, ICS.calendar(events, "Kammer"))
+      {_user, events} -> send_ics(conn, ICS.calendar(events, "Kammer"), "Kammer")
     end
   end
 
@@ -35,7 +35,7 @@ defmodule KammerWeb.CalendarController do
 
     with %{} = community <- Communities.get_community_by_slug(community_slug),
          {:ok, event} <- Events.fetch_viewable_event(current_user, community, event_id) do
-      send_ics(conn, ICS.single(event))
+      send_ics(conn, ICS.single(event), event.title)
     else
       _error -> send_resp(conn, 404, "Not found")
     end
@@ -43,10 +43,14 @@ defmodule KammerWeb.CalendarController do
 
   defp strip_extension(token), do: String.replace_suffix(token, ".ics", "")
 
-  defp send_ics(conn, ics_content) do
+  defp send_ics(conn, ics_content, name) do
     conn
     |> put_resp_content_type("text/calendar")
-    |> put_resp_header("content-disposition", ~s(attachment; filename="kammer.ics"))
+    |> put_resp_header("content-disposition", ~s(attachment; filename="#{ICS.filename(name)}"))
+    # Authed/secret-token binary download (#315): keep it out of shared
+    # caches — belt-and-braces over RFC 9111, and the feed URLs carry a
+    # secret token.
+    |> put_resp_header("cache-control", "private, no-store")
     |> send_resp(200, ics_content)
   end
 end

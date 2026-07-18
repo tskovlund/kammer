@@ -150,11 +150,30 @@ defmodule KammerWeb.Api.CalendarTest do
 
       assert response_content_type(conn, :ics)
 
+      # Title-derived filename (#315), Nordic letters transliterated, so
+      # several saved .ics files are distinguishable (was static "kammer.ics").
       assert get_resp_header(conn, "content-disposition") == [
-               ~s(attachment; filename="kammer.ics")
+               ~s(attachment; filename="generalproeve.ics")
              ]
 
+      # Authed binary download stays out of shared caches (#315).
+      assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+
       assert response(conn, 200) =~ "SUMMARY:Generalprøve"
+    end
+
+    test "serves its documented text/calendar Accept header without a 406 (#315)" do
+      %{community: community, insider: insider, event: event} = private_event()
+
+      # Before #315 the `:api` pipeline's `plug :accepts, ["json"]`
+      # rejected the natural Accept header for the documented media type.
+      conn =
+        insider
+        |> api_conn()
+        |> put_req_header("accept", "text/calendar")
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/ics")
+
+      assert response(conn, 200) =~ "BEGIN:VCALENDAR"
     end
 
     test "an event the caller cannot see 404s like an absent one — no oracle" do
