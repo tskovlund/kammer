@@ -93,8 +93,29 @@
 	let downloadingIcs = $state(false);
 	let icsError = $state<ApiErrorKind | null>(null);
 
+	// A title-derived download name (#315), mirroring the server's
+	// Content-Disposition slug — the browser's `download` attribute wins
+	// over the header for this blob download, so the two must agree. A
+	// static name made every saved .ics identical.
+	function icsFilename(title: string): string {
+		const slug = title
+			.toLowerCase()
+			.replace(/[æä]/g, 'ae')
+			.replace(/[øö]/g, 'oe')
+			.replace(/å/g, 'aa')
+			.replace(/[éèê]/g, 'e')
+			.replace(/ü/g, 'ue')
+			.replace(/[^a-z0-9]+/g, '-')
+			.slice(0, 60)
+			.replace(/^-+|-+$/g, '');
+		return slug ? `${slug}.ics` : 'kammer.ics';
+	}
+
 	async function downloadIcs(): Promise<void> {
-		if (!instance) return;
+		if (!instance || !event) return;
+		// Captured before the await — `event` is reactive, and the button
+		// only renders in the loaded state anyway.
+		const filename = icsFilename(event.title);
 		downloadingIcs = true;
 		icsError = null;
 		try {
@@ -102,7 +123,7 @@
 			// Same anchor dance as the account page's export download.
 			const anchor = document.createElement('a');
 			anchor.href = url;
-			anchor.download = 'kammer.ics';
+			anchor.download = filename;
 			anchor.rel = 'noopener';
 			document.body.appendChild(anchor);
 			anchor.click();

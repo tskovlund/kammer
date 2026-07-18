@@ -39,6 +39,38 @@ defmodule Kammer.Calendar.ICS do
   @spec single(Event.t()) :: String.t()
   def single(%Event{} = event), do: calendar([event], event.title)
 
+  @doc """
+  A readable, safe `.ics` download name from an event or calendar title
+  (#315): the prior static `kammer.ics` made every saved file identical,
+  so a member downloading several couldn't tell them apart. Reduced to a
+  bare `[a-z0-9-]` slug — Nordic letters transliterated, every other run
+  collapsed to a single dash — so no title character can break out of the
+  `Content-Disposition` header, with `kammer` as the fallback when a
+  title has no usable characters (e.g. all emoji). Shared by both the
+  browser and API calendar controllers so the two agree.
+  """
+  @spec filename(String.t()) :: String.t()
+  def filename(name) do
+    slug =
+      name
+      |> String.downcase()
+      |> transliterate()
+      |> String.replace(~r/[^a-z0-9]+/u, "-")
+      |> String.slice(0, 60)
+      |> String.trim("-")
+
+    if slug == "", do: "kammer.ics", else: "#{slug}.ics"
+  end
+
+  defp transliterate(text) do
+    text
+    |> String.replace(["æ", "ä"], "ae")
+    |> String.replace(["ø", "ö"], "oe")
+    |> String.replace("å", "aa")
+    |> String.replace(["é", "è", "ê"], "e")
+    |> String.replace("ü", "ue")
+  end
+
   defp event_lines(%Event{} = event) do
     [
       "BEGIN:VEVENT",

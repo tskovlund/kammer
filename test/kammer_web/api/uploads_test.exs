@@ -79,11 +79,20 @@ defmodule KammerWeb.Api.UploadsTest do
     assert attachment["position"] == 0
     assert attachment["filename"] == "setlist.txt"
 
-    # The bytes come back over Bearer auth — no browser session needed.
-    response = member |> api_conn() |> get(attachment["download_url"])
+    # The bytes come back over Bearer auth — no browser session needed,
+    # and the natural Accept header for the payload (not JSON) isn't
+    # 406'd (#315).
+    response =
+      member
+      |> api_conn()
+      |> put_req_header("accept", "text/plain")
+      |> get(attachment["download_url"])
+
     assert response.status == 200
     assert response.resp_body == "setlist"
     assert Plug.Conn.get_resp_header(response, "content-disposition") |> hd() =~ "attachment"
+    # Authed bytes stay out of shared caches (#315).
+    assert Plug.Conn.get_resp_header(response, "cache-control") == ["private, no-store"]
 
     # Group files inherit group visibility: a member of the community
     # can read them (community-visible group); a stranger cannot tell

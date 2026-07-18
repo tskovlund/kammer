@@ -25,6 +25,13 @@ defmodule KammerWeb.Api.FileController do
   def download(conn, %{"file_id" => file_id}), do: serve(conn, file_id, :download)
 
   defp serve(conn, file_id, mode) do
+    # Authed bytes stay out of shared caches (#315) — belt-and-braces
+    # over RFC 9111's Authorization rule. Set before `serve/4`, which
+    # sends the file and can't take a header afterwards. (The tokenless
+    # `PublicFileController` twin deliberately omits this — those
+    # attachments are public and cacheable.)
+    conn = put_resp_header(conn, "cache-control", "private, no-store")
+
     case FileServing.serve(conn, conn.assigns.current_scope.user, file_id, mode) do
       {:ok, conn} -> conn
       {:error, :not_found} -> ApiError.send(conn, :not_found, "Not found.")

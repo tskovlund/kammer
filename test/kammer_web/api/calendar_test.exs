@@ -150,11 +150,51 @@ defmodule KammerWeb.Api.CalendarTest do
 
       assert response_content_type(conn, :ics)
 
+      # Title-derived filename (#315), Nordic letters transliterated, so
+      # several saved .ics files are distinguishable (was static "kammer.ics").
+      assert get_resp_header(conn, "content-disposition") == [
+               ~s(attachment; filename="generalproeve.ics")
+             ]
+
+      # Authed binary download stays out of shared caches (#315).
+      assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+
+      assert response(conn, 200) =~ "SUMMARY:Generalprøve"
+    end
+
+    test "serves its documented text/calendar Accept header without a 406 (#315)" do
+      %{community: community, insider: insider, event: event} = private_event()
+
+      # Before #315 the `:api` pipeline's `plug :accepts, ["json"]`
+      # rejected the natural Accept header for the documented media type.
+      conn =
+        insider
+        |> api_conn()
+        |> put_req_header("accept", "text/calendar")
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/ics")
+
+      assert response(conn, 200) =~ "BEGIN:VCALENDAR"
+    end
+
+    test "a title with no slug-safe characters falls back to kammer.ics (#315)" do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, %{visibility: :private})
+      insider = group_member_fixture(group)
+
+      {:ok, event} =
+        Events.create_event(insider, group, %{
+          "title" => "🎉🎊",
+          "starts_at" => DateTime.add(DateTime.utc_now(:second), 48, :hour)
+        })
+
+      conn =
+        insider
+        |> api_conn()
+        |> get(~p"/api/v1/communities/#{community.slug}/events/#{event.id}/ics")
+
       assert get_resp_header(conn, "content-disposition") == [
                ~s(attachment; filename="kammer.ics")
              ]
-
-      assert response(conn, 200) =~ "SUMMARY:Generalprøve"
     end
 
     test "an event the caller cannot see 404s like an absent one — no oracle" do

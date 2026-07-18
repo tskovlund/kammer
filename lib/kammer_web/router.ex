@@ -38,6 +38,19 @@ defmodule KammerWeb.Router do
     plug :require_api_user
   end
 
+  # Binary-serving API routes (single-event ICS, stored-file bytes, the
+  # GDPR export zip) set their own Content-Type and never format-render,
+  # so JSON content negotiation buys nothing and only 406s a client that
+  # sends the natural Accept header for the endpoint's *documented*
+  # media type — `text/calendar`, `application/zip`, `image/*` (#315).
+  # Same reasoning that dropped `:accepts` from `:newsletter_one_click`
+  # (#239). Everything else `:api` does is preserved (the spec module,
+  # the auth scope); only the JSON-only negotiation is gone.
+  pipeline :api_binary do
+    plug OpenApiSpex.Plug.PutApiSpec, module: KammerWeb.ApiSpec
+    plug :fetch_api_scope
+  end
+
   # RFC 8058 one-click unsubscribe: a mail client POSTs this with no
   # session and no CSRF token — the signed, expiring token in the URL
   # is the whole credential, same as every other guest link. No
@@ -193,21 +206,24 @@ defmodule KammerWeb.Router do
           :post
 
       get "/communities/:community_slug/events/:event_id", PublicController, :event
-
-      # Post attachments over the tokenless surface (issue #185 slice
-      # B): the public twin of the Bearer-authenticated
-      # `/api/v1/files/:file_id` routes below — same bytes via
-      # `FileServing.serve_public/3`, but authorized through
-      # `Files.fetch_public_file/1`, which is strictly narrower than
-      # what a Bearer-authenticated group member can read: only
-      # attachments on a post this same `/public` surface would already
-      # show, never a group/community file-space entry on its own. The
-      # literal `files` segment can't collide with `:community_slug`
-      # (it's not nested under `/communities`).
-      get "/files/:file_id", PublicFileController, :show
-      get "/files/:file_id/thumbnail", PublicFileController, :thumbnail
-      get "/files/:file_id/download", PublicFileController, :download
     end
+  end
+
+  # Post attachments over the tokenless surface (issue #185 slice B):
+  # the public twin of the Bearer-authenticated `/api/v1/files/:file_id`
+  # routes — same bytes via `FileServing.serve_public/3`, but authorized
+  # through `Files.fetch_public_file/1`, which is strictly narrower than
+  # what a Bearer-authenticated group member can read: only attachments
+  # on a post this same `/public` surface would already show, never a
+  # group/community file-space entry on its own. On `:api_binary`, not
+  # `:api` — these stream file bytes, so JSON-only Accept negotiation
+  # would wrongly 406 an `image/*` request (#315).
+  scope "/api/v1/public", KammerWeb.Api do
+    pipe_through :api_binary
+
+    get "/files/:file_id", PublicFileController, :show
+    get "/files/:file_id/thumbnail", PublicFileController, :thumbnail
+    get "/files/:file_id/download", PublicFileController, :download
   end
 
   # Unaliased scope: RenderSpec is a library plug, not a KammerWeb.Api
@@ -272,7 +288,8 @@ defmodule KammerWeb.Router do
     # controller (ADR 0029; export/deletion widened on #323).
     post "/me/email-change", AccountController, :request_email_change
     post "/me/email-change/confirm", AccountController, :confirm_email_change
-    get "/me/export", AccountController, :export
+    # `GET /me/export` streams a zip — it lives in the `:api_binary`
+    # scope below so `Accept: application/zip` isn't 406'd (#315).
     delete "/me", AccountController, :delete
 
     # Personal iCal subscription token (issue #260, SPEC §6): the URL for
@@ -396,10 +413,8 @@ defmodule KammerWeb.Router do
     end
 
     # Post attachments (and any stored file the caller may see) over
-    # Bearer auth — the API twin of the browser /files routes.
-    get "/files/:file_id", FileController, :show
-    get "/files/:file_id/thumbnail", FileController, :thumbnail
-    get "/files/:file_id/download", FileController, :download
+    # Bearer auth serve file bytes — in the `:api_binary` scope below,
+    # so an `image/*` Accept isn't 406'd (#315).
 
     get "/communities/:community_slug/events", EventController, :index
     # A recurring series' organizer view (issue #260, SPEC §6): the
@@ -420,13 +435,9 @@ defmodule KammerWeb.Router do
         CalendarController,
         :group
 
-    # Single-event ICS download over Bearer auth (issue #307): the
-    # authenticated twin of the browser /c/:community_slug/events/:event_id/ics
-    # route — the PWA can't attach its device token to a plain <a href>
-    # navigation, so members-only events 404'd there; it fetches this
-    # instead. `ics` is a literal segment, no collision with the event
-    # routes below.
-    get "/communities/:community_slug/events/:event_id/ics", CalendarController, :event
+    # `GET .../events/:event_id/ics` (Bearer, issue #307) serves
+    # `text/calendar` — in the `:api_binary` scope below so that
+    # documented Accept isn't 406'd (#315).
 
     scope "/communities/:community_slug/events/:event_id" do
       put "/rsvp", EventController, :rsvp
@@ -505,6 +516,27 @@ defmodule KammerWeb.Router do
 
     post "/push-subscriptions", PushSubscriptionController, :create
     delete "/push-subscriptions", PushSubscriptionController, :delete
+  end
+
+  # Bearer-authenticated binary downloads (#315): stored-file bytes, the
+  # single-event ICS, and the GDPR export zip. Same auth as the JSON
+  # scope above (`:api_binary` keeps the spec module and `fetch_api_scope`,
+  # then `:api_authenticated` requires a user), but without JSON-only
+  # Accept negotiation, so a client sending the endpoint's documented
+  # media type isn't 406'd. Every path here is unique (the public file
+  # twins live under `/api/v1/public`, the ICS suffix distinguishes it
+  # from the event routes), so pulling them into their own scope changes
+  # no route matching.
+  scope "/api/v1", KammerWeb.Api do
+    pipe_through [:api_binary, :api_authenticated]
+
+    get "/files/:file_id", FileController, :show
+    get "/files/:file_id/thumbnail", FileController, :thumbnail
+    get "/files/:file_id/download", FileController, :download
+
+    get "/me/export", AccountController, :export
+
+    get "/communities/:community_slug/events/:event_id/ics", CalendarController, :event
   end
 
   # RFC 8058 one-click unsubscribe (SPEC §8): a mail client POSTs this
