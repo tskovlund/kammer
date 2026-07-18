@@ -19,11 +19,12 @@ and this project adheres to
   which also snaps fresh the instant the app foregrounds. The tokenless
   public shells (`/welcome`, `/sign-in`, `/setup`, public
   `/c/[community]/**`, and their siblings) gain a render-error boundary
-  so a client-side crash degrades to a recoverable card instead of a
-  white screen with SSR off. Two smaller hardening fixes: the shared
+  so a client-side _render_ crash degrades to a recoverable card instead
+  of a white screen with SSR off. Two smaller hardening fixes: the shared
   `Button`'s link variant no longer drops `aria-*`/`data-*`/`target`
-  props, and removing an instance clears its cross-device snapshots
-  (issue #186) before — and regardless of — the realtime-socket
+  props, and removing an instance clears the cross-instance offline
+  snapshots (issue #186 — a shared device's next signer-in must not
+  inherit them) before — and regardless of — the realtime-socket
   teardown, so a throw there can't skip the privacy step.
 
 - Binary API downloads no longer reject their own documented media type

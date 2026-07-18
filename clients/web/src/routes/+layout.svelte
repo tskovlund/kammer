@@ -36,9 +36,18 @@
 	 * (unlike `resolve`) accepts any string.
 	 */
 	function landOnNotification(url: string): void {
-		const path = resolveNotificationPath(url, instances.list);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- see doc comment above
-		void goto(path ? `${base}${path}` : resolve('/'));
+		// This runs from `onMount` and a service-worker `message`, both
+		// *outside* the render boundary below (that catches child render
+		// errors, not the layout's own effects), and `url` is
+		// attacker-influenceable (a `?notify=` param, an SW postMessage). So
+		// guard it here rather than rely on a boundary that can't see it.
+		try {
+			const path = resolveNotificationPath(url, instances.list);
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- see doc comment above
+			void goto(path ? `${base}${path}` : resolve('/'));
+		} catch (error) {
+			console.error('[kammer] app crashed', error);
+		}
 	}
 
 	onMount(() => {
@@ -61,16 +70,19 @@
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <!--
-	Root render boundary (#316). With SSR off, a client render error on any
+	Root render boundary (#316). With SSR off, a client *render* error in any
 	tokenless shell — /welcome, /sign-in, /setup, public /c/[community]/**,
 	and the guest/legal/invite/newsletter/confirm-email/step-up siblings —
 	never reaches +error.svelte (that catches *load* errors only), so without
 	a boundary it white-screens; a signed-out member is a pilot audience
-	(#260). One root boundary covers them all. The (app) group keeps its own
-	inner boundary (nav outside it), which catches a content crash first and
-	leaves the nav as a way out; this is the outer net for a shell-level
-	crash. svelte:boundary renders no element, so it never disturbs a route's
-	own layout.
+	(#260). This catches the render errors of every route it wraps. (It does
+	NOT catch this layout's own effects — they're siblings of the boundary,
+	not children — so the one attacker-influenceable path there,
+	`landOnNotification`, is try/caught above instead.) The (app) group keeps
+	its own inner boundary (nav outside it), which catches a content crash
+	first and leaves the nav as a way out; this is the outer net. A
+	svelte:boundary renders no element, so it never disturbs a route's own
+	layout.
 -->
 <svelte:boundary onerror={(error) => console.error('[kammer] app crashed', error)}>
 	{@render children()}
