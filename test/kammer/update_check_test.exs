@@ -7,6 +7,8 @@ defmodule Kammer.UpdateCheckTest do
 
   use Kammer.DataCase, async: false
 
+  import ExUnit.CaptureLog
+
   alias Kammer.Communities
   alias Kammer.UpdateCheck
 
@@ -88,10 +90,18 @@ defmodule Kammer.UpdateCheckTest do
       assert settings.latest_known_version == nil
     end
 
-    test "a failed fetch is not an error and leaves settings unchanged" do
+    test "a failed fetch warns, is not an error, and leaves settings unchanged" do
       Req.Test.stub(__MODULE__, fn conn -> Plug.Conn.send_resp(conn, 500, "") end)
 
-      assert :ok = UpdateCheck.run(plug: {Req.Test, __MODULE__}, retry: false)
+      # Capture the operator warning rather than let it leak as suite
+      # noise — the assertion also pins that a failed fetch warns at all.
+      log =
+        capture_log(fn ->
+          assert :ok = UpdateCheck.run(plug: {Req.Test, __MODULE__}, retry: false)
+        end)
+
+      assert log =~ "update check failed"
+      assert log =~ "unexpected_status"
 
       settings = Communities.get_instance_settings()
       assert settings.latest_known_version == nil
