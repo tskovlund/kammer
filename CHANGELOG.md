@@ -19,6 +19,12 @@ and this project adheres to
 
 ### Fixed
 
+- ICS calendar files now fold long content lines to at most 75 octets
+  _including_ a continuation line's leading space (issue #383, RFC 5545
+  §3.1); the folder re-measured the tail without the injected space and so
+  emitted 76-octet continuation lines. Cosmetic — every calendar client
+  tolerates it — but now spec-correct.
+
 - A calendar app or RSS reader that sends a strict `Accept` header no
   longer gets a 406 from the webcal ICS feeds, the single-event ICS
   download, or a public group's RSS/Atom feed (issue #366) — content
