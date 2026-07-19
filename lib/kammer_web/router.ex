@@ -25,6 +25,25 @@ defmodule KammerWeb.Router do
     plug KammerWeb.Plugs.RequireSetup
   end
 
+  # Server-rendered MEDIA routes (ICS feeds, single-event ICS, RSS/Atom):
+  # `:browser` without `:accepts`. These controllers set their own
+  # Content-Type and never format-render, so HTML negotiation buys
+  # nothing — and `:accepts, ["html"]` 406s a calendar app or RSS reader
+  # that sends a strict Accept header for the endpoint's own media type
+  # (`text/calendar`, `application/rss+xml`, `application/atom+xml`),
+  # silently failing the subscription (#366). Same reasoning as
+  # `:api_binary` (#315) and `:newsletter_one_click` (#239). The session is
+  # still read so the single-event ICS download authorizes like its page;
+  # `:protect_from_forgery` is kept (a no-op on these GET routes) so the
+  # session-bearing pipeline isn't a standing Sobelow Config.CSRF finding.
+  pipeline :browser_media do
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug :fetch_current_scope_for_user
+    plug KammerWeb.Plugs.RequireSetup
+  end
+
   # JSON API (ADR 0014): stateless Bearer auth, no sessions, no CSRF
   # surface. The same authorization module answers every question the
   # browser stack asks — the API adds transport, never policy.
@@ -62,24 +81,32 @@ defmodule KammerWeb.Router do
     plug :put_secure_browser_headers
   end
 
-  # Instance-level browser surfaces that survive the cut: the secret-token
-  # ICS feeds (SPEC §6) and the newsletter-unsubscribe confirm page
-  # (SPEC §8 — no PWA route for it). The GET only renders (#239: GET is
-  # a safe method, and mail scanners prefetch it); the delete happens on
-  # the RFC 8058 POST route below, which its form targets.
+  # Instance-level secret-token ICS feeds (SPEC §6) — media routes, so
+  # `:browser_media` (a calendar app's strict `Accept: text/calendar` must
+  # not 406, #366).
   scope "/", KammerWeb do
-    pipe_through :browser
+    pipe_through :browser_media
 
     get "/calendar/group/:token", CalendarController, :group_feed
     get "/calendar/user/:token", CalendarController, :user_feed
+  end
+
+  # The newsletter-unsubscribe confirm page (SPEC §8 — no PWA route for
+  # it) is the one genuine HTML surface left, so it keeps `:accepts,
+  # ["html"]` on `:browser`. The GET only renders (#239: GET is a safe
+  # method, and mail scanners prefetch it); the delete happens on the RFC
+  # 8058 POST route below, which its form targets.
+  scope "/", KammerWeb do
+    pipe_through :browser
 
     get "/newsletter/unsubscribe/:token", NewsletterController, :unsubscribe
   end
 
-  ## Community-scoped feeds (SPEC §6/§8)
+  ## Community-scoped feeds (SPEC §6/§8) — all media (ICS, RSS, Atom), so
+  ## `:browser_media` (#366).
 
   scope "/c/:community_slug", KammerWeb do
-    pipe_through :browser
+    pipe_through :browser_media
 
     get "/events/:event_id/ics", CalendarController, :event
     # RSS/Atom for public groups (SPEC §8) — no secret token, gated by
