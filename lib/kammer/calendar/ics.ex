@@ -188,12 +188,23 @@ defmodule Kammer.Calendar.ICS do
     |> String.replace(~r/[\x{0080}-\x{009F}]/u, "")
   end
 
-  # RFC 5545: lines longer than 75 octets should be folded.
+  # RFC 5545 §3.1: no content line SHOULD exceed 75 octets, and a
+  # continuation's leading space counts toward that budget. The first line
+  # carries no leading space (budget 75); every continuation does, so its
+  # content is budgeted at 74 — otherwise `space + 75` emits a 76-octet
+  # line (#383).
   defp fold_line(line) when byte_size(line) <= 75, do: line
 
   defp fold_line(line) do
     {head, tail} = split_at_bytes(line, 75)
-    head <> "\r\n " <> fold_line(tail)
+    head <> fold_continuations(tail)
+  end
+
+  defp fold_continuations(line) when byte_size(line) <= 74, do: "\r\n " <> line
+
+  defp fold_continuations(line) do
+    {head, tail} = split_at_bytes(line, 74)
+    "\r\n " <> head <> fold_continuations(tail)
   end
 
   defp split_at_bytes(string, limit) do

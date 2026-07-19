@@ -14,6 +14,31 @@ defmodule Kammer.Calendar.ICSTest do
   use ExUnit.Case, async: true
 
   alias Kammer.Calendar.ICS
+  alias Kammer.Events.Event
+
+  describe "line folding (RFC 5545 §3.1, #383)" do
+    test "no content line exceeds 75 octets — a continuation's leading space is budgeted" do
+      # A long SUMMARY forces multiple continuation lines. The old folder
+      # re-measured the tail without the injected leading space, emitting
+      # `space + 75` = 76-octet continuation lines.
+      event = %Event{
+        id: "11111111-1111-1111-1111-111111111111",
+        title: String.duplicate("A", 200),
+        starts_at: ~U[2026-07-01 12:00:00Z],
+        updated_at: ~U[2026-07-01 12:00:00Z],
+        all_day: false,
+        timezone: "Etc/UTC"
+      }
+
+      lines = event |> ICS.single() |> String.split("\r\n")
+
+      for line <- lines, do: assert(byte_size(line) <= 75)
+
+      # The SUMMARY genuinely folded (leading-space continuation lines
+      # exist), so the byte-size assertion above isn't vacuously true.
+      assert Enum.any?(lines, &String.starts_with?(&1, " "))
+    end
+  end
 
   describe "filename/1" do
     test "transliterates Nordic and common accented letters to ASCII" do
