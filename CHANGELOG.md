@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Added
 
+- Instance operators now have an instance-level audit log
+  (`GET /api/v1/instance/moderation/audit`, operators only, cursor-paginated)
+  recording every instance-wide ban and unban — including a ban of an
+  address with no account, and every unban, which previously left no audit
+  record anywhere (issue #276). Instance-operator actions have no single
+  community to attribute them to, so an audit entry may now carry a null
+  `community_id`; the per-community audit log is unchanged, and each
+  account-ban still writes its member-facing per-community entry too.
+
 - A "Reset link" control on your personal calendar subscription (issue
   #291). The iCal feed token rides in the subscription URL's path, so
   calendar apps and any fronting proxy log it on every poll; resetting

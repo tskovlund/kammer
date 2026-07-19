@@ -327,6 +327,34 @@ defmodule Kammer.ModerationTest do
       assert "has already been taken" in errors_on(changeset).email
     end
 
+    test "records an instance-level audit entry for the ban and the unban (#276)", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+
+      {:ok, ban} = Moderation.ban_instance(operator, author.email, "Chikane")
+      {:ok, _lifted} = Moderation.unban_instance(operator, ban)
+
+      {entries, nil} = Audit.list_instance_events_page(operator, nil, 50)
+
+      assert [%{action: "instance_ban.lifted"}, %{action: "instance_ban.created"}] = entries
+      assert Enum.all?(entries, &(&1.community_id == nil))
+      assert Enum.all?(entries, &(&1.summary =~ author.email))
+    end
+
+    test "a no-account ban still writes an instance audit entry — the gap #276 named" do
+      operator = instance_operator_fixture()
+      email = unique_user_email()
+
+      # No community is affected (no account), so the per-community audit
+      # loop is empty; the instance-level entry is the only record there is.
+      assert {:ok, _ban} = Moderation.ban_instance(operator, email, nil)
+
+      {[entry], nil} = Audit.list_instance_events_page(operator, nil, 50)
+      assert entry.action == "instance_ban.created"
+      assert entry.summary =~ email
+    end
+
     test "revokes the banned account's device tokens, not just its memberships (#276)", %{
       author: author
     } do

@@ -574,6 +574,35 @@ defmodule KammerWeb.Api.ModerationTest do
       assert Moderation.list_instance_bans(operator) == []
     end
 
+    test "an operator reads the instance audit log; a non-operator gets 403 (#276)", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+
+      # A ban and its lift leave two operator-facing instance-audit entries.
+      {:ok, ban} = Moderation.ban_instance(operator, "ude@example.com", "Chikane")
+      {:ok, _lifted} = Moderation.unban_instance(operator, ban)
+
+      body =
+        operator
+        |> api_conn()
+        |> get(~p"/api/v1/instance/moderation/audit")
+        |> tap(&assert_operation_response(&1, "instance_audit"))
+        |> json_response(200)
+
+      assert Enum.map(body["data"], & &1["action"]) ==
+               ["instance_ban.lifted", "instance_ban.created"]
+
+      assert Enum.all?(body["data"], &(&1["summary"] =~ "ude@example.com"))
+
+      # Operator-only, and an operator is not a secret — an honest 403,
+      # mirroring the ban list/create.
+      author
+      |> api_conn()
+      |> get(~p"/api/v1/instance/moderation/audit")
+      |> json_response(403)
+    end
+
     test "banning the same address twice answers 422 naming the email field", %{author: author} do
       operator = instance_operator_fixture()
       path = ~p"/api/v1/instance/moderation/bans"

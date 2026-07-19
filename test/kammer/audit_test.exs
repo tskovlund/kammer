@@ -56,6 +56,32 @@ defmodule Kammer.AuditTest do
     end
   end
 
+  describe "record_instance/4 and list_instance_events_page/3 (#276)" do
+    test "instance entries are community-less and readable by operators only, newest first" do
+      operator = instance_operator_fixture()
+      {community, owner} = community_with_owner_fixture()
+
+      # A community-scoped entry must never surface in the instance log.
+      Audit.record(community, owner, "community.settings_updated", "community-scoped")
+
+      created = Audit.record_instance(operator, "instance_ban.created", "banned a@x")
+      lifted = Audit.record_instance(operator, "instance_ban.lifted", "lifted a@x")
+
+      assert created.community_id == nil
+      assert lifted.community_id == nil
+
+      {events, nil} = Audit.list_instance_events_page(operator, nil, 50)
+      assert Enum.map(events, & &1.summary) == ["lifted a@x", "banned a@x"]
+      refute Enum.any?(events, &(&1.summary == "community-scoped"))
+
+      # Operators only — a community owner is not an instance operator, so
+      # they (and an anonymous caller) get an empty page with no cursor,
+      # never an error that would confirm the log.
+      assert {[], nil} = Audit.list_instance_events_page(owner, nil, 50)
+      assert {[], nil} = Audit.list_instance_events_page(nil, nil, 50)
+    end
+  end
+
   describe "list_events_page/4" do
     test "paginates newest first with a stable cursor, empty on the last page, admins only" do
       {community, owner} = community_with_owner_fixture()

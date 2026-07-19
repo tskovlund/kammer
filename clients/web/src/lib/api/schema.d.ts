@@ -471,6 +471,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/instance/moderation/audit': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** The instance-level audit log (operators only, cursor-paginated, newest first): operator actions with no single community — no-account bans and every unban */
+		get: operations['instance_audit'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/availability/{poll_id}/closure': {
 		parameters: {
 			query?: never;
@@ -5863,6 +5880,61 @@ export interface operations {
 			path: {
 				community_slug: string;
 			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['AuditEvent'][];
+						next_cursor?: string | null;
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	instance_audit: {
+		parameters: {
+			query?: {
+				/** @description Opaque cursor from next_cursor */
+				after?: string;
+				/** @description 1..100, default 50 */
+				limit?: string;
+			};
+			header?: never;
+			path?: never;
 			cookie?: never;
 		};
 		requestBody?: never;

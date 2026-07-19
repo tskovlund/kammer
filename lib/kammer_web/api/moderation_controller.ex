@@ -171,6 +171,30 @@ defmodule KammerWeb.Api.ModerationController do
     end
   end
 
+  @spec instance_audit(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def instance_audit(conn, params) do
+    user = conn.assigns.current_scope.user
+
+    # Operator-only, and an operator is not a secret — a denied caller gets
+    # an honest 403, mirroring `instance_bans` (the context reader also
+    # gates, so the list can't leak if reached another way).
+    if Authorization.instance_operator?(user) do
+      {events, next_cursor} =
+        Audit.list_instance_events_page(
+          user,
+          Pagination.decode(params["after"]),
+          Pagination.limit(params, @audit_default_limit)
+        )
+
+      json(conn, %{
+        data: Enum.map(events, &Serializer.audit_event/1),
+        next_cursor: Pagination.encode(next_cursor)
+      })
+    else
+      ApiError.send(conn, :forbidden, "You are not allowed to do that.")
+    end
+  end
+
   @spec audit_log(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def audit_log(conn, %{"community_slug" => slug} = params) do
     with_community(conn, slug, fn community ->
