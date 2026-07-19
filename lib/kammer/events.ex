@@ -1295,8 +1295,17 @@ defmodule Kammer.Events do
   """
   @spec ensure_user_ics_token(User.t()) :: String.t()
   def ensure_user_ics_token(%User{ics_token: token}) when is_binary(token), do: token
+  def ensure_user_ics_token(%User{} = user), do: rotate_user_ics_token(user)
 
-  def ensure_user_ics_token(%User{} = user) do
+  @doc """
+  Regenerates the user's ICS feed token, invalidating any calendar URL
+  shared so far. The token rides in the feed URL path (SPEC §6), so
+  calendar apps and fronting proxies log it on every poll; this is the
+  revoke affordance for a link that has leaked (issue #291). Returns the
+  new token.
+  """
+  @spec rotate_user_ics_token(User.t()) :: String.t()
+  def rotate_user_ics_token(%User{} = user) do
     token = generate_token()
     user |> Ecto.Changeset.change(ics_token: token) |> Repo.update!()
     token

@@ -280,6 +280,15 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.CalendarToken)
           )
       },
+      "/api/v1/me/calendar-token/reset" => %PathItem{
+        post:
+          operation(
+            "Revoke the caller's calendar link by minting a fresh subscription token (#291)",
+            :me_calendar_token_reset,
+            [],
+            response: single_response(Schemas.CalendarToken)
+          )
+      },
       "/api/v1/communities/{community_slug}/groups/{group_slug}/calendar-token" => %PathItem{
         get:
           operation(

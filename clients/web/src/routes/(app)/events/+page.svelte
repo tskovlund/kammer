@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { dayOffsetFromToday } from '$lib/events/agenda.js';
-	import { fetchMyCalendarToken } from '$lib/events/api.js';
+	import { fetchMyCalendarToken, resetMyCalendarToken } from '$lib/events/api.js';
 	import CalendarSubscribe from '$lib/events/CalendarSubscribe.svelte';
 	import { createEventsStore } from '$lib/events/events-store.svelte.js';
 	import type { MergedEvent } from '$lib/events/types.js';
@@ -175,6 +175,7 @@
 					? t('events.subscribe.personalButton')
 					: t('events.subscribe.personalButtonNamed', { name: inst.instanceName })}
 				load={() => fetchMyCalendarToken(inst)}
+				reset={() => resetMyCalendarToken(inst)}
 			/>
 		{/each}
 	</section>

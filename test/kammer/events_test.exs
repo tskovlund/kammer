@@ -901,6 +901,20 @@ defmodule Kammer.EventsTest do
       assert Events.events_for_user_token("bogus") == nil
     end
 
+    test "rotate_user_ics_token mints a fresh token and dead-ends the old link (#291)", %{
+      member: member
+    } do
+      old = Events.ensure_user_ics_token(member)
+
+      new = Events.rotate_user_ics_token(member)
+
+      assert new != old
+      # The leaked URL no longer resolves; the fresh one resolves to the user.
+      assert Events.events_for_user_token(old) == nil
+      assert {resolved, _events} = Events.events_for_user_token(new)
+      assert resolved.id == member.id
+    end
+
     test "a bare CR in text is escaped, not left to inject a property line (#313)", %{
       group: group,
       member: member

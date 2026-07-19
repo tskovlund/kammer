@@ -45,4 +45,70 @@ describe('CalendarSubscribe', () => {
 		);
 		expect(document.querySelector('#cal')).toBeNull();
 	});
+
+	it('resets the link, swapping in the new URL and confirming (#291)', async () => {
+		const load = vi.fn().mockResolvedValue({
+			token: 'old',
+			url: 'https://kammer.example.com/calendar/user/old.ics'
+		});
+		const reset = vi.fn().mockResolvedValue({
+			token: 'new',
+			url: 'https://kammer.example.com/calendar/user/new.ics'
+		});
+		render(CalendarSubscribe, { props: { load, reset, label: 'Subscribe', id: 'cal' } });
+
+		await fireEvent.click(document.querySelector('#cal-reveal')!);
+		await waitFor(() => expect(document.querySelector('#cal')).toBeTruthy());
+
+		await fireEvent.click(document.querySelector('#cal-reset')!);
+		await waitFor(() => expect(reset).toHaveBeenCalledOnce());
+
+		// The visible link and the webcal open link both swap to the new token.
+		expect(document.querySelector('#cal')?.textContent).toBe(
+			'https://kammer.example.com/calendar/user/new.ics'
+		);
+		expect(document.querySelector('#cal-open')?.getAttribute('href')).toBe(
+			'webcal://kammer.example.com/calendar/user/new.ics'
+		);
+		expect(document.querySelector('#cal-reset-status')?.textContent?.trim()).toBe(
+			'Link reset — your old calendar URL no longer works. Paste the new one into your calendar app.'
+		);
+	});
+
+	it('keeps the current link and shows an error when a reset fails (#291)', async () => {
+		const load = vi.fn().mockResolvedValue({
+			token: 'old',
+			url: 'https://kammer.example.com/calendar/user/old.ics'
+		});
+		const reset = vi.fn().mockRejectedValue(new Error('nope'));
+		render(CalendarSubscribe, { props: { load, reset, label: 'Subscribe', id: 'cal' } });
+
+		await fireEvent.click(document.querySelector('#cal-reveal')!);
+		await waitFor(() => expect(document.querySelector('#cal')).toBeTruthy());
+
+		await fireEvent.click(document.querySelector('#cal-reset')!);
+		await waitFor(() =>
+			expect(document.querySelector('#cal-reset-status')?.textContent?.trim()).toBe(
+				"Couldn't reset the link. Try again."
+			)
+		);
+
+		// The still-valid current link is preserved, not blanked.
+		expect(document.querySelector('#cal')?.textContent).toBe(
+			'https://kammer.example.com/calendar/user/old.ics'
+		);
+	});
+
+	it('offers no reset control when no reset handler is given (group calendars)', async () => {
+		const load = vi.fn().mockResolvedValue({
+			token: 'tok',
+			url: 'https://kammer.example.com/calendar/group/tok.ics'
+		});
+		render(CalendarSubscribe, { props: { load, label: 'Subscribe', id: 'cal' } });
+
+		await fireEvent.click(document.querySelector('#cal-reveal')!);
+		await waitFor(() => expect(document.querySelector('#cal')).toBeTruthy());
+
+		expect(document.querySelector('#cal-reset')).toBeNull();
+	});
 });

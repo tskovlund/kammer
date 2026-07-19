@@ -2372,6 +2372,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/me/calendar-token/reset': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Revoke the caller's calendar link by minting a fresh subscription token (#291) */
+		post: operations['me_calendar_token_reset'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/communities/{community_slug}/groups/{group_slug}/files/{file_id}/versions/{version_id}': {
 		parameters: {
 			query?: never;
@@ -15266,6 +15283,55 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			429: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	me_calendar_token_reset: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['CalendarToken'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};
