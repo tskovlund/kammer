@@ -8,6 +8,7 @@ defmodule KammerWeb.Api.AuthTest do
   use KammerWeb.ConnCase, async: true
 
   import Kammer.AccountsFixtures
+  import Kammer.ModerationFixtures
   import Kammer.WebauthnHelper
   import OpenApiSpex.TestAssertions
   import Swoosh.TestAssertions
@@ -96,6 +97,24 @@ defmodule KammerWeb.Api.AuthTest do
       assert body["error"]["code"] == "invalid_params"
       assert body["error"]["details"]["email"]
     end
+
+    test "refuses an instance-banned address with the same envelope, sending nothing (#377)", %{
+      conn: conn
+    } do
+      banned = "banned-signup@example.org"
+      instance_ban_fixture(banned)
+
+      body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/register", %{"email" => banned, "display_name" => "Nope"})
+        |> json_response(422)
+
+      assert body["error"]["code"] == "invalid_params"
+      assert body["error"]["details"]["email"]
+      refute Accounts.get_user_by_email(banned)
+      refute_email_sent()
+    end
   end
 
   describe "the device-token lifecycle" do
@@ -169,6 +188,23 @@ defmodule KammerWeb.Api.AuthTest do
       refute_email_sent()
     end
 
+    test "an instance-banned address gets the neutral answer and no link (#377)", %{conn: conn} do
+      user = user_fixture()
+      instance_ban_fixture(user.email)
+      drain_delivered_emails()
+
+      body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/request-link", %{"email" => user.email})
+        |> json_response(200)
+
+      # Identical to an unknown address, and — unlike a live account — no
+      # sign-in link is delivered.
+      assert body == %{"status" => "sent"}
+      refute_email_sent()
+    end
+
     test "a control-char email gets the neutral answer too, not a 500 (issue #334)", %{conn: conn} do
       # A JSON `\u0000` decodes to a real NUL byte, so this reaches
       # the controller; that raw NUL used to crash the `where email =
@@ -228,6 +264,71 @@ defmodule KammerWeb.Api.AuthTest do
                build_conn()
                |> json_conn()
                |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => code})
+               |> json_response(401)
+    end
+
+    test "a banned account can't exchange a valid sign-in code (#377)", %{conn: conn} do
+      user = user_fixture()
+      drain_delivered_emails()
+
+      # Mint a real code first — the ban lands afterwards, as it would in
+      # practice (a code already in the user's inbox when they're banned).
+      conn
+      |> json_conn()
+      |> post(~p"/api/v1/auth/request-link", %{"email" => user.email})
+      |> json_response(200)
+
+      assert_email_sent(fn email ->
+        case Regex.run(~r/sign-in code in the app:\n\n([0-9A-Z]{8})/, email.text_body,
+               capture: :all_but_first
+             ) do
+          [code] ->
+            send(self(), {:sign_in_code, code})
+            true
+
+          nil ->
+            false
+        end
+      end)
+
+      assert_received {:sign_in_code, code}
+
+      instance_ban_fixture(user.email)
+
+      # No new session for a banned account: the same neutral 401 a wrong
+      # code gets, with no device token minted.
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/exchange", %{"email" => user.email, "code" => code})
+               |> json_response(401)
+
+      assert Accounts.list_user_devices(user) == []
+    end
+
+    test "a still-valid device token stops working once its owner is banned (#377)", %{
+      conn: _conn
+    } do
+      user = user_fixture()
+      device_token = Accounts.create_device_token(user, "phone")
+
+      # It authenticates before the ban.
+      build_conn()
+      |> json_conn()
+      |> put_req_header("authorization", "Bearer #{device_token}")
+      |> get(~p"/api/v1/me")
+      |> json_response(200)
+
+      # Ban WITHOUT `ban_instance/3`'s token revocation, to prove the
+      # per-request gate is an independent backstop: even a token that
+      # outlives the ban resolves to no scope on the very next request.
+      instance_ban_fixture(user.email)
+
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> put_req_header("authorization", "Bearer #{device_token}")
+               |> get(~p"/api/v1/me")
                |> json_response(401)
     end
 
@@ -331,6 +432,29 @@ defmodule KammerWeb.Api.AuthTest do
 
       assert user_body["id"] == context.user.id
       assert Accounts.get_user_by_device_token(device_token).id == context.user.id
+    end
+
+    test "a banned account can't sign in with a surviving passkey (#377)",
+         %{conn: conn} = context do
+      challenge_body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/passkey/challenge")
+        |> json_response(200)
+
+      # Ban WITHOUT ban_instance's passkey revocation, so the credential
+      # survives — passkey verify itself must refuse it (the one sign-in
+      # path that mints via create_device_token rather than a consumable
+      # credential). Same neutral 401 as an unknown/failed assertion.
+      instance_ban_fixture(context.user.email)
+
+      assert %{"error" => %{"code" => "unauthorized"}} =
+               build_conn()
+               |> json_conn()
+               |> post(~p"/api/v1/auth/passkey/verify", verify_params(challenge_body, context))
+               |> json_response(401)
+
+      assert Accounts.list_user_devices(context.user) == []
     end
 
     test "an assertion signed with the wrong key gets a neutral 401", %{conn: conn} = context do

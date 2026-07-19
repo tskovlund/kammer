@@ -12,6 +12,7 @@ defmodule Kammer.Accounts do
   require Logger
 
   alias Kammer.Accounts.{User, UserNotifier, UserPasskey, UserToken}
+  alias Kammer.Moderation
   alias Kammer.RateLimit
   alias Kammer.Repo
   alias Kammer.Validation
@@ -82,10 +83,37 @@ defmodule Kammer.Accounts do
       {:allow, _count} ->
         %User{}
         |> User.registration_changeset(attrs)
-        |> Repo.insert()
+        |> insert_unless_banned()
 
       {:deny, _retry_after} ->
         {:error, :rate_limited}
+    end
+  end
+
+  # Full instance-ban lockout (#377): a banned address can't bootstrap a
+  # fresh account. Reject it with the same "has already been taken" email
+  # error a duplicate address gets — register already reveals whether an
+  # address is registered, so folding the ban into that one envelope keeps
+  # a banned address indistinguishable from a taken one rather than adding
+  # a separate ban oracle. The join gate (Communities.add_member/3) stays
+  # the enforcement of record; this only stops the account existing at all.
+  #
+  # Gate on the EMAIL field's own validity, not the whole changeset. Two
+  # reasons: a malformed address (a NUL byte, no @) must not ride an
+  # unguarded `where email = ?` into Postgres as a 500 (#334) — an email
+  # error means the format check already caught it; and gating on the whole
+  # changeset would REOPEN the oracle — `unsafe_validate_unique` emits "has
+  # already been taken" for a registered address even when another field
+  # (e.g. display_name) is invalid, so a banned address must fold into that
+  # same error under the same conditions, or the two become distinguishable.
+  defp insert_unless_banned(changeset) do
+    email = Ecto.Changeset.get_field(changeset, :email)
+
+    if is_binary(email) and not Keyword.has_key?(changeset.errors, :email) and
+         Moderation.instance_banned?(email) do
+      {:error, Ecto.Changeset.add_error(changeset, :email, "has already been taken")}
+    else
+      Repo.insert(changeset)
     end
   end
 
@@ -185,6 +213,20 @@ defmodule Kammer.Accounts do
            # outside this function can leave a token a re-registrant of the
            # freed address could consume (defense in depth, review of #258).
            %UserToken{sent_to: email, user_id: ^user_id} <- Repo.one(query),
+           # Full instance-ban lockout (#377): refuse the change if either
+           # the current OR the target address is banned — a ban must not be
+           # sheddable by moving the account to a fresh address, and no
+           # account may move ONTO a banned one. Re-read the current address
+           # under the same FOR UPDATE lock the ban paths take (#170-172):
+           # ban_instance locks this same user row, so a ban of the *current*
+           # address serializes with the change. A ban landing on the *target*
+           # (a fresh address with no row to lock) in the same instant isn't
+           # serialized here, but that race is benign — the account would then
+           # sit on a banned address and be locked out on its very next
+           # request by `ApiAuth.ban_gate`.
+           current_email when is_binary(current_email) <- lock_user_email(user),
+           false <-
+             Moderation.instance_banned?(current_email) or Moderation.instance_banned?(email),
            {:ok, user} <- Repo.update(User.email_changeset(user, %{email: email})),
            {_count, _result} <-
              Repo.delete_all(from(UserToken, where: [user_id: ^user.id, context: ^context])) do
@@ -292,6 +334,20 @@ defmodule Kammer.Accounts do
         where: token.user_id == ^user.id and token.context in ^@device_contexts
       )
     )
+
+    :ok
+  end
+
+  @doc """
+  Deletes every passkey the user holds. Used when an account is banned
+  instance-wide (`Kammer.Moderation.ban_instance/3`): a retained passkey
+  is a standing credential that would let a banned account re-authenticate
+  through the usernameless sign-in ceremony, so the full lockout (#377)
+  must revoke it alongside the device tokens.
+  """
+  @spec revoke_all_user_passkeys(User.t()) :: :ok
+  def revoke_all_user_passkeys(%User{} = user) do
+    Repo.delete_all(from(passkey in UserPasskey, where: passkey.user_id == ^user.id))
 
     :ok
   end
@@ -414,11 +470,20 @@ defmodule Kammer.Accounts do
          {:ok, auth_data} <-
            Wax.authenticate(credential_id, auth_data_bin, sig, client_data_json, challenge, [
              {credential_id, cose_key}
-           ]) do
+           ]),
+         user = get_user!(passkey.user_id),
+         # Full instance-ban lockout (#377): the same backstop the magic-link
+         # and code exchanges carry, so passkey is not the one sign-in path
+         # that mints a session for a banned account. A ban revokes passkeys,
+         # so this only fires for a credential that survived the ban in a
+         # race — collapsing into the same neutral `:not_found` as an unknown
+         # credential, no oracle.
+         false <- Moderation.instance_banned?(user.email) do
       record_passkey_use(passkey, auth_data.sign_count)
-      {:ok, get_user!(passkey.user_id)}
+      {:ok, user}
     else
       nil -> {:error, :not_found}
+      true -> {:error, :not_found}
       {:error, _} = error -> error
     end
   end
@@ -557,8 +622,15 @@ defmodule Kammer.Accounts do
   @spec exchange_magic_link_for_device_token(String.t(), String.t() | nil) ::
           {:ok, String.t(), User.t()} | {:error, :not_found}
   def exchange_magic_link_for_device_token(magic_token, device_name) do
-    with {:ok, {user, _expired_tokens}} <- login_user_by_magic_link(magic_token) do
+    with {:ok, {user, _expired_tokens}} <- login_user_by_magic_link(magic_token),
+         # Full instance-ban lockout (#377): a banned account gets no new
+         # session even holding a valid magic link. The link is still
+         # consumed (single-use) above, and a banned account collapses into
+         # the same `:not_found` an invalid or expired link gets — no oracle.
+         false <- Moderation.instance_banned?(user.email) do
       {:ok, create_device_token(user, device_name), user}
+    else
+      _not_found_or_banned -> {:error, :not_found}
     end
   end
 
@@ -577,11 +649,14 @@ defmodule Kammer.Accounts do
   def exchange_login_code_for_device_token(email, code, device_name, opts \\ []) do
     with {:allow, _count} <- RateLimit.hit_login_code_email(email),
          {:allow, _count} <- RateLimit.hit_login_code_ip(Keyword.get(opts, :ip)),
-         {:ok, {user, _expired_tokens}} <- login_user_by_code(email, code) do
+         {:ok, {user, _expired_tokens}} <- login_user_by_code(email, code),
+         # Full instance-ban lockout (#377): a banned account, a wrong code,
+         # and an unknown email are one neutral answer — no ban oracle.
+         false <- Moderation.instance_banned?(user.email) do
       {:ok, create_device_token(user, device_name), user}
     else
       {:deny, _retry_after} -> {:error, :rate_limited}
-      {:error, :not_found} -> {:error, :not_found}
+      _not_found_or_banned -> {:error, :not_found}
     end
   end
 

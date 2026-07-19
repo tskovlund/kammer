@@ -311,16 +311,20 @@ defmodule Kammer.ModerationTest do
       assert {:ok, _membership} = Communities.add_member(community, author)
     end
 
-    test "can ban an email with no account yet — blocks the eventual signup", %{
-      community: community
-    } do
+    test "can ban an email with no account yet — the eventual signup is refused (#377)" do
       operator = instance_operator_fixture()
       email = unique_user_email()
 
+      # No user holds this address, so the purge (membership removal, token
+      # and passkey revocation) is a no-op on the nil-target branch — but the
+      # ban row still lands.
       assert {:ok, _ban} = Moderation.ban_instance(operator, email, nil)
 
-      future_signup = user_fixture(%{email: email})
-      assert {:error, :instance_banned} = Communities.add_member(community, future_signup)
+      # Full lockout (#377) moved the block from the join choke-point to
+      # registration: the pre-banned address can't sign up at all, so the
+      # dormant account the join gate used to catch never forms.
+      assert {:error, changeset} = Accounts.register_user(%{email: email, display_name: "Nope"})
+      assert "has already been taken" in errors_on(changeset).email
     end
 
     test "revokes the banned account's device tokens, not just its memberships (#276)", %{
@@ -338,6 +342,26 @@ defmodule Kammer.ModerationTest do
       # An instance ban locks the account out of every community, so its
       # live credentials die with its memberships — no session survives.
       assert Accounts.list_user_devices(author) == []
+    end
+
+    test "revokes the banned account's passkeys — a retained credential re-authenticates (#377)",
+         %{author: author} do
+      operator = instance_operator_fixture()
+
+      Repo.insert!(%Kammer.Accounts.UserPasskey{
+        user_id: author.id,
+        credential_id: <<1, 2, 3>>,
+        public_key_cose: <<0>>
+      })
+
+      assert length(Accounts.list_passkeys(author)) == 1
+
+      assert {:ok, _ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      # A passkey is a standing credential the usernameless sign-in
+      # ceremony accepts; leaving it would let a full-lockout ban be
+      # walked straight back through the passkey path.
+      assert Accounts.list_passkeys(author) == []
     end
 
     test "only operators ban instance-wide; nobody bans themselves or another operator", %{

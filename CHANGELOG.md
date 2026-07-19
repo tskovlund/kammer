@@ -19,6 +19,25 @@ and this project adheres to
 
 ### Fixed
 
+- An instance ban is now a full account lockout, closing the evasion where
+  a banned account could re-authenticate and shed the ban by changing its
+  email (issue #377). Before, `instance_banned?` was consulted only at the
+  community-join choke-point: a banned account could still request a fresh
+  sign-in link/code to its own address, exchange it for a new session, and
+  then change to an un-banned address (the ban is keyed on the old email),
+  rejoining every community. Now a banned address gets no new session —
+  registration, sign-in-link requests, and code/magic-link exchange all
+  refuse it neutrally (no ban oracle: a banned address is indistinguishable
+  from a taken or unknown one), and every authenticated request re-checks
+  the ban list as a backstop. Email change is refused when either the
+  current or the target address is banned, so a ban can't be moved off. A
+  ban also revokes the account's passkeys (a retained passkey would let it
+  sign back in through the usernameless ceremony) alongside the device
+  tokens revoked in #276. The notification channel now re-authorizes each
+  push against the recipient's live group access — matching the feed
+  channel — so a membership or visibility change that never broadcast a
+  socket disconnect still cuts the stream.
+
 - The legal-page editor's changeset no longer casts `updated_by_user_id`
   from the request body (issue #276); the "who last edited" attribution is
   set programmatically in the context via `put_change`, per the convention
