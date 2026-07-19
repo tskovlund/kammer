@@ -60,4 +60,32 @@ defmodule KammerWeb.CalendarControllerTest do
     bogus_conn = get(build_conn(), "/calendar/group/wrong-token.ics")
     assert bogus_conn.status == 404
   end
+
+  test "a strict Accept: text/calendar is served, not 406'd (#366)", %{
+    conn: conn,
+    community: community,
+    group: group,
+    event: event
+  } do
+    token = Events.ensure_group_ics_token(group)
+
+    # A calendar app subscribing to a webcal feed sends a strict Accept for
+    # the feed's own media type. The old `:browser` pipeline's
+    # `:accepts, ["html"]` 406'd it, silently failing the subscription; the
+    # `:browser_media` pipeline drops `:accepts`.
+    feed_conn =
+      build_conn()
+      |> put_req_header("accept", "text/calendar")
+      |> get("/calendar/group/#{token}.ics")
+
+    assert feed_conn.status == 200
+    assert feed_conn.resp_body =~ "BEGIN:VCALENDAR"
+
+    event_conn =
+      conn
+      |> put_req_header("accept", "text/calendar")
+      |> get("/c/#{community.slug}/events/#{event.id}/ics")
+
+    assert event_conn.status == 200
+  end
 end

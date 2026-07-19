@@ -113,6 +113,30 @@ defmodule KammerWeb.GroupFeedControllerTest do
       conn = get(conn, ~p"/c/#{community.slug}/g/#{group.slug}/feed.rss")
       refute response(conn, 200) =~ "Ephemeral"
     end
+
+    test "a strict Accept header is served, not 406'd (#366)", %{conn: conn} do
+      {community, _owner} = community_with_owner_fixture()
+      group = group_fixture(community, visibility: :public_listed)
+      author = group_member_fixture(group)
+      {:ok, _post} = Feed.create_post(author, group, %{"body_markdown" => "Feed me"})
+
+      # An RSS reader sending a strict Accept (no */*) used to 406 against
+      # the `:browser` pipeline's `:accepts, ["html"]`, silently failing the
+      # subscription — the higher-traffic surface #315 never covered (#366).
+      rss =
+        conn
+        |> put_req_header("accept", "application/rss+xml")
+        |> get(~p"/c/#{community.slug}/g/#{group.slug}/feed.rss")
+
+      assert response(rss, 200) =~ "Feed me"
+
+      atom =
+        conn
+        |> put_req_header("accept", "application/atom+xml")
+        |> get(~p"/c/#{community.slug}/g/#{group.slug}/feed.atom")
+
+      assert response(atom, 200) =~ "Feed me"
+    end
   end
 
   describe "GET /c/:community_slug/g/:group_slug/feed.atom" do

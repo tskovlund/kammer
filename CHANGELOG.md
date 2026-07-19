@@ -19,6 +19,17 @@ and this project adheres to
 
 ### Fixed
 
+- A calendar app or RSS reader that sends a strict `Accept` header no
+  longer gets a 406 from the webcal ICS feeds, the single-event ICS
+  download, or a public group's RSS/Atom feed (issue #366) — content
+  negotiation against `Accept: text/html` was silently failing the
+  subscription for clients that don't send `*/*`. These media routes moved
+  off the `:browser` pipeline onto a new `:browser_media` pipeline that
+  keeps the session read and setup gating but drops `:accepts`, since each
+  controller sets its own `Content-Type`. Mirrors the `:api_binary` split
+  (#315) on the higher-traffic subscription surface; the one real HTML
+  route (the newsletter-unsubscribe page) stays on `:browser`.
+
 - A control character in a post or event title no longer makes a public
   group's RSS/Atom feed ill-formed (issue #364). XML 1.0 forbids the C0
   control range (except TAB/LF/CR) and the U+FFFE/U+FFFF noncharacters; a
