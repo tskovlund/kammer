@@ -385,6 +385,21 @@ and this project adheres to
 
 ### Changed
 
+- Notifications no longer reimplements the comment-subject resolution
+  (issue #124, architecture audit). `Feed.comment_context/1` — already
+  the shared resolver used by Moderation — now returns the subject
+  _struct_ (post/event/assignment), not just its id, so
+  `Kammer.Notifications` derives a comment's host group, subject author,
+  and notification references from it instead of independently
+  branching and reaching `Repo.get!` into the Events and Assignments
+  schemas across a context boundary. No behavior change; one copy of the
+  branching, in one context. Also fills a coverage gap the audit
+  surfaced (issue #95): the `@everyone` mention gate — a real
+  authorization control, since it escalates a comment to a full-group
+  broadcast — is now tested on event and assignment comments, not only
+  post comments, pinning that those entry points route through the
+  shared gate.
+
 - Expelling a sealed **private** group from outside is now recorded as
   an operator-level action (console/DB), not an API power
   (owner-decided on issue #347, ADR 0005 amendment): the no-oracle

@@ -951,13 +951,13 @@ defmodule Kammer.Feed do
   @spec approve_guest_comment(User.t(), Comment.t()) ::
           {:ok, Comment.t()} | {:error, :unauthorized}
   def approve_guest_comment(%User{} = actor, %Comment{pending_approval: true} = comment) do
-    {group, broadcast_post_id} = comment_context(comment)
+    {group, subject} = comment_context(comment)
 
     if Authorization.can?(actor, :moderate_group, group) do
       comment
       |> Ecto.Changeset.change(pending_approval: false)
       |> Repo.update()
-      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+      |> tap_broadcast(group, fn _comment -> {:post_updated, subject.id} end)
       |> tap_fanout_comment()
     else
       {:error, :unauthorized}
@@ -973,12 +973,12 @@ defmodule Kammer.Feed do
   @spec reject_guest_comment(User.t(), Comment.t()) ::
           {:ok, Comment.t()} | {:error, :unauthorized}
   def reject_guest_comment(%User{} = actor, %Comment{pending_approval: true} = comment) do
-    {group, broadcast_post_id} = comment_context(comment)
+    {group, subject} = comment_context(comment)
 
     if Authorization.can?(actor, :moderate_group, group) do
       comment
       |> Repo.delete()
-      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+      |> tap_broadcast(group, fn _comment -> {:post_updated, subject.id} end)
     else
       {:error, :unauthorized}
     end
@@ -1045,14 +1045,14 @@ defmodule Kammer.Feed do
   @spec edit_comment(User.t(), Comment.t(), map()) ::
           {:ok, Comment.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
   def edit_comment(%User{} = actor, %Comment{} = comment, attrs) do
-    {group, broadcast_post_id} = comment_context(comment)
+    {group, subject} = comment_context(comment)
     relationship = Authorization.relationship(actor, group)
 
     if Authorization.can_edit_comment?(actor, comment, group, relationship) do
       comment
       |> Comment.edit_changeset(attrs)
       |> Repo.update()
-      |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+      |> tap_broadcast(group, fn _comment -> {:post_updated, subject.id} end)
     else
       {:error, :unauthorized}
     end
@@ -1065,7 +1065,7 @@ defmodule Kammer.Feed do
   @spec delete_comment(User.t(), Comment.t()) ::
           {:ok, Comment.t()} | {:error, :unauthorized}
   def delete_comment(%User{} = actor, %Comment{} = comment) do
-    {group, broadcast_post_id} = comment_context(comment)
+    {group, subject} = comment_context(comment)
     relationship = Authorization.relationship(actor, group)
 
     cond do
@@ -1073,13 +1073,13 @@ defmodule Kammer.Feed do
           comment.author_user_id != actor.id ->
         comment
         |> Repo.delete()
-        |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+        |> tap_broadcast(group, fn _comment -> {:post_updated, subject.id} end)
 
       comment.author_user_id == actor.id and is_nil(comment.deleted_at) ->
         comment
         |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
         |> Repo.update()
-        |> tap_broadcast(group, fn _comment -> {:post_updated, broadcast_post_id} end)
+        |> tap_broadcast(group, fn _comment -> {:post_updated, subject.id} end)
 
       true ->
         {:error, :unauthorized}
@@ -1087,24 +1087,27 @@ defmodule Kammer.Feed do
   end
 
   @doc """
-  Resolves a comment's owning group and the id of its subject (post,
-  event, or assignment), by branching on which of `post_id`/`event_id`/
-  `assignment_id` is set.
+  Resolves a comment's owning group and its subject — the post, event, or
+  assignment struct — by branching on which of `post_id`/`event_id`/
+  `assignment_id` is set. Callers that need only the subject's id take
+  `subject.id`. This is the single place the branching (and the reach into
+  Events/Assignments) lives, so no other context reimplements it (#124).
   """
-  @spec comment_context(Comment.t()) :: {Group.t(), Ecto.UUID.t()}
+  @spec comment_context(Comment.t()) ::
+          {Group.t(), Post.t() | Kammer.Events.Event.t() | Kammer.Assignments.Assignment.t()}
   def comment_context(%Comment{post_id: post_id}) when is_binary(post_id) do
     post = Repo.get!(Post, post_id)
-    {get_group(post), post.id}
+    {get_group(post), post}
   end
 
   def comment_context(%Comment{event_id: event_id}) when is_binary(event_id) do
     event = Kammer.Events.get_event!(event_id)
-    {Repo.get!(Group, event.group_id), event_id}
+    {Repo.get!(Group, event.group_id), event}
   end
 
   def comment_context(%Comment{assignment_id: assignment_id}) do
     assignment = Kammer.Assignments.get_assignment!(assignment_id)
-    {Repo.get!(Group, assignment.group_id), assignment_id}
+    {Repo.get!(Group, assignment.group_id), assignment}
   end
 
   ## Reactions
@@ -1166,7 +1169,7 @@ defmodule Kammer.Feed do
   end
 
   defp reaction_target(%Comment{} = comment) do
-    {group, _subject_id} = comment_context(comment)
+    {group, _subject} = comment_context(comment)
     {group, :comment_id, nil}
   end
 

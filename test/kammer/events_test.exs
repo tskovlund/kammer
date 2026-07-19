@@ -208,6 +208,22 @@ defmodule Kammer.EventsTest do
       assert deep_reply.parent_comment_id == comment.id
     end
 
+    test "@everyone in an event comment is gated to broadcast rights (#95)", %{
+      event: event,
+      member: member,
+      group_owner: group_owner
+    } do
+      # The @everyone gate lives in the shared engine (create_engine_comment),
+      # and fanout_comment escalates such a comment to a full-group broadcast —
+      # so the event entry point must enforce it too, not just the post one:
+      # a non-moderator is refused, a broadcast-capable owner goes through.
+      assert {:error, :unauthorized} =
+               Events.create_comment(member, event, %{"body_markdown" => "Hey @everyone"})
+
+      assert {:ok, _comment} =
+               Events.create_comment(group_owner, event, %{"body_markdown" => "Hey @everyone"})
+    end
+
     test "comment policy off blocks event comments", %{community: community} do
       quiet_group = group_fixture(community, comment_policy: :off)
       quiet_member = group_member_fixture(quiet_group)

@@ -14,6 +14,7 @@ defmodule Kammer.Notifications do
   import Ecto.Query, warn: false
 
   alias Kammer.Accounts.User
+  alias Kammer.Feed
   alias Kammer.Feed.Comment
   alias Kammer.Feed.Mentions
   alias Kammer.Feed.Post
@@ -337,24 +338,25 @@ defmodule Kammer.Notifications do
     end)
   end
 
-  # The comment's host (post, event, or assignment), its author (for
-  # "reply to you" fan-out), and the reference keys `deliver/4` attaches
-  # to the notification.
-  defp comment_subject(%Comment{post_id: post_id} = comment) when is_binary(post_id) do
-    post = Repo.get!(Post, post_id)
-    {Repo.get!(Group, post.group_id), post.author_user_id, [post: post, comment: comment]}
+  # The comment's host group, the subject's author (for "reply to you"
+  # fan-out), and the reference keys `deliver/4` attaches to the
+  # notification. `Feed.comment_context/1` owns the post/event/assignment
+  # branching and the group resolution (#124) — this only maps the
+  # already-fetched subject to its author and reference key.
+  defp comment_subject(%Comment{} = comment) do
+    {group, subject} = Feed.comment_context(comment)
+    {author_user_id, references} = subject_author_and_references(subject, comment)
+    {group, author_user_id, references}
   end
 
-  defp comment_subject(%Comment{event_id: event_id} = comment) when is_binary(event_id) do
-    event = Repo.get!(Kammer.Events.Event, event_id)
-    {Repo.get!(Group, event.group_id), event.created_by_user_id, [event: event, comment: comment]}
-  end
+  defp subject_author_and_references(%Post{} = post, comment),
+    do: {post.author_user_id, [post: post, comment: comment]}
 
-  defp comment_subject(%Comment{assignment_id: assignment_id} = comment)
-       when is_binary(assignment_id) do
-    assignment = Repo.get!(Kammer.Assignments.Assignment, assignment_id)
-    {Repo.get!(Group, assignment.group_id), assignment.created_by_user_id, [comment: comment]}
-  end
+  defp subject_author_and_references(%Kammer.Events.Event{} = event, comment),
+    do: {event.created_by_user_id, [event: event, comment: comment]}
+
+  defp subject_author_and_references(%Kammer.Assignments.Assignment{} = assignment, comment),
+    do: {assignment.created_by_user_id, [assignment: assignment, comment: comment]}
 
   @doc """
   Fans a new event out to group members (highlight class: event activity

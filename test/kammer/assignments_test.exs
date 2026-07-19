@@ -127,6 +127,24 @@ defmodule Kammer.AssignmentsTest do
   end
 
   describe "discussion (ADR 0007, third subject)" do
+    test "@everyone in an assignment comment is gated to broadcast rights (#95)" do
+      %{group: group, creator: creator, member: member} = assignments_group_context()
+      owner = group_member_fixture(group, :owner)
+      {:ok, assignment} = Assignments.create_assignment(creator, group, %{"title" => "Kaffe"})
+
+      # The @everyone gate lives in the shared engine (create_engine_comment)
+      # and fanout_comment escalates it to a full-group broadcast — so the
+      # assignment entry point must enforce it too: a non-moderator is
+      # refused, a broadcast-capable owner goes through.
+      assert {:error, :unauthorized} =
+               Assignments.create_comment(member, assignment, %{
+                 "body_markdown" => "Hej @everyone"
+               })
+
+      assert {:ok, _comment} =
+               Assignments.create_comment(owner, assignment, %{"body_markdown" => "Hej @everyone"})
+    end
+
     test "comments attach, thread one level, and delete through the one engine" do
       %{group: group, creator: creator, member: member} = assignments_group_context()
       {:ok, assignment} = Assignments.create_assignment(creator, group, %{"title" => "Kaffe"})
