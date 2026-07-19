@@ -172,6 +172,21 @@ defmodule Kammer.ModerationTest do
 
       assert report_id == report.id
     end
+
+    test "dismissing a report whose content a concurrent resolve already removed is a neutral not-found, not a 500",
+         %{owner: owner, moderator: moderator, reporter: reporter, post: post} do
+      {:ok, report} = Moderation.report_post(reporter, post, "Spam")
+
+      # A concurrent resolve hard-deletes the post, cascading the report row
+      # away. The community admin still holds the stale open report; closing it
+      # must fold the vanished row into a neutral not-found, never a
+      # StaleEntryError 500. (A group moderator instead fails authorization
+      # first — a deleted post resolves no group — so the admin is the caller
+      # that reaches the stale update.)
+      {:ok, _resolved} = Moderation.resolve_report(moderator, report)
+
+      assert {:error, :not_found} = Moderation.dismiss_report(owner, report)
+    end
   end
 
   describe "bans" do

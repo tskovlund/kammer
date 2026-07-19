@@ -28,12 +28,14 @@ and this project adheres to
 
 ### Fixed
 
-- Lifting a community or instance ban that a concurrent moderator already
-  lifted now answers a neutral 404 instead of raising a 500 (issue #276).
-  The context mutators already folded the stale delete into a not-found
-  result, but the two `unban` controllers had no `else` clause for it, so
-  the race raised a `WithClauseError`; both now map it to the same 404 a
-  nonexistent ban gets.
+- Concurrent moderation actions on the same target no longer 500. Lifting a
+  community or instance ban that another moderator already lifted, and
+  dismissing a report whose content another moderator concurrently removed,
+  now answer a neutral 404 instead of raising (issue #276). The two `unban`
+  controllers gained an `else` clause for the already-folded not-found result
+  (they previously raised a `WithClauseError`), and report `dismiss` now folds
+  its own stale update the way the ban lifts already did — the last of the
+  three sibling moderation races that shared this shape.
 
 - ICS calendar files now fold long content lines to at most 75 octets
   _including_ a continuation line's leading space (issue #383, RFC 5545

@@ -140,7 +140,7 @@ defmodule Kammer.Moderation do
   Dismisses a report — the content stays.
   """
   @spec dismiss_report(User.t(), Report.t()) ::
-          {:ok, Report.t()} | {:error, :unauthorized}
+          {:ok, Report.t()} | {:error, :unauthorized | :not_found}
   def dismiss_report(%User{} = actor, %Report{status: :open} = report) do
     with :ok <- authorize_on_report(actor, report),
          {:ok, dismissed} <- close_report(report, actor, :dismissed) do
@@ -471,13 +471,21 @@ defmodule Kammer.Moderation do
   end
 
   defp close_report(report, actor, status) do
-    report
-    |> Ecto.Changeset.change(
-      status: status,
-      resolved_by_user_id: actor.id,
-      resolved_at: DateTime.utc_now(:second)
-    )
-    |> Repo.update()
+    changeset =
+      Ecto.Changeset.change(report,
+        status: status,
+        resolved_by_user_id: actor.id,
+        resolved_at: DateTime.utc_now(:second)
+      )
+
+    # A report whose content a concurrent resolve already removed is gone —
+    # the row cascades away with its post/comment (`on_delete: :delete_all`).
+    # Fold that stale update into the same neutral not-found the unban twins
+    # use, never a StaleEntryError 500.
+    case Repo.update(changeset, stale_error_field: :id) do
+      {:ok, closed} -> {:ok, closed}
+      {:error, _stale} -> {:error, :not_found}
+    end
   end
 
   defp remove_subject(actor, %Report{post_id: post_id}) when is_binary(post_id) do
