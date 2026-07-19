@@ -79,6 +79,19 @@ and this project adheres to
 
 ### Added
 
+- Test coverage for the community-file-space rehoming data migration
+  (issue #308). The #187 migration that moves the now-unreachable,
+  LiveView-only community file space onto a group carries real
+  branching — it prefers the oldest group that can actually surface the
+  files (not archived, not private, `:files` on), falls back to the
+  community's oldest group otherwise, excludes transient uploads, and
+  skips a group-less community — and it moves personal-data-bearing
+  rows, yet had no test. It now runs its _real_ `up/0` (not a copy of
+  its SQL) under the test sandbox through a new reusable
+  `Kammer.MigrationHelper`, which drives `Ecto.Migration.Runner` so a
+  data migration's `execute/1` commands run on the test's own
+  sandboxed connection — a harness future migration tests can reuse.
+
 - Step-up re-authentication before credential changes (issue #294, ADR
   0029). Adding or removing a passkey, revoking a device other than
   your own, and starting an email change now require the calling
