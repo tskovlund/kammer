@@ -31,9 +31,14 @@ defmodule Kammer.Moderation.InstanceBan do
     |> cast(attrs, [:email, :reason])
     |> validate_required([:email])
     |> update_change(:email, &String.downcase/1)
-    # The column is varchar(255); without the cap an oversized string is
-    # a raw DB error (500), not a changeset 422.
-    |> validate_length(:email, max: 255)
+    # Format-check before it reaches Postgres: a control char (e.g. a NUL)
+    # in the banned address is otherwise a raw DB 500, not a 422 (issue
+    # #334). This also caps the length at 160 — well under the
+    # `varchar(255)` column, and matching every other email field
+    # (CommunityBan relies on the same cap).
+    |> Kammer.Validation.validate_email_format(:email,
+      message: "must have the @ sign and no spaces"
+    )
     |> validate_length(:reason, max: 2_000)
     |> unique_constraint(:email)
   end

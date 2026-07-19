@@ -10,6 +10,28 @@ and this project adheres to
 
 ### Fixed
 
+- Control characters in an email no longer reach Postgres and 500 (issue
+  #334). A NUL byte — or any other C0/DEL control — passed the old format
+  regex `[^@,;\s]+@…` and then raised `Postgrex.Error` (text columns
+  reject a NUL), so a crafted JSON body carrying a NUL (a JSON string may hold a
+  `\u0000` escape) turned a malformed email into an unhandled 500. Two
+  mechanisms are closed. The
+  shared changeset validator now excludes the C0/DEL range and anchors
+  with `\A…\z` (also closing a trailing-newline hole `$` allowed),
+  covering every write that shares it (registration, guest identities,
+  newsletter subscriptions, invites, event/post guest requests) — plus
+  the profile `contact_email`, which had bypassed validation entirely
+  (editable on `PUT /me`; a blank submission still clears the optional
+  field), and the two moderation ban changesets. And the raw-email
+  _lookup_ paths that never touched a changeset — anonymous sign-in
+  (`request_link`), the login-code exchange, and the instance-ban address
+  — now reject a control-char address before it reaches a
+  `where email = ?` query, so the sign-in endpoints keep their neutral
+  anti-enumeration response instead of 500-ing before rate limiting even
+  runs. Unicode/IDN addresses stay accepted throughout. The sweep of
+  genuinely free-text fields (`contact_phone`, `contact_note`, …) is left
+  to the security-audit swarm's input-handling lens.
+
 - Client resilience follow-ups (issue #316). Time-derived _state_ no
   longer fossilizes on a long-lived installed PWA the way relative
   timestamps once did: an open poll now locks the minute its deadline

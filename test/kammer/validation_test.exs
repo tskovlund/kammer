@@ -29,8 +29,34 @@ defmodule Kammer.ValidationTest do
   end
 
   describe "validate_email_format/3" do
-    test "accepts a well-formed address" do
+    test "accepts a well-formed address, including a Unicode/IDN one" do
       assert email_changeset("a@b.com") |> Validation.validate_email_format() |> valid?()
+      # The #334 control-char exclusion is ASCII-only, so non-ASCII local
+      # parts and IDN hosts must still pass (this is a Danish-facing app).
+      assert email_changeset("bruger@øl.dk") |> Validation.validate_email_format() |> valid?()
+    end
+
+    test "rejects control characters, so a value can't pass then 500 at the DB (issue #334)" do
+      # A NUL survives a naive format check but raises Postgrex.Error at
+      # insert (Postgres text columns reject it) — an unhandled 500 from
+      # any JSON body. The shared rule must reject it and its C0/DEL kin.
+      refute email_changeset("ab" <> <<0>> <> "@c.d")
+             |> Validation.validate_email_format()
+             |> valid?()
+
+      refute email_changeset("a@b.c" <> <<0x1F>>)
+             |> Validation.validate_email_format()
+             |> valid?()
+
+      # DEL (0x7F) is its own literal in the excluded class, so it gets
+      # its own guard — dropping it from the regex must fail a test.
+      refute email_changeset("a@b.c" <> <<0x7F>>)
+             |> Validation.validate_email_format()
+             |> valid?()
+
+      # A trailing newline slips past `$`, which matches before a final
+      # `\n`; the `\A…\z` anchors close that.
+      refute email_changeset("a@b.c\n") |> Validation.validate_email_format() |> valid?()
     end
 
     test "rejects an address without an @ sign" do
@@ -54,6 +80,19 @@ defmodule Kammer.ValidationTest do
         |> Validation.validate_email_format(:email, message: "custom message")
 
       assert "custom message" in errors_on(changeset, :email)
+    end
+  end
+
+  describe "email_format?/1" do
+    test "true for a well-formed address, false for malformed/control-char/nil" do
+      assert Validation.email_format?("a@b.com")
+      assert Validation.email_format?("bruger@øl.dk")
+      refute Validation.email_format?("not-an-email")
+      # The guard that keeps a control char out of a raw email lookup
+      # (issue #334) — a NUL here would 500 a `where email = ?` query.
+      refute Validation.email_format?("x" <> <<0>> <> "@y.z")
+      refute Validation.email_format?(nil)
+      refute Validation.email_format?(:not_a_string)
     end
   end
 
