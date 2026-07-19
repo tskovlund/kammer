@@ -169,6 +169,22 @@ defmodule KammerWeb.Api.AuthTest do
       refute_email_sent()
     end
 
+    test "a control-char email gets the neutral answer too, not a 500 (issue #334)", %{conn: conn} do
+      # A JSON `\u0000` decodes to a real NUL byte, so this reaches
+      # the controller; that raw NUL used to crash the `where email =
+      # ?` lookup (an unhandled 500) before any rate limiting. It must
+      # now answer the same neutral "sent" as any unknown address,
+      # preserving the anti-enumeration guarantee.
+      body =
+        conn
+        |> json_conn()
+        |> post(~p"/api/v1/auth/request-link", %{"email" => "x" <> <<0>> <> "@y.z"})
+        |> json_response(200)
+
+      assert body == %{"status" => "sent"}
+      refute_email_sent()
+    end
+
     test "the sign-in email also carries a code that exchanges for a device token", %{conn: conn} do
       user = user_fixture()
       drain_delivered_emails()

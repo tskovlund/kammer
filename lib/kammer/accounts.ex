@@ -14,6 +14,7 @@ defmodule Kammer.Accounts do
   alias Kammer.Accounts.{User, UserNotifier, UserPasskey, UserToken}
   alias Kammer.RateLimit
   alias Kammer.Repo
+  alias Kammer.Validation
 
   ## Database getters
 
@@ -37,7 +38,12 @@ defmodule Kammer.Accounts do
   """
   @spec get_user_by_email(String.t()) :: User.t() | nil
   def get_user_by_email(email) when is_binary(email) do
-    Repo.get_by(User, email: email)
+    # A malformed email (e.g. a NUL from a raw sign-in request body) can't
+    # match a stored address anyway, so answer `nil` rather than let it
+    # ride a `where email = ?` into Postgres and 500 (issue #334). This
+    # also keeps the sign-in response neutral for garbage input, the same
+    # as for any unknown address (SPEC §11).
+    if Validation.email_format?(email), do: Repo.get_by(User, email: email)
   end
 
   @doc """
@@ -477,8 +483,16 @@ defmodule Kammer.Accounts do
   @spec login_user_by_code(String.t(), String.t()) ::
           {:ok, {User.t(), [UserToken.t()]}} | {:error, :not_found}
   def login_user_by_code(email, code) do
-    {:ok, query} = UserToken.verify_login_code_query(email, code)
-    query |> Repo.one() |> consume_login_token()
+    # Same guard as `get_user_by_email/1`: a malformed email must not
+    # reach the `where sent_to = ?` lookup (a NUL there is a Postgres 500,
+    # issue #334). A garbage address gets the same neutral not-found as
+    # any unknown one.
+    if Validation.email_format?(email) do
+      {:ok, query} = UserToken.verify_login_code_query(email, code)
+      query |> Repo.one() |> consume_login_token()
+    else
+      {:error, :not_found}
+    end
   end
 
   # Shared consumption semantics for both email-proof credentials

@@ -31,6 +31,12 @@ defmodule Kammer.Moderation.CommunityBan do
     |> cast(attrs, [:email, :reason])
     |> validate_required([:email])
     |> update_change(:email, &String.downcase/1)
+    # Defense-in-depth against the #334 control-char→DB-500 class: today
+    # the email is sourced from an already-validated `User.email`, but the
+    # rule belongs on the changeset so a future raw-email caller is safe.
+    |> Kammer.Validation.validate_email_format(:email,
+      message: "must have the @ sign and no spaces"
+    )
     |> validate_length(:reason, max: 2_000)
     # error_key so the 422 detail lands on `email`, the human-meaningful
     # half of the composite — Ecto's default is the FIRST field

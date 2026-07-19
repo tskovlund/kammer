@@ -334,6 +334,18 @@ defmodule Kammer.ModerationTest do
                Moderation.ban_instance(operator, other_operator.email, nil)
     end
 
+    test "rejects a control-char email with a changeset error, not a DB 500 (issue #334)" do
+      operator = instance_operator_fixture()
+
+      # A raw NUL used to reach the row-locked `where email = ?` lookup and
+      # raise a Postgrex error (an unhandled 500). It's now caught before
+      # the transaction as a 422-shaped changeset error.
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Moderation.ban_instance(operator, "x" <> <<0>> <> "@y.z", nil)
+
+      assert "must have the @ sign and no spaces" in errors_on(changeset).email
+    end
+
     test "refuses to ban a community owner — no single community to ask for a transfer", %{
       community: community,
       owner: owner

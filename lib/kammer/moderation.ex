@@ -342,9 +342,22 @@ defmodule Kammer.Moderation do
   def ban_instance(%User{} = actor, email, reason) when is_binary(email) do
     normalized_email = String.downcase(email)
 
+    ban_changeset =
+      InstanceBan.changeset(%InstanceBan{banned_by_user_id: actor.id}, %{
+        email: normalized_email,
+        reason: reason
+      })
+
     cond do
       not Authorization.instance_operator?(actor) ->
         {:error, :unauthorized}
+
+      not ban_changeset.valid? ->
+        # Reject a malformed email (control chars, missing @, over-length)
+        # HERE, before the row-locked lookup in the purge transaction — a
+        # raw NUL in `where email = ?` is a Postgres 500, not a 422 (issue
+        # #334). The changeset carries the field error for the client.
+        {:error, ban_changeset}
 
       normalized_email == String.downcase(actor.email) ->
         {:error, :unauthorized}

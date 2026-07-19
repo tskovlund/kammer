@@ -10,7 +10,15 @@ defmodule Kammer.Validation do
 
   import Ecto.Changeset
 
-  @email_format ~r/^[^@,;\s]+@[^@,;\s]+$/
+  # `\A…\z` (not `^…$`, which admit a trailing newline) plus the explicit
+  # control-char exclusion (`\x00-\x1F`, `\x7F`) keep out bytes no email
+  # should hold — most critically a NUL, which passes a naive format check
+  # but then raises `Postgrex.Error` at the database write (Postgres text
+  # columns reject it), turning a crafted JSON body into an unhandled 500
+  # (issue #334). `\s` (ASCII whitespace) and the C0/DEL range together
+  # exclude every ASCII control and whitespace byte; non-ASCII bytes still
+  # pass, so Unicode local parts and IDN hosts are unaffected.
+  @email_format ~r/\A[^@,;\s\x00-\x1F\x7F]+@[^@,;\s\x00-\x1F\x7F]+\z/
 
   @doc """
   Validates `field` is a well-formed email address, at most 160
@@ -23,6 +31,26 @@ defmodule Kammer.Validation do
     |> validate_format(field, @email_format, opts)
     |> validate_length(field, max: 160)
   end
+
+  @doc """
+  Whether `value` matches the same format rule `validate_email_format/3`
+  enforces. The guard for a *raw* email param that reaches a query
+  without a changeset — a lookup by email (sign-in, login-code exchange,
+  instance ban) — so a control character can't ride a `where email = ?`
+  into Postgres and raise a 500 (issue #334). Total over non-binaries, so
+  a nil or wrongly-typed value is simply `false` (no match), not a crash.
+
+  Deliberately as strict as the write rule (rejects every control char,
+  not only the NUL that actually 500s), so a malformed address is treated
+  the same on the way in and the way out. The tightened write path means
+  no new row can hold one; a *pre-existing* control-char address (only
+  the old, looser write rule could have stored one) would read as
+  not-found here rather than 500 — the right trade until a data pass
+  normalizes any such legacy rows.
+  """
+  @spec email_format?(term()) :: boolean()
+  def email_format?(value) when is_binary(value), do: value =~ @email_format
+  def email_format?(_value), do: false
 
   @doc """
   Validates `field` is a non-blank display name of at most `max`

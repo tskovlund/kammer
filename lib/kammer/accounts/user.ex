@@ -120,7 +120,32 @@ defmodule Kammer.Accounts.User do
     |> validate_timezone()
     |> validate_length(:bio, max: 500)
     |> validate_length(:pronouns, max: 40)
+    # The optional contact fields treat a blank submission as "clear it"
+    # (blank means not shown, per the schema), so normalize whitespace-only
+    # to nil for all three — consistently, and so contact_email's format
+    # check below is skipped on an intentional clear rather than tripping
+    # on an empty string.
+    |> update_change(:contact_email, &blank_to_nil/1)
+    |> update_change(:contact_phone, &blank_to_nil/1)
+    |> update_change(:contact_note, &blank_to_nil/1)
+    # contact_email is an email field, so it also takes the shared format
+    # rule — otherwise a NUL here would pass straight to Postgres and 500
+    # (issue #334, the same class as the primary :email). (contact_phone
+    # and contact_note stay free-text, format-unvalidated.)
+    |> Validation.validate_email_format(:contact_email,
+      message: "must have the @ sign and no spaces"
+    )
   end
+
+  # Normalizes a blank (empty or whitespace-only) optional field to nil,
+  # so an intentional "clear it" submission stores nothing (and, for a
+  # validated field, skips the format validators — Ecto skips those for
+  # nil) rather than storing or tripping on an empty/whitespace string.
+  defp blank_to_nil(value) when is_binary(value) do
+    if String.trim(value) == "", do: nil, else: value
+  end
+
+  defp blank_to_nil(value), do: value
 
   defp validate_email(changeset, opts) do
     changeset =

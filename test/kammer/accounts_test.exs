@@ -13,6 +13,14 @@ defmodule Kammer.AccountsTest do
       assert %User{id: ^id} = Accounts.get_user!(user.id)
       refute Accounts.get_user_by_email("unknown@example.com")
     end
+
+    test "get_user_by_email/1 answers nil for a control-char address, not a 500 (issue #334)" do
+      # A raw NUL from an unauthenticated sign-in body must not ride a
+      # `where email = ?` into Postgres (which rejects the byte and 500s);
+      # a malformed address can't match a stored one, so it's just nil —
+      # the same neutral answer as any unknown address (SPEC §11).
+      refute Accounts.get_user_by_email("x" <> <<0>> <> "@y.z")
+    end
   end
 
   describe "register_user/1" do
@@ -320,6 +328,27 @@ defmodule Kammer.AccountsTest do
       assert updated.pronouns == "she/her"
       assert updated.contact_phone == "+45 12345678"
       assert updated.contact_phone_visibility == :members
+    end
+
+    test "validates contact_email format and lets a blank submission clear it (issue #334)" do
+      user = user_fixture()
+
+      # A control char (NUL) that used to pass validation then raise at
+      # the DB (a 500) is now a changeset error on this authed PUT /me
+      # field — the same class the shared rule closes for :email.
+      assert {:error, changeset} =
+               Accounts.update_user_settings(user, %{contact_email: "x" <> <<0>> <> "@y.z"})
+
+      assert "must have the @ sign and no spaces" in errors_on(changeset).contact_email
+
+      # A well-formed address is accepted...
+      assert {:ok, set} = Accounts.update_user_settings(user, %{contact_email: "reach@me.dk"})
+      assert set.contact_email == "reach@me.dk"
+
+      # ...and a blank submission clears the optional field (→ nil, "not
+      # shown") rather than failing the format check.
+      assert {:ok, cleared} = Accounts.update_user_settings(set, %{contact_email: "  "})
+      assert cleared.contact_email == nil
     end
   end
 
