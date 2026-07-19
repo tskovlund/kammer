@@ -7,9 +7,13 @@ product is) → [CONVENTIONS.md](CONVENTIONS.md) and
 [CONTRIBUTING.md](CONTRIBUTING.md) (how to work on it) →
 [docs/development.md](docs/development.md) (workflow reference,
 pitfalls) → open GitHub issues — especially anything labeled
-`decision` and the Phase 2 umbrella (issue #33) for what's left → then
+`decision`, plus **issue #352 (the single durable v1 ordering — the
+master plan for everything left, updated by full-catalogue sweeps)** and
+**#314 (the approved A+ quality program)** for what's left → then
 [`docs/decisions/`](docs/decisions/) (why past calls were made). Owner
-comments on issues override everything below.
+comments on issues override everything below. (The old Phase 2 umbrella
+#33 is **closed** — every non-discretionary Phase 2 item shipped; it's
+history now, superseded by #352 as the live plan.)
 
 **Picking this up in a brand-new session**: check open PRs on this
 repo first — an unmerged PR from a prior session takes priority over
