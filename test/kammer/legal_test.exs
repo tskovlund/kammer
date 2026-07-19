@@ -134,5 +134,18 @@ defmodule Kammer.LegalTest do
 
       assert Legal.get_page("imprint").content_markdown == "Winner"
     end
+
+    test "invalid content on an existing page is a validation error even with a stale version" do
+      operator = operator_fixture()
+
+      {:ok, _v1} = Legal.upsert_page(operator, "privacy", %{"content_markdown" => "First"}, 0)
+      {:ok, _v2} = Legal.upsert_page(operator, "privacy", %{"content_markdown" => "Second"}, 1)
+
+      # Empty content AND a stale version (stored is 2): the changeset validation
+      # short-circuits before optimistic_lock runs, so the caller gets a
+      # changeset error (422), not :stale (409) — content wins over the lock.
+      assert {:error, %Ecto.Changeset{}} =
+               Legal.upsert_page(operator, "privacy", %{"content_markdown" => ""}, 1)
+    end
   end
 end

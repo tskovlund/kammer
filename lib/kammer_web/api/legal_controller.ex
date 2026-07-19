@@ -44,15 +44,23 @@ defmodule KammerWeb.Api.LegalController do
     end
   end
 
-  # The `lock_version` the editor last read (#276 item 4). A missing or
-  # malformed value defaults to 0 — the template/unpublished version — which
-  # can never match a published row (those start at 1), so a versionless write
-  # to an existing page safely conflicts (409) instead of silently clobbering.
-  defp lock_version(version) when is_integer(version), do: version
+  # The largest value the `int4` `lock_version` column can hold; a request
+  # value past it would raise a Postgrex encode error (a 500) at the
+  # optimistic-lock WHERE clause instead of a clean conflict (#276 item 4).
+  @max_lock_version 2_147_483_647
+
+  # The `lock_version` the editor last read (#276 item 4). A missing, malformed,
+  # or out-of-range value defaults to 0 — the template/unpublished version —
+  # which can never match a published row (those start at 1), so a versionless
+  # or bogus write to an existing page safely conflicts (409) instead of
+  # silently clobbering or, for an out-of-int4-range value, 500ing.
+  defp lock_version(version)
+       when is_integer(version) and version >= 0 and version <= @max_lock_version,
+       do: version
 
   defp lock_version(version) when is_binary(version) do
     case Integer.parse(version) do
-      {parsed, ""} -> parsed
+      {parsed, ""} -> lock_version(parsed)
       _ -> 0
     end
   end

@@ -107,6 +107,27 @@ defmodule KammerWeb.Api.LegalTest do
       assert Legal.get_page("privacy").content_markdown == "Second"
     end
 
+    test "a lock_version past the int4 range conflicts (409), never a 500 (#276)" do
+      operator = instance_operator_fixture()
+
+      operator
+      |> api_conn()
+      |> put(~p"/api/v1/legal/privacy", %{content_markdown: "First"})
+      |> json_response(200)
+
+      # A value larger than a Postgres int4 must not reach the column and raise
+      # an encode error — it can't match a real version, so it folds to a
+      # neutral 409, the same shape a stale version gets.
+      assert %{"error" => %{"code" => "conflict"}} =
+               operator
+               |> api_conn()
+               |> put(~p"/api/v1/legal/privacy", %{
+                 content_markdown: "Racing",
+                 lock_version: 3_000_000_000
+               })
+               |> json_response(409)
+    end
+
     test "an unknown key answers 404, and empty content 422 naming content_markdown" do
       operator = instance_operator_fixture()
 

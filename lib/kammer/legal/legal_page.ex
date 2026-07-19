@@ -18,11 +18,12 @@ defmodule Kammer.Legal.LegalPage do
 
     # Optimistic-concurrency version (#276 item 4). No schema default on
     # purpose: the only unpersisted struct is the template, and `Kammer.Legal`
-    # stamps its sentinel 0 explicitly there — every *persisted* row's version
-    # comes from `first_publish` (writes 1) or `optimistic_lock` (increments),
-    # so a published row is always ≥1, strictly ahead of the template. A raw
-    # insert that forgets to set it hits NOT NULL and fails loudly rather than
-    # creating a version-0 published row that could collide with the template.
+    # stamps its sentinel 0 explicitly there (`get_page`). Every *persisted*
+    # row's version comes from `first_publish` (writes 1) or `optimistic_lock`
+    # (increments) — the sole insert path — so a published row is always ≥1,
+    # strictly ahead of the template. The DB column keeps a `default: 1`
+    # (see the migration) as a backstop for the backfill and any future
+    # column-omitting insert, so no persisted row is ever version 0.
     field :lock_version, :integer
 
     belongs_to :updated_by_user, Kammer.Accounts.User
