@@ -336,7 +336,18 @@ the conversation.
 If issues are the async communication channel — and per the section
 below, during owner-away stretches they're the _only_ one — a messy
 issue tracker isn't cosmetic, it's a broken channel. Treat hygiene as
-standing maintenance, not a task to schedule once:
+standing maintenance, not a task to schedule once.
+
+Owner re-stressed this as strict and non-negotiable (2026-07-19:
+"issue hygiene is how I follow our progress… nothing random,
+everything deliberate and aligned, down to the last issue title
+format"). The rules that make it concrete are the bullets that
+follow — they are the requirement, not decoration. When the tracker
+has drifted enough to warrant a full sweep, run it as a read-only
+fan-out of auditors over slices against one fixed rubric, with
+synthesis and every write kept on the main session (GitHub is
+read-only for spawned agents) and a single named before/after batch
+for the owner to approve first (per the bulk-modification rule below).
 
 - **The total open-issue count is a metric the owner watches**
   (owner-stressed twice, 2026-07-09). Net growth needs genuine
@@ -351,12 +362,37 @@ standing maintenance, not a task to schedule once:
   explicitly): a milestone is extra management that grows stale; the
   open list itself, kept honest, is the tracker. Audit swarms fold
   findings into existing issues wherever possible and close their
-  trackers promptly rather than minting freely.
+  trackers promptly rather than minting freely. **Don't stand up a
+  separate tracked progress number** (e.g. a "v1-gating count" posted
+  on an issue) — the owner watches the count themselves and
+  (owner-stated 2026-07-19) "it's just another number that grows stale
+  if you track it." Keep the open list accurate; don't build a
+  derived metric on top that has to be maintained.
 - **Stale/superseded issues get closed, not left open.** If a
   reprioritization, a merged PR, or new scope makes an issue's ask
   moot, close it with a comment explaining why (`state_reason:
 not_planned` or `completed` as fits) — don't let it linger as noise
-  future sessions have to re-triage.
+  future sessions have to re-triage. A partly-stale body (findings that
+  cite files a later cut deleted, a checklist whose items shipped) that
+  is _still_ live gets a dated status comment, or a body/title edit
+  where the stale part is a short, wrong factual claim — not silent
+  rot. Prefer a status comment over reproducing a long detailed body
+  verbatim: retyping an audit finding's code refs risks corrupting it,
+  and a pinned status comment plus an accurate title reads as
+  not-stale without the risk.
+- **A resolved decision must be struck from the issue _body_, not just
+  answered in a comment.** When a question posed in an issue body is
+  decided, edit the body to say so (and drop the `decision` label +
+  unassign the owner) — a comment + label-drop alone leaves the body
+  still opening with "Decision needed", and a later session re-surfaces
+  it to the owner as if unanswered. This happened with #352's
+  chat-scope question (2026-07-19): answered "chat stays v1" days
+  earlier, still re-asked because the body read as open. Corollary:
+  **never manufacture a decision from an inferred omission** — if the
+  ADR / SPEC / issue thread agree and the owner hasn't signalled
+  otherwise, it's settled, not a decision. Always read `get_comments`
+  before surfacing any "open decision": the answer is often already
+  there under a stale body.
 - **Labels are load-bearing, keep them accurate.** Four axes, not one
   catch-all — `enhancement` is not a default, it's one specific type
   among several:
