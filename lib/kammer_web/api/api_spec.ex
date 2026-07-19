@@ -1771,7 +1771,10 @@ defmodule KammerWeb.ApiSpec do
             :legal_update,
             [path_param(:key)],
             request_body: body(Schemas.LegalPageParams),
-            response: json_response("The updated legal page", Schemas.LegalPage)
+            response: json_response("The updated legal page", Schemas.LegalPage),
+            # 409 when the caller's `lock_version` is behind the stored one —
+            # another operator saved first (#276 item 4).
+            extra_errors: [409]
           )
       },
       "/api/v1/communities/{community_slug}/events/{event_id}/guest-rsvp" => %PathItem{

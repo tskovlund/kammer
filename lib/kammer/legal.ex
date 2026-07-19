@@ -29,8 +29,11 @@ defmodule Kammer.Legal do
   """
   @spec get_page(String.t()) :: LegalPage.t()
   def get_page(key) when key in @keys do
+    # The unpersisted template carries the sentinel version 0 — strictly
+    # below any published row (those start at 1), so an operator editing the
+    # template can never match-and-clobber a row a concurrent publish created.
     Repo.get_by(LegalPage, key: key) ||
-      %LegalPage{key: key, content_markdown: template(key)}
+      %LegalPage{key: key, content_markdown: template(key), lock_version: 0}
   end
 
   @doc """
@@ -44,23 +47,71 @@ defmodule Kammer.Legal do
 
   @doc """
   Creates or updates the page for `key`. Instance operators only.
-  """
-  @spec upsert_page(User.t(), String.t(), map()) ::
-          {:ok, LegalPage.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
-  def upsert_page(%User{} = actor, key, attrs) when key in @keys do
-    if Authorization.instance_operator?(actor) do
-      page = Repo.get_by(LegalPage, key: key) || %LegalPage{key: key}
 
-      # `updated_by_user_id` is set programmatically, never cast from the
-      # request body (CONVENTIONS: programmatic fields aren't in `cast`),
-      # so a crafted body can't spoof who last edited the page.
-      page
-      |> LegalPage.changeset(attrs)
-      |> Ecto.Changeset.put_change(:updated_by_user_id, actor.id)
-      |> Repo.insert_or_update()
+  Optimistic concurrency (#276 item 4): `expected_version` is the
+  `lock_version` the editor last read. A first publish (no row yet) ignores
+  it — a concurrent first publish is caught by the unique key. An edit of an
+  existing row refuses a stale write with `{:error, :stale}` (→ 409) when the
+  stored version has moved on, so two operators editing at once never silently
+  last-write-win; the loser reloads.
+  """
+  @spec upsert_page(User.t(), String.t(), map(), integer()) ::
+          {:ok, LegalPage.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :stale}
+  def upsert_page(%User{} = actor, key, attrs, expected_version) when key in @keys do
+    if Authorization.instance_operator?(actor) do
+      case Repo.get_by(LegalPage, key: key) do
+        nil -> first_publish(key, attrs, actor)
+        %LegalPage{} = existing -> update_published(existing, attrs, actor, expected_version)
+      end
     else
       {:error, :unauthorized}
     end
+  end
+
+  # No row yet: the built-in template still shows. Insert at version 1 (the
+  # template reports 0, so published rows stay strictly ahead).
+  defp first_publish(key, attrs, actor) do
+    %LegalPage{key: key}
+    |> LegalPage.changeset(attrs)
+    |> Ecto.Changeset.put_change(:updated_by_user_id, actor.id)
+    |> Ecto.Changeset.put_change(:lock_version, 1)
+    |> Repo.insert()
+    |> case do
+      {:ok, page} -> {:ok, page}
+      {:error, %Ecto.Changeset{} = changeset} -> insert_error(changeset)
+    end
+  end
+
+  # A truly simultaneous first publish — both callers saw no row, both INSERT —
+  # trips the unique key on `:key` for the loser. That's a conflict to reload
+  # from, not a validation error, so fold it into the same stale result an edit
+  # race gets (a `:key` error here is only ever the unique constraint: `:key`
+  # is set programmatically and isn't cast, so `validate_required` can't fire
+  # on it). This TOCTOU race can't be reproduced deterministically in the async
+  # sandbox, so it is read-verified against `unique_index(:legal_pages, [:key])`.
+  defp insert_error(changeset) do
+    if Keyword.has_key?(changeset.errors, :key),
+      do: {:error, :stale},
+      else: {:error, changeset}
+  end
+
+  # An existing row: guard the write against the version the *caller last read*,
+  # not the row's current version. Forcing the struct's `lock_version` to
+  # `expected_version` makes `optimistic_lock` emit `WHERE lock_version =
+  # expected_version`, so the UPDATE lands only if the stored version still
+  # matches what the editor saw. If another operator saved in between — or the
+  # caller's version is already behind — the UPDATE matches no row and Ecto
+  # raises `StaleEntryError`, folded to a neutral `:stale` (→ 409). One
+  # mechanism covers both the already-behind case and the read→write race.
+  # `updated_by_user_id` is set programmatically, never cast (CONVENTIONS).
+  defp update_published(existing, attrs, actor, expected_version) do
+    %{existing | lock_version: expected_version}
+    |> LegalPage.changeset(attrs)
+    |> Ecto.Changeset.put_change(:updated_by_user_id, actor.id)
+    |> Ecto.Changeset.optimistic_lock(:lock_version)
+    |> Repo.update()
+  rescue
+    Ecto.StaleEntryError -> {:error, :stale}
   end
 
   @doc """

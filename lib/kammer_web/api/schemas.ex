@@ -2170,9 +2170,15 @@ defmodule KammerWeb.Api.Schemas do
             published: %Schema{
               type: :boolean,
               description: "False while the built-in template still shows"
+            },
+            lock_version: %Schema{
+              type: :integer,
+              description:
+                "Optimistic-concurrency version to echo back on the next edit " <>
+                  "(#276); 0 while the built-in template still shows"
             }
           },
-          required: [:key, :title, :content_markdown, :content_html, :published]
+          required: [:key, :title, :content_markdown, :content_html, :published, :lock_version]
         }
       },
       required: [:data]
@@ -2190,7 +2196,15 @@ defmodule KammerWeb.Api.Schemas do
           "that replaces the built-in template. Instance operators only.",
       type: :object,
       properties: %{
-        content_markdown: %Schema{type: :string, minLength: 1, maxLength: 100_000}
+        content_markdown: %Schema{type: :string, minLength: 1, maxLength: 100_000},
+        lock_version: %Schema{
+          type: :integer,
+          minimum: 0,
+          description:
+            "The `lock_version` last read from this page (#276). A write whose " <>
+              "version is behind the stored one is refused with 409; omit only " <>
+              "for a first publish (no version exists yet)."
+        }
       },
       required: [:content_markdown]
     })

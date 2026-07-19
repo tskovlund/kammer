@@ -17,6 +17,7 @@ defmodule KammerWeb.ApiError do
     step_up_required: {401, "step_up_required"},
     forbidden: {403, "forbidden"},
     not_found: {404, "not_found"},
+    conflict: {409, "conflict"},
     unprocessable: {422, "invalid_params"},
     comments_locked: {422, "comments_locked"},
     poll_closed: {422, "poll_closed"},
@@ -42,6 +43,11 @@ defmodule KammerWeb.ApiError do
   @spec from_result(Plug.Conn.t(), term()) :: Plug.Conn.t()
   def from_result(conn, {:error, :not_found}),
     do: send(conn, :not_found, "Not found.")
+
+  # An optimistic-concurrency loss (#276 item 4): the resource moved on since
+  # the caller read it — reload and retry, don't overwrite.
+  def from_result(conn, {:error, :stale}),
+    do: send(conn, :conflict, "This was changed since you loaded it. Reload and try again.")
 
   def from_result(conn, {:error, :unauthorized}),
     do: send(conn, :forbidden, "You are not allowed to do that.")

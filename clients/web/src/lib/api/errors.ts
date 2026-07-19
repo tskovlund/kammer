@@ -8,7 +8,9 @@ import type { Instance } from '$lib/instances/types.js';
  * confirmation dialog and retries (#294 — same 401 status as `auth`, but
  * the session is fine and must NOT be re-prompted), `forbidden` explains
  * a missing right, `validation`/`too_large`/`rate_limited` are friendly
- * composer errors, and `network`/`server` are retryable.
+ * composer errors, `conflict` means the resource moved on since it was read
+ * and the caller should reload (#276 — legal-page optimistic concurrency),
+ * and `network`/`server` are retryable.
  *
  * The single shared home for every API surface — authenticated (feed,
  * events, notifications, manage, tools, push) and tokenless (public,
@@ -25,6 +27,7 @@ export type ApiErrorKind =
 	| 'forbidden'
 	| 'not_found'
 	| 'validation'
+	| 'conflict'
 	| 'too_large'
 	| 'rate_limited'
 	| 'network'
@@ -71,6 +74,8 @@ export function kindForStatus(status: number): ApiErrorKind {
 			return 'forbidden';
 		case 404:
 			return 'not_found';
+		case 409:
+			return 'conflict';
 		case 413:
 			return 'too_large';
 		case 422:

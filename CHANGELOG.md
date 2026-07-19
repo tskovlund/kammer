@@ -26,6 +26,15 @@ and this project adheres to
   new URL to paste back into your calendar app. (A group's calendar link,
   a moderator action, is unchanged for now.)
 
+### Changed
+
+- Editing a legal page (privacy policy or imprint) is now guarded against
+  concurrent operators (issue #276). Each page carries a version; if another
+  operator has saved since you opened the editor, your save is refused with a
+  409 rather than silently overwriting their text, and the editor offers to
+  reload the current version so you can reapply your change. Previously two
+  operators editing at once was last-write-wins with no warning.
+
 ### Fixed
 
 - Three concurrent-moderation races that raised a 500 now answer a neutral 404

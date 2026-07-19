@@ -2454,6 +2454,8 @@ export interface components {
 				content_markdown: string;
 				/** @enum {string} */
 				key: 'privacy' | 'imprint';
+				/** @description Optimistic-concurrency version to echo back on the next edit (#276); 0 while the built-in template still shows */
+				lock_version: number;
 				/** @description False while the built-in template still shows */
 				published: boolean;
 				title: string;
@@ -3296,6 +3298,8 @@ export interface components {
 		 */
 		LegalPageParams: {
 			content_markdown: string;
+			/** @description The `lock_version` last read from this page (#276). A write whose version is behind the stored one is refused with 409; omit only for a first publish (no version exists yet). */
+			lock_version?: number;
 		};
 		/**
 		 * AuditEvent
@@ -5789,6 +5793,15 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			404: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			409: {
 				headers: {
 					[name: string]: unknown;
 				};
