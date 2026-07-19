@@ -52,6 +52,25 @@ defmodule KammerWeb.Api.CalendarTest do
     end
   end
 
+  describe "POST /me/calendar-token/reset" do
+    test "rotates the token and returns the fresh subscription URL (#291)" do
+      user = user_fixture()
+      old = Kammer.Events.ensure_user_ics_token(user)
+
+      data =
+        user
+        |> api_conn()
+        |> post(~p"/api/v1/me/calendar-token/reset")
+        |> tap(&assert_operation_response(&1, "me_calendar_token_reset"))
+        |> json_response(200)
+        |> Map.fetch!("data")
+
+      assert data["token"] != old
+      assert data["token"] == Repo.reload!(user).ics_token
+      assert String.ends_with?(data["url"], "/calendar/user/#{data["token"]}.ics")
+    end
+  end
+
   describe "GET /communities/:slug/groups/:slug/calendar-token" do
     test "a member of a viewable, events-on group gets the group feed URL" do
       {community, _owner} = community_with_owner_fixture()

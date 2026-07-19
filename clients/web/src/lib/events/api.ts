@@ -374,6 +374,22 @@ export async function fetchMyCalendarToken(instance: Instance): Promise<Calendar
 }
 
 /**
+ * Revoke the caller's calendar link (issue #291): mint a fresh token,
+ * dead-ending any URL shared so far — the token rides in the feed URL path
+ * and lands in calendar-app and proxy access logs. Returns the new
+ * subscription URL, same shape as {@link fetchMyCalendarToken}.
+ */
+export async function resetMyCalendarToken(instance: Instance): Promise<CalendarToken> {
+	return guard(async () => {
+		const { data, error, response } = await client(instance).POST(
+			'/api/v1/me/calendar-token/reset'
+		);
+		if (error || !data) throw fail(error, response, 'Could not reset your calendar link.');
+		return data.data;
+	});
+}
+
+/**
  * A group's iCal subscription URL (issue #260) — available to anyone who
  * may view the group and its events. Same minted-on-first-fetch token.
  */

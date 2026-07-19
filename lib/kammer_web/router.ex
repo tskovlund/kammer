@@ -295,6 +295,8 @@ defmodule KammerWeb.Router do
     # Personal iCal subscription token (issue #260, SPEC §6): the URL for
     # the caller's merged-events feed, generated on first fetch.
     get "/me/calendar-token", CalendarController, :me
+    # Revoke a leaked calendar link by minting a fresh token (#291).
+    post "/me/calendar-token/reset", CalendarController, :me_reset
 
     post "/invites/:token/accept", InviteController, :accept
 

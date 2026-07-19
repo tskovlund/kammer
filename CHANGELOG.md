@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- A "Reset link" control on your personal calendar subscription (issue
+  #291). The iCal feed token rides in the subscription URL's path, so
+  calendar apps and any fronting proxy log it on every poll; resetting
+  mints a fresh token — dead-ending a link that has leaked — and shows the
+  new URL to paste back into your calendar app. (A group's calendar link,
+  a moderator action, is unchanged for now.)
+
 ### Fixed
 
 - The legal-page editor's changeset no longer casts `updated_by_user_id`

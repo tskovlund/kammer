@@ -4,7 +4,8 @@ import {
 	fetchEventIcsUrl,
 	fetchEventSeries,
 	fetchGroupCalendarToken,
-	fetchMyCalendarToken
+	fetchMyCalendarToken,
+	resetMyCalendarToken
 } from './api';
 import { ApiError } from '$lib/api/errors';
 import type { Instance } from '$lib/instances/types';
@@ -44,6 +45,21 @@ describe('calendar subscription tokens', () => {
 		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
 		expect(request.method).toBe('GET');
 		expect(request.url).toContain('/api/v1/me/calendar-token');
+	});
+
+	it('resetMyCalendarToken POSTs to the reset endpoint and unwraps the fresh token + url', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse({
+				data: { token: 'fresh', url: 'https://kammer.example.com/calendar/user/fresh.ics' }
+			})
+		);
+
+		const result = await resetMyCalendarToken(instance());
+		expect(result.token).toBe('fresh');
+
+		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.url).toContain('/api/v1/me/calendar-token/reset');
 	});
 
 	it('fetchGroupCalendarToken addresses the group-scoped endpoint', async () => {

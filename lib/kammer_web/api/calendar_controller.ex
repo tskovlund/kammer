@@ -46,6 +46,14 @@ defmodule KammerWeb.Api.CalendarController do
     json(conn, %{data: %{token: token, url: url(~p"/calendar/user/#{token <> ".ics"}")}})
   end
 
+  @spec me_reset(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def me_reset(conn, _params) do
+    # Revoke the leaked link (#291): a fresh token dead-ends every URL
+    # shared so far; self-scoped, so no extra authorization beyond auth.
+    token = Events.rotate_user_ics_token(conn.assigns.current_scope.user)
+    json(conn, %{data: %{token: token, url: url(~p"/calendar/user/#{token <> ".ics"}")}})
+  end
+
   @spec group(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def group(conn, %{"community_slug" => community_slug, "group_slug" => group_slug}) do
     with_group(conn, community_slug, group_slug, fn group ->
