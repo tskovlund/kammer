@@ -200,11 +200,12 @@ defmodule KammerWeb.Api.AccountTest do
       assert Accounts.get_user_by_email(user.email)
     end
 
-    test "the typed-back email deletes the account, revokes credentials, severs sockets" do
+    test "the typed-back email deletes the account, revokes credentials, severs sockets, emails the owner" do
       user = AccountsFixtures.user_fixture()
       token = Accounts.create_device_token(user, "Min telefon")
       Accounts.step_up_device(Accounts.get_device_token(token))
       KammerWeb.Endpoint.subscribe("api_user_socket:#{user.id}")
+      drain_delivered_emails()
 
       %{"status" => "deleted"} =
         token
@@ -215,6 +216,13 @@ defmodule KammerWeb.Api.AccountTest do
 
       refute Accounts.get_user_by_email(user.email)
       assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
+
+      # The now-deleted address is told it happened (issue #338) — the
+      # after-the-fact signal a hijacked account's real owner receives,
+      # sent from the in-memory struct once the row is gone.
+      assert_email_sent(fn email ->
+        email.to == [{"", user.email}] and email.text_body =~ "permanently deleted"
+      end)
 
       # The device token died with the cascade.
       token |> bearer_conn() |> get(~p"/api/v1/me") |> json_response(401)
@@ -230,8 +238,9 @@ defmodule KammerWeb.Api.AccountTest do
       assert build_conn() |> get(~p"/api/v1/me/export") |> json_response(401)
     end
 
-    test "streams the caller's export zip with their data.json inside" do
+    test "streams the caller's export zip with their data.json inside and emails the owner" do
       user = AccountsFixtures.user_fixture()
+      drain_delivered_emails()
 
       # The documented `application/zip` Accept isn't 406'd (#315).
       conn =
@@ -252,6 +261,13 @@ defmodule KammerWeb.Api.AccountTest do
         Enum.find(entries, fn {name, _content} -> to_string(name) == "data.json" end)
 
       assert Jason.decode!(json)["profile"]["email"] == user.email
+
+      # A full-PII bundle was built for download, so the address is told
+      # it happened (issue #338) — the same after-the-fact signal as
+      # deletion.
+      assert_email_sent(fn email ->
+        email.to == [{"", user.email}] and email.text_body =~ "exported and downloaded"
+      end)
     end
 
     test "is throttled — a retry-loop can't hammer the in-memory zip build" do

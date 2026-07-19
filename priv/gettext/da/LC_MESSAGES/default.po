@@ -11,7 +11,7 @@ msgstr ""
 "Language: da\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/kammer/accounts/user_notifier.ex:146
+#: lib/kammer/accounts/user_notifier.ex:194
 #, elixir-autogen, elixir-format
 msgid "Confirm your account"
 msgstr "Bekræft din konto"
@@ -23,9 +23,11 @@ msgstr "Bekræft din nye e-mailadresse"
 
 #: lib/kammer/accounts/user_notifier.ex:46
 #: lib/kammer/accounts/user_notifier.ex:69
-#: lib/kammer/accounts/user_notifier.ex:96
-#: lib/kammer/accounts/user_notifier.ex:130
-#: lib/kammer/accounts/user_notifier.ex:148
+#: lib/kammer/accounts/user_notifier.ex:94
+#: lib/kammer/accounts/user_notifier.ex:117
+#: lib/kammer/accounts/user_notifier.ex:144
+#: lib/kammer/accounts/user_notifier.ex:178
+#: lib/kammer/accounts/user_notifier.ex:196
 #: lib/kammer/digests.ex:166
 #: lib/kammer/events/event_notifier.ex:34
 #: lib/kammer/guests/guest_notifier.ex:32
@@ -43,7 +45,7 @@ msgstr "Bekræft din nye e-mailadresse"
 msgid "Hi %{name},"
 msgstr "Hej %{name},"
 
-#: lib/kammer/accounts/user_notifier.ex:154
+#: lib/kammer/accounts/user_notifier.ex:202
 #, elixir-autogen, elixir-format
 msgid "If you didn't create an account with us, please ignore this email."
 msgstr "Hvis du ikke har oprettet en konto hos os, kan du se bort fra denne e-mail."
@@ -53,13 +55,13 @@ msgstr "Hvis du ikke har oprettet en konto hos os, kan du se bort fra denne e-ma
 msgid "If you didn't request this change, please ignore this email."
 msgstr "Hvis du ikke har anmodet om denne ændring, kan du se bort fra denne e-mail."
 
-#: lib/kammer/accounts/user_notifier.ex:136
+#: lib/kammer/accounts/user_notifier.ex:184
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this email, please ignore it."
 msgstr "Hvis du ikke har anmodet om denne e-mail, kan du se bort fra den."
 
-#: lib/kammer/accounts/user_notifier.ex:102
-#: lib/kammer/accounts/user_notifier.ex:160
+#: lib/kammer/accounts/user_notifier.ex:150
+#: lib/kammer/accounts/user_notifier.ex:208
 #, elixir-autogen, elixir-format
 msgid "The link is valid for 15 minutes and can be used once."
 msgstr "Linket er gyldigt i 15 minutter og kan bruges én gang."
@@ -69,17 +71,17 @@ msgstr "Linket er gyldigt i 15 minutter og kan bruges én gang."
 msgid "You can change your email by visiting the link below:"
 msgstr "Du kan ændre din e-mail ved at besøge linket nedenfor:"
 
-#: lib/kammer/accounts/user_notifier.ex:149
+#: lib/kammer/accounts/user_notifier.ex:197
 #, elixir-autogen, elixir-format
 msgid "You can confirm your account and sign in by visiting the link below:"
 msgstr "Du kan bekræfte din konto og logge ind ved at besøge linket nedenfor:"
 
-#: lib/kammer/accounts/user_notifier.ex:131
+#: lib/kammer/accounts/user_notifier.ex:179
 #, elixir-autogen, elixir-format
 msgid "You can sign in to your account by visiting the link below:"
 msgstr "Du kan logge ind på din konto ved at besøge linket nedenfor:"
 
-#: lib/kammer/accounts/user_notifier.ex:128
+#: lib/kammer/accounts/user_notifier.ex:176
 #, elixir-autogen, elixir-format
 msgid "Your sign-in link"
 msgstr "Dit login-link"
@@ -481,13 +483,13 @@ msgstr "en ny e-mail for hvert opslag"
 msgid "a weekly digest"
 msgstr "en ugentlig opsummering"
 
-#: lib/kammer/accounts/user_notifier.ex:133
-#: lib/kammer/accounts/user_notifier.ex:151
+#: lib/kammer/accounts/user_notifier.ex:181
+#: lib/kammer/accounts/user_notifier.ex:199
 #, elixir-autogen, elixir-format
 msgid "Or enter this sign-in code in the app:"
 msgstr "Eller indtast denne login-kode i appen:"
 
-#: lib/kammer/accounts/user_notifier.ex:163
+#: lib/kammer/accounts/user_notifier.ex:211
 #, elixir-autogen, elixir-format
 msgid "The link and code are valid for 15 minutes and can each be used once."
 msgstr "Linket og koden er gyldige i 15 minutter og kan hver bruges én gang."
@@ -512,17 +514,17 @@ msgstr "E-mailadressen for din konto er netop blevet ændret til %{new_email}."
 msgid "Your account email was changed"
 msgstr "Din kontos e-mail er blevet ændret"
 
-#: lib/kammer/accounts/user_notifier.ex:98
+#: lib/kammer/accounts/user_notifier.ex:146
 #, elixir-autogen, elixir-format
 msgid "A device signed in to your account wants to make a security-sensitive change — managing passkeys or devices, changing your email address, deleting the account, or downloading a copy of all its data. Confirm it's you by visiting the link below:"
 msgstr "En enhed, der er logget ind på din konto, vil foretage en sikkerhedsfølsom ændring — administrere adgangsnøgler eller enheder, ændre din e-mailadresse, slette kontoen eller hente en kopi af alle dens data. Bekræft, at det er dig, ved at besøge linket herunder:"
 
-#: lib/kammer/accounts/user_notifier.ex:95
+#: lib/kammer/accounts/user_notifier.ex:143
 #, elixir-autogen, elixir-format
 msgid "Confirm it's you"
 msgstr "Bekræft, at det er dig"
 
-#: lib/kammer/accounts/user_notifier.ex:104
+#: lib/kammer/accounts/user_notifier.ex:152
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this, don't click the link — someone may have access to your account. Review your devices and sign out anything you don't recognize."
 msgstr "Hvis du ikke har bedt om dette, så lad være med at klikke på linket — nogen kan have adgang til din konto. Gennemgå dine enheder, og log alt ud, du ikke genkender."
@@ -571,3 +573,39 @@ msgstr "Du modtager ikke længere disse e-mails."
 #, elixir-autogen, elixir-format
 msgid "You'll stop receiving these emails."
 msgstr "Du vil ikke længere modtage disse e-mails."
+
+#: lib/kammer/accounts/user_notifier.ex:116
+#, elixir-autogen, elixir-format
+msgid "A copy of your data was downloaded"
+msgstr "En kopi af dine data er blevet downloadet"
+
+#: lib/kammer/accounts/user_notifier.ex:119
+#, elixir-autogen, elixir-format
+msgid "A full copy of your account's data on %{instance} was just exported and downloaded."
+msgstr "En komplet kopi af din kontos data på %{instance} er netop blevet eksporteret og downloadet."
+
+#: lib/kammer/accounts/user_notifier.ex:98
+#: lib/kammer/accounts/user_notifier.ex:121
+#, elixir-autogen, elixir-format
+msgid "If this was you, no further action is needed."
+msgstr "Hvis det var dig, behøver du ikke foretage dig noget."
+
+#: lib/kammer/accounts/user_notifier.ex:100
+#, elixir-autogen, elixir-format
+msgid "If you did NOT delete your account, it may have been compromised — contact your instance's administrator immediately."
+msgstr "Hvis du IKKE har slettet din konto, kan den være blevet kompromitteret — kontakt straks din instans' administrator."
+
+#: lib/kammer/accounts/user_notifier.ex:123
+#, elixir-autogen, elixir-format
+msgid "If you did NOT request this export, your account may have been compromised — contact your instance's administrator immediately."
+msgstr "Hvis du IKKE har anmodet om denne eksport, kan din konto være blevet kompromitteret — kontakt straks din instans' administrator."
+
+#: lib/kammer/accounts/user_notifier.ex:96
+#, elixir-autogen, elixir-format
+msgid "Your account on %{instance} was permanently deleted, along with your personal data."
+msgstr "Din konto på %{instance} er blevet slettet permanent sammen med dine personlige data."
+
+#: lib/kammer/accounts/user_notifier.ex:93
+#, elixir-autogen, elixir-format
+msgid "Your account was deleted"
+msgstr "Din konto er blevet slettet"

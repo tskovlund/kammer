@@ -1,9 +1,14 @@
 defmodule Kammer.Accounts.UserNotifier do
   @moduledoc """
-  Authentication emails: magic-link sign-in, first-time confirmation,
-  email-change instructions, and step-up confirmations (issue #294).
-  Localized per user (SPEC §1: EN and DA complete, including emails).
-  These emails are inherently content-minimal (SPEC §9).
+  Account emails, all localized per user (SPEC §1: EN and DA complete,
+  including emails) and inherently content-minimal (SPEC §9):
+
+    * authentication — magic-link sign-in, first-time confirmation,
+      email-change instructions, and step-up confirmations (issue #294);
+    * account-lifecycle security notices, sent to the affected address
+      after the fact — email changed (#258), account deleted, and data
+      exported (#338) — the one signal a hijacked account's real owner
+      still receives.
   """
 
   use Gettext, backend: KammerWeb.Gettext
@@ -73,6 +78,54 @@ defmodule Kammer.Accounts.UserNotifier do
       #{gettext("If you made this change, you can ignore this email.")}
 
       #{gettext("If you did NOT make this change, your account may be compromised — contact your instance's administrator immediately.")}
+      """)
+    end)
+  end
+
+  @doc """
+  Tell an account's own address that the account was permanently
+  deleted (issue #338). Deletion is one of the two most consequential,
+  irreversible actions behind the step-up gate (#323); like the
+  email-changed notice, this is the one after-the-fact signal a
+  hijacked account's real owner still receives. The caller sends it
+  once the delete has committed, using the in-memory struct whose
+  email survives the row's removal.
+  """
+  @spec deliver_account_deleted_notice(User.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_account_deleted_notice(user) do
+    Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
+      deliver(user.email, gettext("Your account was deleted"), """
+      #{gettext("Hi %{name},", name: user.display_name)}
+
+      #{gettext("Your account on %{instance} was permanently deleted, along with your personal data.", instance: Kammer.product_name())}
+
+      #{gettext("If this was you, no further action is needed.")}
+
+      #{gettext("If you did NOT delete your account, it may have been compromised — contact your instance's administrator immediately.")}
+      """)
+    end)
+  end
+
+  @doc """
+  Tell an account's address that a full copy of its data was just
+  exported and downloaded (issue #338). The export bundles every
+  stored byte of the account's PII into one download — a step-up-gated
+  action (#323) worth more to an attacker than to an accident — so an
+  unexpected one is the signal a device token is in the wrong hands.
+  """
+  @spec deliver_account_exported_notice(User.t()) ::
+          {:ok, Swoosh.Email.t()} | {:error, term()}
+  def deliver_account_exported_notice(user) do
+    Gettext.with_locale(KammerWeb.Gettext, user.locale, fn ->
+      deliver(user.email, gettext("A copy of your data was downloaded"), """
+      #{gettext("Hi %{name},", name: user.display_name)}
+
+      #{gettext("A full copy of your account's data on %{instance} was just exported and downloaded.", instance: Kammer.product_name())}
+
+      #{gettext("If this was you, no further action is needed.")}
+
+      #{gettext("If you did NOT request this export, your account may have been compromised — contact your instance's administrator immediately.")}
       """)
     end)
   end
