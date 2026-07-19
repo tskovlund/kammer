@@ -19,6 +19,16 @@ and this project adheres to
 
 ### Fixed
 
+- A control character in a post or event title no longer makes a public
+  group's RSS/Atom feed ill-formed (issue #364). XML 1.0 forbids the C0
+  control range (except TAB/LF/CR) and the U+FFFE/U+FFFF noncharacters; a
+  single one — which the post/event changesets don't strip — made a strict
+  XML parser reject the _entire_ feed rather than the one offending item,
+  so a single crafted title could take down `feed.rss`/`feed.atom` for
+  every subscriber. `Feed.Syndication` now strips the illegal range at both
+  output boundaries (the entity escaper and the CDATA description body),
+  matching how the ICS side (#313) hardens at its boundary.
+
 - An instance ban is now a full account lockout, closing the evasion where
   a banned account could re-authenticate and shed the ban by changing its
   email (issue #377). Before, `instance_banned?` was consulted only at the
