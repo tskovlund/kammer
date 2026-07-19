@@ -10,6 +10,14 @@ and this project adheres to
 
 ### Fixed
 
+- The test suite no longer leaks a recurring
+  `update check failed: {:unexpected_status, 500}` warning (issue #280).
+  The update-check failure-path test emitted it from its own stubbed 500
+  (the check is never invoked unstubbed — Oban runs `:manual` in test);
+  the test now captures and asserts the warning rather than letting it
+  print, which also pins the previously-unasserted behavior that a failed
+  check warns the operator.
+
 - Control characters in an email no longer reach Postgres and 500 (issue
   #334). A NUL byte — or any other C0/DEL control — passed the old format
   regex `[^@,;\s]+@…` and then raised `Postgrex.Error` (text columns
