@@ -79,6 +79,20 @@ and this project adheres to
 
 ### Added
 
+- Owner-facing notice email on account deletion and data export (issue
+  #338). The two most consequential, irreversible account actions —
+  permanent deletion and the full-data export — now email the account's
+  own address after the fact, the way an email change already notifies
+  the old address. It's the one signal a hijacked account's real owner
+  still receives if a stolen device token is used to destroy the account
+  or pull all its PII in one request: each notice names what happened
+  and says to contact the instance's administrator if it wasn't them.
+  Best-effort — a mail failure can't fail the action it reports (the
+  deletion notice is sent from the in-memory record once the row is
+  gone), but a failure is logged, since the notice is the security
+  signal. EN + DA. Closes the residual gap ADR 0029's step-up work left
+  (surfaced by #337's review).
+
 - Test coverage for the community-file-space rehoming data migration
   (issue #308). The #187 migration that moves the now-unreachable,
   LiveView-only community file space onto a group carries real

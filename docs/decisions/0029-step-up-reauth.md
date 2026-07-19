@@ -154,5 +154,6 @@ Mitigations: the short window (default 10 minutes) bounds the ride,
 and the consent copy — the step-up email and the `/step-up/{token}`
 landing page — now names deletion and export explicitly, so a user
 approving a step-up knows the worst the grant can do. Notifying the
-owner when a deletion or export actually executes is tracked as
-follow-up #338.
+owner's address when a deletion or export actually executes — the
+after-the-fact signal that closes the piggyback residual — shipped in
+#338.

@@ -116,19 +116,13 @@ defmodule KammerWeb.Api.AccountController do
       {:ok, user} ->
         device_token = rotate_device_token(user, current_device)
 
-        # The old address gets told (issue #258): even with the
-        # step-up gate on initiation (#294), this notice is the one
-        # signal a hijacked account's real owner still receives once a
-        # change lands. Best-effort —
-        # an SMTP hiccup must not fail the already-completed change —
-        # but a failure is logged, since it's the security signal.
-        case UserNotifier.deliver_email_changed_notice(user, old_email, user.email) do
-          {:ok, _email} ->
-            :ok
-
-          error ->
-            Logger.warning("email-changed notice to #{old_email} failed: #{inspect(error)}")
-        end
+        # The old address gets told (issue #258): even with the step-up
+        # gate on initiation (#294), this notice is the one signal a
+        # hijacked account's real owner still receives once a change
+        # lands.
+        deliver_security_notice("email-changed to #{old_email}", fn ->
+          UserNotifier.deliver_email_changed_notice(user, old_email, user.email)
+        end)
 
         # Sever live sockets: every other device's token just died with
         # the address change, so leaving their websockets streaming
@@ -153,6 +147,15 @@ defmodule KammerWeb.Api.AccountController do
 
     if confirms_email?(params, user.email) do
       :ok = Gdpr.delete_account(user)
+
+      # Tell the (now-deleted) account's address it happened (issue
+      # #338) — the after-the-fact signal a hijacked account's real
+      # owner receives, mirroring the email-change notice. Sent after
+      # the delete commits so it never claims a rollback as done; the
+      # in-memory struct's email/name outlive the row's removal.
+      deliver_security_notice("account-deleted", fn ->
+        UserNotifier.deliver_account_deleted_notice(user)
+      end)
 
       # Sever live sockets — the cascade already deleted every token
       # row, but an open websocket would keep streaming until it
@@ -183,11 +186,22 @@ defmodule KammerWeb.Api.AccountController do
   defp stream_export(conn, user) do
     case Gdpr.export(user) do
       {:ok, zip_path} ->
-        # `after` so the workdir (data.json, file copies, the zip) is
-        # cleaned even if send_download raises or the client aborts —
-        # Gdpr.export leaves cleanup to the caller, and orphaned
-        # workdirs would otherwise fill the temp dir over time.
+        # `after` so the workdir (data.json, file copies, the zip — a
+        # full-PII bundle) is cleaned even if the notice or send_download
+        # raises or the client aborts. Gdpr.export leaves cleanup to the
+        # caller, so anything between here and `after` that could raise
+        # must sit INSIDE the try, or an orphaned bundle lingers in the
+        # temp dir.
         try do
+          # A full-PII bundle was just built for download; tell the
+          # address it happened (issue #338), the same after-the-fact
+          # signal as deletion. Sent once the zip exists (the sensitive
+          # act is gathering the PII), before streaming — a client abort
+          # mid-download doesn't un-export the data.
+          deliver_security_notice("account-exported", fn ->
+            UserNotifier.deliver_account_exported_notice(user)
+          end)
+
           conn
           # A personal data export must never sit in a shared cache (#315).
           |> put_resp_header("cache-control", "private, no-store")
@@ -212,6 +226,26 @@ defmodule KammerWeb.Api.AccountController do
     fresh = Accounts.create_device_token(user, current_device && current_device.user_agent)
     Accounts.purge_stale_api_devices(user, Accounts.get_device_token(fresh).id)
     fresh
+  end
+
+  # Security notices (email changed, account deleted, data exported)
+  # report an action that has ALREADY completed, so they're best-effort:
+  # a mail failure must not fail the finished action, nor skip the
+  # socket-disconnect sever these calls precede. The SMTP adapter can
+  # signal trouble either way — an `{:error, _}` return OR a raised/exited
+  # transport error — so both are caught and logged (the notice is the
+  # signal a hijacked account's owner receives, so its loss is worth a
+  # warning). `label` names the notice (and, for the email change, its
+  # recipient) in that log line.
+  defp deliver_security_notice(label, deliver_fun) do
+    case deliver_fun.() do
+      {:ok, _email} -> :ok
+      error -> Logger.warning("#{label} notice failed: #{inspect(error)}")
+    end
+  rescue
+    error -> Logger.warning("#{label} notice raised: #{Exception.message(error)}")
+  catch
+    kind, reason -> Logger.warning("#{label} notice #{kind}: #{inspect(reason)}")
   end
 
   defp deliver_email_change(conn, user, changeset) do
