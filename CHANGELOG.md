@@ -10,6 +10,23 @@ and this project adheres to
 
 ### Fixed
 
+- Client resilience follow-ups (issue #316). Time-derived _state_ no
+  longer fossilizes on a long-lived installed PWA the way relative
+  timestamps once did: an open poll now locks the minute its deadline
+  passes, a scheduled post flips to published when its time arrives,
+  and the events agenda's "Today"/"Tomorrow" headings stay honest
+  across midnight — each now reads the shared reactive minute clock,
+  which also snaps fresh the instant the app foregrounds. The tokenless
+  public shells (`/welcome`, `/sign-in`, `/setup`, public
+  `/c/[community]/**`, and their siblings) gain a render-error boundary
+  so a client-side _render_ crash degrades to a recoverable card instead
+  of a white screen with SSR off. Two smaller hardening fixes: the shared
+  `Button`'s link variant no longer drops `aria-*`/`data-*`/`target`
+  props, and removing an instance clears the cross-instance offline
+  snapshots (issue #186 — a shared device's next signer-in must not
+  inherit them) before — and regardless of — the realtime-socket
+  teardown, so a throw there can't skip the privacy step.
+
 - Binary API downloads no longer reject their own documented media type
   (issue #315). Every byte-serving API route (the single-event ICS, the
   stored-file endpoints, the GDPR export zip) sat in the JSON-only `:api`

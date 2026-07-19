@@ -8,6 +8,7 @@ import {
 	requestLink,
 	revokeAndRemoveInstance
 } from './api';
+import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { dropSocket } from '$lib/realtime/registry.svelte.js';
 import { instanceStore } from './store';
 import { fakeLocalStorage } from './test-support';
@@ -23,6 +24,12 @@ vi.mock('./webauthn', () => ({ getPasskeyAssertion: vi.fn() }));
 // that removing an instance — sign-out or replacement — always drops its
 // socket.
 vi.mock('$lib/realtime/registry.svelte.js', () => ({ dropSocket: vi.fn() }));
+
+// The offline snapshot cache is a seam here: its own behaviour is in
+// snapshot-cache.spec.ts; these tests pin that removing an instance always
+// clears cross-instance snapshots (#186), even when the socket teardown
+// throws (#316).
+vi.mock('$lib/offline/snapshot-cache.js', () => ({ clearSnapshots: vi.fn() }));
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -342,7 +349,8 @@ describe('revokeAndRemoveInstance', () => {
 		vi.stubGlobal('localStorage', fakeLocalStorage());
 		instanceStore.clear();
 		vi.stubGlobal('fetch', vi.fn());
-		vi.mocked(dropSocket).mockClear();
+		vi.mocked(dropSocket).mockReset();
+		vi.mocked(clearSnapshots).mockReset();
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -386,5 +394,27 @@ describe('revokeAndRemoveInstance', () => {
 	it('is a no-op for an unknown instance id', async () => {
 		await expect(revokeAndRemoveInstance('missing')).resolves.toBeUndefined();
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it('clears cross-instance snapshots even if the socket teardown throws (#316, #186)', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		instanceStore.add(instance);
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+		vi.mocked(dropSocket).mockImplementationOnce(() => {
+			throw new Error('socket teardown blew up');
+		});
+
+		// A teardown failure must not reject the removal...
+		await expect(revokeAndRemoveInstance('instance-1')).resolves.toBeUndefined();
+
+		// ...and the shared-device privacy step (#186) must still run despite
+		// the teardown throwing. (Asserting the guarantee, not the literal
+		// ordering — a fix that caught dropSocket instead would pass too, and
+		// should.)
+		expect(instanceStore.list()).toEqual([]);
+		expect(clearSnapshots).toHaveBeenCalled();
+		// The swallowed teardown failure is logged, not silent.
+		expect(consoleError).toHaveBeenCalled();
+		consoleError.mockRestore();
 	});
 });

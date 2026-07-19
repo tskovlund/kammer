@@ -8,7 +8,22 @@ const MINUTE_MS = 60_000;
 // leaks on unmount.
 const subscribe = createSubscriber((update) => {
 	const interval = setInterval(update, MINUTE_MS);
-	return () => clearInterval(interval);
+
+	// Snap fresh the instant the PWA foregrounds (#316): a backgrounded
+	// tab's interval is throttled or paused, so on wake the on-screen
+	// times can be up to a minute stale until the next tick. The
+	// subscriber setup only runs client-side (inside an effect), so
+	// `document` is available, but guard it for belt-and-braces.
+	const onVisible = () => {
+		if (document.visibilityState === 'visible') update();
+	};
+	const hasDocument = typeof document !== 'undefined';
+	if (hasDocument) document.addEventListener('visibilitychange', onVisible);
+
+	return () => {
+		clearInterval(interval);
+		if (hasDocument) document.removeEventListener('visibilitychange', onVisible);
+	};
 });
 
 /**

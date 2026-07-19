@@ -10,6 +10,7 @@
 	import Markdown from '$lib/ui/Markdown.svelte';
 	import RelativeTime from '$lib/ui/RelativeTime.svelte';
 	import { dismissable } from '$lib/ui/dismissable.js';
+	import { minuteNow } from '$lib/ui/now.js';
 	import Attachments from './Attachments.svelte';
 	import CommentComposer from './CommentComposer.svelte';
 	import CommentThread from './CommentThread.svelte';
@@ -28,7 +29,11 @@
 	let { post, store, instance, currentUserId, provenance }: Props = $props();
 
 	const isMine = $derived(post.author?.type === 'user' && post.author.id === currentUserId);
-	const scheduled = $derived(!post.deleted && new Date(post.published_at).getTime() > Date.now());
+	// Reactive `now` so a scheduled post flips to published the minute its
+	// time arrives while mounted (#316), not only on remount.
+	const scheduled = $derived(
+		!post.deleted && new Date(post.published_at).getTime() > minuteNow().getTime()
+	);
 	const commentCount = $derived(post.comment_count ?? post.comments?.length ?? 0);
 
 	let showComments = $state(false);
