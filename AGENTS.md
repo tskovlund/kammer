@@ -610,6 +610,14 @@ asked for once and must never need to be asked for again.
   once, so the app's dev config can authenticate.
 - Commit and push inside `nix develop --command` (git hooks need `mix`
   on `PATH`). Committer identity: `Claude <noreply@anthropic.com>`.
+  There is no commit-signing key in the container, so every commit is
+  **unsigned and shows as "Unverified" on GitHub** — this is expected,
+  not a defect. The committer email above is already correct, so do
+  **not** amend a commit with `--reset-author` to chase the
+  "Unverified" badge: it changes nothing about verification and
+  rewrites the commit SHA, which yanks the tree out from under any
+  in-flight SHA-pinned review agent reviewing that commit. Leave
+  unsigned commits as they are.
 - The Playwright e2e gate (`scripts/e2e.sh`) needs both a browser and
   `mix` on PATH, so run it inside `nix develop` with
   `export CHROMIUM_BIN=/opt/pw-browsers/chromium` (the config reads
