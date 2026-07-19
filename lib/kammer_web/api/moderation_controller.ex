@@ -100,10 +100,16 @@ defmodule KammerWeb.Api.ModerationController do
            {:ok, _lifted} <- Moderation.unban(actor, existing) do
         json(conn, %{data: %{status: "unbanned"}})
       else
-        nil -> ApiError.send(conn, :not_found, "Not found.")
-        false -> ApiError.send(conn, :not_found, "Not found.")
-        # A ban the caller may not lift is hidden, not forbidden.
-        {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
+        nil ->
+          ApiError.send(conn, :not_found, "Not found.")
+
+        false ->
+          ApiError.send(conn, :not_found, "Not found.")
+
+        # A ban the caller may not lift is hidden, not forbidden; a ban a
+        # concurrent lift already removed is a neutral 404, not a 500.
+        {:error, reason} when reason in [:unauthorized, :not_found] ->
+          ApiError.send(conn, :not_found, "Not found.")
       end
     end)
   end
@@ -165,9 +171,13 @@ defmodule KammerWeb.Api.ModerationController do
          {:ok, _lifted} <- Moderation.unban_instance(actor, ban) do
       json(conn, %{data: %{status: "unbanned"}})
     else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      # A ban the caller may not lift is hidden, not forbidden.
-      {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
+      nil ->
+        ApiError.send(conn, :not_found, "Not found.")
+
+      # A ban the caller may not lift is hidden, not forbidden; a ban a
+      # concurrent lift already removed is a neutral 404, not a 500.
+      {:error, reason} when reason in [:unauthorized, :not_found] ->
+        ApiError.send(conn, :not_found, "Not found.")
     end
   end
 

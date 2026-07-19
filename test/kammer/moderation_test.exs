@@ -199,6 +199,21 @@ defmodule Kammer.ModerationTest do
                Audit.list_events(owner, community)
     end
 
+    test "lifting an already-lifted ban is a neutral not-found, not a 500", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      {:ok, ban} = Moderation.ban_member(owner, community, author, nil)
+
+      # A concurrent admin lifted the same ban first: the row is gone by
+      # the time this delete runs. It must fold into the nonexistent-ban
+      # path (:not_found), not raise a StaleEntryError (a controller 500).
+      Repo.delete!(ban)
+
+      assert {:error, :not_found} = Moderation.unban(owner, ban)
+    end
+
     test "only admins ban; nobody bans admins or themselves", %{
       community: community,
       owner: owner,
@@ -309,6 +324,19 @@ defmodule Kammer.ModerationTest do
 
       assert {:ok, _lifted} = Moderation.unban_instance(operator, ban)
       assert {:ok, _membership} = Communities.add_member(community, author)
+    end
+
+    test "lifting an already-lifted instance ban is a neutral not-found, not a 500", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+      {:ok, ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      # A concurrent operator lifted the same ban first: fold into the
+      # nonexistent-ban 404 rather than raising on the stale delete.
+      Repo.delete!(ban)
+
+      assert {:error, :not_found} = Moderation.unban_instance(operator, ban)
     end
 
     test "can ban an email with no account yet — the eventual signup is refused (#377)" do

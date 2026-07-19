@@ -261,7 +261,7 @@ defmodule Kammer.Moderation do
   Lifts a ban (community admins).
   """
   @spec unban(User.t(), CommunityBan.t()) ::
-          {:ok, CommunityBan.t()} | {:error, :unauthorized}
+          {:ok, CommunityBan.t()} | {:error, :unauthorized | :not_found}
   def unban(%User{} = actor, %CommunityBan{} = ban) do
     community = Repo.get!(Community, ban.community_id)
 

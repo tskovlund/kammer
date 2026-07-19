@@ -28,6 +28,13 @@ and this project adheres to
 
 ### Fixed
 
+- Lifting a community or instance ban that a concurrent moderator already
+  lifted now answers a neutral 404 instead of raising a 500 (issue #276).
+  The context mutators already folded the stale delete into a not-found
+  result, but the two `unban` controllers had no `else` clause for it, so
+  the race raised a `WithClauseError`; both now map it to the same 404 a
+  nonexistent ban gets.
+
 - ICS calendar files now fold long content lines to at most 75 octets
   _including_ a continuation line's leading space (issue #383, RFC 5545
   §3.1); the folder re-measured the tail without the injected space and so
