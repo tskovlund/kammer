@@ -10,7 +10,10 @@ defmodule KammerWeb.Api.NotificationChannel do
 
   use Phoenix.Channel
 
+  alias Kammer.Authorization
+  alias Kammer.Groups.Group
   alias Kammer.Notifications
+  alias Kammer.Notifications.Notification
   alias KammerWeb.Api.Serializer
 
   @impl Phoenix.Channel
@@ -24,13 +27,38 @@ defmodule KammerWeb.Api.NotificationChannel do
 
   @impl Phoenix.Channel
   def handle_info({Kammer.Notifications, {:notification_created, notification_id}}, socket) do
-    case Notifications.get_notification(socket.assigns.current_user, notification_id) do
-      nil -> :ok
-      notification -> push(socket, "notification_created", Serializer.notification(notification))
+    user = socket.assigns.current_user
+
+    case Notifications.get_notification(user, notification_id) do
+      nil ->
+        :ok
+
+      notification ->
+        # Re-authorize per push, the way the feed channel does (#377): a
+        # membership or visibility change that never severs the socket — a
+        # member removed from the group, or the group flipped to private —
+        # must still cut the stream, rather than trusting the join-time
+        # grant. (A full instance ban is enforced once at the transport, in
+        # `UserSocket.connect/3`, plus token revocation, so it never reaches
+        # a live channel here.)
+        if still_visible?(user, notification) do
+          push(socket, "notification_created", Serializer.notification(notification))
+        end
     end
 
     {:noreply, socket}
   end
 
   def handle_info({Kammer.Notifications, _other_event}, socket), do: {:noreply, socket}
+
+  # A group-scoped notification is re-authorized against the group's live
+  # visibility rule — the same `:view_group` decision the feed channel
+  # re-runs per push (so a public group stays visible, a lost membership
+  # does not). A group-less notification (the column is nullable, though
+  # none is created today) has no group access to re-check and is the
+  # owner's own, so it stays deliverable.
+  defp still_visible?(user, %Notification{group: %Group{} = group}),
+    do: Authorization.can?(user, :view_group, group)
+
+  defp still_visible?(_user, %Notification{group: nil}), do: true
 end

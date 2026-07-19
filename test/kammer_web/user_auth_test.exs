@@ -5,6 +5,7 @@ defmodule KammerWeb.UserAuthTest do
   alias KammerWeb.UserAuth
 
   import Kammer.AccountsFixtures
+  import Kammer.ModerationFixtures
 
   setup %{conn: conn} do
     conn =
@@ -40,6 +41,19 @@ defmodule KammerWeb.UserAuthTest do
         |> put_session(:user_token, "not-a-real-token")
         |> UserAuth.fetch_current_scope_for_user([])
 
+      refute conn.assigns.current_scope
+    end
+
+    test "degrades to the anonymous scope for a banned account (#377)", %{conn: conn, user: user} do
+      user_token = Accounts.generate_user_session_token(user)
+      instance_ban_fixture(user.email)
+
+      conn =
+        conn |> put_session(:user_token, user_token) |> UserAuth.fetch_current_scope_for_user([])
+
+      # Full lockout (#377): a banned account establishes no scope on any
+      # transport — the browser plug refuses a valid session the same way the
+      # API plug refuses a valid device token.
       refute conn.assigns.current_scope
     end
   end

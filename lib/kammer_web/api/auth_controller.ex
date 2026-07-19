@@ -15,6 +15,7 @@ defmodule KammerWeb.Api.AuthController do
   use KammerWeb, :controller
 
   alias Kammer.Accounts
+  alias Kammer.Moderation
   alias KammerWeb.ApiAuth
   alias KammerWeb.ApiError
   alias KammerWeb.Api.PublicLinks
@@ -50,7 +51,12 @@ defmodule KammerWeb.Api.AuthController do
 
   @spec request_link(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def request_link(conn, %{"email" => email}) when is_binary(email) do
-    if user = Accounts.get_user_by_email(email) do
+    # Full instance-ban lockout (#377): don't deliver a sign-in link to a
+    # banned address — it could not be exchanged for a session anyway, but
+    # the link should never be sent. The response stays identical to the
+    # unknown-address case, so neither existence nor ban status leaks.
+    with %Accounts.User{} = user <- Accounts.get_user_by_email(email),
+         false <- Moderation.instance_banned?(user.email) do
       Accounts.deliver_login_instructions(
         user,
         fn token -> PublicLinks.sign_in_url(conn, token) end,

@@ -18,6 +18,7 @@ defmodule KammerWeb.Api.UserSocket do
 
   alias Kammer.Accounts
   alias Kammer.Accounts.User
+  alias Kammer.Moderation
 
   channel "feed:group:*", KammerWeb.Api.FeedChannel
   channel "notifications:user:*", KammerWeb.Api.NotificationChannel
@@ -25,10 +26,18 @@ defmodule KammerWeb.Api.UserSocket do
   @impl Phoenix.Socket
   def connect(params, socket, _connect_info) do
     with token when is_binary(token) <- params["token"],
-         %User{} = user <- Accounts.get_user_by_device_token(token) do
+         %User{} = user <- Accounts.get_user_by_device_token(token),
+         # Full instance-ban lockout (#377): the realtime twin of the REST
+         # `ApiAuth.ban_gate` — refuse the connection outright for a banned
+         # account. The ban's `disconnect` broadcast severs live sockets, but
+         # the client auto-reconnects, so a token that outlives the ban would
+         # walk straight back in without this. Gating here (not per push in
+         # each channel) keeps the ban enforced once, at the transport, the
+         # way REST enforces it once in the plug.
+         false <- Moderation.instance_banned?(user.email) do
       {:ok, assign(socket, :current_user, user)}
     else
-      _invalid -> :error
+      _invalid_or_banned -> :error
     end
   end
 

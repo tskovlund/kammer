@@ -10,6 +10,7 @@ defmodule KammerWeb.ApiAuth do
 
   alias Kammer.Accounts
   alias Kammer.Accounts.Scope
+  alias Kammer.Moderation
 
   @doc "Assigns `current_scope` from a Bearer device token (or nil scope)."
   @spec fetch_api_scope(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
@@ -20,7 +21,18 @@ defmodule KammerWeb.ApiAuth do
         token -> Accounts.get_user_by_device_token(token)
       end
 
-    assign(conn, :current_scope, Scope.for_user(user))
+    assign(conn, :current_scope, Scope.for_user(ban_gate(user)))
+  end
+
+  # Full instance-ban lockout (#377): the per-request backstop behind the
+  # sign-in gates. A ban already revokes device tokens, so this rarely
+  # fires — but any token that outlives the ban (minted in the race before
+  # it commits, or via some future path) resolves to no scope, so a banned
+  # account can never act, whatever token it holds.
+  defp ban_gate(nil), do: nil
+
+  defp ban_gate(%Accounts.User{} = user) do
+    if Moderation.instance_banned?(user.email), do: nil, else: user
   end
 
   @doc "Halts with the standard 401 envelope when no user is present."

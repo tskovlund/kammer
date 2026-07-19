@@ -17,6 +17,7 @@ defmodule KammerWeb.UserAuth do
 
   alias Kammer.Accounts
   alias Kammer.Accounts.Scope
+  alias Kammer.Moderation
 
   @doc """
   Assigns `current_scope` from the session's user token, or the
@@ -33,6 +34,18 @@ defmodule KammerWeb.UserAuth do
         _no_session -> nil
       end
 
-    assign(conn, :current_scope, Scope.for_user(user))
+    assign(conn, :current_scope, Scope.for_user(ban_gate(user)))
+  end
+
+  # Full instance-ban lockout (#377): the browser twin of
+  # `KammerWeb.ApiAuth.ban_gate`, so the lockout holds by design at every
+  # scope-establishment point — a banned account degrades to the anonymous
+  # scope here too, not by the accident that no browser session is minted
+  # today (sign-in is API-only, ADR 0024, so this path currently only ever
+  # reads a carried-over session).
+  defp ban_gate(nil), do: nil
+
+  defp ban_gate(%Accounts.User{} = user) do
+    if Moderation.instance_banned?(user.email), do: nil, else: user
   end
 end

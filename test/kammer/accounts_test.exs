@@ -4,6 +4,7 @@ defmodule Kammer.AccountsTest do
   alias Kammer.Accounts
 
   import Kammer.AccountsFixtures
+  import Kammer.ModerationFixtures
   alias Kammer.Accounts.{User, UserToken}
 
   describe "user lookup" do
@@ -60,6 +61,34 @@ defmodule Kammer.AccountsTest do
       {:ok, user} = Accounts.register_user(valid_user_attributes(email: email))
       assert user.email == email
       assert is_nil(user.confirmed_at)
+    end
+
+    test "refuses an instance-banned address, creating no account (#377)" do
+      email = unique_user_email()
+      instance_ban_fixture(email)
+
+      {:error, changeset} = Accounts.register_user(valid_user_attributes(email: email))
+
+      # Folded into the same "taken" envelope a duplicate gets, so a
+      # banned address is indistinguishable from a registered one — no
+      # separate ban oracle — and no dormant account is created for it.
+      assert "has already been taken" in errors_on(changeset).email
+      refute Accounts.get_user_by_email(email)
+    end
+
+    test "folds the ban into the taken error even when another field is invalid (#377)" do
+      email = unique_user_email()
+      instance_ban_fixture(email)
+
+      # A registered address emits "has already been taken" here regardless of
+      # the invalid display_name (unsafe_validate_unique fires on the valid
+      # email), so a banned address must too — otherwise a bad companion field
+      # turns register into a banned-vs-registered oracle.
+      {:error, changeset} = Accounts.register_user(%{email: email, display_name: ""})
+
+      assert "has already been taken" in errors_on(changeset).email
+      assert "can't be blank" in errors_on(changeset).display_name
+      refute Accounts.get_user_by_email(email)
     end
 
     test "is rate limited per IP across different emails" do
@@ -176,6 +205,44 @@ defmodule Kammer.AccountsTest do
 
       assert Repo.get!(User, user.id).email == user.email
       assert Repo.get_by(UserToken, user_id: user.id)
+    end
+
+    test "refuses to move onto an instance-banned address (#377)", %{
+      user: user,
+      token: token,
+      email: email
+    } do
+      instance_ban_fixture(email)
+
+      assert Accounts.update_user_email(user, token) == {:error, :transaction_aborted}
+      assert Repo.get!(User, user.id).email == user.email
+    end
+
+    test "refuses when the account's current address is instance-banned (#377)", %{
+      user: user,
+      token: token
+    } do
+      # A ban must not be sheddable by changing email — the account is
+      # pinned to the banned address.
+      instance_ban_fixture(user.email)
+
+      assert Accounts.update_user_email(user, token) == {:error, :transaction_aborted}
+      assert Repo.get!(User, user.id).email == user.email
+    end
+  end
+
+  describe "exchange_magic_link_for_device_token/2" do
+    test "an instance-banned account gets the neutral :not_found and no token (#377)" do
+      user = user_fixture()
+      {encoded_token, _hashed} = generate_user_magic_link_token(user)
+      instance_ban_fixture(user.email)
+
+      # The magic link is spent (single-use) but mints no session — a
+      # banned account collapses into the same answer an invalid link gets.
+      assert Accounts.exchange_magic_link_for_device_token(encoded_token, "phone") ==
+               {:error, :not_found}
+
+      assert Accounts.list_user_devices(user) == []
     end
   end
 

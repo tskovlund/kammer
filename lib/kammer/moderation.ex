@@ -545,10 +545,13 @@ defmodule Kammer.Moderation do
         if target do
           remove_all_memberships(target)
           # An instance ban locks the account out of every community, so
-          # it severs live access too: revoke its device tokens here, in
-          # the same transaction as the purge. The controller broadcasts
-          # the socket disconnect once this commits.
+          # it severs live access too: revoke its device tokens AND its
+          # passkeys here, in the same transaction as the purge. A retained
+          # passkey would otherwise let the banned account re-authenticate
+          # through the usernameless sign-in ceremony (#377). The controller
+          # broadcasts the socket disconnect once this commits.
           Accounts.revoke_all_user_devices(target)
+          Accounts.revoke_all_user_passkeys(target)
         end
 
         insert_result =
