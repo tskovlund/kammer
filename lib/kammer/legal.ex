@@ -51,20 +51,16 @@ defmodule Kammer.Legal do
     if Authorization.instance_operator?(actor) do
       page = Repo.get_by(LegalPage, key: key) || %LegalPage{key: key}
 
+      # `updated_by_user_id` is set programmatically, never cast from the
+      # request body (CONVENTIONS: programmatic fields aren't in `cast`),
+      # so a crafted body can't spoof who last edited the page.
       page
-      |> LegalPage.changeset(Map.put(attrs, "updated_by_user_id", actor.id))
+      |> LegalPage.changeset(attrs)
+      |> Ecto.Changeset.put_change(:updated_by_user_id, actor.id)
       |> Repo.insert_or_update()
     else
       {:error, :unauthorized}
     end
-  end
-
-  @doc """
-  Returns a changeset for the legal page edit form.
-  """
-  @spec change_page(LegalPage.t(), map()) :: Ecto.Changeset.t()
-  def change_page(%LegalPage{} = page, attrs \\ %{}) do
-    LegalPage.changeset(page, attrs)
   end
 
   @doc """

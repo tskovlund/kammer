@@ -57,4 +57,26 @@ defmodule Kammer.LegalTest do
 
     assert %{content_markdown: _messages} = errors_on(changeset)
   end
+
+  test "updated_by_user_id is set by the context, never cast from the body (#276)" do
+    operator = operator_fixture()
+
+    # The context records who edited.
+    assert {:ok, page} =
+             Legal.upsert_page(operator, "privacy", %{"content_markdown" => "Ours."})
+
+    assert page.updated_by_user_id == operator.id
+
+    # And the changeset never casts the field, so a crafted body can't spoof
+    # the attribution for any caller (the load-bearing guard).
+    attacker = user_fixture()
+
+    changeset =
+      Kammer.Legal.LegalPage.changeset(%Kammer.Legal.LegalPage{key: "privacy"}, %{
+        "content_markdown" => "x",
+        "updated_by_user_id" => attacker.id
+      })
+
+    refute Ecto.Changeset.get_change(changeset, :updated_by_user_id)
+  end
 end

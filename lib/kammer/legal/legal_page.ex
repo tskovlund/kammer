@@ -27,7 +27,7 @@ defmodule Kammer.Legal.LegalPage do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(page, attrs) do
     page
-    |> cast(attrs, [:content_markdown, :updated_by_user_id])
+    |> cast(attrs, [:content_markdown])
     |> validate_required([:key, :content_markdown])
     |> validate_length(:content_markdown, min: 1, max: 100_000)
     |> unique_constraint(:key)
