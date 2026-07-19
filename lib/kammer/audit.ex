@@ -47,6 +47,24 @@ defmodule Kammer.Audit do
   end
 
   @doc """
+  Records an instance-level audit entry — an instance-operator action
+  with no single community to attribute it to (a no-account instance
+  ban, an instance unban; #276). The `community_id` is `nil`, so the row
+  lives in the instance-audit log read by `list_instance_events_page/3`
+  rather than any community's log.
+  """
+  @spec record_instance(User.t() | nil, String.t(), String.t(), map()) :: AuditEvent.t()
+  def record_instance(actor, action, summary, metadata \\ %{}) do
+    Repo.insert!(%AuditEvent{
+      community_id: nil,
+      actor_user_id: actor && actor.id,
+      action: action,
+      summary: summary,
+      metadata: metadata
+    })
+  end
+
+  @doc """
   The capped recent slice of the community's audit log, newest first —
   the context tests' read-back helper; the API paginates via
   `list_events_page/4` instead. Community admins only — everyone else
@@ -86,35 +104,62 @@ defmodule Kammer.Audit do
   def list_events_page(actor, %Community{} = community, cursor, limit)
       when limit > 0 and limit <= 100 do
     if Authorization.can?(actor, :manage_community, community) do
-      query =
-        from(event in AuditEvent,
-          where: event.community_id == ^community.id,
-          order_by: [desc: event.inserted_at, desc: event.id],
-          limit: ^(limit + 1),
-          preload: [:actor_user]
-        )
-
-      query =
-        case cursor do
-          nil ->
-            query
-
-          {cursor_at, cursor_id} ->
-            from(event in query,
-              where:
-                event.inserted_at < ^cursor_at or
-                  (event.inserted_at == ^cursor_at and event.id < ^cursor_id)
-            )
-        end
-
-      events = Repo.all(query)
-
-      case Enum.split(events, limit) do
-        {page, []} -> {page, nil}
-        {page, _more} -> {page, page |> List.last() |> then(&{&1.inserted_at, &1.id})}
-      end
+      from(event in AuditEvent, where: event.community_id == ^community.id)
+      |> page(cursor, limit)
     else
       {[], nil}
+    end
+  end
+
+  @doc """
+  One cursor page of the instance-level audit log — entries with a `nil`
+  `community_id`, newest first (#276). The instance-operator twin of
+  `list_events_page/4`; gated to instance operators, so anyone else gets
+  an empty page with no cursor, never an error that would confirm the log.
+  """
+  @spec list_instance_events_page(
+          User.t() | nil,
+          {DateTime.t(), Ecto.UUID.t()} | nil,
+          pos_integer()
+        ) :: {[AuditEvent.t()], {DateTime.t(), Ecto.UUID.t()} | nil}
+  def list_instance_events_page(actor, cursor, limit) when limit > 0 and limit <= 100 do
+    if Authorization.instance_operator?(actor) do
+      from(event in AuditEvent, where: is_nil(event.community_id))
+      |> page(cursor, limit)
+    else
+      {[], nil}
+    end
+  end
+
+  # Applies the shared newest-first cursor pagination to a base audit
+  # query: orders by `(inserted_at, id)` descending, fetches `limit + 1` to
+  # detect a next page, and returns `{events, next_cursor}` with
+  # `next_cursor` nil on the last page — the same contract the community and
+  # instance readers share.
+  defp page(base_query, cursor, limit) do
+    query =
+      from(event in base_query,
+        order_by: [desc: event.inserted_at, desc: event.id],
+        limit: ^(limit + 1),
+        preload: [:actor_user]
+      )
+
+    query =
+      case cursor do
+        nil ->
+          query
+
+        {cursor_at, cursor_id} ->
+          from(event in query,
+            where:
+              event.inserted_at < ^cursor_at or
+                (event.inserted_at == ^cursor_at and event.id < ^cursor_id)
+          )
+      end
+
+    case query |> Repo.all() |> Enum.split(limit) do
+      {events, []} -> {events, nil}
+      {events, _more} -> {events, events |> List.last() |> then(&{&1.inserted_at, &1.id})}
     end
   end
 end

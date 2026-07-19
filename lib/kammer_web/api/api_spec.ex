@@ -892,6 +892,20 @@ defmodule KammerWeb.ApiSpec do
             response: single_response(Schemas.StatusOnly)
           )
       },
+      "/api/v1/instance/moderation/audit" => %PathItem{
+        get:
+          operation(
+            "The instance-level audit log (operators only, cursor-paginated, newest " <>
+              "first): operator actions with no single community — no-account bans and " <>
+              "every unban",
+            :instance_audit,
+            [
+              query_param(:after, "Opaque cursor from next_cursor"),
+              query_param(:limit, "1..100, default 50")
+            ],
+            response: data_response(Schemas.AuditEvent)
+          )
+      },
       "/api/v1/instance/settings" => %PathItem{
         get:
           operation("Read instance settings (operators only)", :instance_settings, [],

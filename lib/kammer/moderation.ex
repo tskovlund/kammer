@@ -140,7 +140,7 @@ defmodule Kammer.Moderation do
   Dismisses a report — the content stays.
   """
   @spec dismiss_report(User.t(), Report.t()) ::
-          {:ok, Report.t()} | {:error, :unauthorized}
+          {:ok, Report.t()} | {:error, :unauthorized | :not_found}
   def dismiss_report(%User{} = actor, %Report{status: :open} = report) do
     with :ok <- authorize_on_report(actor, report),
          {:ok, dismissed} <- close_report(report, actor, :dismissed) do
@@ -261,7 +261,7 @@ defmodule Kammer.Moderation do
   Lifts a ban (community admins).
   """
   @spec unban(User.t(), CommunityBan.t()) ::
-          {:ok, CommunityBan.t()} | {:error, :unauthorized}
+          {:ok, CommunityBan.t()} | {:error, :unauthorized | :not_found}
   def unban(%User{} = actor, %CommunityBan{} = ban) do
     community = Repo.get!(Community, ban.community_id)
 
@@ -375,6 +375,18 @@ defmodule Kammer.Moderation do
             )
           end)
 
+          # The instance-level audit trail (#276): every instance ban is an
+          # operator action recorded here — the per-community entries above
+          # are the member-facing record, this is the operator-facing one,
+          # and for a no-account ban (no affected communities) it is the only
+          # record there is.
+          Audit.record_instance(
+            actor,
+            "instance_ban.created",
+            "#{actor.display_name} banned #{normalized_email} instance-wide" <>
+              if(reason, do: " — #{reason}", else: "")
+          )
+
           {:ok, ban}
         end
     end
@@ -389,18 +401,28 @@ defmodule Kammer.Moderation do
   def get_instance_ban(ban_id), do: Repo.get(InstanceBan, ban_id)
 
   @doc """
-  Lifts an instance ban (instance operators). Unlike lifting a
-  community ban, there is no single community to write an audit entry
-  against — the ban list itself is the record.
+  Lifts an instance ban (instance operators). Unlike a community unban —
+  which audits against its one community — this records into the
+  instance-level audit log (`community_id` nil, #276), since an instance
+  ban belongs to no single community.
   """
   @spec unban_instance(User.t(), InstanceBan.t()) ::
-          {:ok, InstanceBan.t()} | {:error, :unauthorized}
+          {:ok, InstanceBan.t()} | {:error, :unauthorized | :not_found}
   def unban_instance(%User{} = actor, %InstanceBan{} = ban) do
     if Authorization.instance_operator?(actor) do
       # See unban/2: a concurrent lift folds into the nonexistent-ban 404.
       case Repo.delete(ban, stale_error_field: :id) do
-        {:ok, lifted} -> {:ok, lifted}
-        {:error, _stale} -> {:error, :not_found}
+        {:ok, lifted} ->
+          Audit.record_instance(
+            actor,
+            "instance_ban.lifted",
+            "#{actor.display_name} lifted the instance ban on #{ban.email}"
+          )
+
+          {:ok, lifted}
+
+        {:error, _stale} ->
+          {:error, :not_found}
       end
     else
       {:error, :unauthorized}
@@ -449,13 +471,21 @@ defmodule Kammer.Moderation do
   end
 
   defp close_report(report, actor, status) do
-    report
-    |> Ecto.Changeset.change(
-      status: status,
-      resolved_by_user_id: actor.id,
-      resolved_at: DateTime.utc_now(:second)
-    )
-    |> Repo.update()
+    changeset =
+      Ecto.Changeset.change(report,
+        status: status,
+        resolved_by_user_id: actor.id,
+        resolved_at: DateTime.utc_now(:second)
+      )
+
+    # A report whose content a concurrent resolve already removed is gone —
+    # the row cascades away with its post/comment (`on_delete: :delete_all`).
+    # Fold that stale update into the same neutral not-found the unban twins
+    # use, never a StaleEntryError 500.
+    case Repo.update(changeset, stale_error_field: :id) do
+      {:ok, closed} -> {:ok, closed}
+      {:error, _stale} -> {:error, :not_found}
+    end
   end
 
   defp remove_subject(actor, %Report{post_id: post_id}) when is_binary(post_id) do

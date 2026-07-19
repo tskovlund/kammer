@@ -172,6 +172,21 @@ defmodule Kammer.ModerationTest do
 
       assert report_id == report.id
     end
+
+    test "dismissing a report whose content a concurrent resolve already removed is a neutral not-found, not a 500",
+         %{owner: owner, moderator: moderator, reporter: reporter, post: post} do
+      {:ok, report} = Moderation.report_post(reporter, post, "Spam")
+
+      # A concurrent resolve hard-deletes the post, cascading the report row
+      # away. The community admin still holds the stale open report; closing it
+      # must fold the vanished row into a neutral not-found, never a
+      # StaleEntryError 500. (A group moderator instead fails authorization
+      # first — a deleted post resolves no group — so the admin is the caller
+      # that reaches the stale update.)
+      {:ok, _resolved} = Moderation.resolve_report(moderator, report)
+
+      assert {:error, :not_found} = Moderation.dismiss_report(owner, report)
+    end
   end
 
   describe "bans" do
@@ -197,6 +212,21 @@ defmodule Kammer.ModerationTest do
 
       assert [%{action: "member.unbanned"}, %{action: "member.banned"}] =
                Audit.list_events(owner, community)
+    end
+
+    test "lifting an already-lifted ban is a neutral not-found, not a 500", %{
+      community: community,
+      owner: owner,
+      author: author
+    } do
+      {:ok, ban} = Moderation.ban_member(owner, community, author, nil)
+
+      # A concurrent admin lifted the same ban first: the row is gone by
+      # the time this delete runs. It must fold into the nonexistent-ban
+      # path (:not_found), not raise a StaleEntryError (a controller 500).
+      Repo.delete!(ban)
+
+      assert {:error, :not_found} = Moderation.unban(owner, ban)
     end
 
     test "only admins ban; nobody bans admins or themselves", %{
@@ -311,6 +341,19 @@ defmodule Kammer.ModerationTest do
       assert {:ok, _membership} = Communities.add_member(community, author)
     end
 
+    test "lifting an already-lifted instance ban is a neutral not-found, not a 500", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+      {:ok, ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      # A concurrent operator lifted the same ban first: fold into the
+      # nonexistent-ban 404 rather than raising on the stale delete.
+      Repo.delete!(ban)
+
+      assert {:error, :not_found} = Moderation.unban_instance(operator, ban)
+    end
+
     test "can ban an email with no account yet — the eventual signup is refused (#377)" do
       operator = instance_operator_fixture()
       email = unique_user_email()
@@ -325,6 +368,34 @@ defmodule Kammer.ModerationTest do
       # dormant account the join gate used to catch never forms.
       assert {:error, changeset} = Accounts.register_user(%{email: email, display_name: "Nope"})
       assert "has already been taken" in errors_on(changeset).email
+    end
+
+    test "records an instance-level audit entry for the ban and the unban (#276)", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+
+      {:ok, ban} = Moderation.ban_instance(operator, author.email, "Chikane")
+      {:ok, _lifted} = Moderation.unban_instance(operator, ban)
+
+      {entries, nil} = Audit.list_instance_events_page(operator, nil, 50)
+
+      assert [%{action: "instance_ban.lifted"}, %{action: "instance_ban.created"}] = entries
+      assert Enum.all?(entries, &(&1.community_id == nil))
+      assert Enum.all?(entries, &(&1.summary =~ author.email))
+    end
+
+    test "a no-account ban still writes an instance audit entry — the gap #276 named" do
+      operator = instance_operator_fixture()
+      email = unique_user_email()
+
+      # No community is affected (no account), so the per-community audit
+      # loop is empty; the instance-level entry is the only record there is.
+      assert {:ok, _ban} = Moderation.ban_instance(operator, email, nil)
+
+      {[entry], nil} = Audit.list_instance_events_page(operator, nil, 50)
+      assert entry.action == "instance_ban.created"
+      assert entry.summary =~ email
     end
 
     test "revokes the banned account's device tokens, not just its memberships (#276)", %{

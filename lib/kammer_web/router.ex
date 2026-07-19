@@ -288,6 +288,10 @@ defmodule KammerWeb.Router do
     post "/instance/moderation/bans", ModerationController, :instance_ban
     delete "/instance/moderation/bans/:ban_id", ModerationController, :instance_unban
 
+    # The instance-level audit log (SPEC §11, #276): operator actions with
+    # no single community — no-account bans and every unban. Operator-only.
+    get "/instance/moderation/audit", ModerationController, :instance_audit
+
     # Legal-page editing (issue #259, SPEC §13) — the API twin of
     # LegalLive.Edit; the public read stays unauthenticated above.
     put "/legal/:key", LegalController, :update

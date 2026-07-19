@@ -100,10 +100,16 @@ defmodule KammerWeb.Api.ModerationController do
            {:ok, _lifted} <- Moderation.unban(actor, existing) do
         json(conn, %{data: %{status: "unbanned"}})
       else
-        nil -> ApiError.send(conn, :not_found, "Not found.")
-        false -> ApiError.send(conn, :not_found, "Not found.")
-        # A ban the caller may not lift is hidden, not forbidden.
-        {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
+        nil ->
+          ApiError.send(conn, :not_found, "Not found.")
+
+        false ->
+          ApiError.send(conn, :not_found, "Not found.")
+
+        # A ban the caller may not lift is hidden, not forbidden; a ban a
+        # concurrent lift already removed is a neutral 404, not a 500.
+        {:error, reason} when reason in [:unauthorized, :not_found] ->
+          ApiError.send(conn, :not_found, "Not found.")
       end
     end)
   end
@@ -165,9 +171,37 @@ defmodule KammerWeb.Api.ModerationController do
          {:ok, _lifted} <- Moderation.unban_instance(actor, ban) do
       json(conn, %{data: %{status: "unbanned"}})
     else
-      nil -> ApiError.send(conn, :not_found, "Not found.")
-      # A ban the caller may not lift is hidden, not forbidden.
-      {:error, :unauthorized} -> ApiError.send(conn, :not_found, "Not found.")
+      nil ->
+        ApiError.send(conn, :not_found, "Not found.")
+
+      # A ban the caller may not lift is hidden, not forbidden; a ban a
+      # concurrent lift already removed is a neutral 404, not a 500.
+      {:error, reason} when reason in [:unauthorized, :not_found] ->
+        ApiError.send(conn, :not_found, "Not found.")
+    end
+  end
+
+  @spec instance_audit(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def instance_audit(conn, params) do
+    user = conn.assigns.current_scope.user
+
+    # Operator-only, and an operator is not a secret — a denied caller gets
+    # an honest 403, mirroring `instance_bans` (the context reader also
+    # gates, so the list can't leak if reached another way).
+    if Authorization.instance_operator?(user) do
+      {events, next_cursor} =
+        Audit.list_instance_events_page(
+          user,
+          Pagination.decode(params["after"]),
+          Pagination.limit(params, @audit_default_limit)
+        )
+
+      json(conn, %{
+        data: Enum.map(events, &Serializer.audit_event/1),
+        next_cursor: Pagination.encode(next_cursor)
+      })
+    else
+      ApiError.send(conn, :forbidden, "You are not allowed to do that.")
     end
   end
 
