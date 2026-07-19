@@ -96,6 +96,17 @@ defmodule Kammer.Storage.LocalTest do
       # Deleting again (already gone) is not an error.
       assert :ok = Local.delete("to-delete.txt")
     end
+
+    test "delete/1 surfaces a genuine failure instead of masking it as :ok", %{
+      uploads_path: uploads_path
+    } do
+      # A directory can't be removed with File.rm, so it stands in for any
+      # real unlink failure: delete/1 must report it, not swallow it — a
+      # silent :ok here would let a blob leak with no operator signal.
+      File.mkdir_p!(Path.join(uploads_path, "a-directory"))
+
+      assert {:error, _reason} = Local.delete("a-directory")
+    end
   end
 
   defp self_source_file, do: __ENV__.file

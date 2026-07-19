@@ -11,6 +11,8 @@ defmodule Kammer.Files do
 
   import Ecto.Query, warn: false
 
+  require Logger
+
   alias Kammer.Accounts.User
   alias Kammer.Authorization
   alias Kammer.Communities.Community
@@ -418,6 +420,49 @@ defmodule Kammer.Files do
     end)
 
     length(expired_files)
+  end
+
+  @doc """
+  The storage keys — display blobs and thumbnails — of every file held
+  in a group's space. Used to purge the on-disk bytes when a group is
+  hard-deleted (`Kammer.Groups.delete_group/2`): the DB cascade drops the
+  `stored_files` rows but never the blobs, and the daily purge worker
+  (soft-deleted content and expired transients only) never reaches them
+  either.
+  """
+  @spec group_storage_keys(Group.t()) :: [Storage.key()]
+  def group_storage_keys(%Group{id: group_id}) do
+    Repo.all(
+      from(stored_file in StoredFile,
+        where: stored_file.group_id == ^group_id,
+        select: {stored_file.storage_key, stored_file.thumbnail_key}
+      )
+    )
+    |> Enum.flat_map(fn {storage_key, thumbnail_key} -> [storage_key, thumbnail_key] end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Best-effort removal of storage blobs by key (a missing key is not an
+  error — see `Kammer.Storage`). A genuine adapter failure (an S3 outage,
+  a local-disk error) is logged rather than raised, so the caller isn't
+  blocked, but the leaked keys stay visible to an operator.
+  """
+  @spec delete_blobs([Storage.key()]) :: :ok
+  def delete_blobs(keys) do
+    failed =
+      Enum.reduce(keys, [], fn key, failed ->
+        case Storage.delete(key) do
+          :ok -> failed
+          {:error, _reason} -> [key | failed]
+        end
+      end)
+
+    if failed != [] do
+      Logger.warning("failed to purge #{length(failed)} storage blob(s): #{inspect(failed)}")
+    end
+
+    :ok
   end
 
   ## Folders (SPEC §7: shallow tree, presets only — ADR 0009)

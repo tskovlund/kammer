@@ -15,6 +15,7 @@ defmodule Kammer.Groups do
   alias Kammer.Authorization
   alias Kammer.Communities.Community
   alias Kammer.Events
+  alias Kammer.Files
   alias Kammer.Groups.Group
   alias Kammer.Groups.GroupJoinRequest
   alias Kammer.Groups.GroupMembership
@@ -304,7 +305,7 @@ defmodule Kammer.Groups do
   sole power over sealed groups this is (ADR 0005).
   """
   @spec delete_group(User.t(), Group.t()) ::
-          {:ok, Group.t()} | {:error, Ecto.Changeset.t() | :unauthorized}
+          {:ok, Group.t()} | {:error, :not_found | :unauthorized}
   def delete_group(%User{} = actor, %Group{} = group) do
     with :ok <- Authorization.authorize(actor, :delete_group, group) do
       # One transaction, so the destructive op and its audit record are
@@ -313,16 +314,27 @@ defmodule Kammer.Groups do
       # audit back too (no false "deleted" row) — answering a neutral
       # 404, since an already-deleted group is indistinguishable from a
       # nonexistent one.
-      Repo.transact(fn ->
-        case Repo.delete(group, stale_error_field: :id) do
-          {:ok, deleted} ->
-            audit_group_action(actor, deleted, "group.deleted", "deleted the group")
-            {:ok, deleted}
+      result =
+        Repo.transact(fn ->
+          # Capture the group's file blobs before the DB cascade drops the
+          # stored_files rows; the on-disk cleanup runs only after the
+          # transaction commits, since a filesystem unlink can't roll back.
+          storage_keys = Files.group_storage_keys(group)
 
-          {:error, _stale} ->
-            {:error, :not_found}
-        end
-      end)
+          case Repo.delete(group, stale_error_field: :id) do
+            {:ok, deleted} ->
+              audit_group_action(actor, deleted, "group.deleted", "deleted the group")
+              {:ok, {deleted, storage_keys}}
+
+            {:error, _stale} ->
+              {:error, :not_found}
+          end
+        end)
+
+      with {:ok, {deleted, storage_keys}} <- result do
+        Files.delete_blobs(storage_keys)
+        {:ok, deleted}
+      end
     end
   end
 

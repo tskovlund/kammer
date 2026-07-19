@@ -35,10 +35,16 @@ defmodule Kammer.Storage.Local do
   end
 
   @impl Kammer.Storage
-  @spec delete(Kammer.Storage.key()) :: :ok
+  @spec delete(Kammer.Storage.key()) :: :ok | {:error, term()}
   def delete(key) do
-    key |> absolute_path() |> File.rm()
-    :ok
+    case key |> absolute_path() |> File.rm() do
+      :ok -> :ok
+      # A missing key is not an error (the behaviour's contract); any
+      # other failure (permissions, I/O) is surfaced so callers can log
+      # rather than silently leak the blob.
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp absolute_path(key) do
