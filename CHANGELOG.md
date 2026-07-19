@@ -10,6 +10,17 @@ and this project adheres to
 
 ### Fixed
 
+- Deleting a group now removes its uploaded file blobs from disk, not just
+  the database rows (issue #276). A group delete hard-deletes and cascades
+  every child row, but the on-disk bytes for the group's stored files and
+  their thumbnails were never removed — and the daily purge worker sweeps
+  only _soft_-deleted content and expired transient uploads, never a
+  hard-deleted group's blobs, so those stayed orphaned forever, quietly
+  breaking the privacy template's promise that deleted content is purged.
+  `Groups.delete_group/2` now captures the group's storage keys inside the
+  delete transaction and purges the blobs once it commits (a filesystem
+  unlink can't roll back, so it runs post-commit).
+
 - The test suite no longer leaks a recurring
   `update check failed: {:unexpected_status, 500}` warning (issue #280).
   The update-check failure-path test emitted it from its own stubbed 500

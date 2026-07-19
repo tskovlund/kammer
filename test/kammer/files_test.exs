@@ -4,6 +4,7 @@ defmodule Kammer.FilesTest do
   import Kammer.CommunitiesFixtures
 
   alias Kammer.Files
+  alias Kammer.Groups
   alias Kammer.Storage
 
   @moduletag :tmp_dir
@@ -57,6 +58,47 @@ defmodule Kammer.FilesTest do
 
       assert {:ok, _display_path} = Storage.path_for(stored_file.storage_key)
       assert {:ok, _thumbnail_path} = Storage.path_for(stored_file.thumbnail_key)
+    end
+  end
+
+  describe "group deletion purges file blobs (#276)" do
+    test "hard-deleting a group removes its stored-file bytes from disk", %{
+      group: group,
+      member: member,
+      tmp_dir: tmp_dir
+    } do
+      owner = group_member_fixture(group, :owner)
+
+      {:ok, image} =
+        Files.create_from_upload(member, group, write_test_image(tmp_dir), %{
+          filename: "photo.jpg",
+          content_type: "image/jpeg"
+        })
+
+      plain_path = Path.join(tmp_dir, "notes.txt")
+      File.write!(plain_path, "hej")
+
+      {:ok, plain} =
+        Files.create_from_upload(member, group, plain_path, %{
+          filename: "notes.txt",
+          content_type: "text/plain"
+        })
+
+      # Blobs exist before the delete; the plain file has no thumbnail,
+      # which exercises the nil-key path in group_storage_keys/1.
+      assert {:ok, _} = Storage.path_for(image.storage_key)
+      assert {:ok, _} = Storage.path_for(image.thumbnail_key)
+      assert {:ok, _} = Storage.path_for(plain.storage_key)
+      assert is_nil(plain.thumbnail_key)
+
+      assert {:ok, _deleted} = Groups.delete_group(owner, group)
+
+      # The DB cascade drops the rows (pre-existing); the fix drops the
+      # on-disk bytes that the cascade and the daily purge worker miss.
+      refute Repo.reload(image)
+      assert {:error, :not_found} = Storage.path_for(image.storage_key)
+      assert {:error, :not_found} = Storage.path_for(image.thumbnail_key)
+      assert {:error, :not_found} = Storage.path_for(plain.storage_key)
     end
   end
 
