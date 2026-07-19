@@ -276,6 +276,26 @@ defmodule Kammer.Accounts do
     end
   end
 
+  @doc """
+  Revokes every device credential — browser session and API device token
+  alike (`@device_contexts`) — the user holds, in one statement. Used
+  when an account is banned instance-wide (`Kammer.Moderation.ban_instance/3`),
+  so the ban severs live access, not just community membership, the way
+  account deletion and an email change already do. Follows the ADR 0029
+  lock order: this delete takes the device rows first, its cascade any
+  pending step-up tokens.
+  """
+  @spec revoke_all_user_devices(User.t()) :: :ok
+  def revoke_all_user_devices(%User{} = user) do
+    Repo.delete_all(
+      from(token in UserToken,
+        where: token.user_id == ^user.id and token.context in ^@device_contexts
+      )
+    )
+
+    :ok
+  end
+
   ## Passkeys (ADR 0018, SPEC §16): WebAuthn credentials, registered
   ## after first login. Sign-in is usernameless — no `allow_credentials`
   ## is set on the authentication challenge, so the browser offers every

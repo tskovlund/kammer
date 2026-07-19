@@ -133,6 +133,16 @@ defmodule KammerWeb.Api.ModerationController do
 
     case Moderation.ban_instance(actor, email, normalize_reason(params["reason"])) do
       {:ok, ban} ->
+        # `ban_instance` already revoked the banned account's device
+        # tokens; sever its open sockets now too so a live stream can't
+        # outlive the credential (as account deletion / email change do).
+        # A no-op when the banned address has no account.
+        banned_user = Accounts.get_user_by_email(ban.email)
+
+        if banned_user do
+          KammerWeb.Endpoint.broadcast("api_user_socket:#{banned_user.id}", "disconnect", %{})
+        end
+
         # The banning operator is the actor in hand — no re-fetch to
         # serialize `banned_by`.
         conn
