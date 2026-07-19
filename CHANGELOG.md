@@ -28,14 +28,13 @@ and this project adheres to
 
 ### Fixed
 
-- Concurrent moderation actions on the same target no longer 500. Lifting a
-  community or instance ban that another moderator already lifted, and
-  dismissing a report whose content another moderator concurrently removed,
-  now answer a neutral 404 instead of raising (issue #276). The two `unban`
-  controllers gained an `else` clause for the already-folded not-found result
-  (they previously raised a `WithClauseError`), and report `dismiss` now folds
-  its own stale update the way the ban lifts already did — the last of the
-  three sibling moderation races that shared this shape.
+- Three concurrent-moderation races that raised a 500 now answer a neutral 404
+  instead (issue #276): lifting a community or instance ban that another
+  moderator already lifted, and dismissing a report whose content another
+  moderator concurrently removed. The two `unban` controllers gained an `else`
+  clause for the already-folded not-found result (they previously raised a
+  `WithClauseError`), and report `dismiss` now folds its own stale update the
+  way the ban lifts already did.
 
 - ICS calendar files now fold long content lines to at most 75 octets
   _including_ a continuation line's leading space (issue #383, RFC 5545
