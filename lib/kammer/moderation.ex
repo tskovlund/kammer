@@ -60,7 +60,7 @@ defmodule Kammer.Moderation do
   @spec report_comment(User.t(), Comment.t(), String.t()) ::
           {:ok, Report.t()} | {:error, Ecto.Changeset.t() | :unauthorized | :rate_limited}
   def report_comment(%User{} = reporter, %Comment{} = comment, reason) do
-    {group, _subject_id} = Feed.comment_context(comment)
+    {group, _subject} = Feed.comment_context(comment)
 
     with :ok <- Authorization.authorize(reporter, :view_group, group),
          :ok <- check_report_rate_limit(reporter.id) do
