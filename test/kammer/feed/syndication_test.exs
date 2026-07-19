@@ -72,6 +72,43 @@ defmodule Kammer.Feed.SyndicationTest do
       refute xml =~ "<Group>"
     end
 
+    test "strips XML-illegal control chars but keeps TAB/LF/CR (#364)" do
+      xml =
+        Syndication.rss(%{
+          title: "ok",
+          # C0 controls other than TAB/LF/CR — BEL/VT/FF here — and the
+          # U+FFFE/U+FFFF noncharacters are XML-illegal and get stripped;
+          # TAB, LF, and CR are legal and must survive. One illegal char
+          # anywhere would make a strict parser reject the whole feed.
+          description: "keep\ttab\nand\rcr\abel\vvt\fff\u{FFFE}\u{FFFF}end",
+          link: "https://kammer.test/g",
+          feed_url: "https://kammer.test/g/feed.rss",
+          posts: [],
+          post_link_fun: &post_link_fun/1
+        })
+
+      assert xml =~ "<description>keep\ttab\nand\rcrbelvtffend</description>"
+      refute String.contains?(xml, <<0x07>>)
+    end
+
+    test "strips control chars from the description CDATA body too, not just titles (#364)" do
+      # The <description> carries rendered post HTML through cdata/1, which
+      # doesn't run through escape/1 — a control char there is XML-illegal
+      # even inside CDATA, so this path is stripped at its own boundary.
+      xml =
+        Syndication.rss(%{
+          title: "t",
+          description: "d",
+          link: "https://kammer.test/g",
+          feed_url: "https://kammer.test/g/feed.rss",
+          posts: [post(body_markdown: "ring\abell")],
+          post_link_fun: &post_link_fun/1
+        })
+
+      refute String.contains?(xml, <<0x07>>)
+      assert xml =~ "ringbell"
+    end
+
     test "no posts still produces a valid, empty channel" do
       xml =
         Syndication.rss(%{

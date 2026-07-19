@@ -125,11 +125,21 @@ defmodule Kammer.Feed.Syndication do
     Calendar.strftime(datetime, "%a, %d %b %Y %H:%M:%S GMT")
   end
 
+  # XML 1.0 forbids the C0 control characters other than TAB/LF/CR, plus
+  # the U+FFFE/U+FFFF noncharacters. A single one in a user-supplied title
+  # or body makes the whole document ill-formed, and a strict parser
+  # rejects every item, not just the offending one — one crafted post title
+  # takes the feed down for every subscriber (#364). Strip them at the
+  # output boundary, the same place the ICS side escapes (#313). (Lone
+  # surrogates can't occur here: Elixir strings are UTF-8.)
+  @xml_illegal ~r/[\x00-\x08\x0B\x0C\x0E-\x1F\x{FFFE}\x{FFFF}]/u
+
   defp escape(nil), do: ""
 
   defp escape(text) do
     text
     |> to_string()
+    |> String.replace(@xml_illegal, "")
     |> String.replace("&", "&amp;")
     |> String.replace("<", "&lt;")
     |> String.replace(">", "&gt;")
@@ -137,9 +147,11 @@ defmodule Kammer.Feed.Syndication do
     |> String.replace("'", "&apos;")
   end
 
-  # CDATA content only needs protecting against an embedded "]]>"
-  # sequence, which would otherwise close the section early.
+  # CDATA content is not exempt from XML's character rules, so strip the
+  # illegal range here too (this path doesn't run through escape/1), then
+  # protect against an embedded "]]>" that would close the section early.
   defp cdata(html) do
-    "<![CDATA[" <> String.replace(html, "]]>", "]]]]><![CDATA[>") <> "]]>"
+    stripped = String.replace(html, @xml_illegal, "")
+    "<![CDATA[" <> String.replace(stripped, "]]>", "]]]]><![CDATA[>") <> "]]>"
   end
 end
