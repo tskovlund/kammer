@@ -10,6 +10,8 @@ defmodule Kammer.ModerationTest do
   import Kammer.AccountsFixtures
   import Kammer.CommunitiesFixtures
 
+  alias Kammer.Accounts
+  alias Kammer.Accounts.UserToken
   alias Kammer.Audit
   alias Kammer.Communities
   alias Kammer.Communities.CommunityMembership
@@ -319,6 +321,23 @@ defmodule Kammer.ModerationTest do
 
       future_signup = user_fixture(%{email: email})
       assert {:error, :instance_banned} = Communities.add_member(community, future_signup)
+    end
+
+    test "revokes the banned account's device tokens, not just its memberships (#276)", %{
+      author: author
+    } do
+      operator = instance_operator_fixture()
+
+      _session = Accounts.generate_user_session_token(author)
+      {_token, device} = UserToken.build_device_token(author, "phone")
+      Repo.insert!(device)
+      assert length(Accounts.list_user_devices(author)) == 2
+
+      assert {:ok, _ban} = Moderation.ban_instance(operator, author.email, nil)
+
+      # An instance ban locks the account out of every community, so its
+      # live credentials die with its memberships — no session survives.
+      assert Accounts.list_user_devices(author) == []
     end
 
     test "only operators ban instance-wide; nobody bans themselves or another operator", %{

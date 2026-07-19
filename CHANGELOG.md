@@ -10,6 +10,19 @@ and this project adheres to
 
 ### Fixed
 
+- An instance-wide ban now severs the banned account's current live
+  sessions, not just its community memberships (issue #276). Banning an
+  email removed the account from every community but left its device tokens
+  valid and its websockets open, so an active session kept working
+  (continued `/me` access, historical notifications) until it happened to
+  reconnect — the one adversarial account event that _didn't_ drop its live
+  credentials, unlike account deletion, device revocation, and email
+  change, which all do. `ban_instance` now revokes the account's device
+  tokens inside the ban transaction and the API severs its open sockets.
+  (This kills the live session; a banned account re-authenticating into its
+  now-empty state, and the separate email-change ban-evasion hole, are
+  tracked in #377.)
+
 - Deleting a group now removes its uploaded file blobs from disk, not just
   the database rows (issue #276). A group delete hard-deletes and cascades
   every child row, but the on-disk bytes for the group's stored files and

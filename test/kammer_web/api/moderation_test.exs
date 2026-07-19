@@ -506,6 +506,38 @@ defmodule KammerWeb.Api.ModerationTest do
       assert details["email"]
     end
 
+    test "banning an account severs its live sockets (#276)", %{author: author} do
+      operator = instance_operator_fixture()
+
+      KammerWeb.Endpoint.subscribe("api_user_socket:#{author.id}")
+
+      operator
+      |> api_conn()
+      |> post(~p"/api/v1/instance/moderation/bans", %{email: author.email})
+      |> json_response(201)
+
+      # The banned account's device tokens were revoked (Moderation); the
+      # controller also drops its open sockets so a live stream can't
+      # outlive the credential.
+      assert_receive %Phoenix.Socket.Broadcast{
+        topic: "api_user_socket:" <> id,
+        event: "disconnect"
+      }
+
+      assert id == author.id
+    end
+
+    test "banning an email with no account is a 201, not a nil-deref crash" do
+      operator = instance_operator_fixture()
+
+      # No account owns this address, so there is no socket to sever; the
+      # controller's nil-guard must skip the broadcast rather than 500.
+      operator
+      |> api_conn()
+      |> post(~p"/api/v1/instance/moderation/bans", %{email: "ghost@example.com"})
+      |> json_response(201)
+    end
+
     test "an operator bans an email, lists it, and lifts it", %{author: author} do
       operator = instance_operator_fixture()
 
