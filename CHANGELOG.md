@@ -10,6 +10,16 @@ and this project adheres to
 
 ### Fixed
 
+- The legal-page editor's changeset no longer casts `updated_by_user_id`
+  from the request body (issue #276); the "who last edited" attribution is
+  set programmatically in the context via `put_change`, per the convention
+  that programmatic fields are never cast. It was already safe in practice
+  (the context overwrote any body-supplied value), so this closes the
+  defense-in-depth gap where a future caller skipping that overwrite would
+  let a crafted body spoof the editor. Also drops the now-unused
+  `Legal.change_page/2` form-changeset helper, orphaned when the LiveView
+  edit form was removed in #187.
+
 - An instance-wide ban now severs the banned account's current live
   sessions, not just its community memberships (issue #276). Banning an
   email removed the account from every community but left its device tokens
