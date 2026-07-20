@@ -79,7 +79,7 @@
 					</span>
 					{option.text}
 				</span>
-				<span class="relative text-xs tabular-nums text-ink-faint">{percent}%</span>
+				<span class="relative text-xs text-ink-faint tabular-nums">{percent}%</span>
 			</span>
 		</button>
 	{/each}

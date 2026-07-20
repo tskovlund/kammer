@@ -293,7 +293,7 @@
 			</div>
 
 			<div class="mt-6">
-				<h3 class="text-sm font-medium uppercase tracking-wide text-ink-faint">
+				<h3 class="text-sm font-medium tracking-wide text-ink-faint uppercase">
 					{t('setup.done.inviteHeading')}
 				</h3>
 				<p

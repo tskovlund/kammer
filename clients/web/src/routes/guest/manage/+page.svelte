@@ -186,7 +186,7 @@
 		<section class="mt-8" aria-labelledby="guest-manage-rsvps-heading">
 			<h2
 				id="guest-manage-rsvps-heading"
-				class="text-sm font-medium uppercase tracking-wide text-ink-faint"
+				class="text-sm font-medium tracking-wide text-ink-faint uppercase"
 			>
 				{t('guest.manage.sections.rsvps')}
 			</h2>
@@ -237,7 +237,7 @@
 		<section class="mt-8" aria-labelledby="guest-manage-claims-heading">
 			<h2
 				id="guest-manage-claims-heading"
-				class="text-sm font-medium uppercase tracking-wide text-ink-faint"
+				class="text-sm font-medium tracking-wide text-ink-faint uppercase"
 			>
 				{t('guest.manage.sections.claims')}
 			</h2>
@@ -270,7 +270,7 @@
 		<section class="mt-8" aria-labelledby="guest-manage-comments-heading">
 			<h2
 				id="guest-manage-comments-heading"
-				class="text-sm font-medium uppercase tracking-wide text-ink-faint"
+				class="text-sm font-medium tracking-wide text-ink-faint uppercase"
 			>
 				{t('guest.manage.sections.comments')}
 			</h2>
@@ -299,7 +299,7 @@
 		<section class="mt-8" aria-labelledby="guest-manage-subscriptions-heading">
 			<h2
 				id="guest-manage-subscriptions-heading"
-				class="text-sm font-medium uppercase tracking-wide text-ink-faint"
+				class="text-sm font-medium tracking-wide text-ink-faint uppercase"
 			>
 				{t('guest.manage.sections.subscriptions')}
 			</h2>
