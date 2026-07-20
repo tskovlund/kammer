@@ -76,6 +76,7 @@ defmodule Kammer.Calendar.ICS do
       "BEGIN:VEVENT",
       "UID:#{event.id}@kammer",
       "DTSTAMP:#{format_datetime(event.updated_at || event.starts_at)}",
+      "SEQUENCE:#{event.sequence}",
       dtstart(event),
       dtend(event),
       "SUMMARY:#{escape(event.title)}",
@@ -89,13 +90,16 @@ defmodule Kammer.Calendar.ICS do
 
   # A cancelled occurrence downloaded on its own must not look live:
   # STATUS:CANCELLED marks it off in the calendar rather than planting a
-  # normal-looking event. (Whether a *re*-download updates a copy the
-  # subscriber already imported is best-effort under METHOD:PUBLISH with
-  # no SEQUENCE — DTSTAMP-gated clients accept it, SEQUENCE-gated ones
-  # may not; proper iTIP revision handling is tracked separately.) The
-  # feeds exclude cancelled occurrences upstream, so this only bites the
-  # single-event surface today, but the generator marks any cancelled
-  # event it's handed, whatever the surface.
+  # normal-looking event. `Kammer.Events` bumps the event's SEQUENCE on
+  # cancellation (#363), so a re-download reliably updates a copy the
+  # subscriber already imported: SEQUENCE-gated clients re-process on the
+  # advanced revision, DTSTAMP-gated ones on the advanced DTSTAMP. (We stay
+  # on METHOD:PUBLISH rather than the iTIP METHOD:CANCEL retraction — CANCEL
+  # requires ORGANIZER/ATTENDEE, which these publish-style feeds don't model;
+  # STATUS:CANCELLED + SEQUENCE is the conformant publish-feed equivalent.)
+  # The feeds exclude cancelled occurrences upstream, so this only bites the
+  # single-event surface today, but the generator marks any cancelled event
+  # it's handed, whatever the surface.
   defp status(%Event{cancelled_at: nil}), do: nil
   defp status(%Event{}), do: "STATUS:CANCELLED"
 
