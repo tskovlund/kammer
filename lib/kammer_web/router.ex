@@ -274,6 +274,11 @@ defmodule KammerWeb.Router do
     post "/auth/step-up/passkey/verify", StepUpController, :passkey_verify
     post "/auth/step-up/request-link", StepUpController, :request_link
 
+    # Mints the short-lived token the websocket connects with (issue #175),
+    # so the long-lived device token stays in the Authorization header and
+    # never rides in the socket URL.
+    post "/realtime/token", RealtimeController, :token
+
     get "/home", HomeController, :show
 
     # Instance operator settings (issue #183), gated to operators in the

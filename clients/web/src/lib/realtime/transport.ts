@@ -5,8 +5,10 @@
  * channel-join logic can be exercised without a real WebSocket.
  *
  * One transport wraps one Phoenix `Socket` (one per added instance, ADR
- * 0001 / #173), authenticated with that instance's device token as the
- * `token` connect param — the same token the REST Bearer header carries.
+ * 0001 / #173), authenticated with a short-lived socket token minted over
+ * REST from that instance's device token (issue #175) — passed as the `token`
+ * connect param. The long-lived device token stays in the REST `Authorization`
+ * header and never rides the socket URL.
  */
 
 /** A single join attempt on a channel — mirrors Phoenix's push receiver. */
