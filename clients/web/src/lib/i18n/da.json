@@ -670,6 +670,7 @@
 	"manage.instanceModeration.ban.submit": "Bortvis fra hele instansen",
 	"manage.instanceModeration.ban.confirm": "Bortvis {email} fra hele instansen? Alle deres medlemskaber fjernes, og adressen kan ikke komme ind i noget fællesskab, før bortvisningen ophæves.",
 	"manage.instanceModeration.ban.errorAlreadyBanned": "Den e-mail er allerede bortvist fra hele instansen.",
+	"manage.instanceModeration.ban.errorInvalidEmail": "Det ligner ikke en gyldig e-mailadresse.",
 	"manage.instanceModeration.ban.errorRefused": "Den e-mail kan ikke bortvises — operatører, fællesskabsejere og din egen adresse er beskyttet.",
 	"manage.instanceModeration.bans.title": "Aktive instansbortvisninger",
 	"manage.instanceModeration.bans.empty": "Ingen er blokeret på tværs af instansen lige nu.",

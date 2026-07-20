@@ -9,6 +9,7 @@
 		liftInstanceBan,
 		type Ban
 	} from '$lib/manage/api.js';
+	import { isBanEmailValid } from '$lib/moderation/ban-email.js';
 	import { instances } from '$lib/instances/instances.svelte.js';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -76,9 +77,22 @@
 		event.preventDefault();
 		const email = banEmail.trim();
 		if (!instance || !email || banning) return;
+		// Clear any prior error on a fresh attempt, so an early return below
+		// (a rejected address, or a cancelled confirm) never leaves a stale
+		// message pointing at the address the operator just corrected.
+		banError = null;
+		// Reject a malformed address up front so the server's remaining `email`
+		// 422 can only mean already-banned — otherwise a format-rejected address
+		// would read as "already banned" (#276). Belt-and-suspenders: the input's
+		// type="email" already blocks a bad format and the maxlength blocks an
+		// over-long one, so this only bites in a browser that skips native
+		// validation. Mirrors the server rule exactly (see ban-email.ts).
+		if (!isBanEmailValid(email)) {
+			banError = t('manage.instanceModeration.ban.errorInvalidEmail');
+			return;
+		}
 		if (!window.confirm(t('manage.instanceModeration.ban.confirm', { email }))) return;
 		banning = true;
-		banError = null;
 		try {
 			const ban = await createInstanceBan(instance, email, banReason.trim() || null);
 			bans = [ban, ...bans];
@@ -161,6 +175,7 @@
 				type="email"
 				bind:value={banEmail}
 				required
+				maxlength={160}
 			/>
 			<Input
 				id="instance-ban-reason"
