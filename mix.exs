@@ -73,7 +73,7 @@ defmodule Kammer.MixProject do
       {:rustler, ">= 0.0.0", optional: true},
       {:vix, "~> 0.40"},
       {:web_push_ex, "~> 0.2.0"},
-      {:req, "~> 0.5"},
+      {:req, "~> 0.6"},
       # OpenAPI contract for the JSON API (ADR 0014): the spec is
       # generated from the same modules that serve requests, so the
       # Svelte/Swift/Kotlin clients generate from a contract that
