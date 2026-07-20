@@ -1,6 +1,7 @@
 defmodule KammerWeb.Api.RealtimeTest do
   @moduledoc """
-  Channels for API clients (ADR 0014): device-token connects, join
+  Channels for API clients (ADR 0014): short-lived-token connects
+  (issue #175), join
   authorization on both topics in both directions, and end-to-end
   delivery — a post created through the context arrives on the wire
   in the exact REST serializer shape, and never to a viewer the feed
@@ -16,13 +17,16 @@ defmodule KammerWeb.Api.RealtimeTest do
   alias Kammer.Feed
   alias Kammer.Notifications
   alias Kammer.Repo
+  alias KammerWeb.Api.SocketToken
   alias KammerWeb.Api.UserSocket
 
+  # The socket connects with a short-lived token minted from the device token
+  # (issue #175), not the device token itself — mirror that here.
   defp connect_as(user) do
-    {token, user_token} = UserToken.build_device_token(user, "test device")
-    Repo.insert!(user_token)
+    {_token, user_token} = UserToken.build_device_token(user, "test device")
+    device_token = Repo.insert!(user_token)
 
-    {:ok, socket} = connect(UserSocket, %{"token" => token})
+    {:ok, socket} = connect(UserSocket, %{"token" => SocketToken.sign(user.id, device_token.id)})
     socket
   end
 
@@ -35,26 +39,95 @@ defmodule KammerWeb.Api.RealtimeTest do
   end
 
   describe "socket connect" do
-    test "a valid device token connects; garbage and absence do not" do
+    test "a valid short-lived token connects; garbage, absence, and the raw device token do not" do
       %{member: member} = realtime_context()
+      {device_token, user_token} = UserToken.build_device_token(member, "test device")
+      Repo.insert!(user_token)
 
       assert %Phoenix.Socket{} = connect_as(member)
       assert :error = connect(UserSocket, %{"token" => "garbage"})
       assert :error = connect(UserSocket, %{})
+      # The device token is no longer a valid socket credential — only a token
+      # minted by SocketToken is (issue #175).
+      assert :error = connect(UserSocket, %{"token" => device_token})
+    end
+
+    test "a socket token older than its max age is refused (#175)" do
+      %{member: member} = realtime_context()
+      {_token, user_token} = UserToken.build_device_token(member, "test device")
+      device_token = Repo.insert!(user_token)
+
+      # Sign with a stale timestamp so the connect-time max_age check rejects it,
+      # even though the device is still active.
+      stale =
+        Phoenix.Token.sign(
+          KammerWeb.Endpoint,
+          "api socket token",
+          {member.id, device_token.id},
+          signed_at: System.system_time(:second) - SocketToken.max_age_seconds() - 5
+        )
+
+      assert :error = connect(UserSocket, %{"token" => stale})
+    end
+
+    test "a socket token whose device was revoked is refused within its window (#175)" do
+      %{member: member} = realtime_context()
+      {_token, user_token} = UserToken.build_device_token(member, "test device")
+      device_token = Repo.insert!(user_token)
+      socket_token = SocketToken.sign(member.id, device_token.id)
+
+      # Revoke the device (delete the row). The socket token is still unexpired,
+      # but the connect-time device-active check must refuse it — revoking a
+      # device kills its realtime access, not just its REST access.
+      Repo.delete!(device_token)
+
+      assert :error = connect(UserSocket, %{"token" => socket_token})
+    end
+
+    test "a token pairing a valid device with a different user is refused (#175)" do
+      %{author: author, member: member} = realtime_context()
+      {_token, user_token} = UserToken.build_device_token(member, "test device")
+      device_token = Repo.insert!(user_token)
+
+      # The device belongs to `member`, but the token claims `author`. The
+      # connect gate binds the claimed user to the device it names, so a token
+      # that pairs one user with another's still-active device id is refused —
+      # the socket path never has to trust the minting endpoint paired them.
+      forged = SocketToken.sign(author.id, device_token.id)
+
+      assert :error = connect(UserSocket, %{"token" => forged})
+    end
+
+    test "a socket token is refused once the account email changed out from under the device (#175)" do
+      %{member: member} = realtime_context()
+      {_token, user_token} = UserToken.build_device_token(member, "test device")
+      device_token = Repo.insert!(user_token)
+      socket_token = SocketToken.sign(member.id, device_token.id)
+
+      # Change the email directly, leaving the device row in place: the
+      # stale-device purge runs post-commit in the account controller, not
+      # atomically with the email change, so a device row with the old
+      # `sent_to` can briefly outlive the change. The connect gate binds
+      # `sent_to == user.email` exactly as the REST device-token check does, so
+      # it refuses the stale device here without leaning on the purge.
+      member |> Ecto.Changeset.change(email: "moved@example.com") |> Repo.update!()
+
+      assert :error = connect(UserSocket, %{"token" => socket_token})
     end
 
     test "a banned account's surviving token is refused at connect (#377)" do
       %{member: member} = realtime_context()
-      {token, user_token} = UserToken.build_device_token(member, "test device")
-      Repo.insert!(user_token)
+      {_token, user_token} = UserToken.build_device_token(member, "test device")
+      device_token = Repo.insert!(user_token)
+      socket_token = SocketToken.sign(member.id, device_token.id)
 
-      # Ban WITHOUT ban_instance's token revocation, so the token survives:
-      # the connect gate itself must refuse it. The ban's disconnect
-      # broadcast severs live sockets, but the client auto-reconnects, so
-      # connect can't lean on revocation alone (the REST twin is ban_gate).
+      # Ban WITHOUT ban_instance's token revocation, so the device (and its
+      # minted socket token) survive: the connect gate itself must refuse it.
+      # The ban's disconnect broadcast severs live sockets, but the client
+      # auto-reconnects, so connect can't lean on revocation alone.
       instance_ban_fixture(member.email)
 
-      assert :error = connect(UserSocket, %{"token" => token})
+      assert :error = connect(UserSocket, %{"token" => socket_token})
     end
   end
 

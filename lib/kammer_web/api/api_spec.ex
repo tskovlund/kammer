@@ -238,6 +238,18 @@ defmodule KammerWeb.ApiSpec do
             response: json_response("Stepped up", Schemas.StatusResponse)
           )
       },
+      "/api/v1/realtime/token" => %PathItem{
+        post:
+          operation(
+            "Mint a short-lived token to open the realtime websocket (issue #175). " <>
+              "Authenticated with the device token in the Authorization header; the " <>
+              "returned token is what the socket connects with, so the long-lived " <>
+              "credential never rides in the socket URL",
+            :realtime_token,
+            [],
+            response: single_response(Schemas.RealtimeToken)
+          )
+      },
       "/api/v1/me" => %PathItem{
         get:
           operation("The caller's own profile", :me_show, [],

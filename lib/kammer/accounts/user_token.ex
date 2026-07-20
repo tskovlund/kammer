@@ -176,6 +176,34 @@ defmodule Kammer.Accounts.UserToken do
     end
   end
 
+  @doc """
+  Query matching a still-active API device token by its id **and owning user**:
+  keyed on the row id rather than the token secret, but otherwise enforcing the
+  exact same predicates as `verify_device_token_query/1` — the `"api-device"`
+  context, the validity window, and `sent_to == user.email`. A revoked token
+  (its row is deleted) or an expired one fails to match. Used to confirm a
+  short-lived socket token's bound device is still live on connect (issue #175).
+
+  The `user_id` filter binds the socket token's claimed user to the device it
+  names, so a token pairing one user with another user's device id is refused at
+  the gate — the connect path doesn't have to trust the minting endpoint to have
+  paired them. The `sent_to == user.email` filter keeps the socket gate as strong
+  as its REST twin: a device whose account email has since changed is refused
+  here directly, without depending on the controller-side stale-device purge
+  (`purge_stale_api_devices/2`, which runs after the email-change transaction
+  commits) having run yet.
+  """
+  @spec active_device_token_query(Ecto.UUID.t(), Ecto.UUID.t()) :: Ecto.Query.t()
+  def active_device_token_query(id, user_id) do
+    from token in __MODULE__,
+      join: user in assoc(token, :user),
+      where: token.id == ^id,
+      where: token.user_id == ^user_id,
+      where: token.context == "api-device",
+      where: token.inserted_at > ago(^Config.api_device_validity_days(), "day"),
+      where: token.sent_to == user.email
+  end
+
   defp build_hashed_token(user, context, sent_to) do
     token = :crypto.strong_rand_bytes(@rand_size)
     hashed_token = :crypto.hash(@hash_algorithm, token)

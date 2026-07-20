@@ -1024,6 +1024,28 @@ defmodule KammerWeb.Api.Schemas do
     })
   end
 
+  defmodule RealtimeToken do
+    @moduledoc false
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "RealtimeToken",
+      description:
+        "A short-lived token for opening the realtime websocket (issue #175): " <>
+          "pass it as the socket's `token` connect param. Fetch a fresh one per " <>
+          "connect — the long-lived device token stays in the Authorization header.",
+      type: :object,
+      properties: %{
+        token: %Schema{type: :string, description: "The short-lived socket connect token"},
+        expires_in: %Schema{
+          type: :integer,
+          description: "Seconds the token stays valid after minting"
+        }
+      },
+      required: [:token, :expires_in]
+    })
+  end
+
   defmodule HomeGroupSummary do
     @moduledoc false
     require OpenApiSpex

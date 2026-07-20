@@ -1339,6 +1339,23 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/api/v1/realtime/token': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Mint a short-lived token to open the realtime websocket (issue #175). Authenticated with the device token in the Authorization header; the returned token is what the socket connects with, so the long-lived credential never rides in the socket URL */
+		post: operations['realtime_token'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	'/api/v1/me/email-change/confirm': {
 		parameters: {
 			query?: never;
@@ -2991,6 +3008,16 @@ export interface components {
 			default_level: 'everything' | 'highlights' | 'mentions_only' | 'muted';
 			/** @enum {string} */
 			level: 'everything' | 'highlights' | 'mentions_only' | 'muted';
+		};
+		/**
+		 * RealtimeToken
+		 * @description A short-lived token for opening the realtime websocket (issue #175): pass it as the socket's `token` connect param. Fetch a fresh one per connect — the long-lived device token stays in the Authorization header.
+		 */
+		RealtimeToken: {
+			/** @description Seconds the token stays valid after minting */
+			expires_in: number;
+			/** @description The short-lived socket connect token */
+			token: string;
 		};
 		/**
 		 * FileListing
@@ -10365,6 +10392,55 @@ export interface operations {
 			};
 			/** @description Error envelope */
 			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
+	realtime_token: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Data envelope */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': {
+						data: components['schemas']['RealtimeToken'];
+					};
+				};
+			};
+			/** @description Error envelope */
+			401: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			403: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+			/** @description Error envelope */
+			404: {
 				headers: {
 					[name: string]: unknown;
 				};

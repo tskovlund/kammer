@@ -35,6 +35,15 @@ and this project adheres to
   reload the current version so you can reapply your change. Previously two
   operators editing at once was last-write-wins with no warning.
 
+- The realtime websocket now authenticates with a short-lived, single-purpose
+  token instead of the long-lived device token (issue #175). The device token
+  stayed in the socket URL's query string, where any fronting proxy or CDN
+  logging request paths could capture a 365-day credential; the client now
+  mints a ~60-second token over REST (device token in the `Authorization`
+  header only) and connects with that. The short-lived token is bound to the
+  device, so revoking a device also cuts its realtime access on the next
+  connect. No user-visible change; existing connections are unaffected.
+
 ### Fixed
 
 - Three concurrent-moderation races that raised a 500 now answer a neutral 404

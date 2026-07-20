@@ -710,6 +710,26 @@ defmodule Kammer.Accounts do
   end
 
   @doc """
+  Whether an API device token with this id is still active — not revoked
+  (its row deleted), within its validity window, and owned by `user_id`.
+  Confirms a short-lived socket token's bound device is still live and
+  belongs to the claimed user before accepting a websocket connect (issue
+  #175), so revoking the device invalidates any outstanding socket token and
+  a token pairing a user with someone else's device id is refused.
+  """
+  @spec device_token_active?(Ecto.UUID.t(), Ecto.UUID.t()) :: boolean()
+  def device_token_active?(id, user_id) when is_binary(id) and is_binary(user_id) do
+    with {:ok, id} <- Ecto.UUID.cast(id),
+         {:ok, user_id} <- Ecto.UUID.cast(user_id) do
+      Repo.exists?(UserToken.active_device_token_query(id, user_id))
+    else
+      :error -> false
+    end
+  end
+
+  def device_token_active?(_id, _user_id), do: false
+
+  @doc """
   The user behind a valid API device token, or `nil`.
   """
   @spec get_user_by_device_token(String.t()) :: User.t() | nil
