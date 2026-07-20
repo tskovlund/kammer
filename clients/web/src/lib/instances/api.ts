@@ -1,5 +1,6 @@
 import { createApiClient } from '$lib/api/client.js';
 import { ApiError, fail, guard } from '$lib/api/errors.js';
+import { clearPendingInvite } from '$lib/invites/pending.js';
 import { clearSnapshots } from '$lib/offline/snapshot-cache.js';
 import { unsubscribeFromPush } from '$lib/push/subscription.js';
 import { dropSocket } from '$lib/realtime/registry.svelte.js';
@@ -325,6 +326,13 @@ export async function revokeAndRemoveInstance(instanceId: string): Promise<void>
 		// This privacy step runs before the socket teardown so a throw in
 		// `dropSocket` can never skip it (#316).
 		clearSnapshots();
+		// Same shared-device class, a different key: a pending invite token is
+		// a property of one join attempt, not the device, so it must not
+		// outlive the sign-out to ambush the next signer-in (#369). An audit of
+		// every `kammer:*` key found this the only remaining instance/attempt-
+		// scoped residue — `theme`/`locale` are device preferences that
+		// intentionally persist, `instances` and `snapshot:*` are handled above.
+		clearPendingInvite();
 		// Tear down the instance's realtime socket with the instance itself —
 		// whether or not the revoke landed. Left connected, the manager would
 		// keep the old token's socket alive until a reconnect finally 401s,
