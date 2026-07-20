@@ -670,6 +670,7 @@
 	"manage.instanceModeration.ban.submit": "Ban instance-wide",
 	"manage.instanceModeration.ban.confirm": "Ban {email} from the whole instance? Their memberships are removed everywhere, and the address can't join any community until the ban is lifted.",
 	"manage.instanceModeration.ban.errorAlreadyBanned": "That email is already banned instance-wide.",
+	"manage.instanceModeration.ban.errorInvalidEmail": "That doesn't look like a valid email address.",
 	"manage.instanceModeration.ban.errorRefused": "That email can't be banned — operators, community owners, and your own address are protected.",
 	"manage.instanceModeration.bans.title": "Active instance bans",
 	"manage.instanceModeration.bans.empty": "Nobody is blocked instance-wide right now.",
