@@ -23,6 +23,23 @@ const TTL_MS = 30 * 60 * 1000;
 // anything else read back is dropped rather than sent to the API.
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]+$/;
 
+/**
+ * Drops any pending invite outright, without consuming it as a join attempt.
+ * The sign-out / instance-removal teardown calls this so a shared device's
+ * next signer-in can't inherit the previous user's pending token (#369 — the
+ * #186 shared-device class, a different key). Distinct from `takePendingInvite`,
+ * which reads-and-clears as part of actually running the join.
+ */
+export function clearPendingInvite(): void {
+	if (typeof localStorage === 'undefined') return;
+	try {
+		localStorage.removeItem(STORAGE_KEY);
+	} catch {
+		// Best-effort, like the rest of the sign-out teardown: a storage that
+		// throws on access leaves nothing for the next user to inherit anyway.
+	}
+}
+
 export function rememberPendingInvite(token: string): void {
 	if (typeof localStorage === 'undefined' || !TOKEN_SHAPE.test(token)) return;
 	try {

@@ -46,6 +46,14 @@ and this project adheres to
 
 ### Fixed
 
+- Signing out of an instance now also clears any pending community invite left
+  mid-flight, so on a shared device the next person to sign in can't inherit
+  the previous user's invite token (issue #369) — the same shared-device
+  privacy class as the offline-snapshot clearing (#186), for a different
+  stored key. An audit of every `kammer:*` browser-storage key confirmed this
+  was the only remaining instance-scoped residue; the theme and language
+  preferences are device settings and intentionally persist.
+
 - Three concurrent-moderation races that raised a 500 now answer a neutral 404
   instead (issue #276): lifting a community or instance ban that another
   moderator already lifted, and dismissing a report whose content another

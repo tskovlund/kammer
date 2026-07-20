@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { rememberPendingInvite, takePendingInvite } from './pending.js';
+import { clearPendingInvite, rememberPendingInvite, takePendingInvite } from './pending.js';
 
 const KEY = 'kammer:pending-invite';
 
@@ -57,5 +57,12 @@ describe('pending invite carry', () => {
 	it('treats an expired entry as absent — no ambush joins days later', () => {
 		localStorage.setItem(KEY, JSON.stringify({ token: 'AbC-123_x', expiresAt: Date.now() - 1 }));
 		expect(takePendingInvite()).toBeNull();
+	});
+
+	it('clearPendingInvite drops a stored token without consuming it as a join (#369)', () => {
+		rememberPendingInvite('AbC-123_x');
+		clearPendingInvite();
+		// Gone for the next signer-in on a shared device.
+		expect(localStorage.getItem(KEY)).toBeNull();
 	});
 });

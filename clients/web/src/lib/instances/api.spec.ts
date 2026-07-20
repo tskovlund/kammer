@@ -417,4 +417,19 @@ describe('revokeAndRemoveInstance', () => {
 		expect(consoleError).toHaveBeenCalled();
 		consoleError.mockRestore();
 	});
+
+	it("clears a pending invite so a shared device's next signer-in cannot inherit it (#369)", async () => {
+		instanceStore.add(instance);
+		// A join attempt left mid-flight when this instance signs out.
+		localStorage.setItem(
+			'kammer:pending-invite',
+			JSON.stringify({ token: 'AbC-123_x', expiresAt: Date.now() + 60_000 })
+		);
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+		await revokeAndRemoveInstance('instance-1');
+
+		// The token is actually gone from storage — not left for the next user.
+		expect(localStorage.getItem('kammer:pending-invite')).toBeNull();
+	});
 });
