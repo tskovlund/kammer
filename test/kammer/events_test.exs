@@ -989,6 +989,96 @@ defmodule Kammer.EventsTest do
       {:ok, cancelled} = Events.cancel_occurrence(member, event)
       assert ICS.single(cancelled) =~ "STATUS:CANCELLED"
     end
+
+    test "SEQUENCE starts at 0 and every calendar-rendered field's edit advances it (#363)",
+         %{group: group, member: member} do
+      # One representative edit per field the VEVENT renders. Pinning each
+      # member of `@ics_significant_fields` — not just one — means dropping any
+      # from that list (which silently stops that field's edits from reaching
+      # subscribed calendars, i.e. reintroduces #363 for it) fails here, the
+      # same discipline the #313 separator loop above uses.
+      edits = [
+        {"title", %{"title" => "Renamed"}},
+        {"description_markdown", %{"description_markdown" => "Now detailed"}},
+        {"starts_at", %{"starts_at" => future(72)}},
+        {"ends_at", %{"ends_at" => future(80)}},
+        {"all_day", %{"all_day" => true}},
+        {"timezone", %{"timezone" => "Europe/Copenhagen"}},
+        {"location_name", %{"location_name" => "Stakladen"}},
+        {"location_url", %{"location_url" => "https://example.org/where"}}
+      ]
+
+      for {field, attrs} <- edits do
+        {:ok, event} =
+          Events.create_event(member, group, %{"title" => "Base", "starts_at" => future(48)})
+
+        assert event.sequence == 0
+        {:ok, edited} = Events.update_event(member, event, attrs)
+        assert edited.sequence == 1, "editing #{field} should bump SEQUENCE"
+      end
+
+      # The counter reaches the export, and a field the ICS never renders
+      # (capacity) is not a revision — so the gating is real, not always-bump.
+      {:ok, event} =
+        Events.create_event(member, group, %{"title" => "Base", "starts_at" => future(48)})
+
+      assert ICS.single(event) =~ "SEQUENCE:0"
+      {:ok, edited} = Events.update_event(member, event, %{"title" => "Bumped"})
+      assert ICS.single(edited) =~ "SEQUENCE:1"
+
+      {:ok, capped} = Events.update_event(member, edited, %{"capacity" => 10})
+      assert capped.sequence == 1
+    end
+
+    test "cancel and uncancel each bump SEQUENCE monotonically past edits (#363)", %{
+      group: group,
+      member: member
+    } do
+      {:ok, event} =
+        Events.create_event(member, group, %{"title" => "Maybe off", "starts_at" => future(48)})
+
+      {:ok, edited} = Events.update_event(member, event, %{"title" => "Definitely maybe"})
+      assert edited.sequence == 1
+
+      # Cancelling outranks the prior edit, so an edited-then-cancelled
+      # occurrence still updates the copy a subscriber imported. (That the
+      # cancel itself flips STATUS is the #313 test's job — here we pin the
+      # SEQUENCE it rides on.)
+      {:ok, cancelled} = Events.cancel_occurrence(member, edited)
+      assert cancelled.sequence == 2
+      assert ICS.single(cancelled) =~ "SEQUENCE:2"
+
+      # Reinstating is a revision too — the subscriber who saw the cancellation
+      # re-processes back to live rather than keeping the cancelled copy.
+      {:ok, reinstated} = Events.uncancel_occurrence(member, cancelled)
+      assert reinstated.sequence == 3
+      refute ICS.single(reinstated) =~ "STATUS:CANCELLED"
+    end
+
+    test "a cancel/reinstate that changes nothing is a no-op that doesn't advance SEQUENCE (#363)",
+         %{group: group, member: member} do
+      {:ok, event} =
+        Events.create_event(member, group, %{"title" => "Off", "starts_at" => future(48)})
+
+      {:ok, cancelled} = Events.cancel_occurrence(member, event)
+      assert cancelled.sequence == 1
+
+      # A second cancel finds it already cancelled — no revision, so neither
+      # SEQUENCE nor the cancellation timestamp moves (a spurious bump would
+      # make subscribers re-process a change no calendar would show).
+      {:ok, again} = Events.cancel_occurrence(member, cancelled)
+      assert again.sequence == 1
+      assert again.cancelled_at == cancelled.cancelled_at
+
+      # Likewise reinstating an event that was never cancelled — a fresh one,
+      # since the row above is now cancelled in the DB.
+      {:ok, live} =
+        Events.create_event(member, group, %{"title" => "On", "starts_at" => future(48)})
+
+      {:ok, still_live} = Events.uncancel_occurrence(member, live)
+      assert still_live.sequence == 0
+      assert still_live.cancelled_at == nil
+    end
   end
 
   describe "reminder worker" do

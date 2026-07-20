@@ -60,6 +60,15 @@ and this project adheres to
   emitted 76-octet continuation lines. Cosmetic — every calendar client
   tolerates it — but now spec-correct.
 
+- Editing or cancelling an event now reliably updates calendars that already
+  subscribed to it (issue #363). The ICS export never emitted `SEQUENCE`
+  (RFC 5545 §3.8.7.4), so a calendar app that gates re-processing on the
+  revision counter could silently ignore a later edit or cancellation. Events
+  now carry a `SEQUENCE` that advances on each significant revision — an edit
+  to an exported field, a cancellation, or a reinstatement (a capacity-only
+  change, which the calendar never shows, doesn't bump it) — so both
+  revision-gated and timestamp-gated clients pick the change up.
+
 - A calendar app or RSS reader that sends a strict `Accept` header no
   longer gets a 406 from the webcal ICS feeds, the single-event ICS
   download, or a public group's RSS/Atom feed (issue #366) — content

@@ -40,6 +40,9 @@ defmodule Kammer.Events.Event do
     field :capacity, :integer
     field :comment_locked_at, :utc_datetime
     field :cancelled_at, :utc_datetime
+    # RFC 5545 SEQUENCE for the ICS export (#363). Set programmatically by
+    # `Kammer.Events` on significant revisions, never cast from user input.
+    field :sequence, :integer, default: 0
 
     belongs_to :community, Kammer.Communities.Community
     belongs_to :group, Kammer.Groups.Group

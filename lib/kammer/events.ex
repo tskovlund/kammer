@@ -59,6 +59,21 @@ defmodule Kammer.Events do
   # not a paginated archive today; raising it is a product decision).
   @past_events_limit 30
 
+  # The event fields the ICS export renders (SUMMARY/DTSTART/DTEND/LOCATION/
+  # DESCRIPTION and their modifiers). A change to any of them is a "significant
+  # revision" under RFC 5545 §3.8.7.4, so `update_event/3` bumps SEQUENCE to
+  # make subscribed calendars re-process it (#363). Fields the export ignores
+  # (capacity, comment lock) deliberately don't — they can't change how the
+  # event appears in a calendar. `cancelled_at` bumps too, but on its own
+  # cancel/uncancel path, not through the generic edit changeset.
+  #
+  # `timezone` only alters rendered output for all-day events (DTSTART/DTEND as
+  # VALUE=DATE); a timezone-only edit on a timed event bumps SEQUENCE for
+  # identical UTC output. That's the safe direction — an extra bump only makes a
+  # client re-process a no-op, whereas under-bumping makes it miss a real change
+  # — and the changeset can't cheaply know all-day-ness, so it stays in the set.
+  @ics_significant_fields ~w(title description_markdown starts_at ends_at all_day timezone location_name location_url)a
+
   # Reminder lead time (SPEC §6): how long before an event's start its
   # reminder email/notification fires. The single source of truth for
   # both `schedule_reminder/1` below and
@@ -420,7 +435,9 @@ defmodule Kammer.Events do
         Repo.transact(fn ->
           locked_event = lock_event!(event.id)
 
-          with {:ok, updated_event} <- locked_event |> Event.changeset(attrs) |> Repo.update() do
+          changeset = locked_event |> Event.changeset(attrs) |> bump_sequence_if_significant()
+
+          with {:ok, updated_event} <- Repo.update(changeset) do
             # Every locked edit ends with the same promotion pass every
             # RSVP write runs — not just capacity raises. It self-limits
             # (`free = capacity - attending`), so introducing or
@@ -439,6 +456,23 @@ defmodule Kammer.Events do
       end
     else
       {:error, :unauthorized}
+    end
+  end
+
+  # Increments SEQUENCE when the edit actually changed a field the ICS export
+  # renders (#363). Ecto only records a key in `changeset.changes` when the new
+  # value differs from the stored one, so a no-op save or a capacity-only edit
+  # leaves the counter untouched — SEQUENCE advances only on revisions a
+  # subscribed calendar should re-process.
+  defp bump_sequence_if_significant(changeset) do
+    if Enum.any?(@ics_significant_fields, &Map.has_key?(changeset.changes, &1)) do
+      Ecto.Changeset.put_change(
+        changeset,
+        :sequence,
+        Ecto.Changeset.get_field(changeset, :sequence) + 1
+      )
+    else
+      changeset
     end
   end
 
@@ -488,7 +522,7 @@ defmodule Kammer.Events do
     group = Repo.get!(Group, event.group_id)
 
     if can_manage_event?(actor, event, group) do
-      event |> Ecto.Changeset.change(cancelled_at: DateTime.utc_now(:second)) |> Repo.update()
+      set_cancellation(event.id, DateTime.utc_now(:second))
     else
       {:error, :unauthorized}
     end
@@ -502,10 +536,35 @@ defmodule Kammer.Events do
     group = Repo.get!(Group, event.group_id)
 
     if can_manage_event?(actor, event, group) do
-      event |> Ecto.Changeset.change(cancelled_at: nil) |> Repo.update()
+      set_cancellation(event.id, nil)
     else
       {:error, :unauthorized}
     end
+  end
+
+  # Flips an occurrence's cancellation state (a `DateTime` to cancel, `nil` to
+  # reinstate) under a row lock. Both are significant ICS revisions, so each
+  # bumps SEQUENCE — but the bump reads the freshly-locked row, not the caller's
+  # snapshot, exactly as `update_event/3` does: otherwise a cancel racing an
+  # edit could compute the same SEQUENCE the edit already used, and a
+  # revision-gated calendar would silently ignore the cancellation — the very
+  # #363 failure this fixes. When the occurrence is already in the target state
+  # (a double-cancel, or reinstating a live one) there is no revision, so it
+  # no-ops without advancing SEQUENCE or DTSTAMP. The returned struct is the
+  # locked row as loaded here — associations are not preloaded, so a caller
+  # that needs them must re-load (both current callers discard it and re-fetch).
+  defp set_cancellation(event_id, target) do
+    Repo.transact(fn ->
+      locked = lock_event!(event_id)
+
+      if is_nil(locked.cancelled_at) == is_nil(target) do
+        {:ok, locked}
+      else
+        locked
+        |> Ecto.Changeset.change(cancelled_at: target, sequence: locked.sequence + 1)
+        |> Repo.update()
+      end
+    end)
   end
 
   @doc """
