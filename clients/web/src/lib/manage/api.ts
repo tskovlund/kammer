@@ -481,12 +481,15 @@ export async function liftInstanceBan(instance: Instance, banId: string): Promis
 export async function updateLegalPage(
 	instance: Instance,
 	key: 'privacy' | 'imprint',
-	contentMarkdown: string
+	contentMarkdown: string,
+	lockVersion: number
 ): Promise<components['schemas']['LegalPage']['data']> {
 	return guard(async () => {
 		const { data, error, response } = await client(instance).PUT('/api/v1/legal/{key}', {
 			params: { path: { key } },
-			body: { content_markdown: contentMarkdown }
+			// `lock_version` is the version last read; the server refuses a 409 if
+			// another operator saved in between (#276) rather than clobbering it.
+			body: { content_markdown: contentMarkdown, lock_version: lockVersion }
 		});
 		if (error || !data) throw fail(error, response, 'Could not publish this page.');
 		return data.data;

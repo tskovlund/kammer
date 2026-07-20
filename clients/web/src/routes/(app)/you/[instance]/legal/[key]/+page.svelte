@@ -35,6 +35,9 @@
 	let saving = $state(false);
 	let saved = $state(false);
 	let saveError = $state<string | null>(null);
+	// Set when a save is refused because another operator edited the page since
+	// it was loaded (#276) — offers a reload rather than clobbering their text.
+	let conflicted = $state(false);
 
 	const backHref = $derived(resolve(`/you/${page.params.instance}/legal`));
 	const publicHref = $derived(instance ? `${instance.baseUrl}/legal/${key}` : '#');
@@ -50,6 +53,10 @@
 		failed = false;
 		saved = false;
 		saveError = null;
+		// Reset the conflict state too: this component is reused across
+		// privacy↔imprint navigation, so a stale `conflicted` would leave a
+		// dangling "Reload latest version" button on the next page.
+		conflicted = false;
 
 		(async () => {
 			try {
@@ -82,12 +89,13 @@
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
-		if (!instance || !key || saving) return;
+		if (!instance || !key || !legalPage || saving) return;
 		saving = true;
 		saved = false;
 		saveError = null;
+		conflicted = false;
 		try {
-			legalPage = await updateLegalPage(instance, key, content);
+			legalPage = await updateLegalPage(instance, key, content, legalPage.lock_version);
 			content = legalPage.content_markdown;
 			saved = true;
 		} catch (cause) {
@@ -99,6 +107,12 @@
 				cause.details.content_markdown
 			) {
 				saveError = t('manage.legal.errorContent');
+			} else if (cause instanceof ApiError && cause.kind === 'conflict') {
+				// Another operator saved since this page loaded (#276). Keep the
+				// operator's unsaved text and offer a reload rather than silently
+				// overwriting the other edit.
+				conflicted = true;
+				saveError = t('manage.legal.errorConflict');
 			} else if (cause instanceof ApiError && cause.kind === 'forbidden') {
 				saveError = t('manage.legal.forbiddenBody');
 			} else {
@@ -106,6 +120,20 @@
 			}
 		} finally {
 			saving = false;
+		}
+	}
+
+	// Pull the current published version after a conflict, replacing the editor
+	// with the latest text so the operator can reapply their change on top.
+	async function reloadLatest() {
+		if (!instance || !key) return;
+		try {
+			legalPage = await fetchLegalPage(instance.baseUrl, key);
+			content = legalPage.content_markdown;
+			conflicted = false;
+			saveError = null;
+		} catch {
+			saveError = t('manage.error.body');
 		}
 	}
 </script>
@@ -182,6 +210,11 @@
 				{/if}
 				{#if saveError}
 					<span class="text-sm text-danger" role="alert">{saveError}</span>
+				{/if}
+				{#if conflicted}
+					<Button type="button" variant="secondary" onclick={reloadLatest}>
+						{t('manage.legal.reloadLatest')}
+					</Button>
 				{/if}
 			</div>
 		</form>

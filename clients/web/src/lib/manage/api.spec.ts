@@ -101,7 +101,7 @@ describe('manage api', () => {
 		await expect(request.json()).resolves.toEqual({ email: 'x@example.com', reason: null });
 	});
 
-	it('publishes a legal page and unwraps the updated page from the envelope', async () => {
+	it('publishes a legal page, sending the lock_version and unwrapping the envelope', async () => {
 		vi.mocked(fetch).mockResolvedValueOnce(
 			jsonResponse(200, {
 				data: {
@@ -109,17 +109,31 @@ describe('manage api', () => {
 					title: 'Privacy policy',
 					content_markdown: '# Ours',
 					content_html: '<h1>Ours</h1>',
-					published: true
+					published: true,
+					lock_version: 2
 				}
 			})
 		);
-		const page = await updateLegalPage(instance(), 'privacy', '# Ours');
+		const page = await updateLegalPage(instance(), 'privacy', '# Ours', 1);
 		expect(page.published).toBe(true);
+		expect(page.lock_version).toBe(2);
 
 		const request = vi.mocked(fetch).mock.calls[0]?.[0] as Request;
 		expect(request.method).toBe('PUT');
 		expect(request.url).toContain('/legal/privacy');
-		await expect(request.json()).resolves.toEqual({ content_markdown: '# Ours' });
+		// The version last read rides the body so the server can refuse a stale
+		// write (#276) instead of clobbering a concurrent edit.
+		await expect(request.json()).resolves.toEqual({ content_markdown: '# Ours', lock_version: 1 });
+	});
+
+	it('surfaces a 409 stale write as a conflict-kind ApiError (#276)', async () => {
+		vi.mocked(fetch).mockResolvedValueOnce(
+			jsonResponse(409, { error: { code: 'conflict', message: 'Changed since you loaded it.' } })
+		);
+
+		await expect(updateLegalPage(instance(), 'privacy', '# Ours', 1)).rejects.toMatchObject({
+			kind: 'conflict'
+		});
 	});
 
 	it('adds a custom field — the composed definition goes over the wire, the created field comes back', async () => {

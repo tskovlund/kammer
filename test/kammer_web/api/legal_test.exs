@@ -28,7 +28,9 @@ defmodule KammerWeb.Api.LegalTest do
 
   test "a published page returns the operator's text and validates against the spec" do
     operator = user_fixture() |> Ecto.Changeset.change(instance_operator: true) |> Repo.update!()
-    {:ok, _page} = Legal.upsert_page(operator, "imprint", %{"content_markdown" => "# Run by us"})
+
+    {:ok, _page} =
+      Legal.upsert_page(operator, "imprint", %{"content_markdown" => "# Run by us"}, 0)
 
     body =
       public_conn()
@@ -70,7 +72,60 @@ defmodule KammerWeb.Api.LegalTest do
       assert body["data"]["published"] == true
       assert body["data"]["content_markdown"] == "# Vores politik"
       assert body["data"]["content_html"] =~ "Vores politik"
+      # A first publish lands at version 1 for the editor to echo back next time.
+      assert body["data"]["lock_version"] == 1
       assert Legal.published?("privacy")
+    end
+
+    test "a stale edit is refused with a 409 conflict, leaving the current text intact (#276)" do
+      operator = instance_operator_fixture()
+
+      first =
+        operator
+        |> api_conn()
+        |> put(~p"/api/v1/legal/privacy", %{content_markdown: "First"})
+        |> json_response(200)
+
+      assert first["data"]["lock_version"] == 1
+
+      # A concurrent operator saves against version 1, bumping the stored page
+      # to version 2.
+      operator
+      |> api_conn()
+      |> put(~p"/api/v1/legal/privacy", %{content_markdown: "Second", lock_version: 1})
+      |> json_response(200)
+
+      # This caller still holds version 1: refused with 409, not a silent
+      # last-write-win, and "Second" survives untouched.
+      assert %{"error" => %{"code" => "conflict"}} =
+               operator
+               |> api_conn()
+               |> put(~p"/api/v1/legal/privacy", %{content_markdown: "Racing", lock_version: 1})
+               |> tap(&assert_operation_response(&1, "legal_update"))
+               |> json_response(409)
+
+      assert Legal.get_page("privacy").content_markdown == "Second"
+    end
+
+    test "a lock_version past the int4 range conflicts (409), never a 500 (#276)" do
+      operator = instance_operator_fixture()
+
+      operator
+      |> api_conn()
+      |> put(~p"/api/v1/legal/privacy", %{content_markdown: "First"})
+      |> json_response(200)
+
+      # A value larger than a Postgres int4 must not reach the column and raise
+      # an encode error — it can't match a real version, so it folds to a
+      # neutral 409, the same shape a stale version gets.
+      assert %{"error" => %{"code" => "conflict"}} =
+               operator
+               |> api_conn()
+               |> put(~p"/api/v1/legal/privacy", %{
+                 content_markdown: "Racing",
+                 lock_version: 3_000_000_000
+               })
+               |> json_response(409)
     end
 
     test "an unknown key answers 404, and empty content 422 naming content_markdown" do

@@ -1259,7 +1259,14 @@ defmodule KammerWeb.Api.Serializer do
       title: Legal.title(key),
       content_markdown: page.content_markdown,
       content_html: Markdown.to_html(page.content_markdown),
-      published: Legal.published?(key)
+      # Derive published from the same struct rather than a second query: a
+      # persisted row has an id, the template struct doesn't. This keeps
+      # `published`, `content_markdown`, and `lock_version` mutually consistent
+      # even if a concurrent first publish lands mid-serialize.
+      published: page.id != nil,
+      # The version an editor echoes back on save for the optimistic-concurrency
+      # check (#276 item 4); 0 while the built-in template still shows.
+      lock_version: page.lock_version
     }
   end
 end
