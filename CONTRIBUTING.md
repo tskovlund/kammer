@@ -93,10 +93,12 @@ whatever's written elsewhere, including this document.
 ## The backlog
 
 What's left to build lives as GitHub issues (labeled `enhancement`),
-not a separate roadmap document — issue #33 is the current umbrella
-tracking Phase 2 completion, with each remaining item wired in as a
-real **sub-issue** (not a hand-written checklist link), so its progress
-bar and checkbox state track automatically when a sub-issue closes.
+not a separate roadmap document — issue #352 is the current umbrella,
+the durable ordering of everything left before v1 (it superseded #33,
+the now-closed Phase 2 umbrella), with each remaining item wired in as
+a real **sub-issue** (not a hand-written checklist link), so its
+progress bar and checkbox state track automatically when a sub-issue
+closes.
 Working on something not yet tracked? Open an issue first — and add it
 as a sub-issue of the relevant umbrella — so the "what's left" view
 stays accurate without anyone having to remember to edit it.
