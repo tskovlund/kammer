@@ -7,8 +7,6 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org)
 [![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovate)](https://github.com/tskovlund/.github/blob/main/default.json)
 
-**A calm, self-hosted home for real-world communities.**
-
 Kammer replaces Facebook Groups/Pages/Events, the group email thread, and the
 file-sharing half of Google Drive — for associations, bands, clubs, and every
 other community that exists first in the real world and only second on a
@@ -155,5 +153,5 @@ say on anything product-shaping; see
 
 ## License
 
-[AGPLv3](LICENSE). If you run a modified Kammer for others, you share your
-changes. That's the deal.
+[AGPLv3](LICENSE). If you run a modified Kammer as a service for others, the
+license requires you to publish your changes under the same terms.
