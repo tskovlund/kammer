@@ -41,8 +41,9 @@ Conventional Commits, Gettext EN/DA, and ADR triggers are specified in
 layered on top. (Step 4's CHANGELOG scope is the actual policy —
 neither of those docs states one.)
 
-One coherent concern per PR: a feature, a docs reorg, and a dependency
-bump get separate branches, even mid-session.
+One coherent concern per PR: unrelated concerns — a feature vs. a docs
+reorg vs. a dependency bump — get separate branches and PRs, even
+mid-session.
 
 **Parallel PRs via side branches** (owner-approved 2026-07-09): the
 designated branch is the _main lane_, reserved for ladder/server
@@ -210,16 +211,18 @@ responsibility.
 - **After opening any PR, subscribe to its activity and arm a one-shot
   self check-in a few minutes out, not 15–20** (owner-stated
   2026-07-12). Webhooks deliver CI _failures_ and comments but never CI
-  _success_, so without it a green PR just sits unmerged. Re-arm each
-  time it fires until the PR is merged or closed; check-ins bound to a
-  prior session die with it.
+  _success_, so without it a green PR just sits unmerged, and CI here
+  is fast — err toward too-frequent: prefer one wasted check over a
+  green PR idling unmerged. Re-arm each time it fires until the PR is
+  merged or closed; check-ins bound to a prior session die with it.
 - **Never cancel a stale check-in** (owner-stated 2026-07-12: each
   cancellation needs owner approval, so it's pure churn). A one-shot
   check-in that outlives its PR fires once and gets no-oped ("stale,
   already merged"). Cancel only when the owner says to stop watching a
   PR mid-flight, and never cancel-and-re-arm to "refresh" one for a new
-  head — a check-in acts on the PR's _current_ head regardless of any
-  SHA in its text.
+  head, however that head moved (a force-push, an ordinary push, or a
+  branch update) — a check-in acts on the PR's _current_ head
+  regardless of any SHA in its text.
 - **Prefer per-PR one-shot check-ins to a generic recurring trigger**,
   which fires on a fixed schedule even with no open PR, is less
   responsive than one tuned to expected CI time, and still needs
@@ -269,7 +272,9 @@ must survive goes in an issue, a CHANGELOG entry, an ADR, or this file
   never resolved unilaterally — comment status deltas, don't close them
   (label `action`).
 - Keep the owner assigned only while an issue genuinely waits on their
-  input. Unassign once resolved (the issue can stay open for tracking);
+  input — a `decision` or `action` issue with an open question or an
+  unchecked owner-only step. Unassign once that's resolved (the issue
+  can stay open for tracking);
   implementation work, including sequencing already-approved items, is
   never a reason to keep them assigned.
 
@@ -288,10 +293,13 @@ single named before/after batch for the owner to approve first.
 - **The open-issue count is a metric the owner watches** (stressed
   twice, 2026-07-09). Net growth needs justification: before filing,
   ask whether it folds into an existing issue, and pair filing with
-  closing — closing what a merge completed is part of landing the
-  merge. Refined 2026-07-17: the goal is **turnover and an
+  closing — a session that only ever adds issues is a hygiene smell,
+  and closing what a merge completed is part of landing the merge.
+  Refined 2026-07-17: the goal is **turnover and an
   eventually-shrinking pile**; once the audit backlog clears, sessions
-  must trend net-negative. **No GitHub milestones** (owner-declined)
+  must trend net-negative. Audit swarms fold findings into existing
+  issues wherever possible and close their trackers promptly rather
+  than minting freely. **No GitHub milestones** (owner-declined)
   and **no separate tracked progress number** such as a posted
   "v1-gating count" (owner-stated 2026-07-19: "just another number that
   grows stale if you track it") — the honest open list is the tracker.
@@ -317,11 +325,14 @@ single named before/after batch for the owner to approve first.
   - **Type** (exactly one): `bug` (real correctness/security defect),
     `enhancement` (genuinely new user-facing capability — not audit
     cleanup, a doc fix, or a test gap), `tech-debt` (refactor, cleanup,
-    DRY, context-boundary fix, no behavior change), `documentation`,
-    `tests`. Before reaching for `enhancement`, ask whether it's really
-    a new capability or cleanup wearing the default label. Exception
-    (owner-confirmed on #236): purely owner planning/action items carry
-    no Type label — that axis classifies work on the product.
+    DRY, context-boundary fix — no user-facing behavior change),
+    `documentation` (doc-only fix), `tests` (test-coverage
+    addition/cleanup only). Before reaching for `enhancement`, ask
+    whether it's really a new capability or cleanup wearing the default
+    label. Exception (owner-confirmed on #236): issues that are _purely_
+    owner planning/action items — a `decision` or `action` with no
+    implementation of its own — carry no Type label, because that axis
+    classifies work on the product and these aren't that.
   - **Process** (zero or more): `decision`/`action` only while
     genuinely blocking; `roadmap` on confirmed future scope.
   - **Provenance** (zero or one): `architecture-audit` /
@@ -336,8 +347,9 @@ single named before/after batch for the owner to approve first.
   inconsistently, and it rots when the label changes. Plain,
   sentence-case, descriptive titles.
 - **Umbrella/tracker issues use GitHub-native sub-issues, not prose.**
-  Link children through GitHub's sub-issue API (children are addressed
-  by internal node id, not `number`), the way #33/#74/#90 do. A tracker
+  Link children through GitHub's sub-issue API, addressing each child
+  by the internal id from a full-object fetch rather than its
+  `number`, the way #33/#74/#90 do. A tracker
   with prose-only "#122, #123, …" references and no native links is
   exactly the inconsistency this section exists to catch — check every
   new tracker before calling it done.
@@ -349,10 +361,12 @@ single named before/after batch for the owner to approve first.
   strategic shift, say so on those issues.
 - **Bulk edits to pre-existing issues need the owner to name the
   batch**, not just approve the idea: compute the exact before/after
-  and post it as one comment on a single issue for approval. A denied
-  write is never routed around — many direct calls are the same pattern
-  as one delegated call — and a "go ahead" covers that named batch
-  only, not whatever comes later.
+  and post it as one comment on a single issue (create a tracking issue
+  if none fits) for approval. A denied write is never routed around —
+  many direct calls are the same pattern as one delegated call — and a
+  "go ahead" covers that named batch only. If unrelated work happens in
+  between and you're not sure the original sign-off still applies, ask
+  again rather than assume it does.
 
 ### Product scope changes
 
@@ -360,8 +374,9 @@ SPEC.md §16's "explicit non-goals" list is the canonical, durable
 record of what's out of scope — not this file, not a conversation. The
 moment the owner adds, removes, or narrows a non-goal, or states any
 other scope decision, it goes into SPEC.md (plus a cross-referenced
-issue tracking the now-in-scope item, and an ADR if it reverses a prior
-architectural decision) in the same turn, before continuing whatever
+issue tracking the now-in-scope item, and an ADR if it reverses **or
+amends** a prior architectural decision) in the same turn, before
+continuing whatever
 was in progress. A scope decision that only lives in conversation is
 exactly what a long, compacted session loses. (This rule exists because
 that happened: native apps were listed as an explicit non-goal despite
@@ -416,15 +431,17 @@ about costs much more.
 
 #### Async-only stretches (owner watching GitHub, not chat)
 
-The owner periodically goes fully async and means it literally: no chat
-replies coming, GitHub the only channel they check, for a defined
-stretch. During one:
+The owner periodically goes fully async — explicitly says so, and means
+it literally: no chat replies coming, GitHub the only channel they
+check, for a defined stretch. During one:
 
 - Keep working autonomously; pausing for a chat reply that will not
   come is a stall, not caution.
 - Write all status, findings, and decisions to GitHub, routed by the
   owner-interaction rules above — chat may not be read again for the
-  whole stretch.
+  whole stretch. Match the channel to the content: status and findings
+  can ride a PR description, an issue comment, or the CHANGELOG, but
+  anything needing a decision goes in a `decision` issue.
 - For a `decision` issue that would normally block, pick the most
   reasonable option and say so in an issue comment with the reasoning,
   so the call is visible and overridable, then keep moving.
@@ -443,9 +460,11 @@ up, not only when asked.
 **This is as much about the _product_ as the process** (owner-stated
 2026-07-12): critique the UX, the model, and the feature set, and
 propose improvements unprompted, routed by the owner-interaction rules
-— a product gap is an issue (mind the open-issue count), a scope
-question needing the owner's call is an assigned `decision` issue.
-Leave both the product and the process better than you found them.
+— a product gap is an issue (mind the open-issue count, and pair it
+with closing), a scope question needing the owner's call is an assigned
+`decision` issue, and a passing observation can ride the relevant PR or
+issue. Leave both the product and the process better than you found
+them, every session.
 
 **Persist process changes automatically, without being asked**: the
 moment a standing decision or convention is made — whether the owner
@@ -496,13 +515,15 @@ never need asking again.
   defect. The committer email is already correct, so do **not** amend
   with `--reset-author` to chase the badge: it changes nothing about
   verification and rewrites the SHA, yanking the tree out from under
-  any in-flight SHA-pinned review agent.
+  any in-flight SHA-pinned review agent. Leave unsigned commits as they
+  are.
 - The Playwright e2e gate (`scripts/e2e.sh`) needs a browser and `mix`
   on PATH, so run it inside `nix develop` with
   `export CHROMIUM_BIN=/opt/pw-browsers/chromium` (the config reads
   `CHROMIUM_BIN`; the container pre-installs Chromium there — never
-  `playwright install`). It is **destructive to `kammer_dev`**, so
-  don't point it at a database you care about.
+  `playwright install`). It is **destructive to `kammer_dev`** — it
+  drops and recreates it — so don't point it at a database you care
+  about.
 - Regenerate `schema.d.ts` after any API-file change and require a
   byte-identical diff, using the **project-pinned tools exactly as
   written here** — five independent agents have confirmed the
@@ -528,7 +549,10 @@ never need asking again.
   v1 (owner-stated 2026-07-12) — note UI changes in the PR and let that
   batch cover them; no per-PR regen, and don't block a merge on it. The
   PWA-era replacement for the dead LiveView Screenshots workflow rides
-  the docs overhaul (#189) and the visual-regression net (#286).
+  the docs overhaul (#189) and the visual-regression net (#286). (The
+  historical "CSS cannot be built in this container" constraint went
+  with the server asset pipeline — the Svelte client builds here, as
+  the e2e gate proves.)
 - If GitHub tool access shows as disconnected it needs re-authorization
   from the owner (`claude mcp` / `/mcp`, not doable from an agent
   session); local git still works without it.

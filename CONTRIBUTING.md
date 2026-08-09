@@ -92,15 +92,13 @@ whatever's written elsewhere, including this document.
 
 ## The backlog
 
-What's left to build lives as GitHub issues (labeled `enhancement`),
-not a separate roadmap document — issue #352 is the current umbrella,
-the durable ordering of everything left before v1 (it superseded #33,
-the now-closed Phase 2 umbrella), with each remaining item wired in as
-a real **sub-issue** (not a hand-written checklist link), so its
-progress bar and checkbox state track automatically when a sub-issue
-closes. Working on something not yet tracked? Open an issue first — and
-add it as a sub-issue of the relevant umbrella — so the "what's left"
-view stays accurate without anyone having to remember to edit it.
+What's left to build lives as GitHub issues, not a separate roadmap
+document — issue #352 is the current umbrella, the durable ordering of
+everything left before v1 (it superseded #33, the now-closed Phase 2
+umbrella). It carries that ordering mostly as prose rather than as a
+fully wired sub-issue tree, so it stays current by being edited
+directly. Working on something not yet tracked? Open an issue first and
+place it in #352's ordering, so the "what's left" view stays accurate.
 
 ## How this stays fresh, not just written down
 
@@ -110,8 +108,8 @@ memory:
 
 - **What's left (Issues)** stays accurate because closing the PR that
   resolves an issue closes the issue itself — there's no separate
-  edit step to forget. Sub-issue linking (above) extends that to
-  umbrella tracking issues too.
+  edit step to forget. Where an umbrella links its children as native
+  sub-issues, its progress bar tracks them automatically too.
 - **What shipped (`CHANGELOG.md`)** and **what changed architecturally
   (`docs/decisions/`)** are enforced by the PR template checklist —
   the same checklist item exists for Gettext completeness, and CI
