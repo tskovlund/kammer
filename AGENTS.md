@@ -8,7 +8,8 @@ product is) → [CONVENTIONS.md](CONVENTIONS.md) and
 [docs/development.md](docs/development.md) (workflow reference,
 pitfalls) → open GitHub issues, especially anything labeled `decision`,
 plus **#352 (the durable v1 ordering — the master plan for everything
-left)** and **#314 (the approved A+ quality program)** → then
+left, updated by full-catalogue sweeps)** and **#314 (the approved A+
+quality program)** → then
 [`docs/decisions/`](docs/decisions/) (why past calls were made). Owner
 comments on issues override everything below. (The Phase 2 umbrella #33
 is closed, superseded by #352 as the live plan.)
@@ -22,7 +23,8 @@ to exist. `decision`/`action` issues assigned to the owner are
 read-only for you; everything else open and unassigned is fair game.
 
 **The Svelte PWA over the JSON API is the only product UI** — LiveView
-was removed in #187 (ADR 0024). Client-side conventions live in
+was removed in #187 (ADR 0024), so new user-facing capability lands in
+the API and the PWA, full stop. Client-side conventions live in
 [CONVENTIONS.md](CONVENTIONS.md), SPEC.md §21, and `clients/web/`.
 
 **Don't reproduce a prior iteration's limitations** (owner-stated
@@ -83,7 +85,8 @@ branch to dodge the one-concern rule.
    addressed.
 8. Merge with a merge commit, then immediately restart the branch
    (`git fetch origin main && git checkout -B <branch> origin/main`)
-   **and push that reset** before touching anything else. A remote
+   **and push that reset** (`git push origin <branch>`) before touching
+   anything else, not whenever a later commit happens to. A remote
    branch left at the pre-merge tip makes every session-stop check that
    diffs local `HEAD` against it report the merge commit as unpushed,
    every session, until something closes the gap. This push is always a
