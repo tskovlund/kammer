@@ -19,7 +19,7 @@ importers:
         version: 0.17.0
       phoenix:
         specifier: ^1.8.9
-        version: 1.8.9
+        version: 1.8.11
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -1355,8 +1355,8 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
-  phoenix@1.8.9:
-    resolution: {integrity: sha512-/2qzAZB3P2s08fFAYaG65lqaNFmVXUSlXdY4/JDdDKIC81y2cFWkPwI8gycy4VLpv197JwZ5PpBf3VhoG32yGA==}
+  phoenix@1.8.11:
+    resolution: {integrity: sha512-MbS8y0+8lYNjOYRIorek1GzMFS3nKvycetLlLxB/DZOFRu0yLI0PCvvm8wg+7aEORbmWuioe95+7uoyNKlErZg==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -2938,7 +2938,7 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  phoenix@1.8.9: {}
+  phoenix@1.8.11: {}
 
   picocolors@1.1.1: {}
 
