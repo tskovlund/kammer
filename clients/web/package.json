@@ -41,17 +41,17 @@
 		"prettier-plugin-svelte": "^4.1.0",
 		"prettier-plugin-tailwindcss": "^0.8.0",
 		"svelte": "^5.56.8",
-		"svelte-check": "^4.6.0",
+		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.16",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.11"
 	},
 	"dependencies": {
-		"markdown-it": "^14.3.0",
+		"markdown-it": "^14.3.1",
 		"openapi-fetch": "^0.17.0",
-		"phoenix": "^1.8.9"
+		"phoenix": "^1.8.13"
 	},
 	"pnpm": {
 		"overrides": {
