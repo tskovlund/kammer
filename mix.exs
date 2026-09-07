@@ -87,7 +87,7 @@ defmodule Kammer.MixProject do
       # verification. Published on Hex as `wax_` (trailing underscore —
       # `wax` was already taken).
       {:wax_, "~> 0.7"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3.0"},
       {:bandit, "~> 1.5"},
 
       # Code quality and security tooling (SPEC §17)
