@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         language: [javascript-typescript, actions]
-    uses: tskovlund/.github/.github/workflows/codeql.yml@41c6ecc50d1ace4c64329706878f1ec6dc99634b # main
+    uses: tskovlund/.github/.github/workflows/codeql.yml@562e63fbc2a3a2a4c959ab8c4899aa800976e0e6 # main
     with:
       language: ${{ matrix.language }}
     permissions:
