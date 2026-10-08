@@ -67,7 +67,7 @@ defmodule Kammer.MixProject do
       {:gen_smtp, "~> 1.3"},
       {:tz, "~> 0.28"},
       {:oban, "~> 2.23"},
-      {:mdex, "~> 0.13"},
+      {:mdex, "~> 0.14"},
       # Optional: lets restricted environments build the MDEx NIF from
       # source (MDEX_BUILD=1) instead of fetching the precompiled binary.
       {:rustler, ">= 0.0.0", optional: true},
