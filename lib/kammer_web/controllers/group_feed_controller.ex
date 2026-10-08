@@ -30,6 +30,10 @@ defmodule KammerWeb.GroupFeedController do
 
   @post_limit 20
 
+  # sobelow_skip ["XSS.SendResp"]
+  # The body is XML built by Kammer.Feed.Syndication, which escapes every
+  # interpolated value (escape/1) and wraps rendered HTML in CDATA, and the
+  # response is served as application/*+xml, not scriptable HTML.
   @doc "RSS 2.0 feed of a public group's recent posts."
   @spec rss(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def rss(conn, params) do
@@ -50,6 +54,10 @@ defmodule KammerWeb.GroupFeedController do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
+  # The body is XML built by Kammer.Feed.Syndication, which escapes every
+  # interpolated value (escape/1) and wraps rendered HTML in CDATA, and the
+  # response is served as application/*+xml, not scriptable HTML.
   @doc "Atom 1.0 feed of a public group's recent posts."
   @spec atom(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def atom(conn, params) do
